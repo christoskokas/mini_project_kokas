@@ -1,0 +1,182 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <xacro:macro name="argus_leg" params="leg ">
+
+        <xacro:if value="${leg == 'RF'}">
+            <xacro:property name="side" value = "-1"/>
+            <xacro:property name="position_hip" value = "0.43"/>
+        </xacro:if>
+
+        <xacro:if value="${leg == 'LF'}">
+            <xacro:property name="side" value = "1"/>
+            <xacro:property name="position_hip" value = "0.43"/>
+        </xacro:if>
+
+        <xacro:if value="${leg == 'RH'}">
+            <xacro:property name="side" value = "-1"/>
+            <xacro:property name="position_hip" value = "-0.43"/>
+        </xacro:if>
+
+        <xacro:if value="${leg == 'LH'}">
+            <xacro:property name="side" value = "1"/>
+            <xacro:property name="position_hip" value = "-0.43"/>
+        </xacro:if>
+
+        <xacro:property name="hip_center_of_mass" value = "${side*hip_center_x} ${side*hip_center_y} ${hip_center_z}"/>
+
+        <link name="${leg}_hip">
+            <inertial>
+                <origin xyz = "${hip_center_of_mass}"  rpy="0 0 0"/>
+                <mass value="${hip_mass}" />
+                <inertia ixx="${ixx_hip}" ixy="${ixy_hip}" ixz="${ixz_hip}"
+                     iyy="${iyy_hip}" iyz="${iyz_hip}"
+                     izz="${izz_hip}" />
+            </inertial>
+            <visual>
+                <geometry>
+                    <mesh filename="${path_to_hip}" scale = "0.001 0.001 0.001"/>
+                </geometry>
+                <origin xyz="0.0 0.0 0.0" rpy="${pi/2} 0.0 ${pi*side/2}" />
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="${path_to_hip}" scale = "0.001 0.001 0.001"/>
+                </geometry>
+                <origin xyz="0.0 0.0 0.0" rpy="${pi/2} 0.0 ${pi*side/2}"/>
+            </collision>
+        </link>
+        
+        <gazebo reference="${leg}_hip">
+            <material>Gazebo/Orange</material>
+        </gazebo>
+
+        <link name="${leg}_upper_leg">
+            <inertial>
+                <origin xyz = "${thigh_center_of_mass}"  rpy="0 0 0"/>
+                <mass value="${thigh_mass}" />
+                <inertia ixx="${ixx_thigh}" ixy="${side*ixy_thigh}" ixz="${ixz_thigh}"
+                     iyy="${iyy_thigh}" iyz="${side*iyz_thigh}"
+                     izz="${izz_thigh}" />
+            </inertial>
+            <visual>
+                <geometry>
+                    <mesh filename="${path_to_upper_leg}" scale = "0.001 0.001 0.001"/>
+                </geometry>
+                <origin xyz="0.0 0.0 0.0" rpy="${pi/2} ${-pi/2} 0"/>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="${path_to_upper_leg}" scale = "0.001 0.001 0.001"/>
+                </geometry>
+                <origin xyz="0.0 0.0 0.0" rpy="${pi/2} ${-pi/2} 0"/>
+            </collision>
+        </link>
+        
+        <gazebo reference="${leg}_upper_leg">
+            <material>Gazebo/Green</material>
+        </gazebo>
+
+        <link name="${leg}_lower_leg">
+            <inertial>
+                <origin xyz = "${lower_leg_center_of_mass}" rpy="0 0 0"/>
+                <mass value="${lower_leg_mass}" />
+                <inertia ixx="${ixx_lower_leg}" ixy="${ixy_lower_leg}" ixz="${ixz_lower_leg}"
+                     iyy="${iyy_lower_leg}" iyz="${iyz_lower_leg}"
+                     izz="${izz_lower_leg}" />
+            </inertial>
+            <visual>
+                <geometry>
+                    <mesh filename="${path_to_lower_leg}" scale = "0.001 0.001 0.001"/>
+                </geometry>
+                <origin xyz="0 0.0 0" rpy="${pi/2} ${pi/2-0.182960291} 0"/>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="${path_to_lower_leg}" scale = "0.001 0.001 0.001"/>
+                </geometry>
+                <origin xyz="0 0.0 0" rpy="${pi/2} ${pi/2-0.182960291} 0"/>
+            </collision>
+        </link>
+        
+        <gazebo reference="${leg}_lower_leg">
+            <kp>10000000.0</kp>
+            <kd>1.0</kd>
+            <mu1>0.9</mu1>
+            <mu2>0.9</mu2>
+            <minDepth>0.005</minDepth>
+            <maxContacts>1</maxContacts>
+            <material>Gazebo/Red</material>
+        </gazebo>
+
+        <link name="${leg}_foot"/>
+
+        <joint name="${leg}_hip_joint" type="revolute">
+            <parent link="base_link"/>
+            <child link="${leg}_hip"/>
+            <axis xyz="1.0 0.0 0.0"/>
+            <origin xyz="${position_hip} 0.0 0.0"/>
+            <limit effort="150" lower="-${pi}" upper="${pi}" velocity="10" />
+      <dynamics damping="0.0" friction="0.0" />
+        </joint>
+
+        <joint name="${leg}_upper_leg_joint" type="revolute">
+            <parent link="${leg}_hip"/>
+            <child link="${leg}_upper_leg"/>
+            <axis xyz="0.0 1.0  0.0"/>
+            <origin xyz="0.0 ${side*0.233} 0.0"/>
+            
+            <limit effort="150" lower="-${pi}" upper="${pi}" velocity="10" />
+      <dynamics damping="0.0" friction="0.0" />
+        </joint>
+
+        <joint name="${leg}_lower_leg_joint" type="revolute">
+            <parent link="${leg}_upper_leg"/>
+            <child link="${leg}_lower_leg"/>
+            <axis xyz="0.0 1.0  0.0"/>
+            <origin xyz="0.0 0.0 -0.45"/>
+            <limit effort="150" lower="-${pi}" upper="${pi}" velocity="10" />
+      <dynamics damping="0.0" friction="0.0" />
+        </joint>
+
+
+        <joint name="${leg}_foot_joint" type="fixed">
+            <parent link="${leg}_lower_leg"/>
+            <child link="${leg}_foot"/>
+            <origin xyz="-0.0 0.0 -0.61"/>
+        </joint>
+
+        <transmission name="${leg}_hip_joint_trans">
+            <type>transmission_interface/SimpleTransmission</type>
+            <joint name="${leg}_hip_joint">
+                <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+            </joint>
+            <actuator name="${leg}_hip_joint_motor">
+                <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                <mechanicalReduction>1</mechanicalReduction>
+            </actuator>
+        </transmission>
+
+        <transmission name="${leg}_upper_leg_joint_trans">
+            <type>transmission_interface/SimpleTransmission</type>
+            <joint name="${leg}_upper_leg_joint">
+                <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+            </joint>
+            <actuator name="${leg}_upper_leg_joint_motor">
+                <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                <mechanicalReduction>1</mechanicalReduction>
+            </actuator>
+        </transmission>
+
+        <transmission name="${leg}_lower_leg_joint_trans">
+            <type>transmission_interface/SimpleTransmission</type>
+            <joint name="${leg}_lower_leg_joint">
+                <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+            </joint>
+            <actuator name="${leg}_lower_joint_motor">
+                <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+                <mechanicalReduction>1</mechanicalReduction>
+            </actuator>
+        </transmission>
+
+    </xacro:macro>
+</robot>

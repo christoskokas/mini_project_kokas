@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="argos">
+
+    <xacro:property name="pi" value="3.14159265358979" />
+    <xacro:include filename="$(find mini_project)/robots/robot_properties.urdf.xacro"/>
+
+    <link name="base_link">
+        <visual>
+            <geometry>
+                <mesh filename="${path_to_base}" scale = "0.001 0.001 0.001"/>
+            </geometry>
+            <origin xyz="0.0 0.0 0.0" rpy="${pi/2} 0 0"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="${path_to_base}" scale = "0.001 0.001 0.001"/>
+            </geometry>
+            <origin xyz="0.0 0.0 0.0" rpy="${pi/2} 0 0"/>
+        </collision>
+    </link>
+
+    <link name="base_inertia">    
+        <inertial>
+            <origin xyz="${body_center_of_mass}"/>
+            <mass value="${body_mass}" />
+            <inertia ixx="${ixx_body}" ixy="${ixy_body}" ixz="${ixz_body}"
+                     iyy="${iyy_body}" iyz="${iyz_body}"
+                     izz="${izz_body}" />
+        </inertial>
+    </link>  
+    <joint name="base_link_to_base_inertia" type="fixed">    
+        <parent link="base_link"/>    
+        <child link="base_inertia"/>    
+        <origin rpy="0 0 0" xyz="0 0 0"/>  
+    </joint>  
+    
+    <xacro:include filename="$(find mini_project)/robots/legs.urdf.xacro"/>
+
+    <xacro:include filename="$(find mini_project)/robots/accessories.urdf.xacro"/>
+    
+    <xacro:accessories base_name = "base_link"/>
+
+    <gazebo reference="base_link">
+        <material>Gazebo/FlatBlack</material>
+    </gazebo>
+
+    <xacro:argus_leg leg="LF"/>
+    <xacro:argus_leg leg="RF"/>
+    <xacro:argus_leg leg="LH"/>
+    <xacro:argus_leg leg="RH"/>
+    
+    <xacro:include filename="$(find mini_project)/robots/manipulator.urdf.xacro"/>
+    
+    <xacro:manipulator base_name="base_link"/>
+
+    <gazebo>
+      <plugin filename="libgazebo_ros_control.so" name="gazebo_ros_control">
+         <legacyModeNS>true</legacyModeNS>
+      </plugin>
+   </gazebo>
+
+</robot>

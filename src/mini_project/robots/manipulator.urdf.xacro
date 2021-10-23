@@ -1,0 +1,88 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:macro name="manipulator" params="base_name">
+        <link name="manipulator_joint">
+            <inertial>
+                <origin xyz="${man_joint_center}" />
+                <mass value="${man_joint_mass}" />
+                <inertia ixx="${ixx_man_joint}" ixy="${ixy_man_joint}" ixz="${ixz_man_joint}"
+                        iyy="${iyy_man_joint}" iyz="${iyz_man_joint}"
+                        izz="${izz_man_joint}" />
+            </inertial>
+            <visual>
+                <geometry>
+                    <mesh filename="${path_to_manipulator_joint}" scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="${path_to_manipulator_joint}" scale = "0.001 0.001 0.001"/>
+                </geometry>
+            </collision>
+        </link>
+        
+        <link name="manipulator_segment_1">
+            <inertial>
+                <origin xyz="${man_seg_1_center}" rpy="0 0.0 0"/>
+                <mass value="${man_seg_1_mass}" />
+                <inertia ixx="${ixx_man_seg_1}" ixy="${ixy_man_seg_1}" ixz="${ixz_man_seg_1}"
+                        iyy="${iyy_man_seg_1}" iyz="${iyz_man_seg_1}"
+                        izz="${izz_man_seg_1}" />
+            </inertial>
+            <visual>
+                <geometry>
+                    <mesh filename="${path_to_manipulator_segment_1}" scale = "0.001 0.001 0.001"/>
+                </geometry>
+                <origin xyz="0.0 0.0 0.0" rpy="${pi/2} 0.0 ${pi}"/>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="${path_to_manipulator_segment_1}" scale = "0.001 0.001 0.001"/>
+                </geometry>
+                <origin xyz="0.0 0.0 0.0" rpy="${pi/2} 0.0 ${pi}"/>
+            </collision>
+        </link>
+        
+        <link name="manipulator_segment_2">
+            <inertial>
+                <origin xyz="${man_seg_2_center}" rpy="0 0 0.0"/>
+                <mass value="${man_seg_2_mass}" />
+                <inertia ixx="${ixx_man_seg_2}" ixy="${ixy_man_seg_2}" ixz="${ixz_man_seg_2}"
+                        iyy="${iyy_man_seg_2}" iyz="${iyz_man_seg_2}"
+                        izz="${izz_man_seg_2}" />
+            </inertial>
+            <visual>
+                <geometry>
+                    <mesh filename="${path_to_manipulator_segment_2}" scale = "0.001 0.001 0.001"/>
+                </geometry>
+                <origin xyz="0.0 0.0 0.0" rpy="${pi/2} ${pi} 0.0"/>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="${path_to_manipulator_segment_2}" scale = "0.001 0.001 0.001"/>
+                </geometry>
+                <origin xyz="0.0 0.0 0.0" rpy="${pi/2} ${pi} 0.0"/>
+            </collision>
+        </link>
+
+        <joint name="${base_name}_to_manipulator_joint" type="fixed">
+            <parent link="${base_name}"/>
+            <child link="manipulator_joint"/>
+            <origin xyz="0.0 0.0 0.13"/>
+        </joint>
+
+        <joint name="manipulator_joint_to_manipulator_segment_1" type="fixed">
+            <parent link="manipulator_joint"/>
+            <child link="manipulator_segment_1"/>
+            <origin xyz="0.0 0.04 0.075" rpy="0 0 0"/>
+        </joint>
+
+        <joint name="manipulator_segment_1_to_manipulator_segment_2" type="fixed">
+            <parent link="manipulator_segment_1"/>
+            <child link="manipulator_segment_2"/>
+            <origin xyz="-0.25 -0.04 0.0" rpy="0.0 0.0 0.0"/>
+        </joint>
+    </xacro:macro>
+
+</robot>
