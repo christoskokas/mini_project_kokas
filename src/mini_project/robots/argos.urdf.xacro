@@ -44,10 +44,10 @@
         <material>Gazebo/FlatBlack</material>
     </gazebo>
 
-    <xacro:argus_leg leg="LF"/>
-    <xacro:argus_leg leg="RF"/>
-    <xacro:argus_leg leg="LH"/>
-    <xacro:argus_leg leg="RH"/>
+    <xacro:argos_leg leg="LF"/>
+    <xacro:argos_leg leg="RF"/>
+    <xacro:argos_leg leg="LH"/>
+    <xacro:argos_leg leg="RH"/>
     
     <xacro:include filename="$(find mini_project)/robots/manipulator.urdf.xacro"/>
     

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
-    <xacro:macro name="argus_leg" params="leg ">
+    <xacro:macro name="argos_leg" params="leg ">
 
         <xacro:if value="${leg == 'RF'}">
             <xacro:property name="side" value = "-1"/>
