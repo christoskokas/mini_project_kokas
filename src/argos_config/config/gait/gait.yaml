@@ -4,7 +4,7 @@ odom_scaler: 1.0
 max_linear_velocity_x : 1.5
 max_linear_velocity_y : 1.0
 max_angular_velocity_z : 0.5
-com_x_translation : -0.13
+com_x_translation : -0.12
 swing_height : 0.1
 stance_depth : 0.0
 stance_duration : 0.65
