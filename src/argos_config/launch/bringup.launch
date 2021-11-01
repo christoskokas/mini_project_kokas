@@ -1,5 +1,5 @@
 <launch>
-    <arg name="robot_name"              default="/"/>  <!-- Change this for namespacing. -->
+    <arg name="robot_name"              default="argos"/>  <!-- Change this for namespacing. -->
     <arg name="base_frame"             default="base_link"/> <!-- Link name of floating base. Do not touch this. -->
     <arg name="joints_map_file"        default="$(find argos_config)/config/joints/joints.yaml"/> <!--Path to list of joint names. Do not touch this. -->
     <arg name="links_map_file"         default="$(find argos_config)/config/links/links.yaml"/> <!-- Path to list of link names. Do not touch this. -->
@@ -8,7 +8,7 @@
     <arg name="gazebo"                 default="false" /> <!-- Set to true during simulation. This is auto-set to true from gazebo.launch. -->
     <arg name="rviz"                   default="false"/> <!-- Set to true to run rviz in parallel. -->
     <arg name="rviz_ref_frame"         default="odom"/> <!-- Default RVIZ reference frame. -->
-    <arg name="has_imu"                default="true" /> <!-- Set to true if you want to visualize robot but there's no IMU. Only useful for microcontrollers. -->
+    <arg name="has_imu"                default="false" /> <!-- Set to true if you want to visualize robot but there's no IMU. Only useful for microcontrollers. -->
     <arg name="lite"                   default="false" /> <!-- Set to true if you're using CHAMP lite version. Only useful for microcontrollers. -->
     <arg name="close_loop_odom"        default="false" /> <!-- Set to true if you want to calculate odometry using close loop. This is auto-set to true from gazebo.launch. -->
     <arg name="publish_foot_contacts"  default="true" /> <!-- Set to true if you want the controller to publish the foot contact states. This is auto-set to false from gazebo.launch. -->
@@ -36,9 +36,8 @@
         <arg name="publish_joint_control"  value="$(arg publish_joint_control)" />
         <arg name="close_loop_odom"        value="$(arg close_loop_odom)" />
     </include>
+    <arg name="frame prefix" default="$(arg robot_name)/"/>
 
-    <arg if="$(eval arg('robot_name') == '/')"  name="frame_prefix" value="" />
-    <arg unless="$(eval arg('robot_name') == '/')" name="frame_prefix" value="$(arg robot_name)/" />
     
     <group if="$(arg hardware_connected)">
         <node pkg="tf2_ros" type="static_transform_publisher" name="base_link_to_laser" args="0 0 0 0 0 0 $(arg frame_prefix)base_link $(arg frame_prefix)laser" />

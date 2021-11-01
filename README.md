@@ -19,7 +19,7 @@ git clone --branch release/0.62-noetic \https://github.com/stonier/ecl_core.git
 From catkin_ws install all the needed dependencies for the packages.
 
 ```console
-rosdep install --from-paths ./src --ignore-packages-from-source --rosdistro noetic -y
+rosdep install --from-paths src --ignore-src -r -y
 ```
 
 Build the workspace.

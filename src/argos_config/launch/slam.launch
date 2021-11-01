@@ -1,5 +1,5 @@
 <launch>
-    <arg name="robot_name" default="/"/>
+    <arg name="robot_name" default="argos"/>
     <arg name="rviz"       default="true"/>
     
     <arg if="$(eval arg('robot_name') == '/')"  name="frame_prefix" value="" />

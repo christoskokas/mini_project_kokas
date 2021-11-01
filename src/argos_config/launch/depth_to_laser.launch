@@ -6,11 +6,12 @@
 <launch>
 
   <!-- Depth Image to Laser Scan Node -->
-  <node name="depthimage_to_laserscan" pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" args="">
+  <node name="depthimage_to_laserscan" pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" args="load depthimage_to_laserscan/DepthImageToLaserScanNodelet">
 
-    <remap from="image"       to="/camera/left/depth_image"/> <!-- change here for your camera depth topic name. Default: "/camera/depth/image_raw" -->
+    <remap from="image"       to="/argos/camera/left/depth_image"/> <!-- change here for your camera depth topic name. Default: "/camera/depth/image_raw" -->
 
-    <remap from="camera_info" to="/camera/color/camera_info"/> 
+    <remap from="camera_info" to="camera/color/camera_info"/> 
+    <remap from="scan" to="argos/scan"/>
     <!-- the remap for camera_info by default uses the same path as the one given to the image topic. Default: "<path_to_image_topic>/camera_info>" -->
 
     <!-- PARAMETERS: -->

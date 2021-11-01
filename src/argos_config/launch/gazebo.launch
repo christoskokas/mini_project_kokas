@@ -1,5 +1,5 @@
 <launch>
-    <arg name="robot_name"         default="/"/> <!-- Change this for namespacing. -->
+    <arg name="robot_name"         default="argos"/> <!-- Change this for namespacing. -->
     <arg name="rviz"               default="false"/> <!-- Set to true to run rviz in parallel. -->
     <arg name="lite"               default="false" />  <!-- Set to true if you're using CHAMP lite version. Only useful for microcontrollers. -->
     <arg name="ros_control_file"   default="$(find argos_config)/config/ros_control/ros_control.yaml" /> <!-- Path to ROS Control configurations. Do not touch. -->
@@ -35,7 +35,7 @@
         <arg name="gui"                value="$(arg gui)" />
     </include>    
 
-    <node ns="camera" pkg="stereo_image_proc" type="stereo_image_proc" name="stereo_image_proc"/>
+    <node ns="argos/camera" pkg="stereo_image_proc" type="stereo_image_proc" name="stereo_image_proc"/>
 
     <include file="$(find argos_config)/launch/disparity_to_depth.launch" />
 

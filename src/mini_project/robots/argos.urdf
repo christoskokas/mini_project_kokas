@@ -4,7 +4,7 @@
 <!-- |    EDITING THIS FILE BY HAND IS NOT RECOMMENDED                                 | -->
 <!-- =================================================================================== -->
 <robot name="argos">
-  <link name="base_link">
+  <link name="argos/base_link">
     <visual>
       <geometry>
         <mesh filename="package://mini_project/meshes/body.dae" scale="0.001 0.001 0.001"/>
@@ -26,7 +26,7 @@
     </inertial>
   </link>
   <joint name="base_link_to_base_inertia" type="fixed">
-    <parent link="base_link"/>
+    <parent link="argos/base_link"/>
     <child link="base_inertia"/>
     <origin rpy="0 0 0" xyz="0 0 0"/>
   </joint>
@@ -45,7 +45,7 @@
   <!-- Arguments -->
   <!-- Camera Center -->
   <joint name="camera_center_joint" type="fixed">
-    <parent link="base_link"/>
+    <parent link="argos/base_link"/>
     <child link="camera_center"/>
     <origin rpy="0.0 0.0 0.0" xyz="0.31 0.0 0.12"/>
   </joint>
@@ -152,10 +152,10 @@
     </inertial>
   </link>
   <joint name="imu_joint" type="fixed">
-    <parent link="base_link"/>
+    <parent link="argos/base_link"/>
     <child link="imu_link"/>
   </joint>
-  <gazebo reference="base_link">
+  <gazebo reference="argos/base_link">
     <material>Gazebo/FlatBlack</material>
   </gazebo>
   <link name="LF_hip">
@@ -232,7 +232,7 @@
   </gazebo>
   <link name="LF_foot"/>
   <joint name="LF_hip_joint" type="revolute">
-    <parent link="base_link"/>
+    <parent link="argos/base_link"/>
     <child link="LF_hip"/>
     <axis xyz="1.0 0.0 0.0"/>
     <origin xyz="0.43 0.0 0.0"/>
@@ -364,7 +364,7 @@
   </gazebo>
   <link name="RF_foot"/>
   <joint name="RF_hip_joint" type="revolute">
-    <parent link="base_link"/>
+    <parent link="argos/base_link"/>
     <child link="RF_hip"/>
     <axis xyz="1.0 0.0 0.0"/>
     <origin xyz="0.43 0.0 0.0"/>
@@ -496,7 +496,7 @@
   </gazebo>
   <link name="LH_foot"/>
   <joint name="LH_hip_joint" type="revolute">
-    <parent link="base_link"/>
+    <parent link="argos/base_link"/>
     <child link="LH_hip"/>
     <axis xyz="1.0 0.0 0.0"/>
     <origin xyz="-0.43 0.0 0.0"/>
@@ -628,7 +628,7 @@
   </gazebo>
   <link name="RH_foot"/>
   <joint name="RH_hip_joint" type="revolute">
-    <parent link="base_link"/>
+    <parent link="argos/base_link"/>
     <child link="RH_hip"/>
     <axis xyz="1.0 0.0 0.0"/>
     <origin xyz="-0.43 0.0 0.0"/>
@@ -741,8 +741,8 @@
       <origin rpy="1.570796326794895 3.14159265358979 0.0" xyz="0.0 0.0 0.0"/>
     </collision>
   </link>
-  <joint name="base_link_to_manipulator_joint" type="fixed">
-    <parent link="base_link"/>
+  <joint name="argos/base_link_to_manipulator_joint" type="fixed">
+    <parent link="argos/base_link"/>
     <child link="manipulator_joint"/>
     <origin xyz="0.0 0.0 0.13"/>
   </joint>
@@ -757,8 +757,21 @@
     <origin rpy="0.0 0.0 0.0" xyz="-0.25 -0.04 0.0"/>
   </joint>
   <gazebo>
+    <plugin filename="libgazebo_ros_p3d.so" name="p3d_base_controller">
+      <alwaysOn>true</alwaysOn>
+      <updateRate>10.0</updateRate>
+      <bodyName>argos/base_link</bodyName>
+      <topicName>odom/ground_truth</topicName>
+      <gaussianNoise>0.01</gaussianNoise>
+      <frameName>world</frameName>
+      <xyzOffsets>0 0 0</xyzOffsets>
+      <rpyOffsets>0 0 0</rpyOffsets>
+    </plugin>
+  </gazebo>
+  <gazebo>
     <plugin filename="libgazebo_ros_control.so" name="gazebo_ros_control">
       <legacyModeNS>true</legacyModeNS>
+      <robotNamespace>/argos</robotNamespace>
     </plugin>
   </gazebo>
 </robot>
