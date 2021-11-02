@@ -1,0 +1,19 @@
+[submodule "src/packages/champ"]
+	path = src/packages/champ
+	url = https://github.com/chvmp/champ
+[submodule "src/packages/yocs_velocity_smoother"]
+	path = src/packages/yocs_velocity_smoother
+	url = https://github.com/chvmp/yocs_velocity_smoother.git
+[submodule "src/packages/image_pipeline"]
+	path = src/packages/image_pipeline
+	url = https://github.com/ros-perception/image_pipeline
+[submodule "src/packages/disparity_image_proc"]
+	path = src/packages/disparity_image_proc
+	url = https://github.com/skohlbr/disparity_image_proc.git
+[submodule "src/packages/depthimage_to_laserscan"]
+	path = src/packages/depthimage_to_laserscan
+	url = https://github.com/ros-perception/depthimage_to_laserscan.git
+[submodule "src/packages/ecl_core"]
+	path = src/packages/ecl_core
+	url = https://github.com/stonier/ecl_core.git
+	branch = release/0.62-noetic
