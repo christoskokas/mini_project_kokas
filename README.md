@@ -4,19 +4,13 @@ Goal of this project is the modelling of the argos quadruped robot using champ s
 
 ## Ιnstallation
 
-Clone the packages needed on catkin workspace or on a git folder and make a symlink to the catkin workspace. From this point on, the catkin workspace that will be used is catkin_ws. 
+Clone the packages needed on catkin workspace in the src folder or on a git folder and make a symlink to the catkin workspace. 
 
 ```console
-git clone https://github.com/christoskokas/mini_project_EMP.git
-git clone --recursive https://github.com/chvmp/champ
-git clone https://github.com/chvmp/yocs_velocity_smoother.git
-git clone --recursive https://github.com/ros-perception/image_pipeline
-git clone https://github.com/skohlbr/disparity_image_proc.git
-git clone https://github.com/ros-perception/depthimage_to_laserscan.git
-git clone --branch release/0.62-noetic \https://github.com/stonier/ecl_core.git
+git clone --recursive https://github.com/christoskokas/mini_project_EMP.git
 ```
 
-From catkin_ws install all the needed dependencies for the packages.
+From the catkin workspace install all the needed dependencies for the packages.
 
 ```console
 rosdep install --from-paths src --ignore-src -r -y
