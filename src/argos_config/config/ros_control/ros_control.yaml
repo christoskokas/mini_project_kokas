@@ -20,15 +20,15 @@
           - RH_lower_leg_joint
 
       gains:
-        LF_hip_joint : {p: 800, d: 90.0, i: 300}
-        LF_upper_leg_joint : {p: 800, d: 90.0, i: 300}
-        LF_lower_leg_joint : {p: 800, d: 90.0, i: 300}
-        RF_hip_joint : {p: 800, d: 90.0, i: 300}
-        RF_upper_leg_joint : {p: 800, d: 90.0, i: 300}
-        RF_lower_leg_joint : {p: 800, d: 90.0, i: 300}
-        LH_hip_joint : {p: 800, d: 90.0, i: 300}
-        LH_upper_leg_joint : {p: 800, d: 90.0, i: 300}
-        LH_lower_leg_joint : {p: 800, d: 90.0, i: 300}
-        RH_hip_joint : {p: 800, d: 90.0, i: 300}
-        RH_upper_leg_joint : {p: 800, d: 90.0, i: 300}
-        RH_lower_leg_joint : {p: 800, d: 90.0, i: 300}
+        LF_hip_joint : {p: 1500, d: 80.0, i: 0.0}
+        LF_upper_leg_joint : {p: 1500, d: 80.0, i: 0.0}
+        LF_lower_leg_joint : {p: 1500, d: 80.0, i: 0.0}
+        RF_hip_joint : {p: 1500, d: 80.0, i: 0.0}
+        RF_upper_leg_joint : {p: 1500, d: 80.0, i: 0.0}
+        RF_lower_leg_joint : {p: 1500, d: 80.0, i: 0.0}
+        LH_hip_joint : {p: 1500, d: 80.0, i: 0.0}
+        LH_upper_leg_joint : {p: 1500, d: 80.0, i: 0.0}
+        LH_lower_leg_joint : {p: 1500, d: 80.0, i: 0.0}
+        RH_hip_joint : {p: 1500, d: 80.0, i: 0.0}
+        RH_upper_leg_joint : {p: 1500, d: 80.0, i: 0.0}
+        RH_lower_leg_joint : {p: 1500, d: 80.0, i: 0.0}
