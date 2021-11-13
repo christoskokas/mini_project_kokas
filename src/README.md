@@ -1,4 +1,4 @@
-# mini_project_EMP
+# mini_project_kokas
 
 Goal of this project is the modelling of the argos quadruped robot using champ setup assistant.
 
@@ -7,7 +7,7 @@ Goal of this project is the modelling of the argos quadruped robot using champ s
 Clone the packages needed on catkin workspace in the src folder or on a git folder and make a symlink to the catkin workspace. 
 
 ```console
-git clone --recursive https://github.com/christoskokas/mini_project_EMP.git
+git clone --recursive https://github.com/christoskokas/mini_project_kokas.git
 ```
 
 From the catkin workspace install all the needed dependencies for the packages.
