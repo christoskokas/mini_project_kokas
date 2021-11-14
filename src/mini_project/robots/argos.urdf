@@ -131,6 +131,31 @@
       </plugin>
     </sensor>
   </gazebo>
+  <gazebo>
+    <plugin filename="libhector_gazebo_ros_imu.so" name="imu_controller">
+      <updateRate>50.0</updateRate>
+      <bodyName>imu_link</bodyName>
+      <topicName>imu/data</topicName>
+      <accelDrift>0.005 0.005 0.005</accelDrift>
+      <frameId>argos/base_link</frameId>
+      <accelGaussianNoise>0.005 0.005 0.005</accelGaussianNoise>
+      <rateDrift>0.005 0.005 0.005 </rateDrift>
+      <rateGaussianNoise>0.005 0.005 0.005 </rateGaussianNoise>
+      <headingDrift>0.005</headingDrift>
+      <headingGaussianNoise>0.005</headingGaussianNoise>
+    </plugin>
+  </gazebo>
+  <link name="imu_link">
+    <inertial>
+      <mass value="0.001"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <inertia ixx="1e-09" ixy="0.0" ixz="0.0" iyy="1e-09" iyz="0.0" izz="1e-09"/>
+    </inertial>
+  </link>
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="imu_link"/>
+  </joint>
   <gazebo reference="base_link">
     <material>Gazebo/FlatBlack</material>
   </gazebo>
@@ -746,7 +771,7 @@
   </gazebo>
   <gazebo>
     <plugin filename="libgazebo_ros_control.so" name="gazebo_ros_control">
-      <robotNamespace>/argos</robotNamespace>
+      <legacyModeNS>true</legacyModeNS>
     </plugin>
   </gazebo>
 </robot>
