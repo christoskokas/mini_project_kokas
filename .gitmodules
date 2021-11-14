@@ -17,3 +17,6 @@
 	path = src/packages/ecl_core
 	url = https://github.com/stonier/ecl_core.git
 	branch = release/0.62-noetic
+[submodule "src/packages/robot_localization"]
+	path = src/packages/robot_localization
+	url = https://github.com/cra-ros-pkg/robot_localization.git

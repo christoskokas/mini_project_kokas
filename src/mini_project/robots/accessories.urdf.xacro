@@ -82,13 +82,13 @@
                 <format>B8G8R8</format>
                 </image>
                 <clip>
-                <near>0.2</near>
+                <near>0.3</near>
                 <far>20</far>
                 </clip>
                 <noise>
                 <type>gaussian</type>
                 <mean>0.0</mean>
-                <stddev>0.007</stddev>
+                <stddev>0.004</stddev>
                 </noise>
             </camera>
             <camera name="right">
@@ -102,13 +102,13 @@
                 <format>B8G8R8</format>
                 </image>
                 <clip>
-                <near>0.2</near>
+                <near>0.3</near>
                 <far>20</far>
                 </clip>
                 <noise>
                 <type>gaussian</type>
                 <mean>0.0</mean>
-                <stddev>0.007</stddev>
+                <stddev>0.004</stddev>
                 </noise>
             </camera>
             <plugin name="stereo_camera_controller" filename="libgazebo_ros_multicamera.so">
@@ -117,7 +117,7 @@
                 <cameraName>camera</cameraName>
                 <imageTopicName>image_raw</imageTopicName>
                 <cameraInfoTopicName>camera_info</cameraInfoTopicName>
-                <frameName>camera_center</frameName>
+                <frameName>left_camera_optical_frame</frameName>
                 <!--<rightFrameName>right_camera_optical_frame</rightFrameName>-->
                 <hackBaseline>0.07</hackBaseline>
                 <distortionK1>0.0</distortionK1>
@@ -129,30 +129,7 @@
             </sensor>
         </gazebo>
 
-        <gazebo>
-            <plugin name="imu_controller" filename="libhector_gazebo_ros_imu.so">
-                <updateRate>50.0</updateRate>
-                <bodyName>imu_link</bodyName>
-                <topicName>imu/data</topicName>
-                <accelDrift>0.005 0.005 0.005</accelDrift>
-                <accelGaussianNoise>0.005 0.005 0.005</accelGaussianNoise>
-                <rateDrift>0.005 0.005 0.005 </rateDrift>
-                <rateGaussianNoise>0.005 0.005 0.005 </rateGaussianNoise>
-                <headingDrift>0.005</headingDrift>
-                <headingGaussianNoise>0.005</headingGaussianNoise>
-            </plugin>
-        </gazebo>
-
-        <link name="imu_link">
-            <inertial>
-                <mass value="0.001"/>
-                <origin xyz="0 0 0" rpy="0 0 0"/>
-                <inertia ixx="1e-09" ixy="0.0" ixz="0.0" iyy="1e-09" iyz="0.0" izz="1e-09"/>
-            </inertial>
-        </link>
-        <joint name="imu_joint" type="fixed">
-            <parent link="${base_name}" />
-            <child link="imu_link" />
-        </joint>
+        
+        
     </xacro:macro>
 </robot>

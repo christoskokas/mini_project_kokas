@@ -1,6 +1,6 @@
 <launch>
     <arg name="frame_prefix" default=""/>
-    <arg name="robot_name" default="argos"/>
+    <arg name="robot_name" default=""/>
 
     <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
         <rosparam file="$(find argos_config)/config/move_base/costmap_common_params.yaml" command="load" ns="global_costmap" />

@@ -36,7 +36,6 @@
         <arg name="publish_joint_control"  value="$(arg publish_joint_control)" />
         <arg name="close_loop_odom"        value="$(arg close_loop_odom)" />
     </include>
-    <arg name="frame prefix" default="$(arg robot_name)/"/>
 
     
     <group if="$(arg hardware_connected)">

@@ -1,5 +1,5 @@
 <launch>
-    <arg name="frame_prefix" default=""/>
+    <arg name="frame_prefix" default="argos/"/>
 
     <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen">
         <param name="base_frame" value="$(arg frame_prefix)base_footprint" />
@@ -22,15 +22,15 @@
         <param name="srt" value="0.02"/>
         <param name="str" value="0.01"/>
         <param name="stt" value="0.02"/>
-        <param name="linearUpdate" value="0.7"/>
-        <param name="angularUpdate" value="0.7"/>
-        <param name="temporalUpdate" value="-0.5"/>
+        <param name="linearUpdate" value="0.9"/>
+        <param name="angularUpdate" value="0.9"/>
+        <param name="temporalUpdate" value="-1"/>
         <param name="resampleThreshold" value="0.5"/>
-        <param name="particles" value="50"/>
-        <param name="xmin" value="-50.0"/>
-        <param name="ymin" value="-50.0"/>
-        <param name="xmax" value="50.0"/>
-        <param name="ymax" value="50.0"/>
+        <param name="particles" value="80"/>
+        <param name="xmin" value="-150.0"/>
+        <param name="ymin" value="-150.0"/>
+        <param name="xmax" value="150.0"/>
+        <param name="ymax" value="150.0"/>
         <param name="delta" value="0.05"/>
         <param name="llsamplerange" value="0.05"/>
         <param name="llsamplestep" value="0.05"/>
