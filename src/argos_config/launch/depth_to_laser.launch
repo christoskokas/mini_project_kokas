@@ -16,7 +16,7 @@
 
     <!-- PARAMETERS: -->
     <!-- These are the default values. --> 
-    <param name="scan_height"     type="int"    value="5"/> <!-- default: 1 pixel. Number of pixel rows used to generate laser scan. -->
+    <param name="scan_height"     type="int"    value="1080"/> <!-- default: 1 pixel. Number of pixel rows used to generate laser scan. -->
     <param name="scan_time"       type="double" value="0.033"/> <!-- default:0.033, 30 FPS . Time between scans. -->
     <param name="range_min"       type="double" value="0.3"/> <!--default:0.45m. Ranges less than this are considered -Inf. -->
     <param name="range_max"       type="double" value="20.0"/> <!--default: 10m. Ranges less than this are considered +Inf. -->
