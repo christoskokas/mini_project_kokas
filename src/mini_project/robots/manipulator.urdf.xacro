@@ -2,22 +2,22 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
     <xacro:macro name="manipulator" params="base_name">
-        <link name="manipulator_joint">
+        <link name="manipulator_base">
             <inertial>
-                <origin xyz="${man_joint_center}" />
-                <mass value="${man_joint_mass}" />
-                <inertia ixx="${ixx_man_joint}" ixy="${ixy_man_joint}" ixz="${ixz_man_joint}"
-                        iyy="${iyy_man_joint}" iyz="${iyz_man_joint}"
-                        izz="${izz_man_joint}" />
+                <origin xyz="${man_base_center}" />
+                <mass value="${man_base_mass}" />
+                <inertia ixx="${ixx_man_base}" ixy="${ixy_man_base}" ixz="${ixz_man_base}"
+                        iyy="${iyy_man_base}" iyz="${iyz_man_base}"
+                        izz="${izz_man_base}" />
             </inertial>
             <visual>
                 <geometry>
-                    <mesh filename="${path_to_manipulator_joint}" scale = "0.001 0.001 0.001"/>
+                    <mesh filename="${path_to_manipulator_base}" scale = "0.001 0.001 0.001"/>
                 </geometry>
             </visual>
             <collision>
                 <geometry>
-                    <mesh filename="${path_to_manipulator_joint}" scale = "0.001 0.001 0.001"/>
+                    <mesh filename="${path_to_manipulator_base}" scale = "0.001 0.001 0.001"/>
                 </geometry>
             </collision>
         </link>
@@ -66,14 +66,14 @@
             </collision>
         </link>
 
-        <joint name="${base_name}_to_manipulator_joint" type="fixed">
+        <joint name="${base_name}_to_manipulator_base" type="fixed">
             <parent link="${base_name}"/>
-            <child link="manipulator_joint"/>
+            <child link="manipulator_base"/>
             <origin xyz="0.0 0.0 0.13"/>
         </joint>
 
-        <joint name="manipulator_joint_to_manipulator_segment_1" type="fixed">
-            <parent link="manipulator_joint"/>
+        <joint name="manipulator_base_to_manipulator_segment_1" type="fixed">
+            <parent link="manipulator_base"/>
             <child link="manipulator_segment_1"/>
             <origin xyz="0.0 0.04 0.075" rpy="0 0 0"/>
         </joint>

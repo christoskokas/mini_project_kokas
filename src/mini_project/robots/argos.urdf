@@ -159,7 +159,7 @@
   <gazebo reference="base_link">
     <material>Gazebo/FlatBlack</material>
   </gazebo>
-  <link name="LF_hip">
+  <link name="LF_leg_roll">
     <inertial>
       <origin rpy="0 0 0" xyz="0.0016034699 0.19560047521 0.0"/>
       <mass value="2.3384038"/>
@@ -178,7 +178,7 @@
       <origin rpy="1.570796326794895 0.0 1.570796326794895" xyz="0.0 0.0 0.0"/>
     </collision>
   </link>
-  <gazebo reference="LF_hip">
+  <gazebo reference="LF_leg_roll">
     <material>Gazebo/Orange</material>
   </gazebo>
   <link name="LF_upper_leg">
@@ -234,14 +234,14 @@
   <link name="LF_foot"/>
   <joint name="LF_hip_joint" type="revolute">
     <parent link="base_link"/>
-    <child link="LF_hip"/>
+    <child link="LF_leg_roll"/>
     <axis xyz="1.0 0.0 0.0"/>
     <origin xyz="0.43 0.0 0.0"/>
     <limit effort="150" lower="-3.14159265358979" upper="3.14159265358979" velocity="10"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <joint name="LF_upper_leg_joint" type="revolute">
-    <parent link="LF_hip"/>
+    <parent link="LF_leg_roll"/>
     <child link="LF_upper_leg"/>
     <axis xyz="0.0 1.0  0.0"/>
     <origin xyz="0.0 0.233 0.0"/>
@@ -291,7 +291,7 @@
       <mechanicalReduction>1</mechanicalReduction>
     </actuator>
   </transmission>
-  <link name="RF_hip">
+  <link name="RF_leg_roll">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.0016034699 -0.19560047521 0.0"/>
       <mass value="2.3384038"/>
@@ -310,7 +310,7 @@
       <origin rpy="1.570796326794895 0.0 -1.570796326794895" xyz="0.0 0.0 0.0"/>
     </collision>
   </link>
-  <gazebo reference="RF_hip">
+  <gazebo reference="RF_leg_roll">
     <material>Gazebo/Orange</material>
   </gazebo>
   <link name="RF_upper_leg">
@@ -366,14 +366,14 @@
   <link name="RF_foot"/>
   <joint name="RF_hip_joint" type="revolute">
     <parent link="base_link"/>
-    <child link="RF_hip"/>
+    <child link="RF_leg_roll"/>
     <axis xyz="1.0 0.0 0.0"/>
     <origin xyz="0.43 0.0 0.0"/>
     <limit effort="150" lower="-3.14159265358979" upper="3.14159265358979" velocity="10"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <joint name="RF_upper_leg_joint" type="revolute">
-    <parent link="RF_hip"/>
+    <parent link="RF_leg_roll"/>
     <child link="RF_upper_leg"/>
     <axis xyz="0.0 1.0  0.0"/>
     <origin xyz="0.0 -0.233 0.0"/>
@@ -423,7 +423,7 @@
       <mechanicalReduction>1</mechanicalReduction>
     </actuator>
   </transmission>
-  <link name="LH_hip">
+  <link name="LH_leg_roll">
     <inertial>
       <origin rpy="0 0 0" xyz="0.0016034699 0.19560047521 0.0"/>
       <mass value="2.3384038"/>
@@ -442,7 +442,7 @@
       <origin rpy="1.570796326794895 0.0 1.570796326794895" xyz="0.0 0.0 0.0"/>
     </collision>
   </link>
-  <gazebo reference="LH_hip">
+  <gazebo reference="LH_leg_roll">
     <material>Gazebo/Orange</material>
   </gazebo>
   <link name="LH_upper_leg">
@@ -498,14 +498,14 @@
   <link name="LH_foot"/>
   <joint name="LH_hip_joint" type="revolute">
     <parent link="base_link"/>
-    <child link="LH_hip"/>
+    <child link="LH_leg_roll"/>
     <axis xyz="1.0 0.0 0.0"/>
     <origin xyz="-0.43 0.0 0.0"/>
     <limit effort="150" lower="-3.14159265358979" upper="3.14159265358979" velocity="10"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <joint name="LH_upper_leg_joint" type="revolute">
-    <parent link="LH_hip"/>
+    <parent link="LH_leg_roll"/>
     <child link="LH_upper_leg"/>
     <axis xyz="0.0 1.0  0.0"/>
     <origin xyz="0.0 0.233 0.0"/>
@@ -555,7 +555,7 @@
       <mechanicalReduction>1</mechanicalReduction>
     </actuator>
   </transmission>
-  <link name="RH_hip">
+  <link name="RH_leg_roll">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.0016034699 -0.19560047521 0.0"/>
       <mass value="2.3384038"/>
@@ -574,7 +574,7 @@
       <origin rpy="1.570796326794895 0.0 -1.570796326794895" xyz="0.0 0.0 0.0"/>
     </collision>
   </link>
-  <gazebo reference="RH_hip">
+  <gazebo reference="RH_leg_roll">
     <material>Gazebo/Orange</material>
   </gazebo>
   <link name="RH_upper_leg">
@@ -630,14 +630,14 @@
   <link name="RH_foot"/>
   <joint name="RH_hip_joint" type="revolute">
     <parent link="base_link"/>
-    <child link="RH_hip"/>
+    <child link="RH_leg_roll"/>
     <axis xyz="1.0 0.0 0.0"/>
     <origin xyz="-0.43 0.0 0.0"/>
     <limit effort="150" lower="-3.14159265358979" upper="3.14159265358979" velocity="10"/>
     <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <joint name="RH_upper_leg_joint" type="revolute">
-    <parent link="RH_hip"/>
+    <parent link="RH_leg_roll"/>
     <child link="RH_upper_leg"/>
     <axis xyz="0.0 1.0  0.0"/>
     <origin xyz="0.0 -0.233 0.0"/>
@@ -687,7 +687,7 @@
       <mechanicalReduction>1</mechanicalReduction>
     </actuator>
   </transmission>
-  <link name="manipulator_joint">
+  <link name="manipulator_base">
     <inertial>
       <origin xyz="0.0001195 -0.01132600777 0.04996291284 "/>
       <mass value="1.63291158"/>
@@ -742,13 +742,13 @@
       <origin rpy="1.570796326794895 3.14159265358979 0.0" xyz="0.0 0.0 0.0"/>
     </collision>
   </link>
-  <joint name="base_link_to_manipulator_joint" type="fixed">
+  <joint name="base_link_to_manipulator_base" type="fixed">
     <parent link="base_link"/>
-    <child link="manipulator_joint"/>
+    <child link="manipulator_base"/>
     <origin xyz="0.0 0.0 0.13"/>
   </joint>
-  <joint name="manipulator_joint_to_manipulator_segment_1" type="fixed">
-    <parent link="manipulator_joint"/>
+  <joint name="manipulator_base_to_manipulator_segment_1" type="fixed">
+    <parent link="manipulator_base"/>
     <child link="manipulator_segment_1"/>
     <origin rpy="0 0 0" xyz="0.0 0.04 0.075"/>
   </joint>

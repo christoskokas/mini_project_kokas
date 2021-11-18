@@ -22,31 +22,31 @@
             <xacro:property name="position_hip" value = "-0.43"/>
         </xacro:if>
 
-        <xacro:property name="hip_center_of_mass" value = "${side*hip_center_x} ${side*hip_center_y} ${hip_center_z}"/>
+        <xacro:property name="leg_roll_center_of_mass" value = "${side*leg_roll_center_x} ${side*leg_roll_center_y} ${leg_roll_center_z}"/>
 
-        <link name="${leg}_hip">
+        <link name="${leg}_leg_roll">
             <inertial>
-                <origin xyz = "${hip_center_of_mass}"  rpy="0 0 0"/>
-                <mass value="${hip_mass}" />
-                <inertia ixx="${ixx_hip}" ixy="${ixy_hip}" ixz="${ixz_hip}"
-                     iyy="${iyy_hip}" iyz="${iyz_hip}"
-                     izz="${izz_hip}" />
+                <origin xyz = "${leg_roll_center_of_mass}"  rpy="0 0 0"/>
+                <mass value="${leg_roll_mass}" />
+                <inertia ixx="${ixx_leg_roll}" ixy="${ixy_leg_roll}" ixz="${ixz_leg_roll}"
+                     iyy="${iyy_leg_roll}" iyz="${iyz_leg_roll}"
+                     izz="${izz_leg_roll}" />
             </inertial>
             <visual>
                 <geometry>
-                    <mesh filename="${path_to_hip}" scale = "0.001 0.001 0.001"/>
+                    <mesh filename="${path_to_leg_roll}" scale = "0.001 0.001 0.001"/>
                 </geometry>
                 <origin xyz="0.0 0.0 0.0" rpy="${pi/2} 0.0 ${pi*side/2}" />
             </visual>
             <collision>
                 <geometry>
-                    <mesh filename="${path_to_hip}" scale = "0.001 0.001 0.001"/>
+                    <mesh filename="${path_to_leg_roll}" scale = "0.001 0.001 0.001"/>
                 </geometry>
                 <origin xyz="0.0 0.0 0.0" rpy="${pi/2} 0.0 ${pi*side/2}"/>
             </collision>
         </link>
         
-        <gazebo reference="${leg}_hip">
+        <gazebo reference="${leg}_leg_roll">
             <material>Gazebo/Orange</material>
         </gazebo>
 
@@ -112,7 +112,7 @@
 
         <joint name="${leg}_hip_joint" type="revolute">
             <parent link="base_link"/>
-            <child link="${leg}_hip"/>
+            <child link="${leg}_leg_roll"/>
             <axis xyz="1.0 0.0 0.0"/>
             <origin xyz="${position_hip} 0.0 0.0"/>
             <limit effort="150" lower="-${pi}" upper="${pi}" velocity="10" />
@@ -120,7 +120,7 @@
         </joint>
 
         <joint name="${leg}_upper_leg_joint" type="revolute">
-            <parent link="${leg}_hip"/>
+            <parent link="${leg}_leg_roll"/>
             <child link="${leg}_upper_leg"/>
             <axis xyz="0.0 1.0  0.0"/>
             <origin xyz="0.0 ${side*0.233} 0.0"/>
