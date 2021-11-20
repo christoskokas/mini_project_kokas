@@ -47,8 +47,8 @@
         <param name="speckle_range" value="31"/>
     </node>
 
-    <group ns="argos">
-        <include file="$(find argos_config)/launch/point_to_laser_node.launch" />
-    </group>
+    <include file="$(find argos_config)/launch/disparity_to_depth.launch" />
+
+    <include file="$(find argos_config)/launch/depth_to_laser.launch" />
 
 </launch>

@@ -7,7 +7,7 @@
   <node name="disparity_image_proc" pkg="nodelet" type="nodelet" args="load disparity_image_proc/depth_image stereo_proc" output="screen">
     <remap from="/right/camera_info" to="/argos/camera/right/camera_info"/>
     <remap from="/left/camera_info" to="/argos/camera/left/camera_info"/>
-    <remap from="/left/image_rect_color" to="/argos/camera/left/image_rect_color"/>
+    <remap from="/left/image_rect_color" to="/argos/camera/left/image_rect"/>
     <remap from="/disparity" to="/argos/camera/disparity"/>
     <remap from="/depth_image" to="/argos/camera/left/depth_image"/>    
   </node>

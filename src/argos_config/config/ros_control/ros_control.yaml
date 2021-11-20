@@ -1,7 +1,7 @@
 "":
   joint_states_controller:
       type: joint_state_controller/JointStateController
-      publish_rate: 50
+      publish_rate: 200
 
   joint_group_position_controller:
       type: effort_controllers/JointTrajectoryController
@@ -20,15 +20,15 @@
           - RH_lower_leg_joint
 
       gains:
-        LF_hip_joint : {p: 1500, d: 80.0, i: 0.0}
+        LF_hip_joint       : {p: 1500, d: 80.0, i: 0.0}
         LF_upper_leg_joint : {p: 1500, d: 80.0, i: 0.0}
         LF_lower_leg_joint : {p: 1500, d: 80.0, i: 0.0}
-        RF_hip_joint : {p: 1500, d: 80.0, i: 0.0}
+        RF_hip_joint       : {p: 1500, d: 80.0, i: 0.0}
         RF_upper_leg_joint : {p: 1500, d: 80.0, i: 0.0}
         RF_lower_leg_joint : {p: 1500, d: 80.0, i: 0.0}
-        LH_hip_joint : {p: 1500, d: 80.0, i: 0.0}
+        LH_hip_joint       : {p: 1500, d: 80.0, i: 0.0}
         LH_upper_leg_joint : {p: 1500, d: 80.0, i: 0.0}
         LH_lower_leg_joint : {p: 1500, d: 80.0, i: 0.0}
-        RH_hip_joint : {p: 1500, d: 80.0, i: 0.0}
+        RH_hip_joint       : {p: 1500, d: 80.0, i: 0.0}
         RH_upper_leg_joint : {p: 1500, d: 80.0, i: 0.0}
         RH_lower_leg_joint : {p: 1500, d: 80.0, i: 0.0}

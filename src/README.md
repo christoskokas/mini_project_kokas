@@ -20,6 +20,7 @@ Build the workspace.
 
 ```console
 catkin build argos_config
+catkin build pointcloud_to_laserscan -DCMAKE_BUILD_TYPE=Release 
 source devel/setup.bash
 ```
 

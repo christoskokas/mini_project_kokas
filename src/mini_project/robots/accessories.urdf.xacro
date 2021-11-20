@@ -12,7 +12,7 @@
     <xacro:arg name="base_frame"    default="${base_name}" />
     <xacro:arg name="cam_pos_x"     default="0.31" />
     <xacro:arg name="cam_pos_y"     default="0.0" />
-    <xacro:arg name="cam_pos_z"     default="0.12" />
+    <xacro:arg name="cam_pos_z"     default="-0.12" />
     <xacro:arg name="cam_roll"      default="0.0" />
     <xacro:arg name="cam_pitch"     default="0.0" />
     <xacro:arg name="cam_yaw"       default="0.0" />
@@ -70,20 +70,20 @@
 
         <gazebo reference="camera_center">
             <sensor type="multicamera" name="stereo_camera">
-            <update_rate>30.0</update_rate>
+            <update_rate>50.0</update_rate>
             <camera name="left">
                 <pose>0 0.06 0 0 0 0</pose>
                 <horizontal_fov>1.91986218</horizontal_fov>
                 <vertical_fov>1.22173048</vertical_fov>
                 <diagonal_fov>2.0943951</diagonal_fov>
                 <image>
-                <width>1920</width>
-                <height>1080</height>
-                <format>B8G8R8</format>
+                <width>1280</width>
+                <height>720</height>
+                <format>R8G8B8</format>
                 </image>
                 <clip>
-                <near>0.3</near>
-                <far>20</far>
+                <near>0.02</near>
+                <far>300</far>
                 </clip>
                 <noise>
                 <type>gaussian</type>
@@ -97,13 +97,13 @@
                 <vertical_fov>1.22173048</vertical_fov>
                 <diagonal_fov>2.0943951</diagonal_fov>
                 <image>
-                <width>1920</width>
-                <height>1080</height>
-                <format>B8G8R8</format>
+                <width>1280</width>
+                <height>720</height>
+                <format>R8G8B8</format>
                 </image>
                 <clip>
-                <near>0.3</near>
-                <far>20</far>
+                <near>0.02</near>
+                <far>300</far>
                 </clip>
                 <noise>
                 <type>gaussian</type>
@@ -143,6 +143,7 @@
                 <headingGaussianNoise>0.005</headingGaussianNoise>
             </plugin>
         </gazebo>
+
 
         <link name="imu_link">
             <inertial>

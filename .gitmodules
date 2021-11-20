@@ -20,3 +20,7 @@
 [submodule "src/packages/robot_localization"]
 	path = src/packages/robot_localization
 	url = https://github.com/cra-ros-pkg/robot_localization.git
+[submodule "src/packages/pointcloud_to_laserscan-release"]
+	path = src/packages/pointcloud_to_laserscan-release
+	url = https://github.com/ros-gbp/pointcloud_to_laserscan-release.git
+	branch = release/noetic/pointcloud_to_laserscan
