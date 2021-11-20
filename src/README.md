@@ -48,8 +48,6 @@ Run the Gazebo environment:
 roslaunch argos_config gazebo_point.launch
 ```
 
-## Slam 
-
 On another terminal run:
 
 ```console
