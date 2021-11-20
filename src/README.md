@@ -26,10 +26,26 @@ source devel/setup.bash
 
 ## Quick Start
 
+### Disparity to Laserscan 
+
 Run the Gazebo environment:
 
 ```console
-roslaunch argos_config gazebo.launch
+roslaunch argos_config gazebo_depth.launch
+```
+
+On another terminal run:
+
+```console
+roslaunch argos_config slam.launch
+```
+
+### PointCloud to Laserscan 
+
+Run the Gazebo environment:
+
+```console
+roslaunch argos_config gazebo_point.launch
 ```
 
 On another terminal run:
