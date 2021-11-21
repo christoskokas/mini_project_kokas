@@ -17,7 +17,7 @@
         </include>
 
         <node if="$(arg rviz)" name="rviz" pkg="rviz" type="rviz"
-            args="-d $(find argos_config)/config/rviz/rviz_config.rviz -f $(arg frame_prefix)map"
+            args="-d $(find argos_config)/rviz/navigate.rviz -f $(arg frame_prefix)map"
             output="screen"/>
     </group>
 

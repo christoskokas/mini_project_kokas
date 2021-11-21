@@ -12,14 +12,14 @@ static_map_layer:
 2d_obstacles_layer:
   observation_sources: scan
   scan: {data_type: LaserScan,
-    topic: scan,
+    topic: argos/scan,
     marking: true,
     clearing: true}
 
 3d_obstacles_layer: 
   observation_sources: depth
   depth: {data_type: PointCloud2,
-    topic: camera/depth/points2,
+    topic: argos/camera/points2,
     min_obstacle_height: 0.1,
     marking: true,
     clearing: true}
