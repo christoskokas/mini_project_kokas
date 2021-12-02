@@ -1,0 +1,24 @@
+<launch>
+    <arg name="robot_name" default="argos"/>
+    <arg name="rviz"       default="true"/>
+    
+    <arg if="$(eval arg('robot_name') == '/')"  name="frame_prefix" value="" />
+    <arg unless="$(eval arg('robot_name') == '/')" name="frame_prefix" value="$(arg robot_name)/" />
+
+    <group ns="$(arg robot_name)">
+        <include file="$(find argos_config)/launch/ground_truth/gmapping_gt.launch">
+            <arg name="frame_prefix" value="$(arg frame_prefix)"/>
+        </include>
+
+        <!-- Calls navigation stack packages -->
+        <include file="$(find argos_config)/launch/ground_truth/move_base_gt.launch">
+            <arg name="frame_prefix" value="$(arg frame_prefix)"/>
+            <arg name="robot_name"   value="$(arg robot_name)"/>
+        </include>
+
+        <node if="$(arg rviz)" name="rviz" pkg="rviz" type="rviz"
+            args="-d $(find argos_config)/rviz/navigate_disp.rviz -f $(arg frame_prefix)map"
+            output="screen"/>
+    </group>
+
+</launch>

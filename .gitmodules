@@ -24,3 +24,6 @@
 	path = src/packages/pointcloud_to_laserscan-release
 	url = https://github.com/ros-gbp/pointcloud_to_laserscan-release.git
 	branch = release/noetic/pointcloud_to_laserscan
+[submodule "src/packages/hector_localization"]
+	path = src/packages/hector_localization
+	url = https://github.com/tu-darmstadt-ros-pkg/hector_localization.git

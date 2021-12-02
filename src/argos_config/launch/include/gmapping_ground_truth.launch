@@ -3,12 +3,12 @@
 
     <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen">
         <param name="scan_topic" value="/argos/scan"/>
-        <param name="base_frame" value="$(arg frame_prefix)base_footprint" />
-        <param name="odom_frame" value="$(arg frame_prefix)odom" />
-        <param name="map_frame"  value="/$(arg frame_prefix)map" />
+        <param name="base_frame" value="/argos/base_footprint" />
+        <param name="odom_frame" value="/argos/world" />
+        <param name="map_frame"  value="/argos/map" />
 
-        <param name="map_update_interval" value="15.0"/>
-        <param name="maxUrange" value="80.0"/>
+        <param name="map_update_interval" value="5.0"/>
+        <param name="maxUrange" value="5.0"/>
         <param name="minRange" value="-0.5"/>
         <param name="sigma" value="0.05"/>
         <param name="kernelSize" value="1"/>
@@ -27,7 +27,7 @@
         <param name="angularUpdate" value="0.7"/>
         <param name="temporalUpdate" value="-0.5"/>
         <param name="resampleThreshold" value="0.5"/>
-        <param name="particles" value="100"/>
+        <param name="particles" value="50"/>
         <param name="xmin" value="-50.0"/>
         <param name="ymin" value="-50.0"/>
         <param name="xmax" value="50.0"/>
@@ -37,6 +37,6 @@
         <param name="llsamplestep" value="0.05"/>
         <param name="lasamplerange" value="0.005"/>
         <param name="lasamplestep" value="0.005"/>
-        <param name="transform_publish_period" value="0.05"/>
+        <param name="transform_publish_period" value="0.0"/>
     </node>
 </launch>

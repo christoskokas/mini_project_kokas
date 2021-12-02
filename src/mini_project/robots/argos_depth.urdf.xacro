@@ -36,7 +36,7 @@
     
     <xacro:include filename="$(find mini_project)/robots/legs.urdf.xacro"/>
 
-    <xacro:include filename="$(find mini_project)/robots/accessories.urdf.xacro"/>
+    <xacro:include filename="$(find mini_project)/robots/accessories_depth.urdf.xacro"/>
     
     <xacro:accessories base_name = "base_link"/>
 

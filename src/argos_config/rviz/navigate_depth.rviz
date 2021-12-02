@@ -35,7 +35,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: LaserScan
+    SyncSource: DepthCloud
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -306,8 +306,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: -9999
-        Min Value: 9999
+        Max Value: 5.79789924621582
+        Min Value: 5.296971797943115
         Value: true
       Axis: X
       Channel Name: intensities

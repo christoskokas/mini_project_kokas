@@ -5,25 +5,25 @@
     "links": {
         "base": "base_link",
         "left_front": [
-            "LF_hip",
+            "LF_leg_roll",
             "LF_upper_leg",
             "LF_lower_leg",
             "LF_foot"
         ],
         "right_front": [
-            "RF_hip",
+            "RF_leg_roll",
             "RF_upper_leg",
             "RF_lower_leg",
             "RF_foot"
         ],
         "left_hind": [
-            "LH_hip",
+            "LH_leg_roll",
             "LH_upper_leg",
             "LH_lower_leg",
             "LH_foot"
         ],
         "right_hind": [
-            "RH_hip",
+            "RH_leg_roll",
             "RH_upper_leg",
             "RH_lower_leg",
             "RH_foot"
@@ -83,9 +83,9 @@
                     0
                 ],
                 "foot": [
-                    -0.10534,
+                    -0.1,
                     0.0,
-                    -0.61568,
+                    -0.613,
                     0,
                     0,
                     0
@@ -117,9 +117,9 @@
                     0
                 ],
                 "foot": [
-                    -0.10534,
+                    -0.1,
                     0.0,
-                    -0.61568,
+                    -0.613,
                     0,
                     0,
                     0
@@ -151,9 +151,9 @@
                     0
                 ],
                 "foot": [
-                    -0.10534,
+                    -0.1,
                     0.0,
-                    -0.61568,
+                    -0.613,
                     0,
                     0,
                     0
@@ -185,9 +185,9 @@
                     0
                 ],
                 "foot": [
-                    -0.10534,
+                    -0.1,
                     0.0,
-                    -0.61568,
+                    -0.613,
                     0,
                     0,
                     0

@@ -12,22 +12,22 @@ namespace champ
       base.lf.hip.setOrigin(0.43, 0.0, 0.0, 0, 0, 0);
 base.lf.upper_leg.setOrigin(0.0, 0.233, -0.0, 0, 0, 0);
 base.lf.lower_leg.setOrigin(0.0, 0.0, -0.45, 0, 0, 0);
-     base.lf.foot.setOrigin(-0.10534, 0.0, -0.61568, 0, 0, 0);
+     base.lf.foot.setOrigin(-0.1, 0.0, -0.613, 0, 0, 0);
 
       base.rf.hip.setOrigin(0.43, -0.0, 0.0, 0, 0, 0);
 base.rf.upper_leg.setOrigin(0.0, -0.233, -0.0, 0, 0, 0);
 base.rf.lower_leg.setOrigin(0.0, 0.0, -0.45, 0, 0, 0);
-     base.rf.foot.setOrigin(-0.10534, 0.0, -0.61568, 0, 0, 0);
+     base.rf.foot.setOrigin(-0.1, 0.0, -0.613, 0, 0, 0);
 
       base.lh.hip.setOrigin(-0.43, 0.0, 0.0, 0, 0, 0);
 base.lh.upper_leg.setOrigin(0.0, 0.233, -0.0, 0, 0, 0);
 base.lh.lower_leg.setOrigin(0.0, 0.0, -0.45, 0, 0, 0);
-     base.lh.foot.setOrigin(-0.10534, 0.0, -0.61568, 0, 0, 0);
+     base.lh.foot.setOrigin(-0.1, 0.0, -0.613, 0, 0, 0);
 
       base.rh.hip.setOrigin(-0.43, -0.0, 0.0, 0, 0, 0);
 base.rh.upper_leg.setOrigin(0.0, -0.233, -0.0, 0, 0, 0);
 base.rh.lower_leg.setOrigin(0.0, 0.0, -0.45, 0, 0, 0);
-     base.rh.foot.setOrigin(-0.10534, 0.0, -0.61568, 0, 0, 0);
+     base.rh.foot.setOrigin(-0.1, 0.0, -0.613, 0, 0, 0);
         }
     }
 }

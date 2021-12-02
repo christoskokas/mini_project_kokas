@@ -69,6 +69,54 @@
     <link name="left_camera_optical_frame"/>
 
     <gazebo reference="left_camera_frame">
+
+        <sensor type="depth" name="openni_camera_camera">
+        <always_on>1</always_on>
+        <visualize>true</visualize>
+        <camera>
+            <horizontal_fov>1.91986218</horizontal_fov>
+            <vertical_fov>1.22173048</vertical_fov>
+            <diagonal_fov>2.0943951</diagonal_fov>
+            <image>
+                <width>1920</width>
+                <height>1080</height>
+                <format>R8G8B8</format>
+            </image>
+            <clip>
+                <near>0.1</near>
+                <far>25.0</far>
+            </clip>
+        </camera>
+        <plugin name="camera_plugin" filename="libgazebo_ros_openni_kinect.so">
+            <robotNamespace>argos</robotNamespace>
+            <baseline>0.2</baseline>
+            <alwaysOn>true</alwaysOn>
+            <!-- Keep this zero, update_rate in the parent <sensor> tag
+                will control the frame rate. -->
+            <updateRate>0.0</updateRate>
+            <cameraName>depth_camera</cameraName>
+            <imageTopicName>/depth/image_rect_color</imageTopicName>
+            <cameraInfoTopicName>/argos/depth/camera_info </cameraInfoTopicName>
+            <depthImageTopicName>/argos/depth/depth_registered</depthImageTopicName>
+            <depthImageCameraInfoTopicName>/argos/depth/image_raw/camera_info</depthImageCameraInfoTopicName>
+            <pointCloudTopicName>/argos/depth/point_cloud/cloud_registered </pointCloudTopicName>
+            <frameName>left_camera_optical_frame</frameName>
+            <pointCloudCutoff>0.4</pointCloudCutoff>
+            <!-- does nothing it seems
+            <pointCloudCutoffMax>20.0</pointCloudCutoffMax> -->
+            <distortionK1>0</distortionK1>
+            <distortionK2>0</distortionK2>
+            <distortionK3>0</distortionK3>
+            <distortionT1>0</distortionT1>
+            <distortionT2>0</distortionT2>
+            <CxPrime>0</CxPrime>
+            <Cx>0</Cx>
+            <Cy>0</Cy>
+            <focalLength>0</focalLength>
+            <hackBaseline>0</hackBaseline>
+        </plugin>
+        </sensor>
+
         <sensor type="multicamera" name="stereo_camera">
         <update_rate>30.0</update_rate>
         <camera name="left">

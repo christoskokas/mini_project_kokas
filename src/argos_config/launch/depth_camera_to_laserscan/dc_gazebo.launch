@@ -4,6 +4,7 @@
     <arg name="lite"               default="false" />  <!-- Set to true if you're using CHAMP lite version. Only useful for microcontrollers. -->
     <arg name="ros_control_file"   default="$(find argos_config)/config/ros_control/ros_control.yaml" /> <!-- Path to ROS Control configurations. Do not touch. -->
     <arg name="gazebo_world"       default="$(find argos_config)/worlds/arena_world.world" /> <!-- Path to Gazebo world you want to load. -->
+    <arg name="description_file"   default="$(find mini_project)/robots/argos_depth.urdf"/>
     <arg name="gui"                default="true"/>
     <arg name="world_init_x"       default="0.0" /> <!-- X Initial position of the robot in Gazebo World -->
     <arg name="world_init_y"       default="0.0" /> <!-- Y Initial position of the robot in Gazebo World -->
@@ -19,8 +20,10 @@
         <arg name="rviz"                   value="$(arg rviz)"/>
         <arg name="joint_controller_topic" value="joint_group_position_controller/command"/>
         <arg name="hardware_connected"     value="false"/>
-        <arg name="publish_foot_contacts"  value="false"/>
+        <arg name="publish_foot_contacts"  value="true"/>
         <arg name="close_loop_odom"        value="true"/>
+        <arg name="description_file"       value="$(arg description_file)"/>
+        
     </include>
 
     <include file="$(find champ_gazebo)/launch/gazebo.launch">
@@ -36,19 +39,17 @@
     </include>    
 
     <node ns="argos/camera" pkg="stereo_image_proc" type="stereo_image_proc" name="stereo_image_proc">
-        <param name="prefilter_size" value="65"/>
-        <param name="prefilter_cap" value="17"/>
-        <param name="correlation_window_size" value="15"/>
-        <param name="min_disparity" value="0"/>
-        <param name="disparity_range" value="192"/>
-        <param name="uniqueness_ratio" value="50.0"/>
-        <param name="texture_threshold" value="10"/>
-        <param name="speckle_size" value="0"/>
-        <param name="speckle_range" value="31"/>
+        <param name="prefilter_size"            value="5"/>
+        <param name="prefilter_cap"             value="25"/>
+        <param name="correlation_window_size"   value="21"/>
+        <param name="min_disparity"             value="-59"/>
+        <param name="disparity_range"           value="224"/>
+        <param name="uniqueness_ratio"          value="69.0"/>
+        <param name="texture_threshold"         value="10"/>
+        <param name="speckle_size"              value="0"/>
+        <param name="speckle_range"             value="2"/>
     </node>
 
-    <include file="$(find argos_config)/launch/disparity_to_depth.launch" />
-
-    <include file="$(find argos_config)/launch/depth_to_laser.launch" />
+    <include file="$(find argos_config)/launch/depth_camera_to_laserscan/depth_to_laser_depth.launch" />
 
 </launch>
