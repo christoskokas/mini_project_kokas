@@ -1,6 +1,6 @@
 # mini_project_kokas
 
-Goal of this project is the modelling of the argos quadruped robot using champ setup assistant.
+Goal of this project is the modelling of the argos quadruped robot using champ setup assistant. Equipped with a stereo camera and by using gmapping ROS packages, argos can move and avoid obstacles. To avoid obstacles, packages that convert the images from the stereo camera to laserscan are used.
 
 ## Ιnstallation
 
@@ -31,7 +31,7 @@ source devel/setup.bash
 Run the Gazebo environment:
 
 ```console
-roslaunch argos_config gazebo_depth.launch
+roslaunch argos_config disp_gazebo.launch
 ```
 
 On another terminal run:
@@ -45,7 +45,7 @@ roslaunch argos_config slam.launch
 Run the Gazebo environment:
 
 ```console
-roslaunch argos_config gazebo_point.launch
+roslaunch argos_config point_gazebo.launch
 ```
 
 On another terminal run:
@@ -53,6 +53,38 @@ On another terminal run:
 ```console
 roslaunch argos_config slam.launch
 ```
+
+### Depth Camera to Laserscan 
+
+Run the Gazebo environment:
+
+```console
+roslaunch argos_config dc_gazebo.launch
+```
+
+On another terminal run:
+
+```console
+roslaunch argos_config dc_slam.launch
+```
+
+### Disparity to Laserscan with RVIZ Robot Position from Ground Truth
+
+Run the Gazebo environment:
+
+```console
+roslaunch argos_config gt_gazebo.launch
+```
+
+On another terminal run:
+
+```console
+roslaunch argos_config gt_slam.launch
+```
+
+
+
+## Movement
 
 To start moving:
 
