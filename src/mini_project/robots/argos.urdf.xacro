@@ -51,7 +51,7 @@
     
     <xacro:include filename="$(find mini_project)/robots/manipulator.urdf.xacro"/>
     
-    <xacro:manipulator base_name="base_link"/>
+    <!-- <xacro:manipulator base_name="base_link"/> -->
 
     <gazebo>
       <plugin name="p3d_base_controller" filename="libgazebo_ros_p3d.so">

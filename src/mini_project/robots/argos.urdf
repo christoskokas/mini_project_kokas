@@ -4,6 +4,8 @@
 <!-- |    EDITING THIS FILE BY HAND IS NOT RECOMMENDED                                 | -->
 <!-- =================================================================================== -->
 <robot name="argos">
+  0
+    
   <link name="base_link">
     <visual>
       <geometry>
@@ -21,8 +23,8 @@
   <link name="base_inertia">
     <inertial>
       <origin xyz="0 0 -0.00722624877"/>
-      <mass value="44.88560357849"/>
-      <inertia ixx="0.4733117048862877" ixy="-1.187694189e-08" ixz="3e-17" iyy="1.9296460018476334" iyz="-2e-17" izz="1.8898459005293233"/>
+      <mass value="22.44280461"/>
+      <inertia ixx="0.23665589" ixy="0.0" ixz="0.0" iyy="0.96482316" iyz="0.0" izz="0.94492313"/>
     </inertial>
   </link>
   <joint name="base_link_to_base_inertia" type="fixed">
@@ -163,8 +165,8 @@
   <link name="LF_leg_roll">
     <inertial>
       <origin rpy="0 0 0" xyz="0.0016034699 0.19560047521 0.0"/>
-      <mass value="2.33840380361"/>
-      <inertia ixx="0.01771591024567954" ixy="-0.00071891013320325" ixz="5.15073e-11" iyy="0.00540298667216859" iyz="1.6635487e-10" izz="0.01761332943089841"/>
+      <mass value="1.1692019"/>
+      <inertia ixx="0.00885796" ixy="-0.00035945" ixz="0.0" iyy="0.00270149" iyz="0.0" izz="0.00880666"/>
     </inertial>
     <visual>
       <geometry>
@@ -184,9 +186,9 @@
   </gazebo>
   <link name="LF_upper_leg">
     <inertial>
-      <origin rpy="1.570796326794895 0 1.570796326794895" xyz="-1.2465e-07 8.927e-08 -0.19777343169"/>
-      <mass value="2.90604711841"/>
-      <inertia ixx="0.07057863001314926" ixy="2.7932686e-10" ixz="-3.7129365e-10" iyy="0.07214686311642775" iyz="-6.9735152e-09" izz="0.0031329294799625"/>
+      <origin rpy="0 0 0" xyz="-1.2465e-07 8.927e-08 -0.19777343169"/>
+      <mass value="1.45302356"/>
+      <inertia ixx="0.03528932" ixy="0.0" ixz="0.0" iyy="0.03607343" iyz="0.0" izz="0.00156646"/>
     </inertial>
     <visual>
       <geometry>
@@ -207,8 +209,8 @@
   <link name="LF_lower_leg">
     <inertial>
       <origin rpy="0 -0.2 0" xyz="-0.05466888228 2.713e-08 -0.15386388146"/>
-      <mass value="1.81736381294"/>
-      <inertia ixx="0.0907939555791539" ixy="-1.255242645e-08" ixz="0.01304754928405628" iyy="0.0951071480397549" iyz="-6.39667712e-09" izz="0.00552232540194871"/>
+      <mass value="0.87000291"/>
+      <inertia ixx="0.04402853" ixy="0.0" ixz="0.00627914" iyy="0.04611436" iyz="0.0" izz="0.0026764"/>
     </inertial>
     <visual>
       <geometry>
@@ -238,21 +240,21 @@
     <child link="LF_leg_roll"/>
     <axis xyz="1.0 0.0 0.0"/>
     <origin xyz="0.43 0.0 0.0"/>
-    <limit effort="250" lower="-3.14159265358979" upper="3.14159265358979" velocity="5.0"/>
+    <limit effort="100" lower="-3.14159265358979" upper="3.14159265358979" velocity="10.0"/>
   </joint>
   <joint name="LF_upper_leg_joint" type="revolute">
     <parent link="LF_leg_roll"/>
     <child link="LF_upper_leg"/>
     <axis xyz="0.0 1.0  0.0"/>
     <origin xyz="0.0 0.233 0.0"/>
-    <limit effort="250" lower="-3.14159265358979" upper="3.14159265358979" velocity="5.0"/>
+    <limit effort="100" lower="-3.14159265358979" upper="3.14159265358979" velocity="10.0"/>
   </joint>
   <joint name="LF_lower_leg_joint" type="revolute">
     <parent link="LF_upper_leg"/>
     <child link="LF_lower_leg"/>
     <axis xyz="0.0 1.0  0.0"/>
     <origin xyz="0.0 0.0 -0.45"/>
-    <limit effort="250" lower="-3.14159265358979" upper="3.14159265358979" velocity="2.0"/>
+    <limit effort="100" lower="-3.14159265358979" upper="3.14159265358979" velocity="10.0"/>
   </joint>
   <joint name="LF_foot_joint" type="fixed">
     <parent link="LF_lower_leg"/>
@@ -298,8 +300,8 @@
   <link name="RF_leg_roll">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.0016034699 -0.19560047521 0.0"/>
-      <mass value="2.33840380361"/>
-      <inertia ixx="0.01771591024567954" ixy="-0.00071891013320325" ixz="5.15073e-11" iyy="0.00540298667216859" iyz="1.6635487e-10" izz="0.01761332943089841"/>
+      <mass value="1.1692019"/>
+      <inertia ixx="0.00885796" ixy="-0.00035945" ixz="0.0" iyy="0.00270149" iyz="0.0" izz="0.00880666"/>
     </inertial>
     <visual>
       <geometry>
@@ -319,9 +321,9 @@
   </gazebo>
   <link name="RF_upper_leg">
     <inertial>
-      <origin rpy="1.570796326794895 0 1.570796326794895" xyz="-1.2465e-07 8.927e-08 -0.19777343169"/>
-      <mass value="2.90604711841"/>
-      <inertia ixx="0.07057863001314926" ixy="-2.7932686e-10" ixz="-3.7129365e-10" iyy="0.07214686311642775" iyz="6.9735152e-09" izz="0.0031329294799625"/>
+      <origin rpy="0 0 0" xyz="-1.2465e-07 8.927e-08 -0.19777343169"/>
+      <mass value="1.45302356"/>
+      <inertia ixx="0.03528932" ixy="-0.0" ixz="0.0" iyy="0.03607343" iyz="-0.0" izz="0.00156646"/>
     </inertial>
     <visual>
       <geometry>
@@ -342,8 +344,8 @@
   <link name="RF_lower_leg">
     <inertial>
       <origin rpy="0 -0.2 0" xyz="-0.05466888228 2.713e-08 -0.15386388146"/>
-      <mass value="1.81736381294"/>
-      <inertia ixx="0.0907939555791539" ixy="-1.255242645e-08" ixz="0.01304754928405628" iyy="0.0951071480397549" iyz="-6.39667712e-09" izz="0.00552232540194871"/>
+      <mass value="0.87000291"/>
+      <inertia ixx="0.04402853" ixy="0.0" ixz="0.00627914" iyy="0.04611436" iyz="0.0" izz="0.0026764"/>
     </inertial>
     <visual>
       <geometry>
@@ -373,21 +375,21 @@
     <child link="RF_leg_roll"/>
     <axis xyz="1.0 0.0 0.0"/>
     <origin xyz="0.43 0.0 0.0"/>
-    <limit effort="250" lower="-3.14159265358979" upper="3.14159265358979" velocity="5.0"/>
+    <limit effort="100" lower="-3.14159265358979" upper="3.14159265358979" velocity="10.0"/>
   </joint>
   <joint name="RF_upper_leg_joint" type="revolute">
     <parent link="RF_leg_roll"/>
     <child link="RF_upper_leg"/>
     <axis xyz="0.0 1.0  0.0"/>
     <origin xyz="0.0 -0.233 0.0"/>
-    <limit effort="250" lower="-3.14159265358979" upper="3.14159265358979" velocity="5.0"/>
+    <limit effort="100" lower="-3.14159265358979" upper="3.14159265358979" velocity="10.0"/>
   </joint>
   <joint name="RF_lower_leg_joint" type="revolute">
     <parent link="RF_upper_leg"/>
     <child link="RF_lower_leg"/>
     <axis xyz="0.0 1.0  0.0"/>
     <origin xyz="0.0 0.0 -0.45"/>
-    <limit effort="250" lower="-3.14159265358979" upper="3.14159265358979" velocity="2.0"/>
+    <limit effort="100" lower="-3.14159265358979" upper="3.14159265358979" velocity="10.0"/>
   </joint>
   <joint name="RF_foot_joint" type="fixed">
     <parent link="RF_lower_leg"/>
@@ -433,8 +435,8 @@
   <link name="LH_leg_roll">
     <inertial>
       <origin rpy="0 0 0" xyz="0.0016034699 0.19560047521 0.0"/>
-      <mass value="2.33840380361"/>
-      <inertia ixx="0.01771591024567954" ixy="-0.00071891013320325" ixz="5.15073e-11" iyy="0.00540298667216859" iyz="1.6635487e-10" izz="0.01761332943089841"/>
+      <mass value="1.1692019"/>
+      <inertia ixx="0.00885796" ixy="-0.00035945" ixz="0.0" iyy="0.00270149" iyz="0.0" izz="0.00880666"/>
     </inertial>
     <visual>
       <geometry>
@@ -454,9 +456,9 @@
   </gazebo>
   <link name="LH_upper_leg">
     <inertial>
-      <origin rpy="1.570796326794895 0 1.570796326794895" xyz="-1.2465e-07 8.927e-08 -0.19777343169"/>
-      <mass value="2.90604711841"/>
-      <inertia ixx="0.07057863001314926" ixy="2.7932686e-10" ixz="-3.7129365e-10" iyy="0.07214686311642775" iyz="-6.9735152e-09" izz="0.0031329294799625"/>
+      <origin rpy="0 0 0" xyz="-1.2465e-07 8.927e-08 -0.19777343169"/>
+      <mass value="1.45302356"/>
+      <inertia ixx="0.03528932" ixy="0.0" ixz="0.0" iyy="0.03607343" iyz="0.0" izz="0.00156646"/>
     </inertial>
     <visual>
       <geometry>
@@ -477,8 +479,8 @@
   <link name="LH_lower_leg">
     <inertial>
       <origin rpy="0 -0.2 0" xyz="-0.05466888228 2.713e-08 -0.15386388146"/>
-      <mass value="1.81736381294"/>
-      <inertia ixx="0.0907939555791539" ixy="-1.255242645e-08" ixz="0.01304754928405628" iyy="0.0951071480397549" iyz="-6.39667712e-09" izz="0.00552232540194871"/>
+      <mass value="0.87000291"/>
+      <inertia ixx="0.04402853" ixy="0.0" ixz="0.00627914" iyy="0.04611436" iyz="0.0" izz="0.0026764"/>
     </inertial>
     <visual>
       <geometry>
@@ -508,21 +510,21 @@
     <child link="LH_leg_roll"/>
     <axis xyz="1.0 0.0 0.0"/>
     <origin xyz="-0.43 0.0 0.0"/>
-    <limit effort="250" lower="-3.14159265358979" upper="3.14159265358979" velocity="5.0"/>
+    <limit effort="100" lower="-3.14159265358979" upper="3.14159265358979" velocity="10.0"/>
   </joint>
   <joint name="LH_upper_leg_joint" type="revolute">
     <parent link="LH_leg_roll"/>
     <child link="LH_upper_leg"/>
     <axis xyz="0.0 1.0  0.0"/>
     <origin xyz="0.0 0.233 0.0"/>
-    <limit effort="250" lower="-3.14159265358979" upper="3.14159265358979" velocity="5.0"/>
+    <limit effort="100" lower="-3.14159265358979" upper="3.14159265358979" velocity="10.0"/>
   </joint>
   <joint name="LH_lower_leg_joint" type="revolute">
     <parent link="LH_upper_leg"/>
     <child link="LH_lower_leg"/>
     <axis xyz="0.0 1.0  0.0"/>
     <origin xyz="0.0 0.0 -0.45"/>
-    <limit effort="250" lower="-3.14159265358979" upper="3.14159265358979" velocity="2.0"/>
+    <limit effort="100" lower="-3.14159265358979" upper="3.14159265358979" velocity="10.0"/>
   </joint>
   <joint name="LH_foot_joint" type="fixed">
     <parent link="LH_lower_leg"/>
@@ -568,8 +570,8 @@
   <link name="RH_leg_roll">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.0016034699 -0.19560047521 0.0"/>
-      <mass value="2.33840380361"/>
-      <inertia ixx="0.01771591024567954" ixy="-0.00071891013320325" ixz="5.15073e-11" iyy="0.00540298667216859" iyz="1.6635487e-10" izz="0.01761332943089841"/>
+      <mass value="1.1692019"/>
+      <inertia ixx="0.00885796" ixy="-0.00035945" ixz="0.0" iyy="0.00270149" iyz="0.0" izz="0.00880666"/>
     </inertial>
     <visual>
       <geometry>
@@ -589,9 +591,9 @@
   </gazebo>
   <link name="RH_upper_leg">
     <inertial>
-      <origin rpy="1.570796326794895 0 1.570796326794895" xyz="-1.2465e-07 8.927e-08 -0.19777343169"/>
-      <mass value="2.90604711841"/>
-      <inertia ixx="0.07057863001314926" ixy="-2.7932686e-10" ixz="-3.7129365e-10" iyy="0.07214686311642775" iyz="6.9735152e-09" izz="0.0031329294799625"/>
+      <origin rpy="0 0 0" xyz="-1.2465e-07 8.927e-08 -0.19777343169"/>
+      <mass value="1.45302356"/>
+      <inertia ixx="0.03528932" ixy="-0.0" ixz="0.0" iyy="0.03607343" iyz="-0.0" izz="0.00156646"/>
     </inertial>
     <visual>
       <geometry>
@@ -612,8 +614,8 @@
   <link name="RH_lower_leg">
     <inertial>
       <origin rpy="0 -0.2 0" xyz="-0.05466888228 2.713e-08 -0.15386388146"/>
-      <mass value="1.81736381294"/>
-      <inertia ixx="0.0907939555791539" ixy="-1.255242645e-08" ixz="0.01304754928405628" iyy="0.0951071480397549" iyz="-6.39667712e-09" izz="0.00552232540194871"/>
+      <mass value="0.87000291"/>
+      <inertia ixx="0.04402853" ixy="0.0" ixz="0.00627914" iyy="0.04611436" iyz="0.0" izz="0.0026764"/>
     </inertial>
     <visual>
       <geometry>
@@ -643,21 +645,21 @@
     <child link="RH_leg_roll"/>
     <axis xyz="1.0 0.0 0.0"/>
     <origin xyz="-0.43 0.0 0.0"/>
-    <limit effort="250" lower="-3.14159265358979" upper="3.14159265358979" velocity="5.0"/>
+    <limit effort="100" lower="-3.14159265358979" upper="3.14159265358979" velocity="10.0"/>
   </joint>
   <joint name="RH_upper_leg_joint" type="revolute">
     <parent link="RH_leg_roll"/>
     <child link="RH_upper_leg"/>
     <axis xyz="0.0 1.0  0.0"/>
     <origin xyz="0.0 -0.233 0.0"/>
-    <limit effort="250" lower="-3.14159265358979" upper="3.14159265358979" velocity="5.0"/>
+    <limit effort="100" lower="-3.14159265358979" upper="3.14159265358979" velocity="10.0"/>
   </joint>
   <joint name="RH_lower_leg_joint" type="revolute">
     <parent link="RH_upper_leg"/>
     <child link="RH_lower_leg"/>
     <axis xyz="0.0 1.0  0.0"/>
     <origin xyz="0.0 0.0 -0.45"/>
-    <limit effort="250" lower="-3.14159265358979" upper="3.14159265358979" velocity="2.0"/>
+    <limit effort="100" lower="-3.14159265358979" upper="3.14159265358979" velocity="10.0"/>
   </joint>
   <joint name="RH_foot_joint" type="fixed">
     <parent link="RH_lower_leg"/>
@@ -700,76 +702,7 @@
       <mechanicalReduction>1</mechanicalReduction>
     </actuator>
   </transmission>
-  <link name="manipulator_base">
-    <inertial>
-      <origin xyz="0.0001195 -0.01132600777 0.04996291284 "/>
-      <mass value="1.63291158"/>
-      <inertia ixx="0.00592368152307" ixy="0.0" ixz="0.0" iyy="0.00455222665474" iyz="0.0" izz="0.00630165344962"/>
-    </inertial>
-    <visual>
-      <geometry>
-        <mesh filename="package://mini_project/meshes/manipulator_joint.dae" scale="0.001 0.001 0.001"/>
-      </geometry>
-    </visual>
-    <collision>
-      <geometry>
-        <mesh filename="package://mini_project/meshes/manipulator_joint.dae" scale="0.001 0.001 0.001"/>
-      </geometry>
-    </collision>
-  </link>
-  <link name="manipulator_segment_1">
-    <inertial>
-      <origin rpy="0 0.0 0" xyz="-0.12499144985 0.00000184653 0.0"/>
-      <mass value="0.65721313"/>
-      <inertia ixx="0.00029149081721" ixy="0.0" ixz="0.0" iyy="0.00745356022911" iyz="0.0" izz="0.0073062230739"/>
-    </inertial>
-    <visual>
-      <geometry>
-        <mesh filename="package://mini_project/meshes/manipulator_segment_1.dae" scale="0.001 0.001 0.001"/>
-      </geometry>
-      <origin rpy="1.570796326794895 0.0 3.14159265358979" xyz="0.0 0.0 0.0"/>
-    </visual>
-    <collision>
-      <geometry>
-        <mesh filename="package://mini_project/meshes/manipulator_segment_1.dae" scale="0.001 0.001 0.001"/>
-      </geometry>
-      <origin rpy="1.570796326794895 0.0 3.14159265358979" xyz="0.0 0.0 0.0"/>
-    </collision>
-  </link>
-  <link name="manipulator_segment_2">
-    <inertial>
-      <origin rpy="0 0 0.0" xyz="0.19438946797 0.0 0.00000001267"/>
-      <mass value="0.45716422"/>
-      <inertia ixx="0.00016867187941" ixy="0.0" ixz="0.0" iyy="0.02041441059327" iyz="0.0" izz="0.02036185070001"/>
-    </inertial>
-    <visual>
-      <geometry>
-        <mesh filename="package://mini_project/meshes/manipulator_segment_2.dae" scale="0.001 0.001 0.001"/>
-      </geometry>
-      <origin rpy="1.570796326794895 3.14159265358979 0.0" xyz="0.0 0.0 0.0"/>
-    </visual>
-    <collision>
-      <geometry>
-        <mesh filename="package://mini_project/meshes/manipulator_segment_2.dae" scale="0.001 0.001 0.001"/>
-      </geometry>
-      <origin rpy="1.570796326794895 3.14159265358979 0.0" xyz="0.0 0.0 0.0"/>
-    </collision>
-  </link>
-  <joint name="base_link_to_manipulator_base" type="fixed">
-    <parent link="base_link"/>
-    <child link="manipulator_base"/>
-    <origin xyz="0.0 0.0 0.13"/>
-  </joint>
-  <joint name="manipulator_base_to_manipulator_segment_1" type="fixed">
-    <parent link="manipulator_base"/>
-    <child link="manipulator_segment_1"/>
-    <origin rpy="0 0 0" xyz="0.0 0.04 0.075"/>
-  </joint>
-  <joint name="manipulator_segment_1_to_manipulator_segment_2" type="fixed">
-    <parent link="manipulator_segment_1"/>
-    <child link="manipulator_segment_2"/>
-    <origin rpy="0.0 0.0 0.0" xyz="-0.25 -0.04 0.0"/>
-  </joint>
+  <!-- <xacro:manipulator base_name="base_link"/> -->
   <gazebo>
     <plugin filename="libgazebo_ros_p3d.so" name="p3d_base_controller">
       <alwaysOn>true</alwaysOn>

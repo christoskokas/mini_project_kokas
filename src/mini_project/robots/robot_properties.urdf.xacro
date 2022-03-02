@@ -1,83 +1,83 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
-    <xacro:property name="path_to_base" value = "package://mini_project/meshes/body.dae"/>
-    <xacro:property name="path_to_leg_roll" value = "package://mini_project/meshes/thigh.dae"/>
-    <xacro:property name="path_to_upper_leg" value = "package://mini_project/meshes/upper_leg.dae"/>
-    <xacro:property name="path_to_lower_leg" value = "package://mini_project/meshes/lower_leg.dae"/>
-    <xacro:property name="path_to_manipulator_base" value = "package://mini_project/meshes/manipulator_joint.dae"/>
-    <xacro:property name="path_to_manipulator_segment_1" value = "package://mini_project/meshes/manipulator_segment_1.dae"/>
-    <xacro:property name="path_to_manipulator_segment_2" value = "package://mini_project/meshes/manipulator_segment_2.dae"/>
+    <xacro:property name="path_to_base"                     value = "package://mini_project/meshes/body.dae"/>
+    <xacro:property name="path_to_leg_roll"                 value = "package://mini_project/meshes/thigh.dae"/>
+    <xacro:property name="path_to_upper_leg"                value = "package://mini_project/meshes/upper_leg.dae"/>
+    <xacro:property name="path_to_lower_leg"                value = "package://mini_project/meshes/lower_leg.dae"/>
+    <xacro:property name="path_to_manipulator_base"         value = "package://mini_project/meshes/manipulator_joint.dae"/>
+    <xacro:property name="path_to_manipulator_segment_1"    value = "package://mini_project/meshes/manipulator_segment_1.dae"/>
+    <xacro:property name="path_to_manipulator_segment_2"    value = "package://mini_project/meshes/manipulator_segment_2.dae"/>
 
-    <xacro:property name="ixx_body" value = "0.47331170488628769"/>
-    <xacro:property name="ixy_body" value = "-0.00000001187694189"/>
-    <xacro:property name="ixz_body" value = "0.00000000000000003"/>
-    <xacro:property name="iyy_body" value = "1.92964600184763336"/>
-    <xacro:property name="iyz_body" value = "-0.00000000000000002"/>    
-    <xacro:property name="izz_body" value = "1.88984590052932334"/>
-    <xacro:property name="body_mass" value = "44.88560357849"/>
-    <xacro:property name="body_center_of_mass" value = "0 0 -0.00722624877"/>
+    <xacro:property name="ixx_body"                         value = "0.23665589"/>
+    <xacro:property name="ixy_body"                         value = "0.0"/>
+    <xacro:property name="ixz_body"                         value = "0.0"/>
+    <xacro:property name="iyy_body"                         value = "0.96482316"/>
+    <xacro:property name="iyz_body"                         value = "0.0"/>    
+    <xacro:property name="izz_body"                         value = "0.94492313"/>
+    <xacro:property name="body_mass"                        value = "22.44280461"/>
+    <xacro:property name="body_center_of_mass"              value = "0 0 -0.00722624877"/>
 
-    <xacro:property name="ixx_leg_roll" value = "0.01771591024567954"/>
-    <xacro:property name="ixy_leg_roll" value = "-0.00071891013320325"/>
-    <xacro:property name="ixz_leg_roll" value = "0.00000000005150730"/>
-    <xacro:property name="iyy_leg_roll" value = "0.00540298667216859"/>
-    <xacro:property name="iyz_leg_roll" value = "0.00000000016635487"/>    
-    <xacro:property name="izz_leg_roll" value = "0.01761332943089841"/>
-    <xacro:property name="leg_roll_mass" value = "2.33840380361"/>
-    <xacro:property name="leg_roll_center_x" value = "0.00160346990"/>
-    <xacro:property name="leg_roll_center_y" value = "0.19560047521"/>
-    <xacro:property name="leg_roll_center_z" value = "0.0"/>
+    <xacro:property name="ixx_leg_roll"                     value = "0.00885796"/>
+    <xacro:property name="ixy_leg_roll"                     value = "-0.00035945"/>
+    <xacro:property name="ixz_leg_roll"                     value = "0.0"/>
+    <xacro:property name="iyy_leg_roll"                     value = "0.00270149"/>
+    <xacro:property name="iyz_leg_roll"                     value = "0.0"/>    
+    <xacro:property name="izz_leg_roll"                     value = "0.00880666"/>
+    <xacro:property name="leg_roll_mass"                    value = "1.16920190"/>
+    <xacro:property name="leg_roll_center_x"                value = "0.00160346990"/>
+    <xacro:property name="leg_roll_center_y"                value = "0.19560047521"/>
+    <xacro:property name="leg_roll_center_z"                value = "0.0"/>
 
-    <xacro:property name="ixx_thigh" value = "0.07057863001314926"/>
-    <xacro:property name="ixy_thigh" value = "0.00000000027932686"/>    
-    <xacro:property name="ixz_thigh" value = "-0.00000000037129365"/>
-    <xacro:property name="iyy_thigh" value = "0.07214686311642775"/>
-    <xacro:property name="iyz_thigh" value = "-0.00000000697351520"/>
-    <xacro:property name="izz_thigh" value = "0.00313292947996250"/>
-    <xacro:property name="thigh_mass" value = "2.90604711841"/>
-    <xacro:property name="thigh_center_x" value = "-0.00000012465"/>
-    <xacro:property name="thigh_center_y" value = "0.00000008927"/>
-    <xacro:property name="thigh_center_z" value = "-0.19777343169"/>
-    <xacro:property name="thigh_center_of_mass" value = "${thigh_center_x} ${thigh_center_y} ${thigh_center_z}"/>
+    <xacro:property name="ixx_thigh"                        value = "0.03528932"/>
+    <xacro:property name="ixy_thigh"                        value = "0.0"/>    
+    <xacro:property name="ixz_thigh"                        value = "0.0"/>0
+    <xacro:property name="iyy_thigh"                        value = "0.03607343"/>
+    <xacro:property name="iyz_thigh"                        value = "0.0"/>
+    <xacro:property name="izz_thigh"                        value = "0.00156646"/>
+    <xacro:property name="thigh_mass"                       value = "1.45302356"/>
+    <xacro:property name="thigh_center_x"                   value = "-0.00000012465"/>
+    <xacro:property name="thigh_center_y"                   value = "0.00000008927"/>
+    <xacro:property name="thigh_center_z"                   value = "-0.19777343169"/>
+    <xacro:property name="thigh_center_of_mass"             value = "${thigh_center_x} ${thigh_center_y} ${thigh_center_z}"/>
 
-    <xacro:property name="ixx_lower_leg" value = "0.09079395557915390"/>
-    <xacro:property name="ixy_lower_leg" value = "-0.00000001255242645"/>
-    <xacro:property name="ixz_lower_leg" value = "0.01304754928405628"/>
-    <xacro:property name="iyy_lower_leg" value = "0.09510714803975490"/>
-    <xacro:property name="iyz_lower_leg" value = "-0.00000000639667712"/>
-    <xacro:property name="izz_lower_leg" value = "0.00552232540194871"/>
-    <xacro:property name="lower_leg_mass" value = "1.81736381294"/>
-    <xacro:property name="lower_leg_center_x" value = "-0.05466888228"/>
-    <xacro:property name="lower_leg_center_y" value = "0.00000002713"/>
-    <xacro:property name="lower_leg_center_z" value = "-0.15386388146"/>
-    <xacro:property name="lower_leg_center_of_mass" value = "${lower_leg_center_x} ${lower_leg_center_y} ${lower_leg_center_z}"/>
+    <xacro:property name="ixx_lower_leg"                    value = "0.04402853"/>
+    <xacro:property name="ixy_lower_leg"                    value = "0.0"/>
+    <xacro:property name="ixz_lower_leg"                    value = "0.00627914"/>
+    <xacro:property name="iyy_lower_leg"                    value = "0.04611436"/>
+    <xacro:property name="iyz_lower_leg"                    value = "0.0"/>
+    <xacro:property name="izz_lower_leg"                    value = "0.00267640"/>
+    <xacro:property name="lower_leg_mass"                   value = "0.87000291"/>
+    <xacro:property name="lower_leg_center_x"               value = "-0.05466888228"/>
+    <xacro:property name="lower_leg_center_y"               value = "0.00000002713"/>
+    <xacro:property name="lower_leg_center_z"               value = "-0.15386388146"/>
+    <xacro:property name="lower_leg_center_of_mass"         value = "${lower_leg_center_x} ${lower_leg_center_y} ${lower_leg_center_z}"/>
 
-    <xacro:property name="ixx_man_base" value = "0.00592368152307"/>
-    <xacro:property name="ixy_man_base" value = "0.0"/>
-    <xacro:property name="ixz_man_base" value = "0.0"/>
-    <xacro:property name="iyy_man_base" value = "0.00455222665474"/>
-    <xacro:property name="iyz_man_base" value = "0.0"/>    
-    <xacro:property name="izz_man_base" value = "0.00630165344962"/>
-    <xacro:property name="man_base_mass" value = "1.63291158"/>
-    <xacro:property name="man_base_center" value = "0.0001195 -0.01132600777 0.04996291284 "/>
+    <xacro:property name="ixx_man_base"                     value = "0.00296184"/>
+    <xacro:property name="ixy_man_base"                     value = "-0.00000001"/>
+    <xacro:property name="ixz_man_base"                     value = "0.0"/>
+    <xacro:property name="iyy_man_base"                     value = "0.00227611"/>
+    <xacro:property name="iyz_man_base"                     value = "-0.00023033"/>    
+    <xacro:property name="izz_man_base"                     value = "0.00315083"/>
+    <xacro:property name="man_base_mass"                    value = "0.81645579"/>
+    <xacro:property name="man_base_center"                  value = "0.0001195 -0.01132600777 0.04996291284 "/>
 
-    <xacro:property name="ixx_man_seg_1" value = "0.00029149081721"/>
-    <xacro:property name="ixy_man_seg_1" value = "0.0"/>
-    <xacro:property name="ixz_man_seg_1" value = "0.0"/>
-    <xacro:property name="iyy_man_seg_1" value = "0.00745356022911"/>
-    <xacro:property name="iyz_man_seg_1" value = "0.0"/>    
-    <xacro:property name="izz_man_seg_1" value = "0.00730622307390"/>
-    <xacro:property name="man_seg_1_mass" value = "0.65721313"/>
-    <xacro:property name="man_seg_1_center" value = "-0.12499144985 0.00000184653 0.0"/>
+    <xacro:property name="ixx_man_seg_1"                    value = "0.00014575"/>
+    <xacro:property name="ixy_man_seg_1"                    value = "0.00000006"/>
+    <xacro:property name="ixz_man_seg_1"                    value = "0.0"/>
+    <xacro:property name="iyy_man_seg_1"                    value = "0.00372678"/>
+    <xacro:property name="iyz_man_seg_1"                    value = "0.0"/>    
+    <xacro:property name="izz_man_seg_1"                    value = "0.00365311"/>
+    <xacro:property name="man_seg_1_mass"                   value = "0.32860657"/>
+    <xacro:property name="man_seg_1_center"                 value = "-0.12499144985 0.00000184653 0.0"/>
 
-    <xacro:property name="ixx_man_seg_2" value = "0.00016867187941"/>
-    <xacro:property name="ixy_man_seg_2" value = "0.0"/>
-    <xacro:property name="ixz_man_seg_2" value = "0.0"/>
-    <xacro:property name="iyy_man_seg_2" value = "0.02041441059327"/>
-    <xacro:property name="iyz_man_seg_2" value = "0.0"/>    
-    <xacro:property name="izz_man_seg_2" value = "0.02036185070001"/>
-    <xacro:property name="man_seg_2_mass" value = "0.45716422"/>
-    <xacro:property name="man_seg_2_center" value = "0.19438946797 0.0 0.00000001267"/>
+    <xacro:property name="ixx_man_seg_2"                    value = "0.00007802"/>
+    <xacro:property name="ixy_man_seg_2"                    value = "0.0"/>
+    <xacro:property name="ixz_man_seg_2"                    value = "0.0"/>
+    <xacro:property name="iyy_man_seg_2"                    value = "0.00960176"/>
+    <xacro:property name="iyz_man_seg_2"                    value = "0.0"/>    
+    <xacro:property name="izz_man_seg_2"                    value = "0.00962804"/>
+    <xacro:property name="man_seg_2_mass"                   value = "0.19651902"/>
+    <xacro:property name="man_seg_2_center"                 value = "0.19438946797 0.0 0.00000001267"/>
 
 
 </robot>

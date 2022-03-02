@@ -58,7 +58,7 @@
 
         <link name="${leg}_upper_leg">
             <inertial>
-                <origin xyz = "${thigh_center_of_mass}"  rpy="${pi/2} 0 ${pi/2}"/>
+                <origin xyz = "${thigh_center_of_mass}"  rpy="0 0 0"/>
                 <mass value="${thigh_mass}" />
                 <inertia ixx="${ixx_thigh}" ixy="${side*ixy_thigh}" ixz="${ixz_thigh}"
                      iyy="${iyy_thigh}" iyz="${side*iyz_thigh}"
@@ -121,7 +121,7 @@
             <child link="${leg}_leg_roll"/>
             <axis xyz="1.0 0.0 0.0"/>
             <origin xyz="${position_hip} 0.0 0.0"/>
-            <limit effort="250" lower="-${pi}" upper="${pi}" velocity="5.0" />
+            <limit effort="100" lower="-${pi}" upper="${pi}" velocity="10.0" />
         </joint>
 
         <joint name="${leg}_upper_leg_joint" type="revolute">
@@ -130,7 +130,7 @@
             <axis xyz="0.0 1.0  0.0"/>
             <origin xyz="0.0 ${side*0.233} 0.0"/>
             
-            <limit effort="250" lower="-${pi}" upper="${pi}" velocity="5.0" />
+            <limit effort="100" lower="-${pi}" upper="${pi}" velocity="10.0" />
         </joint>
 
         <joint name="${leg}_lower_leg_joint" type="revolute">
@@ -138,7 +138,7 @@
             <child link="${leg}_lower_leg"/>
             <axis xyz="0.0 1.0  0.0"/>
             <origin xyz="0.0 0.0 -0.45"/>
-            <limit effort="250" lower="-${pi}" upper="${pi}" velocity="2.0" />
+            <limit effort="100" lower="-${pi}" upper="${pi}" velocity="10.0" />
         </joint>
 
         <joint name="${leg}_foot_joint" type="fixed">
