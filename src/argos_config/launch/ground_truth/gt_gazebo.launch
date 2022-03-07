@@ -8,7 +8,7 @@
     <arg name="paused"                 default="false"/>
     <arg name="world_init_x"           default="0.0" /> <!-- X Initial position of the robot in Gazebo World -->
     <arg name="world_init_y"           default="0.0" /> <!-- Y Initial position of the robot in Gazebo World -->
-    <arg name="world_init_z"           default="1.2" />
+    <arg name="world_init_z"           default="1.08" />
     <arg name="world_init_heading"     default="0.0" /> <!-- Initial heading of the robot in Gazebo World -->
     <arg name="publish_joint_control"  default="true"/>
     <arg name="world_frame"            default="argos/world"/>
