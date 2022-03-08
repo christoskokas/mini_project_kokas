@@ -54,10 +54,10 @@ dec_mesh.remove_non_manifold_edges()
 #Get Absolute Path
 path=pathlib.Path(__file__).parent.resolve()
 
-my_lods = lod_mesh_export(dec_mesh, [100000,50000,10000,1000,100], ".stl", str(path)+"trial_point")
+#my_lods = lod_mesh_export(dec_mesh, [100000,50000,10000,1000,100], ".stl", str(path)+"/trial_point")
 
 
-o3d.visualization.draw_geometries([my_lods[1000]])
+#o3d.visualization.draw_geometries([my_lods[1000]])
 
 
 poisson_mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth=8, width=0, scale=1.1, linear_fit=False)[0]
@@ -75,6 +75,6 @@ o3d.io.write_triangle_mesh(str(path)+"/bpa_mesh.stl", dec_mesh)
 o3d.io.write_triangle_mesh(str(path)+"/p_mesh_c.stl", p_mesh_crop)
 
 
-my_lods2 = lod_mesh_export(p_mesh_crop, [8000,800,300], ".ply", str(path)+"trial_point_poisson")
+#my_lods2 = lod_mesh_export(p_mesh_crop, [8000,800,300], ".stl", str(path)+"/trial_point_poisson")
 
-
+#o3d.visualization.draw_geometries([my_lods2[8000]])
