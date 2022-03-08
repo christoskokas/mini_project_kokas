@@ -61,6 +61,6 @@ axes.add_collection3d(mplot3d.art3d.Poly3DCollection(your_mesh.vectors))
 scale = your_mesh.points.flatten()
 axes.auto_scale_xyz(scale, scale, scale)
 
-your_mesh.save('path/trial.stl')
+your_mesh.save(str(path)+'/trial.stl')
 # Show the plot to the screen
 pyplot.show()
