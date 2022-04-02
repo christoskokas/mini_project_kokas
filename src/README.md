@@ -90,3 +90,17 @@ To start moving:
 
 * Click '2D Nav Goal'.
 * Click and drag at the position you want the robot to go.
+
+## DEM as Ground With ARGOS
+
+Source Gazebo setup.sh
+
+```console
+source /usr/share/gazebo/setup.sh
+```
+
+Run the Gazebo environment:
+
+```console
+roslaunch argos_config vine_gazebo.launch
+```
