@@ -99,8 +99,16 @@ Source Gazebo setup.sh
 source /usr/share/gazebo/setup.sh
 ```
 
-Run the Gazebo environment:
+Run the Gazebo environment with ARGOS:
 
 ```console
-roslaunch argos_config vine_gazebo.launch
+roslaunch argos_config vine_argos.launch
+```
+
+## DEM as Ground With Husky
+
+Run the Gazebo environment with Husky:
+
+```console
+roslaunch argos_config vine_husky.launch
 ```

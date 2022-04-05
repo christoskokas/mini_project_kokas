@@ -27,3 +27,7 @@
 [submodule "src/packages/hector_localization"]
 	path = src/packages/hector_localization
 	url = https://github.com/tu-darmstadt-ros-pkg/hector_localization.git
+[submodule "src/packages/husky"]
+	path = src/packages/husky
+	url = https://github.com/husky/husky.git
+	branch = noetic-devel
