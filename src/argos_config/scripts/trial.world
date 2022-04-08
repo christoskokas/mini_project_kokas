@@ -54,43 +54,159 @@
       </link>
     </model>
 
-    <model name='texture_1'>
+    <model name='branches'>
       <static>1</static>
       <link name='link'>
         <visual name='visual'>
           <geometry>
             <mesh>
-              <uri>model://../../mini_project/meshes/vines.stl</uri>
-              <scale>0.03 0.03 0.03</scale>
+              <uri>model://../../mini_project/vines/meshes/branches.dae</uri>
             </mesh>
           </geometry>
+          <material>
+            <script>
+              <uri>model://../../mini_project/vines/materials/scripts</uri>
+              <uri>model://../../mini_project/vines/materials/textures</uri>
+              <name>vine/bark</name>
+            </script>
+          </material>
         </visual>
-        <collision name='right-angle'>
+        <collision name='branches_col'>
           <geometry>
-            <mesh>
-              <uri>model://../../mini_project/meshes/vines.stl</uri>
-              <scale>0.03 0.03 0.03</scale>
-            </mesh>
+            <box>
+              <size>0.01 0.01 0.01 </size>
+            </box>
           </geometry>
-          <max_contacts>10</max_contacts>
-          <surface>
-            <contact>
-              <ode/>
-            </contact>
-            <bounce/>
-            <friction>
-              <torsional>
-                <ode/>
-              </torsional>
-              <ode/>
-            </friction>
-          </surface>
         </collision>
         <self_collide>0</self_collide>
         <enable_wind>0</enable_wind>
         <kinematic>0</kinematic>
       </link>
-      <pose>0 2 1 0 -3.13</pose>
+      <pose>0 2 3 0 -3.13</pose>
+    </model>
+
+    <model name='leafa'>
+      <static>1</static>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>model://../../mini_project/vines/meshes/leafa.dae</uri>
+            </mesh>
+          </geometry>
+          <material>
+            <script>
+              <uri>model://../../mini_project/vines/materials/scripts</uri>
+              <uri>model://../../mini_project/vines/materials/textures</uri>
+              <name>vine/leafmask</name>
+            </script>
+          </material>
+        </visual>
+        <collision name='leafa_col'>
+          <geometry>
+            <box>
+              <size>0.01 0.01 0.01 </size>
+            </box>
+          </geometry>
+        </collision>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+      <pose>0 2 3 0 -3.13</pose>
+    </model>
+
+    <model name='leafb'>
+      <static>1</static>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>model://../../mini_project/vines/meshes/leafb.dae</uri>
+            </mesh>
+          </geometry>
+          <material>
+            <script>
+              <uri>model://../../mini_project/vines/materials/scripts</uri>
+              <uri>model://../../mini_project/vines/materials/textures</uri>
+              <name>vine/leafmask</name>
+            </script>
+          </material>
+        </visual>
+        <collision name='leafb_col'>
+          <geometry>
+            <box>
+              <size>0.01 0.01 0.01 </size>
+            </box>
+          </geometry>
+        </collision>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+      <pose>0 2 3 0 -3.13</pose>
+    </model>
+
+    <model name='leafc'>
+      <static>1</static>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>model://../../mini_project/vines/meshes/leafc.dae</uri>
+            </mesh>
+          </geometry>
+          <material>
+            <script>
+              <uri>model://../../mini_project/vines/materials/scripts</uri>
+              <uri>model://../../mini_project/vines/materials/textures</uri>
+              <name>vine/leafmask</name>
+            </script>
+          </material>
+        </visual>
+        <collision name='leafc_col'>
+          <geometry>
+            <box>
+              <size>0.01 0.01 0.01 </size>
+            </box>
+          </geometry>
+        </collision>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+      <pose>0 2 3 0 -3.13</pose>
+    </model>
+
+    <model name='kormos'>
+      <static>1</static>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <mesh>
+              <uri>model://../../mini_project/vines/meshes/kormos.dae</uri>
+            </mesh>
+          </geometry>
+          <material>
+            <script>
+              <uri>model://../../mini_project/vines/materials/scripts</uri>
+              <uri>model://../../mini_project/vines/materials/textures</uri>
+              <name>vine/bark</name>
+            </script>
+          </material>
+        </visual>
+        <collision name='kormos_col'>
+          <geometry>
+            <box>
+              <size>0.01 0.01 0.01 </size>
+            </box>
+          </geometry>
+        </collision>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+      <pose>0 2 3 0 -3.13</pose>
     </model>
 
   </world>

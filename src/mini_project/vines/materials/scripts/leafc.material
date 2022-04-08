@@ -1,0 +1,14 @@
+material vine/leafc
+{
+    receive_shadows off
+    technique
+    {
+        pass
+        {
+            texture_unit
+            {
+                texture leafc.jpg
+            }
+        }
+    }
+}

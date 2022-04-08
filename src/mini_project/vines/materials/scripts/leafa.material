@@ -1,0 +1,14 @@
+material vine/leafa
+{
+    receive_shadows off
+    technique
+    {
+        pass
+        {
+            texture_unit
+            {
+                texture leafa.jpg
+            }
+        }
+    }
+}
