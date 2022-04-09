@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 # This script is used to add vineyards to a Gazebo World
 # It get the slope information from the heightmap (tif file)
 # Changes an xml file that describes the Gazebo World
