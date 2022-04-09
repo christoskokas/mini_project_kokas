@@ -42,7 +42,8 @@ def tif_info(path):
   return imarray
 
 def create_xml():
-    xml_string = '''<sdf version="1.7">
+    xml_string = '''<?xml version="1.0" ?>
+    <sdf version="1.7">
   <world name="default">
     <!-- A global light source -->
     <include>
@@ -99,7 +100,7 @@ def create_xml():
     </model>
 
     <model name='branches'>
-      <static>1</static>
+      <static>true</static>
       <link name='link'>
         <visual name='visual'>
           <geometry>
@@ -109,9 +110,9 @@ def create_xml():
           </geometry>
           <material>
             <script>
-              <uri>model://../../mini_project/vines/materials/scripts</uri>
-              <uri>model://../../mini_project/vines/materials/textures</uri>
-              <name>vine/bark</name>
+              <uri>model://../../mini_project/vines/materials/scripts/</uri>
+              <uri>model://../../mini_project/vines/materials/textures/</uri>
+              <name>Vine/Bark</name>
             </script>
           </material>
         </visual>
@@ -130,7 +131,7 @@ def create_xml():
     </model>
 
     <model name='leafa'>
-      <static>1</static>
+      <static>true</static>
       <link name='link'>
         <visual name='visual'>
           <geometry>
@@ -140,9 +141,9 @@ def create_xml():
           </geometry>
           <material>
             <script>
-              <uri>model://../../mini_project/vines/materials/scripts</uri>
-              <uri>model://../../mini_project/vines/materials/textures</uri>
-              <name>vine/leafmask</name>
+              <uri>model://../../mini_project/vines/materials/scripts/</uri>
+              <uri>model://../../mini_project/vines/materials/textures/</uri>
+              <name>Vine/Leafa</name>
             </script>
           </material>
         </visual>
@@ -153,15 +154,12 @@ def create_xml():
             </box>
           </geometry>
         </collision>
-        <self_collide>0</self_collide>
-        <enable_wind>0</enable_wind>
-        <kinematic>0</kinematic>
       </link>
       <pose>0 2 3 0 -3.13</pose>
     </model>
 
     <model name='leafb'>
-      <static>1</static>
+      <static>true</static>
       <link name='link'>
         <visual name='visual'>
           <geometry>
@@ -171,9 +169,9 @@ def create_xml():
           </geometry>
           <material>
             <script>
-              <uri>model://../../mini_project/vines/materials/scripts</uri>
-              <uri>model://../../mini_project/vines/materials/textures</uri>
-              <name>vine/leafmask</name>
+              <uri>model://../../mini_project/vines/materials/scripts/</uri>
+              <uri>model://../../mini_project/vines/materials/textures/</uri>
+              <name>Vine/Leafb</name>
             </script>
           </material>
         </visual>
@@ -192,7 +190,7 @@ def create_xml():
     </model>
 
     <model name='leafc'>
-      <static>1</static>
+      <static>true</static>
       <link name='link'>
         <visual name='visual'>
           <geometry>
@@ -202,9 +200,9 @@ def create_xml():
           </geometry>
           <material>
             <script>
-              <uri>model://../../mini_project/vines/materials/scripts</uri>
-              <uri>model://../../mini_project/vines/materials/textures</uri>
-              <name>vine/leafmask</name>
+              <uri>model://../../mini_project/vines/materials/scripts/</uri>
+              <uri>model://../../mini_project/vines/materials/textures/</uri>
+              <name>Vine/Leafc</name>
             </script>
           </material>
         </visual>
@@ -223,7 +221,7 @@ def create_xml():
     </model>
 
     <model name='kormos'>
-      <static>1</static>
+      <static>true</static>
       <link name='link'>
         <visual name='visual'>
           <geometry>
@@ -233,9 +231,9 @@ def create_xml():
           </geometry>
           <material>
             <script>
-              <uri>model://../../mini_project/vines/materials/scripts</uri>
-              <uri>model://../../mini_project/vines/materials/textures</uri>
-              <name>vine/bark</name>
+              <uri>model://../../mini_project/vines/materials/scripts/</uri>
+              <uri>model://../../mini_project/vines/materials/textures/</uri>
+              <name>Vine/Bark</name>
             </script>
           </material>
         </visual>
