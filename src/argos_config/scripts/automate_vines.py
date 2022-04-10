@@ -219,7 +219,7 @@ def main():
   # Max Height should be 10m so we Normalize the array is the maximum value being 10
   tif_obj.imarray = 10 * tif_obj.imarray / np.max(tif_obj.imarray)
   # imarray needs to be rotated for the right values according to the heightmap
-  tree_models = create_models_xml(start_x=-41,start_y=-41,finish_x=31,finish_y=31,heightmap=np.rot90(tif_obj.imarray,3))
+  tree_models = create_models_xml(start_x=-11,start_y=-11,finish_x=11,finish_y=11,heightmap=np.rot90(tif_obj.imarray,3))
   xml_string = create_xml(tree_models)
   write_to_file(xml_string,"trial.world")
 
