@@ -1,0 +1,133 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+    <xacro:macro name="zed_camera" params="base_name " >
+
+    <xacro:include filename="$(find mini_project)/robots/materials.urdf.xacro" />
+
+    <!-- Arguments -->
+
+
+    <xacro:arg name="camera_name"   default="zed2" />
+    <xacro:arg name="camera_model"  default="zed2" />
+    <xacro:arg name="base_frame"    default="${base_name}" />
+    <xacro:arg name="cam_pos_x"     default="0.495" />
+    <xacro:arg name="cam_pos_y"     default="0.0" />
+    <xacro:arg name="cam_pos_z"     default="0.09" />
+    <xacro:arg name="cam_roll"      default="0.0" />
+    <xacro:arg name="cam_pitch"     default="0.0" />
+    <xacro:arg name="cam_yaw"       default="0.0" />
+
+    <!-- Properties -->
+    <xacro:property name="M_PI"     value="3.1415926535897931" />
+    <xacro:property name="model"    value="$(arg camera_model)" />
+    
+    <xacro:if value="${model == 'zed'}">
+        <xacro:property name="baseline" value="0.12" />
+    </xacro:if>
+    <xacro:if value="${model == 'zedm'}">
+        <xacro:property name="baseline" value="0.06" />
+    </xacro:if>
+    <xacro:if value="${model == 'zed2'}">
+        <xacro:property name="baseline" value="0.12" />
+    </xacro:if>
+    <xacro:if value="${model == 'zed2i'}">
+        <xacro:property name="baseline" value="0.12" />
+    </xacro:if>
+
+<!-- Camera Center -->
+    <joint name="camera_center_joint" type="fixed">
+        <parent link="$(arg base_frame)"/>
+        <child link="camera_center"/>
+        <origin xyz="$(arg cam_pos_x) $(arg cam_pos_y) $(arg cam_pos_z)" rpy="$(arg cam_roll) $(arg cam_pitch) $(arg cam_yaw)" />
+    </joint>
+
+    <link name="camera_center">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://mini_project/meshes/${model}.stl" />
+            </geometry>
+            <material name="${model}_mat" />
+        </visual>
+    </link>
+
+<!-- Left Camera -->
+    <joint name="left_camera_joint" type="fixed">
+        <parent link="camera_center"/>
+        <child link="left_camera_frame"/>
+        <origin xyz="0 ${baseline/2} 0" rpy="0 0 0" />
+    </joint>
+
+    <link name="left_camera_frame" />
+
+    <joint name="left_camera_optical_joint" type="fixed">
+        <origin xyz="0 0 0" rpy="-${M_PI/2} 0.0 -${M_PI/2}"/>
+        <parent link="left_camera_frame"/>
+        <child link="left_camera_optical_frame"/>
+    </joint>
+
+    <link name="left_camera_optical_frame"/>
+
+    <gazebo reference="left_camera_frame">
+        <sensor type="multicamera" name="stereo_camera">
+        <update_rate>30.0</update_rate>
+        <camera name="left">
+            <horizontal_fov>1.91986218</horizontal_fov>
+            <vertical_fov>1.22173048</vertical_fov>
+            <diagonal_fov>2.0943951</diagonal_fov>
+            <image>
+                <width>1920</width>
+                <height>1080</height>
+                <format>R8G8B8</format>
+            </image>
+            <clip>
+                <near>0.02</near>
+                <far>300</far>
+            </clip>
+            <noise>
+                <type>gaussian</type>
+                <mean>0.0</mean>
+                <stddev>0.004</stddev>
+            </noise>
+        </camera>
+        <camera name="right">
+            <pose>0 -0.12 0 0 0 0</pose>
+            <horizontal_fov>1.91986218</horizontal_fov>
+            <vertical_fov>1.22173048</vertical_fov>
+            <diagonal_fov>2.0943951</diagonal_fov>
+            <image>
+                <width>1920</width>
+                <height>1080</height>
+                <format>R8G8B8</format>
+            </image>
+            <clip>
+                <near>0.02</near>
+                <far>300</far>
+            </clip>
+            <noise>
+                <type>gaussian</type>
+                <mean>0.0</mean>
+                <stddev>0.004</stddev>
+            </noise>
+        </camera>
+        <plugin name="stereo_camera_controller" filename="libgazebo_ros_multicamera.so">
+            <robotNamespace>/</robotNamespace>
+            <alwaysOn>true</alwaysOn>
+            <updateRate>0.0</updateRate>
+            <cameraName>camera</cameraName>
+            <imageTopicName>image_raw</imageTopicName>
+            <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+            <frameName>left_camera_optical_frame</frameName>
+            <!--<rightFrameName>right_camera_optical_frame</rightFrameName>-->
+            <hackBaseline>0.12</hackBaseline>
+            <distortionK1>0.0</distortionK1>
+            <distortionK2>0.0</distortionK2>
+            <distortionK3>0.0</distortionK3>
+            <distortionT1>0.0</distortionT1>
+            <distortionT2>0.0</distortionT2>
+        </plugin>
+        </sensor>
+    </gazebo>
+
+    </xacro:macro>
+</robot>

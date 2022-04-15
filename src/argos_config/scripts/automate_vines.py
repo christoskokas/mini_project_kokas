@@ -228,7 +228,11 @@ def create_models_xml(start_x,start_y,finish_x,finish_y,heightmap,xml):
 
 def main():
       
+<<<<<<< HEAD
+  world_file = str(Path(__file__).parents[1] / "worlds" / "vineyard" / "vineyard.world")
+=======
   world_file = str(Path(__file__).parents[0] / "trial.world")
+>>>>>>> e79f32e6db17f1cc27f13f6d5c4a580ced693b81
   # Initialize the world file to contain the heightmap 
   xml_file = xml_file_class(world_file)
   xml_file.initialize_file()
