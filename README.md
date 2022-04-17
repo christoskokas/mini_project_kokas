@@ -112,3 +112,9 @@ Run the Gazebo environment with Husky:
 ```console
 roslaunch argos_config vine_husky.launch
 ```
+
+Run the Gmapping Packages for Husky:
+
+```console
+roslaunch argos_config husky_gmapping.launch
+```

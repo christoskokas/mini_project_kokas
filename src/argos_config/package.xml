@@ -24,5 +24,6 @@
   <exec_depend>ecl_core</exec_depend>
   <exec_depend>message_to_tf</exec_depend>
   <exec_depend>husky_gazebo</exec_depend>
+  <exec_depend>husky_navigation</exec_depend>
   
 </package>
