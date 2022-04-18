@@ -1,8 +1,6 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
-    <xacro:macro name="zed_camera" params="base_name " >
-
-    <xacro:include filename="$(find mini_project)/robots/materials.urdf.xacro" />
+    <xacro:macro name="zed_camera" params="base_name pos_x pos_y pos_z rotate_camera camera_numb" >
 
     <!-- Arguments -->
 
@@ -10,17 +8,34 @@
     <xacro:arg name="camera_name"   default="zed2" />
     <xacro:arg name="camera_model"  default="zed2" />
     <xacro:arg name="base_frame"    default="${base_name}" />
-    <xacro:arg name="cam_pos_x"     default="0.495" />
-    <xacro:arg name="cam_pos_y"     default="0.0" />
-    <xacro:arg name="cam_pos_z"     default="0.09" />
     <xacro:arg name="cam_roll"      default="0.0" />
     <xacro:arg name="cam_pitch"     default="0.0" />
     <xacro:arg name="cam_yaw"       default="0.0" />
 
     <!-- Properties -->
-    <xacro:property name="M_PI"     value="3.1415926535897931" />
-    <xacro:property name="model"    value="$(arg camera_model)" />
-    
+    <xacro:property name="M_PI"          value="3.1415926535897931" />
+    <xacro:property name="model"         value="$(arg camera_model)" />
+    <xacro:property name="cam_pos_x"     value="${pos_x}" />
+    <xacro:property name="cam_pos_y"     value="${pos_y}" />
+    <xacro:property name="cam_pos_z"     value="${pos_z}" />
+    <xacro:property name="rotate"        value="${rotate_camera}" />
+    <xacro:property name="numb"          value="${camera_numb}" />
+
+    <!-- Materials -->
+
+    <material name="zed_mat_${numb}">
+        <color rgba="0.8 0.8 0.8 0.8"/>
+    </material>
+    <material name="zedm_mat_${numb}">
+        <color rgba="0 0 0 0.9"/>
+    </material>
+    <material name="zed2_mat_${numb}">
+        <color rgba="0.25 0.25 0.25 0.99"/>
+    </material>
+    <material name="zed2i_mat_${numb}">
+        <color rgba="0.25 0.25 0.25 0.99"/>
+    </material>
+
     <xacro:if value="${model == 'zed'}">
         <xacro:property name="baseline" value="0.12" />
     </xacro:if>
@@ -35,40 +50,40 @@
     </xacro:if>
 
 <!-- Camera Center -->
-    <joint name="camera_center_joint" type="fixed">
+    <joint name="camera_center_joint_${numb}" type="fixed">
         <parent link="$(arg base_frame)"/>
-        <child link="camera_center"/>
-        <origin xyz="$(arg cam_pos_x) $(arg cam_pos_y) $(arg cam_pos_z)" rpy="$(arg cam_roll) $(arg cam_pitch) $(arg cam_yaw)" />
+        <child link="camera_center_${numb}"/>
+        <origin xyz="${cam_pos_x} ${cam_pos_y} ${cam_pos_z}" rpy="$(arg cam_roll) $(arg cam_pitch) $(arg cam_yaw)" />
     </joint>
 
-    <link name="camera_center">
+    <link name="camera_center_${numb}">
         <visual>
-            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <origin xyz="0 0 0" rpy="0 0 ${rotate*M_PI}"/>
             <geometry>
                 <mesh filename="package://mini_project/meshes/${model}.stl" />
             </geometry>
-            <material name="${model}_mat" />
+            <material name="${model}_mat_${numb}" />
         </visual>
     </link>
 
 <!-- Left Camera -->
-    <joint name="left_camera_joint" type="fixed">
-        <parent link="camera_center"/>
-        <child link="left_camera_frame"/>
+    <joint name="left_camera_joint_${numb}" type="fixed">
+        <parent link="camera_center_${numb}"/>
+        <child link="left_camera_frame_${numb}"/>
         <origin xyz="0 ${baseline/2} 0" rpy="0 0 0" />
     </joint>
 
-    <link name="left_camera_frame" />
+    <link name="left_camera_frame_${numb}" />
 
-    <joint name="left_camera_optical_joint" type="fixed">
+    <joint name="left_camera_optical_joint_${numb}" type="fixed">
         <origin xyz="0 0 0" rpy="-${M_PI/2} 0.0 -${M_PI/2}"/>
-        <parent link="left_camera_frame"/>
-        <child link="left_camera_optical_frame"/>
+        <parent link="left_camera_frame_${numb}"/>
+        <child link="left_camera_optical_frame_${numb}"/>
     </joint>
 
-    <link name="left_camera_optical_frame"/>
+    <link name="left_camera_optical_frame_${numb}"/>
 
-    <gazebo reference="left_camera_frame">
+    <gazebo reference="left_camera_frame_${numb}">
         <sensor type="multicamera" name="stereo_camera">
         <update_rate>30.0</update_rate>
         <camera name="left">
@@ -114,10 +129,10 @@
             <robotNamespace>/</robotNamespace>
             <alwaysOn>true</alwaysOn>
             <updateRate>0.0</updateRate>
-            <cameraName>camera</cameraName>
+            <cameraName>camera_${numb}</cameraName>
             <imageTopicName>image_raw</imageTopicName>
             <cameraInfoTopicName>camera_info</cameraInfoTopicName>
-            <frameName>left_camera_optical_frame</frameName>
+            <frameName>left_camera_optical_frame_${numb}</frameName>
             <!--<rightFrameName>right_camera_optical_frame</rightFrameName>-->
             <hackBaseline>0.12</hackBaseline>
             <distortionK1>0.0</distortionK1>

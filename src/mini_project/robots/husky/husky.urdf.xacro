@@ -240,7 +240,10 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
     </xacro:vlp16_mount>
   </xacro:if>
 
-  <xacro:zed_camera base_name = "base_link"/>
+  <xacro:zed_camera base_name="base_link" pos_x="0.15" pos_y="0.0" pos_z="0.5" rotate_camera="0.0" camera_numb="1"/>
+  <xacro:zed_camera base_name="base_link" pos_x="0.0" pos_y="-0.15" pos_z="0.5" rotate_camera="0.5" camera_numb="2"/>
+  <xacro:zed_camera base_name="base_link" pos_x="0.0" pos_y="0.15" pos_z="0.5" rotate_camera="-0.5" camera_numb="3"/>
+  <xacro:zed_camera base_name="base_link" pos_x="-0.15" pos_y="0.0" pos_z="0.5" rotate_camera="1" camera_numb="4"/>
 
   <gazebo>
     <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">

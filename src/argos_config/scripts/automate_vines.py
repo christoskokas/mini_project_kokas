@@ -3,7 +3,6 @@
 # It get the slope information from the heightmap (tif file)
 # Changes an xml file that describes the Gazebo World
 
-
 from json.tool import main
 import string
 from typing_extensions import Self
