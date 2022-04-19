@@ -67,6 +67,10 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   <xacro:arg name="urdf_extras" default="$(optenv HUSKY_URDF_EXTRAS empty.urdf)" />
   <xacro:arg name="cpr_urdf_extras" default="$(optenv CPR_URDF_EXTRAS empty.urdf)" />
 
+
+  <!-- four cameras -->
+  <xacro:arg name="four_cameras" default="false" />
+
   <!-- Included URDF/XACRO Files -->
   <xacro:include filename="$(find husky_description)/urdf/decorations.urdf.xacro" />
   <xacro:include filename="$(find husky_description)/urdf/wheel.urdf.xacro" />
@@ -241,10 +245,11 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   </xacro:if>
 
   <xacro:zed_camera base_name="base_link" pos_x="0.15" pos_y="0.0" pos_z="0.5" rotate_camera="0.0" camera_numb="1"/>
-  <xacro:zed_camera base_name="base_link" pos_x="0.0" pos_y="-0.15" pos_z="0.5" rotate_camera="0.5" camera_numb="2"/>
-  <xacro:zed_camera base_name="base_link" pos_x="0.0" pos_y="0.15" pos_z="0.5" rotate_camera="-0.5" camera_numb="3"/>
-  <xacro:zed_camera base_name="base_link" pos_x="-0.15" pos_y="0.0" pos_z="0.5" rotate_camera="1" camera_numb="4"/>
-
+  <xacro:if value="$(arg four_cameras)">
+    <xacro:zed_camera base_name="base_link" pos_x="0.0" pos_y="-0.15" pos_z="0.5" rotate_camera="0.5" camera_numb="2"/>
+    <xacro:zed_camera base_name="base_link" pos_x="0.0" pos_y="0.15" pos_z="0.5" rotate_camera="-0.5" camera_numb="3"/>
+    <xacro:zed_camera base_name="base_link" pos_x="-0.15" pos_y="0.0" pos_z="0.5" rotate_camera="1.0" camera_numb="4"/>
+  </xacro:if>
   <gazebo>
     <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
       <robotNamespace>$(arg robot_namespace)</robotNamespace>

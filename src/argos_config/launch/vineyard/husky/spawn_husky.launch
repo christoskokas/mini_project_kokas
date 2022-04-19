@@ -33,7 +33,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
   <arg name="y" default="0.0"/>
   <arg name="z" default="0.0"/>
   <arg name="yaw" default="0.0"/>
-
+  <arg name="four_cameras" default="false"/>
   <!-- Optionally disable teleop control -->
   <arg name="joystick" default="true" />
 
@@ -58,6 +58,8 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
     <!-- <group unless="$(arg multimaster)"> -->
       <include file="$(find argos_config)/launch/vineyard/husky/control.launch">
         <!-- <arg name="multimaster" value="$(arg multimaster)"/> -->
+        <arg name="four_cameras" value="$(arg four_cameras)"/>
+        
       </include>
       <include file="$(find husky_control)/launch/teleop.launch">
         <arg name="joystick" value="$(arg joystick)" />

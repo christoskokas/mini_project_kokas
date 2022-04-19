@@ -53,12 +53,12 @@
     <joint name="camera_center_joint_${numb}" type="fixed">
         <parent link="$(arg base_frame)"/>
         <child link="camera_center_${numb}"/>
-        <origin xyz="${cam_pos_x} ${cam_pos_y} ${cam_pos_z}" rpy="$(arg cam_roll) $(arg cam_pitch) $(arg cam_yaw)" />
+        <origin xyz="${cam_pos_x} ${cam_pos_y} ${cam_pos_z}" rpy="$(arg cam_roll) $(arg cam_pitch) ${rotate*M_PI}" />
     </joint>
 
     <link name="camera_center_${numb}">
         <visual>
-            <origin xyz="0 0 0" rpy="0 0 ${rotate*M_PI}"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
                 <mesh filename="package://mini_project/meshes/${model}.stl" />
             </geometry>

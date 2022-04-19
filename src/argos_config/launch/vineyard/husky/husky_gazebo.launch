@@ -1,0 +1,101 @@
+<launch>
+        <arg name="gazebo_world"                                default="$(find argos_config)/worlds/vineyard/vineyard.world" /> 
+        <arg name="four_cameras"                                default="true"/>
+        <arg name="disp_to_laser"                               default="true"/>
+        <arg name="ptl"                                         default="false"/>
+        
+        
+        <env name="GAZEBO_MODEL_PATH"     value="$(find argos_config)/worlds"/>
+
+        <include file="$(find gazebo_ros)/launch/empty_world.launch">
+                <arg name="world_name"                          value="$(arg gazebo_world)"/>
+                <arg name="gui"                                 value="true" />
+                <arg name="paused"                              value="false"/>
+                <arg name="use_sim_time"                        value="true"/>
+                <arg name="headless"                            value="false"/>
+        </include>
+
+        <include file="$(find argos_config)/launch/vineyard/husky/spawn_husky.launch">
+                <arg name="z"                                   value="2.0"/>
+                <arg name="four_cameras"                        value="$(arg four_cameras)"/>
+        </include>
+
+        <node ns="camera_1" pkg="stereo_image_proc" type="stereo_image_proc" name="stereo_image_proc">
+                <param name="prefilter_size"                    value="5"/>
+                <param name="prefilter_cap"                     value="25"/>
+                <param name="correlation_window_size"           value="21"/>
+                <param name="min_disparity"                     value="-59"/>
+                <param name="disparity_range"                   value="224"/>
+                <param name="uniqueness_ratio"                  value="69.0"/>
+                <param name="texture_threshold"                 value="10"/>
+                <param name="speckle_size"                      value="0"/>
+                <param name="speckle_range"                     value="2"/>
+        </node>
+        <group if="$(arg four_cameras)">
+                <node ns="camera_2" pkg="stereo_image_proc" type="stereo_image_proc" name="stereo_image_proc">
+                        <param name="prefilter_size"            value="5"/>
+                        <param name="prefilter_cap"             value="25"/>
+                        <param name="correlation_window_size"   value="21"/>
+                        <param name="min_disparity"             value="-59"/>
+                        <param name="disparity_range"           value="224"/>
+                        <param name="uniqueness_ratio"          value="69.0"/>
+                        <param name="texture_threshold"         value="10"/>
+                        <param name="speckle_size"              value="0"/>
+                        <param name="speckle_range"             value="2"/>
+                </node>
+
+                <node ns="camera_3" pkg="stereo_image_proc" type="stereo_image_proc" name="stereo_image_proc">
+                        <param name="prefilter_size"            value="5"/>
+                        <param name="prefilter_cap"             value="25"/>
+                        <param name="correlation_window_size"   value="21"/>
+                        <param name="min_disparity"             value="-59"/>
+                        <param name="disparity_range"           value="5"/>
+                        <param name="prefilter_cap"             value="25"/>
+                        <param name="correlation_window_size"   value="21"/>
+                        <param name="min_disparity"             value="-59"/>
+                        <param name="disparity_range"           value="224"/>
+                        <param name="uniqueness_ratio"          value="69.0"/>
+                        <param name="texture_threshold"         value="10"/>
+                        <param name="speckle_size"              value="0"/>
+                        <param name="speckle_range"             value="2"/>
+                </node> 
+
+                <node ns="camera_4" pkg="stereo_image_proc" type="stereo_image_proc" name="stereo_image_proc">
+                        <param name="prefilter_size"            value="5"/>
+                        <param name="prefilter_cap"             value="25"/>
+                        <param name="correlation_window_size"   value="21"/>
+                        <param name="min_disparity"             value="-59"/>
+                        <param name="disparity_range"           value="5"/>
+                        <param name="prefilter_cap"             value="25"/>
+                        <param name="correlation_window_size"   value="21"/>
+                        <param name="min_disparity"             value="-59"/>
+                        <param name="disparity_range"           value="224"/>
+                        <param name="uniqueness_ratio"          value="69.0"/>
+                        <param name="texture_threshold"         value="10"/>
+                        <param name="speckle_size"              value="0"/>
+                        <param name="speckle_range"             value="2"/>
+                </node>  
+        </group>
+
+        <group if="$(arg ptl)">
+                <include file="$(find argos_config)/launch/pointcloud_to_laserscan/point_to_laser_node.launch" >
+                        <arg name="camera_name"                 value="camera_1"/>
+                        <arg name="target_frame"                value="camera_center_1"/>
+                        <arg name="min_height"                  value="-0.5"/>
+                </include>
+        </group>
+
+        <group if="$(arg disp_to_laser)">
+                <group unless="$(arg ptl)">
+                        <include file="$(find argos_config)/launch/disparity_to_depth.launch">
+                                <arg name="camera_name"                value="camera_1"/>
+                        </include>
+
+                        <include file="$(find argos_config)/launch/depth_to_laser.launch">
+                                <arg name="robot_namespace"            value="/"/>
+                                <arg name="camera_name"                value="camera_1"/>
+                                <arg name="camera_link"                value="camera_center_1"/>
+                        </include>
+                </group>
+        </group>
+</launch>

@@ -47,8 +47,14 @@
         <param name="speckle_range"             value="2"/>
     </node>
 
-    <include file="$(find argos_config)/launch/disparity_to_depth.launch" />
+    <include file="$(find argos_config)/launch/disparity_to_depth.launch">
+        <arg name="camera_name"                value="/argos/camera"/>
+    </include>
 
-    <include file="$(find argos_config)/launch/depth_to_laser.launch" />
+    <include file="$(find argos_config)/launch/depth_to_laser.launch">
+        <arg name="robot_namespace"            value="argos"/>
+        <arg name="camera_name"                value="argos/camera"/>
+        <arg name="camera_link"                value="argos/camera_center"/>
+    </include>
 
 </launch>

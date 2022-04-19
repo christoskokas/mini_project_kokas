@@ -3,8 +3,10 @@
 
   <!-- <arg name="multimaster" default="$(optenv ROBOT_MULTIMASTER false)"/> -->
   <arg name="simulation" default="$(optenv ROBOT_SIMULATION false)"/>
-  <arg name="robot_namespace" default="$(optenv ROBOT_NAMESPACE robot)"/>
+  <!-- <arg name="robot_namespace" default="$(optenv ROBOT_NAMESPACE robot)"/> -->
   <arg name="enable_ekf" default="$(optenv ENABLE_EKF true)"/>
+  <arg name="four_cameras" default="false"/>
+  <arg name="robot_namespace" default="/"/>
 
   <arg name="config_extras"
        default="$(eval optenv('HUSKY_CONFIG_EXTRAS', find('husky_control') + '/config/empty.yaml'))"/>
@@ -17,8 +19,8 @@
   </include> -->
 
   <!-- Load robot description -->
-  <include file="$(find argos_config)/launch/vineyard/husky/description.launch" >
-  </include>
+  <param name="robot_description" command="$(find xacro)/xacro '$(find mini_project)/robots/husky/husky.urdf.xacro'
+    robot_namespace:=$(arg robot_namespace) four_cameras:=$(arg four_cameras)" />
 
   <!-- Load controller configuration -->
   <rosparam command="load" file="$(find husky_control)/config/control.yaml" />

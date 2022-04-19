@@ -1,15 +1,25 @@
 <?xml version="1.0"?>
 
 <launch>
+
+    <arg name="camera_name"                     default="camera"/>
+    <arg name="target_frame"                    default="camera_center"/>
+    <arg name="min_height"                      default="-1.0"/>
     <!-- run pointcloud_to_laserscan node -->
     <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan">
 
-        <remap from="cloud_in" to="camera/points2"/>
-        <remap from="scan" to="scan"/>
+        
+
+        <remap from="cloud_in"                  to="$(arg camera_name)/points2"/>
+        <remap from="scan"                      to="scan"/>
+
+        <param name="target_frame"              value="$(arg target_frame)"/>
+        <param name="min_height"                value="$(arg min_height)"/>
+
         <rosparam>
-            target_frame: argos/camera_center # Leave disabled to output scan in pointcloud frame
+            #target_frame: camera_center # Leave disabled to output scan in pointcloud frame
             transform_tolerance: 0.01
-            min_height: -1.0 # -1 because it is -1 from the camera_center position not the foot of the robot
+            #min_height: -1.0 # -1 because it is -1 from the camera_center position not the foot of the robot
             max_height: 1.0
 
             angle_min: -0.95993109

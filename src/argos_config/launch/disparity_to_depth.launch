@@ -2,14 +2,18 @@
 
 <launch>
 
+  <arg name="camera_name"   default="camera"/>
+  
   <node pkg="nodelet" type="nodelet" name="stereo_proc"  args="manager"/>
 
   <node name="disparity_image_proc" pkg="nodelet" type="nodelet" args="load disparity_image_proc/depth_image stereo_proc" output="screen">
-    <remap from="/right/camera_info" to="/argos/camera/right/camera_info"/>
-    <remap from="/left/camera_info" to="/argos/camera/left/camera_info"/>
-    <remap from="/left/image_rect_color" to="/argos/camera/left/image_rect"/>
-    <remap from="/disparity" to="/argos/camera/disparity"/>
-    <remap from="/depth_image" to="/argos/camera/left/depth_image"/>    
+    
+    
+    <remap from="/right/camera_info" to="$(arg camera_name)/right/camera_info"/>
+    <remap from="/left/camera_info" to="$(arg camera_name)/left/camera_info"/>
+    <remap from="/left/image_rect_color" to="$(arg camera_name)/left/image_rect"/>
+    <remap from="/disparity" to="$(arg camera_name)/disparity"/>
+    <remap from="/depth_image" to="$(arg camera_name)/left/depth_image"/>    
   </node>
 
 

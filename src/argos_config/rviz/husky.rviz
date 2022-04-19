@@ -7,6 +7,10 @@ Panels:
         - /Global Options1
         - /Status1
         - /Sensing1
+        - /Sensing1/PointCloud21
+        - /Sensing1/PointCloud22
+        - /Sensing1/PointCloud23
+        - /Sensing1/PointCloud24
         - /Navigation1
         - /Navigation1/Exploration1
       Splitter Ratio: 0.49492400884628296
@@ -74,7 +78,22 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        camera_center:
+        camera_center_1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        camera_center_2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        camera_center_3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        camera_center_4:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -102,11 +121,35 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        left_camera_frame:
+        left_camera_frame_1:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        left_camera_optical_frame:
+        left_camera_frame_2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_camera_frame_3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_camera_frame_4:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_camera_optical_frame_1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_camera_optical_frame_2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_camera_optical_frame_3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_camera_optical_frame_4:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -266,7 +309,91 @@ Visualization Manager:
           Size (Pixels): 3
           Size (m): 0.009999999776482582
           Style: Flat Squares
-          Topic: /camera/depth/points
+          Topic: /camera_1/points2
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: RGB8
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: PointCloud2
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.009999999776482582
+          Style: Flat Squares
+          Topic: /camera_2/points2
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: RGB8
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: PointCloud2
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.009999999776482582
+          Style: Flat Squares
+          Topic: /camera_3/points2
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: RGB8
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: PointCloud2
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.009999999776482582
+          Style: Flat Squares
+          Topic: /camera_4/points2
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
@@ -335,12 +462,12 @@ Visualization Manager:
           Class: rviz/Map
           Color Scheme: costmap
           Draw Behind: false
-          Enabled: true
+          Enabled: false
           Name: Local Costmap
           Topic: /move_base/local_costmap/costmap
           Unreliable: false
           Use Timestamp: false
-          Value: true
+          Value: false
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
@@ -417,7 +544,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 17.12980079650879
+      Distance: 21.742589950561523
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -425,17 +552,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 1.629080057144165
-        Y: -0.08347029983997345
-        Z: -0.8487120270729065
+        X: 2.5338613986968994
+        Y: 1.3245811462402344
+        Z: 1.2054542303085327
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9598000049591064
+      Pitch: 0.40480026602745056
       Target Frame: <Fixed Frame>
-      Yaw: 5.220399856567383
+      Yaw: 4.245397090911865
     Saved: ~
 Window Geometry:
   Displays:
@@ -454,4 +581,4 @@ Window Geometry:
     collapsed: false
   Width: 1600
   X: 106
-  Y: 138
+  Y: 101

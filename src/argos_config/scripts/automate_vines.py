@@ -243,7 +243,7 @@ def main():
 
 
   # tifarray needs to be rotated for to get the correct values according to the heightmap
-  create_models_xml(start_x=5,start_y=-11,finish_x=15,finish_y=11,heightmap=np.rot90(tifarray,3),xml=xml_file)
+  create_models_xml(start_x=-5,start_y=-11,finish_x=15,finish_y=11,heightmap=np.rot90(tifarray,3),xml=xml_file)
   print("World File Ready : " + world_file)
 
 

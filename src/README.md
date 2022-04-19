@@ -107,14 +107,30 @@ roslaunch argos_config vine_argos.launch
 
 ## DEM as Ground With Husky
 
+
+### Husky PointCloud to Laserscan with four Cameras
 Run the Gazebo environment with Husky:
 
 ```console
-roslaunch argos_config vine_husky.launch
+roslaunch argos_config husky_gazebo.launch ptl:=true
+```
+
+### Husky Disparity to Laserscan with four Cameras
+
+Run the Gazebo environment with Husky:
+
+```console
+roslaunch argos_config husky_gazebo.launch
 ```
 
 Run the Gmapping Packages for Husky:
 
 ```console
 roslaunch argos_config husky_gmapping.launch
+```
+
+To launch Husky with 1 ZED camera :
+
+```console
+roslaunch argos_config husky_gazebo.launch four_cameras:=false
 ```

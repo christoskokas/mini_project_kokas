@@ -48,7 +48,12 @@
     </node>
 
     <group ns="argos">
-        <include file="$(find argos_config)/launch/pointcloud_to_laserscan/point_to_laser_node.launch" />
+        <include file="$(find argos_config)/launch/pointcloud_to_laserscan/point_to_laser_node.launch" >
+            <arg name="camera_name"             value="camera"/>
+            <arg name="target_frame"            value="argos/camera_center"/>
+            <arg name="min_height"              value="-1.0"/>
+
+        </include>
     </group>
 
 </launch>
