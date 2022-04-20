@@ -1,6 +1,8 @@
 <launch>
     <arg name="frame_prefix" default=""/>
     <arg name="robot_name" default=""/>
+    <arg name="odom_frame" default="argos/odom"/>
+    
 
     <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
         <rosparam file="$(find argos_config)/config/move_base/costmap_common_params.yaml" command="load" ns="global_costmap" />
@@ -15,7 +17,7 @@
         <param name="global_costmap/robot_base_frame"               value="$(arg frame_prefix)base_footprint"/>
         <param name="global_costmap/2d_obstacles_layer/scan/topic"  value="$(arg robot_name)scan"/>
         <param name="global_costmap/3d_obstacles_layer/depth/topic" value="$(arg robot_name)camera/points2"/>
-        <param name="local_costmap/global_frame"                    value="$(arg frame_prefix)odom"/>
+        <param name="local_costmap/global_frame"                    value="$(arg odom_frame)"/>
         <param name="local_costmap/robot_base_frame"                value="$(arg frame_prefix)base_footprint"/>
         <param name="local_costmap/2d_obstacles_layer/scan/topic"   value="$(arg robot_name)scan"/>
         <param name="local_costmap/3d_obstacles_layer/depth/topic"  value="$(arg robot_name)camera/points2"/>

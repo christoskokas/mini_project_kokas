@@ -31,7 +31,7 @@ source devel/setup.bash
 Run the Gazebo environment:
 
 ```console
-roslaunch argos_config disp_gazebo.launch
+roslaunch argos_config argos_gazebo.launch
 ```
 
 On another terminal run:
@@ -45,7 +45,7 @@ roslaunch argos_config slam.launch
 Run the Gazebo environment:
 
 ```console
-roslaunch argos_config point_gazebo.launch
+roslaunch argos_config argos_gazebo.launch ptl:=true
 ```
 
 On another terminal run:
@@ -73,13 +73,27 @@ roslaunch argos_config dc_slam.launch
 Run the Gazebo environment:
 
 ```console
-roslaunch argos_config gt_gazebo.launch
+roslaunch argos_config argos_gazebo.launch ground_truth:=true
 ```
 
 On another terminal run:
 
 ```console
-roslaunch argos_config gt_slam.launch
+roslaunch argos_config slam.launch ground_truth:=true
+```
+
+### PointCloud to Laserscan with RVIZ Robot Position from Ground Truth
+
+Run the Gazebo environment:
+
+```console
+roslaunch argos_config argos_gazebo.launch ground_truth:=true ptl:=true
+```
+
+On another terminal run:
+
+```console
+roslaunch argos_config slam.launch ground_truth:=true
 ```
 
 
