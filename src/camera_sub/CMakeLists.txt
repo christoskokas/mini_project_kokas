@@ -5,6 +5,7 @@ project(camera_sub)
 
 ## Find catkin and any catkin packages
 find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs genmsg)
+find_package(PCL REQUIRED)
 
 ## Declare ROS messages and services
 add_message_files(
@@ -22,7 +23,9 @@ generate_messages(DEPENDENCIES std_msgs)
 
 ## Declare a catkin package
 catkin_package()
-include_directories(${catkin_INCLUDE_DIRS})
+include_directories(${catkin_INCLUDE_DIRS}  ${PCL_INCLUDE_DIRS} )
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 
 add_executable(camera_subscriber src/camera_subscriber.cpp)
-target_link_libraries(camera_subscriber ${catkin_LIBRARIES})
+target_link_libraries(camera_subscriber ${PCL_LIBRARIES} ${catkin_LIBRARIES})

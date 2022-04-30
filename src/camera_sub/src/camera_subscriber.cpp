@@ -6,9 +6,16 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <pcl_ros/point_cloud.h>
+#include <pcl/point_types.h>
+#include <boost/foreach.hpp>
+
 
 #define CAMERA_PATH "/camera_1/right/image_raw"
-#define CAMERA_PATH_2 "/camera_2/right/image_raw"
+#define CAMERA_PATH_2 "/camera_1/left/image_raw"
+#define POINTCLOUD_PATH "/camera_1/points2"
+
+typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 class Camera_1 {
     private:
@@ -18,12 +25,17 @@ class Camera_1 {
     public:
         Camera_1(ros::NodeHandle *nh) {
             counter = 0;
+            pub = nh->advertise<sensor_msgs::Image>("/right_image", 10); 
             camera_subscriber = nh->subscribe(CAMERA_PATH, 1000, 
                 &Camera_1::callback_number, this);
         }
         void callback_number(const sensor_msgs::Image& msg) {
             counter += 1;
-            ROS_INFO("I heard from camera_1 : [%d] times \n", counter);
+            if (counter % 50 == 0)
+            {
+                ROS_INFO("I heard from camera_1 : [%d] times \n", counter);
+            }
+            pub.publish(msg);
         }
 };
 
@@ -40,27 +52,32 @@ class Camera_2 {
         }
         void callback_number(const sensor_msgs::Image& msg) {
             counter += 1;
-            ROS_INFO("I heard from camera_2 : [%d] times \n", counter);
-            // for (int i = 0; i < msg.height; i++)
-            // {
-            //     for (int j = 0; j < msg.width; i++)
-            //     {
-            //         ROS_INFO("[%f]         \n", &msg.data[i,j]);
-            //     }
-            //     ROS_INFO("\n");
-            // }
+            if (counter % 50 == 0)
+            {
+                ROS_INFO("I heard from camera_2 : [%d] times \n", counter);
+            }
+            
+        }
+};
 
-
-
-
-            // TO DO ::: PUBLISH TO A TOPIC THE IMAGE 
-
-
-
-
-
-
-
+class PointCloud_1 {
+        private:
+        int counter;
+        ros::Publisher pub;
+        ros::Subscriber camera_subscriber;
+    public:
+        PointCloud_1(ros::NodeHandle *nh) {
+            counter = 0;
+            camera_subscriber = nh->subscribe(POINTCLOUD_PATH, 1, 
+                &PointCloud_1::callback_number, this);
+        }
+        void callback_number(const PointCloud::ConstPtr& msg) {
+            printf ("Cloud: width = %d, height = %d\n", msg->width, msg->height);
+            BOOST_FOREACH (const pcl::PointXYZ& pt, msg->points)
+            if (!isnan(pt.x))
+            {
+                printf ("\t(%f, %f, %f)\n", pt.x, pt.y, pt.z);
+            }
             
             
         }
@@ -72,5 +89,6 @@ int main (int argc, char **argv)
     ros::NodeHandle nh;
     Camera_1 camera1 = Camera_1(&nh);
     Camera_2 camera2 = Camera_2(&nh);
+    PointCloud_1 point = PointCloud_1(&nh);
     ros::spin();
 }
