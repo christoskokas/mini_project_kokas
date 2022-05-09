@@ -25,5 +25,6 @@
   <exec_depend>message_to_tf</exec_depend>
   <exec_depend>husky_gazebo</exec_depend>
   <exec_depend>husky_navigation</exec_depend>
+  <exec_depend>key_teleop</exec_depend>
   
 </package>

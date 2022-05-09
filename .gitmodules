@@ -31,3 +31,7 @@
 [submodule "src/packages/image_pipeline"]
 	path = src/packages/image_pipeline
 	url = https://github.com/ros-perception/image_pipeline.git
+[submodule "src/packages/teleop_tools"]
+	path = src/packages/teleop_tools
+	url = https://github.com/ros-teleop/teleop_tools.git
+	branch = kinetic-devel

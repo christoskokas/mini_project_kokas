@@ -148,3 +148,24 @@ To launch Husky with 1 ZED camera :
 ```console
 roslaunch argos_config husky_gazebo.launch four_cameras:=false
 ```
+
+
+### Husky movement with keyboard for VO
+
+Run The Gazebo environment with Husky:
+
+```console
+roslaunch argos_config husky_gazebo.launch
+```
+
+Run the teleop package with the cmd_vel topic that controls the Husky's velocity:
+
+```console
+rosrun key_teleop key_teleop.py key_vel:=cmd_vel
+```
+
+(Optional) Run the Rviz environment:
+
+```console
+roslaunch argos_config husky_gmapping.launch
+```
