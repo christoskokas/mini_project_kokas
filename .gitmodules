@@ -28,3 +28,6 @@
 	path = src/packages/husky
 	url = https://github.com/husky/husky.git
 	branch = noetic-devel
+[submodule "src/packages/image_pipeline"]
+	path = src/packages/image_pipeline
+	url = https://github.com/ros-perception/image_pipeline.git
