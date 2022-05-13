@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="ORB_SLAM3" type="Stereo_Inertial" name="orb_stereo" args="$(find argos_config)../packages/ORB_SLAM3/Vocabulary/ORBvoc.txt $(find argos_config)../packages/ORB_SLAM3/Examples/Stereo-Inertial/EuRoC.yaml true" />
+</launch>
