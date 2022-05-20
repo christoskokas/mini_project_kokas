@@ -228,9 +228,19 @@ Run the teleop package with the cmd_vel topic that controls the Husky's velocity
 rosrun key_teleop key_teleop.py key_vel:=cmd_vel
 ```
 
-Run the ORB_SLAM3 package
+#### Stereo ORB_SLAM3
+
+Run the ORB_SLAM3 package with stereo:
 
 ```console
-roslaunch orbslam3 ros_stereo_orb.launch 
+roslaunch orbslam3 ros_stereo.launch 
+```
+
+#### Stereo-Inertial ORB_SLAM3
+
+Run the ORB_SLAM3 package with stereo inertial:
+
+```console
+roslaunch orbslam3 ros_stereo_inertial.launch 
 ```
 
