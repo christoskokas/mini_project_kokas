@@ -83,9 +83,25 @@
 
     <link name="left_camera_optical_frame_${numb}"/>
 
+    <joint name="right_camera_joint_${numb}" type="fixed">
+        <parent link="camera_center_${numb}"/>
+        <child link="right_camera_frame_${numb}"/>
+        <origin xyz="0 -${baseline/2} 0" rpy="0 0 0" />
+    </joint>
+
+    <link name="right_camera_frame_${numb}" />
+
+    <joint name="right_camera_optical_joint_${numb}" type="fixed">
+        <origin xyz="0 0 0" rpy="-${M_PI/2} 0.0 -${M_PI/2}"/>
+        <parent link="right_camera_frame_${numb}"/>
+        <child link="right_camera_optical_frame_${numb}"/>
+    </joint>
+
+    <link name="right_camera_optical_frame_${numb}"/>
+
     <gazebo reference="left_camera_frame_${numb}">
         <sensor type="multicamera" name="stereo_camera">
-        <update_rate>30.0</update_rate>
+        <update_rate>20.0</update_rate>
         <camera name="left">
             <horizontal_fov>1.91986218</horizontal_fov>
             <vertical_fov>1.22173048</vertical_fov>
@@ -99,11 +115,6 @@
                 <near>0.02</near>
                 <far>300</far>
             </clip>
-            <noise>
-                <type>gaussian</type>
-                <mean>0.0</mean>
-                <stddev>0.004</stddev>
-            </noise>
         </camera>
         <camera name="right">
             <pose>0 -0.12 0 0 0 0</pose>
@@ -119,11 +130,6 @@
                 <near>0.02</near>
                 <far>300</far>
             </clip>
-            <noise>
-                <type>gaussian</type>
-                <mean>0.0</mean>
-                <stddev>0.004</stddev>
-            </noise>
         </camera>
         <plugin name="stereo_camera_controller" filename="libgazebo_ros_multicamera.so">
             <robotNamespace>/</robotNamespace>
