@@ -189,6 +189,12 @@ Install OpenCV:
 sudo apt install libopencv-dev python3-opencv
 ```
 
+Install Sophus:
+
+```console
+sudo apt-get install ros-noetic-sophus
+```
+
 ### Pangolin
 
 ORB_SLAM3 uses Pangolin for visualization and user interface. Dowload and install instructions can be found at: https://github.com/stevenlovegrove/Pangolin.
@@ -244,3 +250,49 @@ Run the ORB_SLAM3 package with stereo inertial:
 roslaunch orbslam3 ros_stereo_inertial.launch 
 ```
 
+### Installing VINS-FUSION-noetic
+
+* Download ORB_SLAM3_noetic package:
+
+```console
+git clone https://github.com/christoskokas/VINS-Fusion-noetic.git
+```
+
+* Build the ROS packages:
+
+```console
+catkin build vins
+catkin build loop_fusion
+```
+
+### VINS-FUSION with Husky
+
+Launch vins rviz environment:
+
+```console
+roslaunch vins vins_rviz.launch
+```
+
+Launch stereo-inertial node:
+
+```console
+roslaunch vins vins_stereo_inertial.launch
+```
+
+Launch loop_fusion node:
+
+```console
+roslaunch vins loop_fusion_vins.launch
+```
+
+Launch the Gazebo environment:
+
+```console
+roslaunch argos_config arena_husky_gazebo.launch
+```
+
+Launch teleop to move Husky:
+
+```console
+rosrun key_teleop key_teleop.py key_vel:=cmd_vel
+```
