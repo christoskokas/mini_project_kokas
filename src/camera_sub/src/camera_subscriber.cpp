@@ -3,6 +3,7 @@
 #include <std_srvs/SetBool.h>
 #include <std_msgs/String.h>
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/Imu.h>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -14,6 +15,7 @@
 #define CAMERA_PATH "/camera_1/right/image_raw"
 #define CAMERA_PATH_2 "/camera_1/left/image_raw"
 #define POINTCLOUD_PATH "/camera_1/points2"
+#define IMU_PATH "/imu/data"
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
@@ -42,21 +44,28 @@ class Camera_1 {
 class Camera_2 {
     private:
         int counter;
+        float camera_time;
+        float imu_time;
         ros::Publisher pub;
         ros::Subscriber camera_subscriber;
+        ros::Subscriber imu_subscriber;
     public:
         Camera_2(ros::NodeHandle *nh) {
             counter = 0;
+            camera_time = 0;
+            imu_time = 0;
             camera_subscriber = nh->subscribe(CAMERA_PATH_2, 1000, 
                 &Camera_2::callback_number, this);
+            imu_subscriber = nh->subscribe(IMU_PATH, 1000, 
+                &Camera_2::callback_number_2, this);
         }
         void callback_number(const sensor_msgs::Image& msg) {
-            counter += 1;
-            if (counter % 50 == 0)
-            {
-                ROS_INFO("I heard from camera_2 : [%d] times \n", counter);
-            }
+            camera_time = msg.header.stamp.sec + msg.header.stamp.nsec*1e-9;
             
+        }
+        void callback_number_2(const sensor_msgs::Imu& msg_2) {
+            imu_time = msg_2.header.stamp.sec + msg_2.header.stamp.nsec*1e-9;
+            ROS_INFO("The time difference between camera-imu is : [%f] \n", imu_time - camera_time);
         }
 };
 
@@ -87,8 +96,6 @@ int main (int argc, char **argv)
 {
     ros::init(argc, argv, "camera_subscriber");
     ros::NodeHandle nh;
-    Camera_1 camera1 = Camera_1(&nh);
     Camera_2 camera2 = Camera_2(&nh);
-    PointCloud_1 point = PointCloud_1(&nh);
     ros::spin();
 }
