@@ -1,4 +1,0 @@
-<launch>
-  <node name="camera_subscriber" pkg="camera_sub" type="camera_subscriber" output="screen" >
-  </node>
-</launch>

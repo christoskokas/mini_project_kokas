@@ -1,0 +1,4 @@
+<launch>
+  <node name="Camera" pkg="vio_slam" type="Camera" output="screen" >
+  </node>
+</launch>
