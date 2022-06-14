@@ -12,15 +12,19 @@
 #include <pcl/point_types.h>
 #include <boost/foreach.hpp>
 
-using namespace std;
+// using namespace std;
 
 int main (int argc, char **argv)
 {
-    ros::init(argc, argv, "Camera");
+    ros::init(argc, argv, "VioSlam");
     ros::NodeHandle nh;
     vio_slam::Zed_Camera zedcamera(&nh);
-    zedcamera.camera_left;
-    // std::cout << "xd" << zedcamera.camera_left->getFx() << std::endl;
+    std::cout << "xd      " << zedcamera.camera_left->GetFx() << std::endl;
+    zedcamera.GetResolution();
+    std::cout << "Left Camera"  << std::endl;
+    zedcamera.camera_left->GetIntrinsicValues();
+    std::cout << "Right Camera" << std::endl;
+    zedcamera.camera_right->GetIntrinsicValues();
     // Zed_Camera::Camera_2 camera_right = Zed_Camera::Camera_2(&nh);
     // Zed_Camera::Camera_2 camera_rightfx = Zed_Camera::Camera2::getFx();
     ros::spin();
