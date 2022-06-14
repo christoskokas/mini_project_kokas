@@ -1,2 +1,3 @@
 .vscode/
 push.sh
+src/vio_slam/.vscode
