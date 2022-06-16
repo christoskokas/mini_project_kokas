@@ -252,7 +252,7 @@ roslaunch orbslam3 ros_stereo_inertial.launch
 
 ### Installing VINS-FUSION-noetic
 
-* Download ORB_SLAM3_noetic package:
+* Download VINS-FUSION-noetic package:
 
 ```console
 git clone https://github.com/christoskokas/VINS-Fusion-noetic.git
@@ -295,4 +295,65 @@ Launch teleop to move Husky:
 
 ```console
 rosrun key_teleop key_teleop.py key_vel:=cmd_vel
+```
+
+
+### Installing ZED SDK ZED2i Camera
+
+* Install Latest ZED SDK (tested with 3.7.4) from this [link](https://www.stereolabs.com/developers/release/)
+
+* Install Cuda (tested with Cuda 11.5) from this [link](https://developer.nvidia.com/cuda-11-5-0-download-archive). Don't forget to specify the cuda version as shown below :
+
+```console
+sudo apt-get install cuda-11.5
+```
+
+* After installation reboot. 
+* Run ZED_Diagnostic to make sure everything works as intented. ZED_Diagnostic on Ubuntu 20.04 can be found in :
+
+
+```console
+/usr/local/zed/tools/
+```
+
+* Download zed_ros_wrapper following this [link](https://www.stereolabs.com/docs/ros/).
+
+### Running ORB_SLAM3 with ZED2i Camera
+
+Launch ros wrapper for ZED2i Camera :
+
+```
+roslaunch zed_wrapper zed2i.launch 
+```
+
+Launch ORBSLAM3 :
+
+```
+roslaunch orbslam3 zed2i_camera.launch 
+```
+
+### Running VINS-FUSION with ZED2i Camera
+
+Launch vins rviz environment:
+
+```console
+roslaunch vins vins_rviz.launch
+```
+
+Launch stereo-inertial node with ZED2i Camera:
+
+```console
+roslaunch vins vins_zed2i.launch 
+```
+
+Launch loop_fusion node:
+
+```console
+roslaunch vins loop_fusion_zed2i.launch 
+```
+
+Launch ros wrapper for ZED2i Camera :
+
+```
+roslaunch zed_wrapper zed2i.launch 
 ```
