@@ -15,3 +15,5 @@ Camera:
   height: 752
   fps: 15.0
   bl: 0.12
+
+Camera_path: /zed2i/zed_node/left_raw/image_raw_color

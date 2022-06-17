@@ -1,4 +1,5 @@
 #include "Camera.h"
+#include "Viewer.h"
 #include <ros/ros.h>
 #include <std_msgs/Int64.h>
 #include <std_srvs/SetBool.h>
@@ -25,6 +26,7 @@ int main (int argc, char **argv)
     zedcamera.camera_left->GetIntrinsicValues();
     std::cout << "Right Camera" << std::endl;
     zedcamera.camera_right->GetIntrinsicValues();
+    vio_slam::FeatureDrawer fv(&nh);
     // Zed_Camera::Camera_2 camera_right = Zed_Camera::Camera_2(&nh);
     // Zed_Camera::Camera_2 camera_rightfx = Zed_Camera::Camera2::getFx();
     ros::spin();

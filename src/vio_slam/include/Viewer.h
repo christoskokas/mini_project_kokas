@@ -1,13 +1,33 @@
-#include "Camera.h"
+#ifndef VIEWER_H
+#define VIEWER_H
+
 #include <ros/ros.h>
-#include <std_msgs/Int64.h>
-#include <std_srvs/SetBool.h>
-#include <std_msgs/String.h>
-#include <sensor_msgs/Image.h>
-#include <sensor_msgs/Imu.h>
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <pcl_ros/point_cloud.h>
-#include <pcl/point_types.h>
-#include <boost/foreach.hpp> 
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
+#include <sensor_msgs/image_encodings.h>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+namespace vio_slam
+{
+
+class FeatureDrawer
+{
+    private:
+        image_transport::ImageTransport m_it;
+        image_transport::Subscriber m_image_sub;
+        image_transport::Publisher m_image_pub;
+        std::string m_camera_path;
+    public:
+        FeatureDrawer(ros::NodeHandle *nh);
+        ~FeatureDrawer();
+        void imageCallback(const sensor_msgs::ImageConstPtr& msg);
+        void addFeatures();
+
+};
+
+
+}
+
+
+#endif // VIEWER_H
