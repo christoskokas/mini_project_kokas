@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 project(vio_slam)
 
 
@@ -26,6 +26,7 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
 )
 find_package(PCL REQUIRED)
+find_package(Pangolin REQUIRED)
 
 ## Declare ROS messages and services
 add_message_files(
@@ -42,6 +43,7 @@ add_library(${PROJECT_NAME} SHARED
 src/VioSlam.cpp
 src/Camera.cpp
 src/Viewer.cpp
+src/Frame.cpp
 include/Camera.h
 include/Viewer.h
 )
@@ -56,6 +58,7 @@ include_directories(
   ${PCL_INCLUDE_DIRS} 
   ${PROJECT_SOURCE_DIR}
   ${PROJECT_SOURCE_DIR}/include
+  ${Pangolin_INCLUDE_DIRS}
   )
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
@@ -70,6 +73,7 @@ target_link_libraries(${PROJECT_NAME}
 ${catkin_LIBRARIES}
 ${OpenCV_LIBS}
 ${PCL_LIBRARIES}
+${Pangolin_LIBRARIES}
 )
 
 add_executable(VioSlam src/VioSlam.cpp)
