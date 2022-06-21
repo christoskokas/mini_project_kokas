@@ -17,3 +17,5 @@ Camera:
   bl: 0.12
 
 Camera_path: /zed2i/zed_node/left_raw/image_raw_color
+
+ground_truth_path: /odom/ground_truth

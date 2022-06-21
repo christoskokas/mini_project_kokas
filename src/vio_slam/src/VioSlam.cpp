@@ -17,18 +17,6 @@
 
 // using namespace std;
 
-void publisherThread()
-{
-    while( ros::ok() && !pangolin::ShouldQuit() )
-    {
-        // Clear screen and activate view to render into
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // Swap frames and Process Events
-        pangolin::FinishFrame();
-    }
-}
-
 int main (int argc, char **argv)
 {
     ros::init(argc, argv, "VioSlam");
@@ -42,7 +30,7 @@ int main (int argc, char **argv)
     zedcamera.camera_right->GetIntrinsicValues();
     vio_slam::FeatureDrawer fv(&nh);
     vio_slam::Frame frame;
-    std::thread worker(publisherThread);
+    std::thread worker(&vio_slam::Frame::pangoQuit, frame, &nh);
     std::cout << "Right Camera" << std::endl;
     // Zed_Camera::Camera_2 camera_right = Zed_Camera::Camera_2(&nh);
     // Zed_Camera::Camera_2 camera_rightfx = Zed_Camera::Camera2::getFx();

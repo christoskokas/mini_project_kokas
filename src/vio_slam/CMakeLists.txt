@@ -23,10 +23,12 @@ find_package(catkin REQUIRED COMPONENTS
   genmsg 
   sensor_msgs
   cv_bridge
+  nav_msgs
   image_transport
 )
 find_package(PCL REQUIRED)
 find_package(Pangolin REQUIRED)
+find_package(Eigen3 3.1.0 REQUIRED)
 
 ## Declare ROS messages and services
 add_message_files(
@@ -46,10 +48,14 @@ src/Viewer.cpp
 src/Frame.cpp
 include/Camera.h
 include/Viewer.h
+include/Frame.h
 )
 
 ## Generate added messages and services
-generate_messages(DEPENDENCIES std_msgs)
+generate_messages(DEPENDENCIES 
+std_msgs
+nav_msgs
+)
 
 ## Declare a catkin package
 catkin_package()
@@ -59,6 +65,7 @@ include_directories(
   ${PROJECT_SOURCE_DIR}
   ${PROJECT_SOURCE_DIR}/include
   ${Pangolin_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIR}
   )
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
@@ -74,6 +81,7 @@ ${catkin_LIBRARIES}
 ${OpenCV_LIBS}
 ${PCL_LIBRARIES}
 ${Pangolin_LIBRARIES}
+${EIGEN3_LIBS}
 )
 
 add_executable(VioSlam src/VioSlam.cpp)
