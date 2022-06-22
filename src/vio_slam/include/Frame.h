@@ -57,6 +57,7 @@ struct CameraFrame : public pangolin::Interactive, public pangolin::Renderable
     const pangolin::InteractiveIndex::Token label_x;
     const pangolin::InteractiveIndex::Token label_y;
     const pangolin::InteractiveIndex::Token label_z;
+    const char *color;
     ros::Subscriber groundSub;
 };
 

@@ -21,6 +21,8 @@ Frame::Frame()
 
 void Frame::pangoQuit(ros::NodeHandle *nh)
 {
+    const int UI_WIDTH = 180;
+    
     pangolin::CreateWindowAndBind("Main", 640, 480);
     glEnable(GL_DEPTH_TEST);
 
@@ -31,28 +33,50 @@ void Frame::pangoQuit(ros::NodeHandle *nh)
     );
 
     pangolin::Renderable tree;
-
+    auto axis_i = std::make_shared<pangolin::Axis>();
+    tree.Add(axis_i);
     auto camera = std::make_shared<CameraFrame>();
+    camera->color = "G";
     tree.Add(camera);
     camera->groundSubscriber(nh);
 
     // Create Interactive View in window
     pangolin::SceneHandler handler(tree, s_cam);
     pangolin::View& d_cam = pangolin::CreateDisplay()
-            .SetBounds(0.0, 1.0, 0.0, 1.0, -640.0f/480.0f)
+            .SetBounds(0.0, 1.0, pangolin::Attach::Pix(UI_WIDTH), 1.0, -640.0f/480.0f)
             .SetHandler(&handler);
 
     d_cam.SetDrawFunction([&](pangolin::View& view){
         view.Activate(s_cam);
         tree.Render();
     });
+    pangolin::CreatePanel("ui").SetBounds(0.0, 1.0, 0.0, pangolin::Attach::Pix(UI_WIDTH));
+    pangolin::Var<bool> a_button("ui.Button", false, false);
+
     while( ros::ok() && !pangolin::ShouldQuit() )
     {
         
         // Clear screen and activate view to render into
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+        if (pangolin::Pushed(a_button))
+        {
+            ROS_INFO("Keyframe Added \n");
+            auto keyframe = std::make_shared<CameraFrame>();
+            keyframe->T_pc = camera->T_pc;
+            keyframe->color = "B";
+            tree.Add(keyframe);
+            // pangolin::SceneHandler handler(tree, s_cam);
+            // pangolin::View& d_cam = pangolin::CreateDisplay()
+            //         .SetBounds(0.0, 1.0, pangolin::Attach::Pix(UI_WIDTH), 1.0, -640.0f/480.0f)
+            //         .SetHandler(&handler);
 
+            d_cam.SetDrawFunction([&](pangolin::View& view){
+                view.Activate(s_cam);
+                tree.Render();
+            });
+            
+        }
         // Swap frames and Process Events
         pangolin::FinishFrame();
     }
@@ -96,9 +120,15 @@ void CameraFrame::Render(const pangolin::RenderParams&)
     const float z = w*0.6;
 
     glPushMatrix();
-
+    if (color == "G")
+    {
+        glColor3f(0.0f,1.0f,0.0f);
+    }
+    if (color == "B")
+    {
+        glColor3f(0.0f,0.0f,1.0f);
+    }
     glLineWidth(1);
-    glColor3f(0.0f,1.0f,0.0f);
     glBegin(GL_LINES);
     glVertex3f(0,0,0);
     glVertex3f(w,h,z);
