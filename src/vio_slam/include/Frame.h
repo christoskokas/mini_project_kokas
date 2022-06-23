@@ -24,6 +24,15 @@
 
 namespace vio_slam
 {
+/**
+ * @brief Contain The Transformation Matrix and the PointCloud for each KeyFrame.
+ */
+struct KeyFrameVars
+{
+    std::vector < pangolin::GLprecision > mT;                //Column Major
+        // pointcloud;                          //TO BE DONE
+    std::vector <int> trial;                    //Trial for PointCloud
+};
 
 class Frame
 {
@@ -31,8 +40,12 @@ class Frame
 
     public:
         Frame();
-        void pangoQuit(ros::NodeHandle *nh);
-        
+        void pangoQuit(ros::NodeHandle *nh);                    
+        std::list< KeyFrameVars > keyFrames;
+
+        void printList(std::list< KeyFrameVars > keyFrames);
+
+
 };
 
 struct CameraFrame : public pangolin::Interactive, public pangolin::Renderable

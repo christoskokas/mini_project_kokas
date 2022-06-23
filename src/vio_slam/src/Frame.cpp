@@ -11,12 +11,43 @@
 #include <pangolin/display/view.h>
 #include <pangolin/scene/axis.h>
 #include <pangolin/scene/scenehandler.h>
+#include <vector>
 
 namespace vio_slam
 {
 Frame::Frame()
 {
     
+}
+
+void Frame::printList(std::list< KeyFrameVars > keyFrames)
+{
+    
+
+
+    for (auto vect : keyFrames)
+    {
+        {
+        std::cout << "OpenGLMatrix : [ ";
+        std::vector < pangolin::GLprecision > curvect = vect.mT;
+
+        for (auto element : curvect)
+        {
+            std::cout << element << ' ';
+        }
+        std::cout << ']';
+        std::cout << '\n';
+        }
+        std::cout << "ints : [ ";
+        std::vector < int > curvect = vect.trial;
+
+        for (auto element : curvect)
+        {
+            std::cout << element << ' ';
+        }
+        std::cout << ']';
+        std::cout << '\n';
+    }
 }
 
 void Frame::pangoQuit(ros::NodeHandle *nh)
@@ -35,11 +66,21 @@ void Frame::pangoQuit(ros::NodeHandle *nh)
     pangolin::Renderable tree;
     auto axis_i = std::make_shared<pangolin::Axis>();
     tree.Add(axis_i);
+    // std::shared_ptr<CameraFrame> camera(new CameraFrame());
     auto camera = std::make_shared<CameraFrame>();
     camera->color = "G";
     tree.Add(camera);
     camera->groundSubscriber(nh);
-
+    // std::vector<pangolin::OpenGlMatrix> lel;
+    // lel.at(0) = camera->T_pc;
+    KeyFrameVars temp;
+    for (size_t i = 0; i < 16; i++)
+    {
+        temp.trial.push_back(i);
+        temp.mT.push_back(camera->T_pc.m[i]);
+    }
+    keyFrames.push_back(temp);
+    
     // Create Interactive View in window
     pangolin::SceneHandler handler(tree, s_cam);
     pangolin::View& d_cam = pangolin::CreateDisplay()
@@ -52,7 +93,6 @@ void Frame::pangoQuit(ros::NodeHandle *nh)
     });
     pangolin::CreatePanel("ui").SetBounds(0.0, 1.0, 0.0, pangolin::Attach::Pix(UI_WIDTH));
     pangolin::Var<bool> a_button("ui.Button", false, false);
-
     while( ros::ok() && !pangolin::ShouldQuit() )
     {
         
@@ -66,6 +106,15 @@ void Frame::pangoQuit(ros::NodeHandle *nh)
             keyframe->T_pc = camera->T_pc;
             keyframe->color = "B";
             tree.Add(keyframe);
+            temp.mT.clear();
+            temp.trial.clear();
+            for (size_t i = 0; i < 16; i++)
+            {
+                temp.trial.push_back(i+1);
+                temp.mT.push_back(keyframe->T_pc.m[i]);
+            }
+            keyFrames.push_back(temp);
+            
             // pangolin::SceneHandler handler(tree, s_cam);
             // pangolin::View& d_cam = pangolin::CreateDisplay()
             //         .SetBounds(0.0, 1.0, pangolin::Attach::Pix(UI_WIDTH), 1.0, -640.0f/480.0f)
@@ -75,6 +124,7 @@ void Frame::pangoQuit(ros::NodeHandle *nh)
                 view.Activate(s_cam);
                 tree.Render();
             });
+            printList(keyFrames);
             
         }
         // Swap frames and Process Events
