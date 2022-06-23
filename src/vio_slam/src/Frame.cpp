@@ -11,6 +11,9 @@
 #include <pangolin/display/view.h>
 #include <pangolin/scene/axis.h>
 #include <pangolin/scene/scenehandler.h>
+#include <pcl_ros/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
 #include <vector>
 
 namespace vio_slam
@@ -38,15 +41,26 @@ void Frame::printList(std::list< KeyFrameVars > keyFrames)
         std::cout << ']';
         std::cout << '\n';
         }
-        std::cout << "ints : [ ";
-        std::vector < int > curvect = vect.trial;
 
-        for (auto element : curvect)
-        {
-            std::cout << element << ' ';
-        }
-        std::cout << ']';
-        std::cout << '\n';
+        // THIS IS FOR THE FEATURES NOT POINTCLOUDS
+
+        // std::cout << " All Pointclouds : [ ";
+        // std::vector <std::vector < pcl::PointXYZ> > curvect = vect.pointCloud;
+
+        // for (auto element : curvect)
+        // {
+        //     std::vector < pcl::PointXYZ> curvect2 = element;
+        //     std::cout << " each Pointclouds : [ ";
+        //     for (auto elementxyz : curvect2)
+        //     {
+        //         std::cout << "( "  <<elementxyz.x << ' ' << elementxyz.y << ' ' << elementxyz.z << ")";
+        //     }
+        //     std::cout << "]";
+        //     std::cout << '\n';
+
+        // }
+        // std::cout << ']';
+        // std::cout << '\n';
     }
 }
 
@@ -70,13 +84,12 @@ void Frame::pangoQuit(ros::NodeHandle *nh)
     auto camera = std::make_shared<CameraFrame>();
     camera->color = "G";
     tree.Add(camera);
-    camera->groundSubscriber(nh);
+    camera->Subscribers(nh);
     // std::vector<pangolin::OpenGlMatrix> lel;
     // lel.at(0) = camera->T_pc;
     KeyFrameVars temp;
     for (size_t i = 0; i < 16; i++)
     {
-        temp.trial.push_back(i);
         temp.mT.push_back(camera->T_pc.m[i]);
     }
     keyFrames.push_back(temp);
@@ -95,47 +108,49 @@ void Frame::pangoQuit(ros::NodeHandle *nh)
     pangolin::Var<bool> a_button("ui.Button", false, false);
     while( ros::ok() && !pangolin::ShouldQuit() )
     {
-        
+        auto lines = std::make_shared<Lines>();    
         // Clear screen and activate view to render into
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+        lines->getValues(temp.mT,camera->T_pc.m);
         if (pangolin::Pushed(a_button))
         {
+            camera->buttonPressed = true;
             ROS_INFO("Keyframe Added \n");
             auto keyframe = std::make_shared<CameraFrame>();
             keyframe->T_pc = camera->T_pc;
+            // keyframe->mPointCloud = camera->mPointCloud;
             keyframe->color = "B";
             tree.Add(keyframe);
-            temp.mT.clear();
-            temp.trial.clear();
+            tree.Add(lines);
+            temp.clear();
             for (size_t i = 0; i < 16; i++)
             {
-                temp.trial.push_back(i+1);
                 temp.mT.push_back(keyframe->T_pc.m[i]);
             }
+            // temp.pointCloud.push_back(keyframe->mPointCloud);
             keyFrames.push_back(temp);
             
-            // pangolin::SceneHandler handler(tree, s_cam);
-            // pangolin::View& d_cam = pangolin::CreateDisplay()
-            //         .SetBounds(0.0, 1.0, pangolin::Attach::Pix(UI_WIDTH), 1.0, -640.0f/480.0f)
-            //         .SetHandler(&handler);
-
+            
             d_cam.SetDrawFunction([&](pangolin::View& view){
                 view.Activate(s_cam);
                 tree.Render();
             });
-            printList(keyFrames);
+            // printList(keyFrames);
             
         }
+        
         // Swap frames and Process Events
         pangolin::FinishFrame();
     }
 }
 
-void CameraFrame::groundSubscriber(ros::NodeHandle *nh)
+void CameraFrame::Subscribers(ros::NodeHandle *nh)
 {
-    nh->getParam("ground_truth_path", mGroundTruth);
-    groundSub = nh->subscribe(mGroundTruth, 1, &CameraFrame::groundCallback, this);
+    nh->getParam("ground_truth_path", mGroundTruthPath);
+    nh->getParam("pointcloud_path", mPointCloudPath);
+    groundSub = nh->subscribe(mGroundTruthPath, 1, &CameraFrame::groundCallback, this);
+    pointSub = nh->subscribe<PointCloud>(mPointCloudPath, 1, &CameraFrame::pointCallback, this);
 
 }
 
@@ -160,6 +175,15 @@ void CameraFrame::groundCallback(const nav_msgs::Odometry& msg)
     this->T_pc.m[14] = msg.pose.pose.position.x;            // X on Gazebo is Z on Pangolin
 
     // TODO add pointcloud to pangolin, change camera shape, add transformation from base link to camera
+}
+
+void CameraFrame::pointCallback(const PointCloud::ConstPtr& msg)
+{
+    BOOST_FOREACH (const pcl::PointXYZ& pt, msg->points)
+    if (!(pt.x != pt.x || pt.y != pt.y || pt.z != pt.z))
+    {
+        mPointCloud.push_back(pt);
+    }
 }
 
 void CameraFrame::Render(const pangolin::RenderParams&)
@@ -200,6 +224,43 @@ void CameraFrame::Render(const pangolin::RenderParams&)
 
     glVertex3f(-w,-h,z);
     glVertex3f(w,-h,z);
+    glEnd();
+
+    glPopMatrix();
+}
+
+void Lines::getValues(std::vector < pangolin::GLprecision > mKeyFrame, pangolin::GLprecision mCamera[16])
+{
+
+    m[0] = mKeyFrame[12];
+    m[1] = mKeyFrame[13];
+    m[2] = mKeyFrame[14];
+    m[3] = mCamera[12];
+    m[4] = mCamera[13];
+    m[5] = mCamera[14];
+}
+
+void Lines::Render(const pangolin::RenderParams& params)
+{
+    glPushMatrix();
+    glColor3f(1.0f,0.0f,0.0f);
+    glLineWidth(1);
+    glBegin(GL_LINES);
+    glVertex3f(m[0],m[1],m[2]);
+    glVertex3f(m[3],m[4],m[5]);
+    glEnd();
+
+    glPopMatrix();
+}
+
+void CameraFrame::lineFromKeyFrameToCamera(KeyFrameVars temp)
+{
+    glPushMatrix();
+    glColor3f(1.0f,0.0f,0.0f);
+    glLineWidth(1);
+    glBegin(GL_LINES);
+    glVertex3f(temp.mT[12],temp.mT[13],temp.mT[14]);
+    glVertex3f(this->T_pc.m[12],this->T_pc.m[13],this->T_pc.m[14]);
     glEnd();
 
     glPopMatrix();

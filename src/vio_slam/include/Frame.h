@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef FRAME_H
 #define FRAME_H
 
@@ -21,6 +23,12 @@
 #include <Eigen/Geometry>
 #include <pangolin/scene/tree.h>
 #include <pangolin/geometry/glgeometry.h>
+#include <pcl_ros/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+#include <boost/foreach.hpp>
+
+typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 namespace vio_slam
 {
@@ -31,7 +39,13 @@ struct KeyFrameVars
 {
     std::vector < pangolin::GLprecision > mT;                //Column Major
         // pointcloud;                          //TO BE DONE
-    std::vector <int> trial;                    //Trial for PointCloud
+    std::vector <std::vector < pcl::PointXYZ> > pointCloud;
+    // std::vector<pcl::PointXYZ, Eigen::aligned_allocator<pcl::PointXYZ>>
+    void clear()
+    {
+        mT.clear();
+        pointCloud.clear();
+    }
 };
 
 class Frame
@@ -42,15 +56,26 @@ class Frame
         Frame();
         void pangoQuit(ros::NodeHandle *nh);                    
         std::list< KeyFrameVars > keyFrames;
-
         void printList(std::list< KeyFrameVars > keyFrames);
 
 
 };
 
+struct Lines : public pangolin::Renderable
+{
+    pangolin::GLprecision m[6];
+    void Render(const pangolin::RenderParams& params) override;
+    void getValues(std::vector < pangolin::GLprecision > mKeyFrame, pangolin::GLprecision mCamera[16]);
+};
+
 struct CameraFrame : public pangolin::Interactive, public pangolin::Renderable
 {
-    std::string mGroundTruth;
+    std::string mGroundTruthPath, mPointCloudPath;
+    const char *color;
+    bool buttonPressed;
+    std::vector < pcl::PointXYZ > mPointCloud;
+    ros::Subscriber groundSub;
+    ros::Subscriber pointSub;
     CameraFrame()
     {
     };
@@ -64,14 +89,11 @@ struct CameraFrame : public pangolin::Interactive, public pangolin::Renderable
         const pangolin::GLprecision /*win*/[3], const pangolin::GLprecision /*obj*/[3], const pangolin::GLprecision /*normal*/[3],
         int /*button_state*/, int /*pickId*/
     ) override;
-    void groundSubscriber(ros::NodeHandle *nh);
+    void Subscribers(ros::NodeHandle *nh);
     void groundCallback(const nav_msgs::Odometry& msg);
-    float axis_length;
-    const pangolin::InteractiveIndex::Token label_x;
-    const pangolin::InteractiveIndex::Token label_y;
-    const pangolin::InteractiveIndex::Token label_z;
-    const char *color;
-    ros::Subscriber groundSub;
+    void pointCallback(const PointCloud::ConstPtr& msg);
+    void lineFromKeyFrameToCamera(KeyFrameVars temp);
+    
 };
 
 

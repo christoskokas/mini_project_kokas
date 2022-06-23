@@ -15,7 +15,8 @@
 #include <boost/foreach.hpp>
 #include <thread>
 
-// using namespace std;
+// TODO MUTEX THREAD FOR FEATURE MATCHING AND LOOP 
+// CLOSING SO THAT THE PROGRAM CONTINUES WHILE SEARCHING FOR LOOP CLOSING
 
 int main (int argc, char **argv)
 {

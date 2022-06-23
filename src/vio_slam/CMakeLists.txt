@@ -22,6 +22,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs 
   genmsg 
   sensor_msgs
+  pcl_ros
+  pcl_conversions
   cv_bridge
   nav_msgs
   image_transport
