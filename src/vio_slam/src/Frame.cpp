@@ -135,6 +135,7 @@ void Frame::pangoQuit(ros::NodeHandle *nh)
             d_cam.SetDrawFunction([&](pangolin::View& view){
                 view.Activate(s_cam);
                 tree.Render();
+                camera->lineFromKeyFrameToCamera(temp.mT);
             });
             // printList(keyFrames);
             
@@ -189,9 +190,9 @@ void CameraFrame::pointCallback(const PointCloud::ConstPtr& msg)
 void CameraFrame::Render(const pangolin::RenderParams&)
 {
 
-    const float &w = 1;
+    const float w = 1;
     const float h = w*0.75;
-    const float z = w*0.6;
+    const float z = w*0.3;
 
     glPushMatrix();
     if (color == "G")
@@ -204,14 +205,26 @@ void CameraFrame::Render(const pangolin::RenderParams&)
     }
     glLineWidth(1);
     glBegin(GL_LINES);
-    glVertex3f(0,0,0);
+    glVertex3f(w/2,h/2,0);
     glVertex3f(w,h,z);
-    glVertex3f(0,0,0);
+    glVertex3f(w/2,-h/2,0);
     glVertex3f(w,-h,z);
-    glVertex3f(0,0,0);
+    glVertex3f(-w/2,-h/2,0);
     glVertex3f(-w,-h,z);
-    glVertex3f(0,0,0);
+    glVertex3f(-w/2,h/2,0);
     glVertex3f(-w,h,z);
+
+    glVertex3f(w/2,h/2,0);
+    glVertex3f(w/2,-h/2,0);
+
+    glVertex3f(-w/2,h/2,0);
+    glVertex3f(-w/2,-h/2,0);
+
+    glVertex3f(-w/2,h/2,0);
+    glVertex3f(w/2,h/2,0);
+
+    glVertex3f(-w/2,-h/2,0);
+    glVertex3f(w/2,-h/2,0);
 
     glVertex3f(w,h,z);
     glVertex3f(w,-h,z);
@@ -253,14 +266,14 @@ void Lines::Render(const pangolin::RenderParams& params)
     glPopMatrix();
 }
 
-void CameraFrame::lineFromKeyFrameToCamera(KeyFrameVars temp)
+void CameraFrame::lineFromKeyFrameToCamera(std::vector < pangolin::GLprecision > mT)
 {
     glPushMatrix();
     glColor3f(1.0f,0.0f,0.0f);
     glLineWidth(1);
     glBegin(GL_LINES);
-    glVertex3f(temp.mT[12],temp.mT[13],temp.mT[14]);
-    glVertex3f(this->T_pc.m[12],this->T_pc.m[13],this->T_pc.m[14]);
+    glVertex3f(mT[12],mT[13],mT[14]);
+    glVertex3f(T_pc.m[12], T_pc.m[13], T_pc.m[14]);
     glEnd();
 
     glPopMatrix();

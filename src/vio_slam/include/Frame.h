@@ -92,7 +92,7 @@ struct CameraFrame : public pangolin::Interactive, public pangolin::Renderable
     void Subscribers(ros::NodeHandle *nh);
     void groundCallback(const nav_msgs::Odometry& msg);
     void pointCallback(const PointCloud::ConstPtr& msg);
-    void lineFromKeyFrameToCamera(KeyFrameVars temp);
+    void lineFromKeyFrameToCamera(std::vector < pangolin::GLprecision > mT);
     
 };
 
