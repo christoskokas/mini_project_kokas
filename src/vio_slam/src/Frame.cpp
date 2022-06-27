@@ -1,20 +1,6 @@
 #include "Frame.h"
-#include "pangolin/pangolin.h"
-#include <ros/ros.h>
 #include <tf/tf.h>
-#include <image_transport/image_transport.h>
-#include <cv_bridge/cv_bridge.h>
-#include <sensor_msgs/image_encodings.h>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <pangolin/display/display.h>
-#include <pangolin/display/view.h>
-#include <pangolin/scene/axis.h>
-#include <pangolin/scene/scenehandler.h>
-#include <pcl_ros/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl/point_cloud.h>
-#include <vector>
+
 
 namespace vio_slam
 {
@@ -71,22 +57,18 @@ void Frame::pangoQuit(ros::NodeHandle *nh)
     pangolin::CreateWindowAndBind("Main", 640, 480);
     glEnable(GL_DEPTH_TEST);
 
-        // Define Projection and initial ModelView matrix
+    // Define Projection and initial ModelView matrix
     pangolin::OpenGlRenderState s_cam(
         pangolin::ProjectionMatrix(640,480,420,420,320,240,0.2,100),
         pangolin::ModelViewLookAt(-2,2,-2, 0,0,0, pangolin::AxisY)
     );
 
-    pangolin::Renderable tree;
-    auto axis_i = std::make_shared<pangolin::Axis>();
-    tree.Add(axis_i);
-    // std::shared_ptr<CameraFrame> camera(new CameraFrame());
+    pangolin::Renderable renders;
+    renders.Add(std::make_shared<pangolin::Axis>());
     auto camera = std::make_shared<CameraFrame>();
     camera->color = "G";
-    tree.Add(camera);
     camera->Subscribers(nh);
-    // std::vector<pangolin::OpenGlMatrix> lel;
-    // lel.at(0) = camera->T_pc;
+    renders.Add(camera);
     KeyFrameVars temp;
     for (size_t i = 0; i < 16; i++)
     {
@@ -95,38 +77,39 @@ void Frame::pangoQuit(ros::NodeHandle *nh)
     keyFrames.push_back(temp);
     
     // Create Interactive View in window
-    pangolin::SceneHandler handler(tree, s_cam);
+    pangolin::SceneHandler handler(renders, s_cam);
     pangolin::View& d_cam = pangolin::CreateDisplay()
             .SetBounds(0.0, 1.0, pangolin::Attach::Pix(UI_WIDTH), 1.0, -640.0f/480.0f)
             .SetHandler(&handler);
 
     d_cam.SetDrawFunction([&](pangolin::View& view){
         view.Activate(s_cam);
-        tree.Render();
+        renders.Render();
     });
     pangolin::CreatePanel("ui").SetBounds(0.0, 1.0, 0.0, pangolin::Attach::Pix(UI_WIDTH));
     pangolin::Var<bool> a_button("ui.Button", false, false);
     while( ros::ok() && !pangolin::ShouldQuit() )
     {
-        auto lines = std::make_shared<Lines>();    
         // Clear screen and activate view to render into
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+        // glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+        auto lines = std::make_shared<Lines>();    
         lines->getValues(temp.mT,camera->T_pc.m);
         if (pangolin::Pushed(a_button))
         {
-            camera->buttonPressed = true;
             ROS_INFO("Keyframe Added \n");
-            auto keyframe = std::make_shared<CameraFrame>();
-            keyframe->T_pc = camera->T_pc;
-            // keyframe->mPointCloud = camera->mPointCloud;
-            keyframe->color = "B";
-            tree.Add(keyframe);
-            tree.Add(lines);
+            {
+                auto keyframe = std::make_shared<CameraFrame>();
+                keyframe->T_pc = camera->T_pc;
+                // keyframe->mPointCloud = camera->mPointCloud;
+                keyframe->color = "B";
+                renders.Add(keyframe);
+            }
+            renders.Add(lines);
             temp.clear();
             for (size_t i = 0; i < 16; i++)
             {
-                temp.mT.push_back(keyframe->T_pc.m[i]);
+                temp.mT.push_back(camera->T_pc.m[i]);
             }
             // temp.pointCloud.push_back(keyframe->mPointCloud);
             keyFrames.push_back(temp);
@@ -134,7 +117,7 @@ void Frame::pangoQuit(ros::NodeHandle *nh)
             
             d_cam.SetDrawFunction([&](pangolin::View& view){
                 view.Activate(s_cam);
-                tree.Render();
+                renders.Render();
                 camera->lineFromKeyFrameToCamera(temp.mT);
             });
             // printList(keyFrames);
@@ -174,8 +157,6 @@ void CameraFrame::groundCallback(const nav_msgs::Odometry& msg)
     this->T_pc.m[12] = msg.pose.pose.position.y;            // Y on Gazebo is X on Pangolin
     this->T_pc.m[13] = msg.pose.pose.position.z;            // Z on Gazebo is Y on Pangolin
     this->T_pc.m[14] = msg.pose.pose.position.x;            // X on Gazebo is Z on Pangolin
-
-    // TODO add pointcloud to pangolin, change camera shape, add transformation from base link to camera
 }
 
 void CameraFrame::pointCallback(const PointCloud::ConstPtr& msg)
@@ -275,27 +256,8 @@ void CameraFrame::lineFromKeyFrameToCamera(std::vector < pangolin::GLprecision >
     glVertex3f(mT[12],mT[13],mT[14]);
     glVertex3f(T_pc.m[12], T_pc.m[13], T_pc.m[14]);
     glEnd();
-
     glPopMatrix();
 }
 
-bool CameraFrame::Mouse(int button,
-        const pangolin::GLprecision /*win*/[3], const pangolin::GLprecision /*obj*/[3], const pangolin::GLprecision /*normal*/[3],
-        bool /*pressed*/, int button_state, int pickId
-    )
-    {
-        PANGOLIN_UNUSED(button);
-        PANGOLIN_UNUSED(button_state);
-        PANGOLIN_UNUSED(pickId);
-        return false;
-    }
-
-bool CameraFrame::MouseMotion(
-        const pangolin::GLprecision /*win*/[3], const pangolin::GLprecision /*obj*/[3], const pangolin::GLprecision /*normal*/[3],
-        int /*button_state*/, int /*pickId*/
-    ) 
-    {
-        return false;
-    }
 
 }

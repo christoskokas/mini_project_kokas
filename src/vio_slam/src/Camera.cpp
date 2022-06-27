@@ -23,20 +23,19 @@ namespace vio_slam
 
 Zed_Camera::Zed_Camera(ros::NodeHandle *nh)
 {
-    camera_left = new Camera(nh);
-    camera_right = new Camera(nh);
+
     nh->getParam("/Camera/width",m_width);
     nh->getParam("/Camera/height",m_height);
     nh->getParam("/Camera/fps",m_fps);
     nh->getParam("/Camera/bl",m_baseline);
-    nh->getParam("/Camera_l/fx",camera_left->fx);
-    nh->getParam("/Camera_l/fy",camera_left->fy);
-    nh->getParam("/Camera_l/cx",camera_left->cx);
-    nh->getParam("/Camera_l/cy",camera_left->cy);
-    nh->getParam("/Camera_r/fx",camera_right->fx);
-    nh->getParam("/Camera_r/fy",camera_right->fy);
-    nh->getParam("/Camera_r/cx",camera_right->cx);
-    nh->getParam("/Camera_r/cy",camera_right->cy);
+    nh->getParam("/Camera_l/fx",camera_left.fx);
+    nh->getParam("/Camera_l/fy",camera_left.fy);
+    nh->getParam("/Camera_l/cx",camera_left.cx);
+    nh->getParam("/Camera_l/cy",camera_left.cy);
+    nh->getParam("/Camera_r/fx",camera_right.fx);
+    nh->getParam("/Camera_r/fy",camera_right.fy);
+    nh->getParam("/Camera_r/cx",camera_right.cx);
+    nh->getParam("/Camera_r/cy",camera_right.cy);
 }
 
 Zed_Camera::~Zed_Camera()
@@ -49,33 +48,39 @@ void Zed_Camera::GetResolution()
     ROS_INFO("Height : [%d], Width : [%d]", m_height, m_width);
 }
 
-Zed_Camera::Camera::Camera(ros::NodeHandle *nh)
+Camera::Camera(ros::NodeHandle *nh)
 {
-    counter = 0;
-    camera_time = 0;
-    imu_time = 0;
-    camera_subscriber = nh->subscribe(CAMERA_PATH_2, 1000, 
-        &Camera::callback_number, this);
-    imu_subscriber = nh->subscribe(IMU_PATH, 1000, 
-        &Camera::callback_number_2, this);
+    // counter = 0;
+    // camera_time = 0;
+    // imu_time = 0;
+    // camera_subscriber = nh->subscribe(CAMERA_PATH_2, 1000, 
+    //     &Camera::callback_number, this);
+    // imu_subscriber = nh->subscribe(IMU_PATH, 1000, 
+    //     &Camera::callback_number_2, this);
 }
 
-void Zed_Camera::Camera::callback_number(const sensor_msgs::Image& msg) {
-    camera_time = msg.header.stamp.sec + msg.header.stamp.nsec*1e-9;
-}
-
-void Zed_Camera::Camera::callback_number_2(const sensor_msgs::Imu& msg_2)
+Camera::~Camera()
 {
-    imu_time = msg_2.header.stamp.sec + msg_2.header.stamp.nsec*1e-9;
-    // ROS_INFO("The time difference between camera-imu is : [%f] \n", imu_time - camera_time);
+    
 }
 
-float Zed_Camera::Camera::GetFx()
+// void Camera::callback_number(const sensor_msgs::Image& msg) 
+// {
+//     camera_time = msg.header.stamp.sec + msg.header.stamp.nsec*1e-9;
+// }
+
+// void Camera::callback_number_2(const sensor_msgs::Imu& msg_2)
+// {
+//     imu_time = msg_2.header.stamp.sec + msg_2.header.stamp.nsec*1e-9;
+//     // ROS_INFO("The time difference between camera-imu is : [%f] \n", imu_time - camera_time);
+// }
+
+float Camera::GetFx()
 {
     return fx;
 }
 
-void Zed_Camera::Camera::GetIntrinsicValues()
+void Camera::GetIntrinsicValues()
 {
     ROS_INFO("\n fx : [%f] \n fy : [%f] \n cx : [%f] \n cy : [%f] \n", fx, fy, cx, cy);
 }
