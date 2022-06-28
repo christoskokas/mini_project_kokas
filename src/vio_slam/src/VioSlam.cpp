@@ -1,5 +1,5 @@
 #include "Camera.h"
-#include "Viewer.h"
+#include "FeatureDrawer.h"
 #include "Frame.h"
 #include <ros/ros.h>
 #include <std_msgs/Int64.h>
@@ -24,6 +24,7 @@ int main (int argc, char **argv)
 {
     ros::init(argc, argv, "VioSlam");
     ros::NodeHandle nh;
+    std::string featureMatchingStrat = "ORB";
     vio_slam::Zed_Camera zedcamera(&nh);
     std::cout << "xd      " << zedcamera.camera_left.GetFx() << std::endl;
     zedcamera.GetResolution();
@@ -31,7 +32,7 @@ int main (int argc, char **argv)
     zedcamera.camera_left.GetIntrinsicValues();
     std::cout << "Right Camera" << std::endl;
     zedcamera.camera_right.GetIntrinsicValues();
-    vio_slam::FeatureDrawer fv(&nh);
+    vio_slam::FeatureDrawer fv(&nh, &featureMatchingStrat);
     vio_slam::Frame frame;
     std::thread worker(&vio_slam::Frame::pangoQuit, frame, &nh);
     std::cout << "Right Camera" << std::endl;

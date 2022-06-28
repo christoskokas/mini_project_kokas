@@ -9,7 +9,7 @@ Frame::Frame()
     
 }
 
-void Frame::printList(std::list< KeyFrameVars > keyFrames)
+void Frame::printList(std::list< KeyFrameVars >& keyFrames)
 {
     
 
@@ -223,7 +223,7 @@ void CameraFrame::Render(const pangolin::RenderParams&)
     glPopMatrix();
 }
 
-void Lines::getValues(std::vector < pangolin::GLprecision > mKeyFrame, pangolin::GLprecision mCamera[16])
+void Lines::getValues(std::vector < pangolin::GLprecision >& mKeyFrame, pangolin::GLprecision mCamera[16])
 {
 
     m[0] = mKeyFrame[12];
@@ -247,7 +247,7 @@ void Lines::Render(const pangolin::RenderParams& params)
     glPopMatrix();
 }
 
-void CameraFrame::lineFromKeyFrameToCamera(std::vector < pangolin::GLprecision > mT)
+void CameraFrame::lineFromKeyFrameToCamera(std::vector < pangolin::GLprecision >& mT)
 {
     glPushMatrix();
     glColor3f(1.0f,0.0f,0.0f);

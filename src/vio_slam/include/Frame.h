@@ -42,9 +42,9 @@ class Frame
 
     public:
         Frame();
-        void pangoQuit(ros::NodeHandle *nh);                    
         std::list< KeyFrameVars > keyFrames;
-        void printList(std::list< KeyFrameVars > keyFrames);
+        void pangoQuit(ros::NodeHandle *nh);                    
+        void printList(std::list< KeyFrameVars >& keyFrames);
 
 
 };
@@ -53,7 +53,7 @@ struct Lines : public pangolin::Renderable
 {
     pangolin::GLprecision m[6];
     void Render(const pangolin::RenderParams& params) override;
-    void getValues(std::vector < pangolin::GLprecision > mKeyFrame, pangolin::GLprecision mCamera[16]);
+    void getValues(std::vector < pangolin::GLprecision >& mKeyFrame, pangolin::GLprecision mCamera[16]);
 };
 
 struct CameraFrame : public pangolin::Renderable
@@ -66,7 +66,7 @@ struct CameraFrame : public pangolin::Renderable
     void Subscribers(ros::NodeHandle *nh);
     void groundCallback(const nav_msgs::Odometry& msg);
     void pointCallback(const PointCloud::ConstPtr& msg);
-    void lineFromKeyFrameToCamera(std::vector < pangolin::GLprecision > mT);
+    void lineFromKeyFrameToCamera(std::vector < pangolin::GLprecision >& mT);
     void Render(const pangolin::RenderParams&) override;
 
 };

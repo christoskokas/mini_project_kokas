@@ -46,10 +46,10 @@ add_service_files(
 add_library(${PROJECT_NAME} SHARED
 src/VioSlam.cpp
 src/Camera.cpp
-src/Viewer.cpp
+src/FeatureDrawer.cpp
 src/Frame.cpp
 include/Camera.h
-include/Viewer.h
+include/FeatureDrawer.h
 include/Frame.h
 )
 
