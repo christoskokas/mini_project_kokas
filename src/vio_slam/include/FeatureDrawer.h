@@ -10,13 +10,29 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include "opencv2/highgui.hpp"
 #include "opencv2/features2d.hpp"
-// #include "opencv2/xfeatures2d.hpp"
 #include "opencv2/core.hpp"
 
 namespace vio_slam
 {
 
+/**
+ * @brief Feature Detection Strategy
+ * Choises : orb, fast, brisk.
+ * 
+ * brisk is not recommended because it is too slow for real time applications
+ * 
+ */
+enum class FeatureStrategy
+{
+    orb,
+    fast,
+    brisk,
+};
 
+/**
+ * @brief 
+ * 
+ */
 
 class FeatureDrawer
 {
@@ -26,17 +42,22 @@ class FeatureDrawer
         image_transport::Subscriber mRightImageSub;
         image_transport::Publisher mLeftImagePub;
         image_transport::Publisher mRightImagePub;
-        std::vector<uchar> leftImage;
-        std::vector<uchar> rightImage;
+        cv::Mat leftImage;
+        cv::Mat rightImage;
+        cv::Mat leftDescript;
+        cv::Mat rightDescript;
+        std::vector<cv::KeyPoint> leftKeypoints;
+        std::vector<cv::KeyPoint> rightKeypoints;
         std::string mLeftCameraPath;
         std::string mRightCameraPath;
-        std::string mFeatureMatchStrat;
+        FeatureStrategy mFeatureMatchStrat;
     public:
-        FeatureDrawer(ros::NodeHandle *nh, std::string* featureMatchStrat);
+        FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchStrat);
         ~FeatureDrawer();
         void leftImageCallback(const sensor_msgs::ImageConstPtr& msg);
         void rightImageCallback(const sensor_msgs::ImageConstPtr& msg);
         void addFeatures();
+        void FeatureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
 
 
 };

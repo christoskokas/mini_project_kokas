@@ -18,13 +18,13 @@
 // TODO MUTEX THREAD FOR FEATURE MATCHING AND LOOP 
 // CLOSING SO THAT THE PROGRAM CONTINUES WHILE SEARCHING FOR LOOP CLOSING
 
-// TODO NOW Change camera cpp, add transform from imu to camera, add feature detection 
+// TODO NOW Change camera cpp, add transform from imu to camera
 
 int main (int argc, char **argv)
 {
     ros::init(argc, argv, "VioSlam");
     ros::NodeHandle nh;
-    std::string featureMatchingStrat = "ORB";
+    vio_slam::FeatureStrategy featureMatchingStrat = vio_slam::FeatureStrategy::fast;
     vio_slam::Zed_Camera zedcamera(&nh);
     std::cout << "xd      " << zedcamera.camera_left.GetFx() << std::endl;
     zedcamera.GetResolution();
@@ -32,7 +32,7 @@ int main (int argc, char **argv)
     zedcamera.camera_left.GetIntrinsicValues();
     std::cout << "Right Camera" << std::endl;
     zedcamera.camera_right.GetIntrinsicValues();
-    vio_slam::FeatureDrawer fv(&nh, &featureMatchingStrat);
+    vio_slam::FeatureDrawer fv(&nh, featureMatchingStrat);
     vio_slam::Frame frame;
     std::thread worker(&vio_slam::Frame::pangoQuit, frame, &nh);
     std::cout << "Right Camera" << std::endl;
