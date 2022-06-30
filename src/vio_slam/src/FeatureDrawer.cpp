@@ -1,18 +1,11 @@
 #include "FeatureDrawer.h"
-#include <message_filters/subscriber.h>
-#include <message_filters/time_synchronizer.h>
-# include "opencv2/opencv_modules.hpp"
-# include "opencv2/core/core.hpp"
-# include "opencv2/features2d/features2d.hpp"
-# include "opencv2/highgui/highgui.hpp"
-# include "opencv2/features2d.hpp"
 
 static const std::string OPENCV_WINDOW = "Features Detected";
 
 namespace vio_slam
 {
 
-FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchStrat) : m_it(*nh)
+FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchStrat) : m_it(*nh), img_sync(MySyncPolicy(10), leftIm, rightIm)
 {
     nh->getParam("Camera_l_path", mLeftCameraPath);
     nh->getParam("Camera_r_path", mRightCameraPath);
@@ -27,25 +20,135 @@ FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchS
       std::cout << "[FAST]";
       break;
     case FeatureStrategy::brisk :
-      std::cout << "[BRISK], It is not recommended to use BRISK because it is too slow for real time applications";
+      std::cout << "[BRISK]. It is not recommended to use BRISK because it is too slow for real time applications";
       break;
     default:
       break;
     }
     std::cout << '\n';
-    mLeftImageSub = m_it.subscribe(mLeftCameraPath, 1, &FeatureDrawer::leftImageCallback, this);
-    mRightImageSub = m_it.subscribe(mRightCameraPath, 1, &FeatureDrawer::rightImageCallback, this);
+    // mLeftImageSub = m_it.subscribe(mLeftCameraPath, 1, &FeatureDrawer::leftImageCallback, this);
+    // mRightImageSub = m_it.subscribe(mRightCameraPath, 1, &FeatureDrawer::rightImageCallback, this);
+    leftIm.subscribe(*nh, mLeftCameraPath, 1);
+    rightIm.subscribe(*nh, mRightCameraPath, 1);
+    ROS_INFO("MANOULES");
+    // typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
+    // img_sync {MySyncPolicy(10), leftIm, rightIm};
+    // img_sync.ApproximateTimeSynchronizer(MySyncPolicy(10), leftIm, rightIm);
+    // img_sync.init();
+    // img_sync.init(MySyncPolicy(10));
+    ROS_INFO("MANOULES");
+    img_sync.registerCallback(boost::bind(&FeatureDrawer::FeatureDetectionCallback, this, _1, _2));
+    ROS_INFO("MANOULES");
     mLeftImagePub = m_it.advertise("/left_camera/features", 1);
     mRightImagePub = m_it.advertise("/right_camera/features", 1);
-    // message_filters::Subscriber<sensor_msgs::Image> leftIm(*nh,"/left_camera/features",1);
-    // message_filters::Subscriber<sensor_msgs::Image> rightIm(*nh,"/right_camera/features",1);
-    // message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image> sync(leftIm, rightIm, 10);
-    // sync.registerCallback(boost::bind(&FeatureDrawer::FeatureDetectionCallback, _1, _2));
+    mImageMatches = m_it.advertise("/camera/matches", 1);
 }
+
+// void FeatureDrawer::FeatureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
+// {
+//     if (mFeatureMatchStrat == FeatureStrategy::orb)
+//     {
+//       cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
+//       std::vector< std::vector<cv::DMatch> > knn_matches;
+//       matcher->knnMatch( leftDescript, rightDescript, knn_matches, 2 );
+//     //-- Filter matches using the Lowe's ratio test
+//     const float ratio_thresh = 0.7f;
+//     std::vector<cv::DMatch> good_matches;
+//     for (size_t i = 0; i < knn_matches.size(); i++)
+//     {
+//         if (knn_matches[i][0].distance < ratio_thresh * knn_matches[i][1].distance)
+//         {
+//             good_matches.push_back(knn_matches[i][0]);
+//         }
+//     }
+//     //-- Draw matches
+//     cv::Mat img_matches;
+//     drawMatches( img1, keypoints1, img2, keypoints2, good_matches, img_matches, Scalar::all(-1),
+//                  Scalar::all(-1), std::vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+//     }
+// }
 
 void FeatureDrawer::FeatureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
 {
-
+    cv_bridge::CvImagePtr cv_ptr;
+    try
+    {
+      cv_ptr = cv_bridge::toCvCopy(lIm, sensor_msgs::image_encodings::RGB8);
+    }
+    catch (cv_bridge::Exception& e)
+    {
+      ROS_ERROR("cv_bridge exception: %s", e.what());
+      return;
+    }
+    
+    if (mFeatureMatchStrat == FeatureStrategy::orb)
+    {
+      cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
+      // detect features and descriptor
+      cv::Mat outImage;
+      detector->detectAndCompute( cv_ptr->image, cv::Mat(), leftKeypoints, leftDescript);
+      cv::drawKeypoints(cv_ptr->image, leftKeypoints, outImage, {255, 0, 0, 255} );
+      cv_bridge::CvImage out_msg;
+      out_msg.header   = lIm->header; // Same timestamp and tf frame as input image
+      out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+      out_msg.image    = outImage; // Your cv::Mat
+      leftImage = cv_ptr->image;
+      mLeftImagePub.publish(out_msg.toImageMsg());
+    }
+    cv_bridge::CvImagePtr cv_ptr2;
+    try
+    {
+      cv_ptr2 = cv_bridge::toCvCopy(rIm, sensor_msgs::image_encodings::RGB8);
+    }
+    catch (cv_bridge::Exception& e)
+    {
+      ROS_ERROR("cv_bridge exception: %s", e.what());
+      return;
+    }
+    if (mFeatureMatchStrat == FeatureStrategy::orb)
+    {
+      cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
+      // detect features and descriptor
+      cv::Mat outImage;
+      detector->detectAndCompute( cv_ptr2->image, cv::Mat(), rightKeypoints, rightDescript);
+      cv::drawKeypoints(cv_ptr2->image, rightKeypoints, outImage, {255, 0, 0, 255} );
+      cv_bridge::CvImage out_msg;
+      // rightKeypoints[0].size;
+      // rightKeypoints[0].pt.x;
+      out_msg.header   = rIm->header; // Same timestamp and tf frame as input image
+      out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+      out_msg.image    = outImage; // Your cv::Mat
+      rightImage = cv_ptr2->image;
+      mRightImagePub.publish(out_msg.toImageMsg());
+    }
+    ROS_INFO("XDDDDDDDD ");
+    if (mFeatureMatchStrat == FeatureStrategy::orb)
+    {
+      ROS_INFO("XDDDDDDDD ");
+      cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
+      std::vector< std::vector<cv::DMatch> > knn_matches;
+      matcher->knnMatch( leftDescript, rightDescript, knn_matches, 2 );
+      //-- Filter matches using the Lowe's ratio test
+      const float ratio_thresh = 0.7f;
+      std::vector<cv::DMatch> good_matches;
+      for (size_t i = 0; i < knn_matches.size(); i++)
+      {
+          if (knn_matches[i][0].distance < ratio_thresh * knn_matches[i][1].distance)
+          {
+              good_matches.push_back(knn_matches[i][0]);
+          }
+      }
+      //-- Draw matchleftImagees
+      cv::Mat img_matches;
+      drawMatches( leftImage, leftKeypoints, rightImage, rightKeypoints, good_matches, img_matches, cv::Scalar::all(-1),
+                  cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+      
+      cv_bridge::CvImage out_msg;
+      out_msg.header   = lIm->header; // Same timestamp and tf frame as input image
+      out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+      out_msg.image    = img_matches; // Your cv::Mat
+      mImageMatches.publish(out_msg.toImageMsg());
+    }
 }
 
 FeatureDrawer::~FeatureDrawer()
@@ -78,7 +181,7 @@ void FeatureDrawer::leftImageCallback(const sensor_msgs::ImageConstPtr& msg)
       out_msg.header   = msg->header; // Same timestamp and tf frame as input image
       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
       out_msg.image    = outImage; // Your cv::Mat
-      leftImage = outImage;
+      leftImage = cv_ptr->image;
       mLeftImagePub.publish(out_msg.toImageMsg());
     }
     if (mFeatureMatchStrat == FeatureStrategy::fast)
@@ -92,7 +195,7 @@ void FeatureDrawer::leftImageCallback(const sensor_msgs::ImageConstPtr& msg)
       out_msg.header   = msg->header; // Same timestamp and tf frame as input image
       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
       out_msg.image    = outImage; // Your cv::Mat
-      leftImage = outImage;
+      leftImage = cv_ptr->image;
       mLeftImagePub.publish(out_msg.toImageMsg());
     }
     if (mFeatureMatchStrat == FeatureStrategy::brisk)
@@ -106,7 +209,7 @@ void FeatureDrawer::leftImageCallback(const sensor_msgs::ImageConstPtr& msg)
       out_msg.header   = msg->header; // Same timestamp and tf frame as input image
       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
       out_msg.image    = outImage; // Your cv::Mat
-      leftImage = outImage;
+      leftImage = cv_ptr->image;
       mLeftImagePub.publish(out_msg.toImageMsg());
     }
 }
@@ -136,7 +239,7 @@ void FeatureDrawer::rightImageCallback(const sensor_msgs::ImageConstPtr& msg)
       out_msg.header   = msg->header; // Same timestamp and tf frame as input image
       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
       out_msg.image    = outImage; // Your cv::Mat
-      rightImage = outImage;
+      rightImage = cv_ptr->image;
       mRightImagePub.publish(out_msg.toImageMsg());
     }
     if (mFeatureMatchStrat == FeatureStrategy::fast)
@@ -150,7 +253,7 @@ void FeatureDrawer::rightImageCallback(const sensor_msgs::ImageConstPtr& msg)
       out_msg.header   = msg->header; // Same timestamp and tf frame as input image
       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
       out_msg.image    = outImage; // Your cv::Mat
-      rightImage = outImage;
+      rightImage = cv_ptr->image;
       mRightImagePub.publish(out_msg.toImageMsg());
     }
     if (mFeatureMatchStrat == FeatureStrategy::brisk)
@@ -166,7 +269,7 @@ void FeatureDrawer::rightImageCallback(const sensor_msgs::ImageConstPtr& msg)
       out_msg.header   = msg->header; // Same timestamp and tf frame as input image
       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
       out_msg.image    = outImage; // Your cv::Mat
-      rightImage = outImage;
+      rightImage = cv_ptr->image;
       mRightImagePub.publish(out_msg.toImageMsg());
     }
 }

@@ -24,7 +24,7 @@ int main (int argc, char **argv)
 {
     ros::init(argc, argv, "VioSlam");
     ros::NodeHandle nh;
-    vio_slam::FeatureStrategy featureMatchingStrat = vio_slam::FeatureStrategy::fast;
+    vio_slam::FeatureStrategy featureMatchingStrat = vio_slam::FeatureStrategy::orb;
     vio_slam::Zed_Camera zedcamera(&nh);
     std::cout << "xd      " << zedcamera.camera_left.GetFx() << std::endl;
     zedcamera.GetResolution();

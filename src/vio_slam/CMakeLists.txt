@@ -26,6 +26,7 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_conversions
   cv_bridge
   nav_msgs
+  message_filters
   image_transport
 )
 find_package(PCL REQUIRED)

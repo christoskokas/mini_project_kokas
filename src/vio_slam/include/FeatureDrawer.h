@@ -11,6 +11,11 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/features2d.hpp"
 #include "opencv2/core.hpp"
+#include <message_filters/subscriber.h>
+#include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
+
+typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
 
 namespace vio_slam
 {
@@ -42,6 +47,7 @@ class FeatureDrawer
         image_transport::Subscriber mRightImageSub;
         image_transport::Publisher mLeftImagePub;
         image_transport::Publisher mRightImagePub;
+        image_transport::Publisher mImageMatches;
         cv::Mat leftImage;
         cv::Mat rightImage;
         cv::Mat leftDescript;
@@ -52,12 +58,16 @@ class FeatureDrawer
         std::string mRightCameraPath;
         FeatureStrategy mFeatureMatchStrat;
     public:
+        message_filters::Subscriber<sensor_msgs::Image> leftIm;
+        message_filters::Subscriber<sensor_msgs::Image> rightIm;
+        message_filters::Synchronizer<MySyncPolicy> img_sync;
         FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchStrat);
         ~FeatureDrawer();
         void leftImageCallback(const sensor_msgs::ImageConstPtr& msg);
         void rightImageCallback(const sensor_msgs::ImageConstPtr& msg);
         void addFeatures();
         void FeatureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
+        void featureMatch();
 
 
 };
