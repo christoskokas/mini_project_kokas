@@ -68,6 +68,8 @@ class FeatureDrawer
         void addFeatures();
         void FeatureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
         void featureMatch();
+        void findFeatures(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm, cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptor, image_transport::Publisher publish);
+        void findMatches(const sensor_msgs::ImageConstPtr& lIm);
 
 
 };
