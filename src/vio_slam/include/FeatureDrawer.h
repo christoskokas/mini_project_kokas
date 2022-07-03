@@ -52,11 +52,20 @@ class FeatureDrawer
         cv::Mat rightImage;
         cv::Mat leftDescript;
         cv::Mat rightDescript;
+        cv:: Mat R1, R2, P1, P2, Q;
+        std::vector< float > leftCameraMatrix = {};
+        std::vector< float > rightCameraMatrix = {};
+        std::vector< float > distLeft = {};
+        std::vector< float > distRight = {};
+        std::vector< float > sensorsRotate = {};
+        std::vector< float > sensorsTranslate = {};
         std::vector<cv::KeyPoint> leftKeypoints;
         std::vector<cv::KeyPoint> rightKeypoints;
         std::string mLeftCameraPath;
         std::string mRightCameraPath;
         FeatureStrategy mFeatureMatchStrat;
+
+        int width {}, height {};
     public:
         message_filters::Subscriber<sensor_msgs::Image> leftIm;
         message_filters::Subscriber<sensor_msgs::Image> rightIm;
@@ -68,8 +77,9 @@ class FeatureDrawer
         void addFeatures();
         void FeatureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
         void featureMatch();
-        void findFeatures(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm, cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptor, image_transport::Publisher publish);
-        void findMatches(const sensor_msgs::ImageConstPtr& lIm);
+        void findFeatures(const sensor_msgs::ImageConstPtr& imageRef, cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptor, image_transport::Publisher publish);
+        std::vector<cv::DMatch> findMatches(const sensor_msgs::ImageConstPtr& lIm);
+        void getCameraMatrix(ros::NodeHandle *nh);
 
 
 };

@@ -1,24 +1,34 @@
 Camera_l:
-  fx: 263.2786443617774
-  fy: 263.2786443617774
-  cx: 376.5
-  cy: 240.5
+  fx: 265.795
+  fy: 265.6975
+  cx: 338.7225
+  cy: 186.95575
+  k1: -0.0420501
+  k2: 0.0107849
+  p1: 0.000333607
+  p2: 0.000225869
+  k3: -0.00521306
 
 Camera_l_path: /zed2i/zed_node/left_raw/image_raw_color
 
 Camera_r:
-  fx: 263.2786443617774
-  fy: 263.2786443617774
-  cx: 376.5
-  cy: 240.5
+  fx: 264.59
+  fy: 264.325
+  cx: 337.56
+  cy: 188.85625
+  k1: -0.0416772
+  k2: 0.0101824
+  p1: -1.93738e-05
+  p2: -0.000249686
+  k3: -0.00489882
   
 Camera_r_path: /zed2i/zed_node/right_raw/image_raw_color
 
 Camera:
-  width: 480
-  height: 752
+  width: 640
+  height: 360
   fps: 15.0
-  bl: 0.12
+  bl: 0.119947
 
 Camera_path: /zed2i/zed_node/left_raw/image_raw_color
 ground_truth_path: /odom/ground_truth
@@ -34,3 +44,13 @@ IMU:
             -0.0040000, -0.9999920,  0.0000080, -0.000,
             0.0, 0.0, 0.0, 1.0]
   path: /imu/data
+
+Stereo:
+  T_c1_c2:
+    rows: 4
+    cols: 4
+    dt: f
+    data: [1.0, 0.0, 0.0, 0.119947,
+         0.0, 1.0, 0.0, 0.0,
+         0.0, 0.0, 1.0, 0.0,
+         0.0, 0.0, 0.0, 1.0]

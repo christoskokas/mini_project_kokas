@@ -1,14 +1,140 @@
 #include "FeatureDrawer.h"
+#include <opencv2/calib3d.hpp>
 
 static const std::string OPENCV_WINDOW = "Features Detected";
 
 namespace vio_slam
 {
 
+void FeatureDrawer::getCameraMatrix(ros::NodeHandle *nh)
+{
+    float fx {},fy {},cx {}, cy {};
+    float k1 {}, k2 {}, p1 {}, p2 {}, k3{};
+    nh->getParam("Camera_l/fx", fx);
+    nh->getParam("Camera_l/fy", fy);
+    nh->getParam("Camera_l/cx", cx);
+    nh->getParam("Camera_l/cy", cy);
+    nh->getParam("Camera_l/k1", k1);
+    nh->getParam("Camera_l/k2", k2);
+    nh->getParam("Camera_l/p1", p1);
+    nh->getParam("Camera_l/p2", p2);
+    nh->getParam("Camera_l/k3", k3);
+
+    {
+      std::vector< float > matrix = {fx, 0.0f, cx, 0.0f, fy, cy, 0.0f, 0.0f, 1};
+      std::vector< float > dist = {k1, k2, p1, p2, k3};
+      for (size_t i = 0; i < 9; i++)
+      {
+        leftCameraMatrix.push_back(matrix[i]);
+        if (i < 5)
+        {
+          distLeft.push_back(dist[i]);
+        }
+      }
+      
+    }
+    nh->getParam("Camera_r/fx", fx);
+    nh->getParam("Camera_r/fy", fy);
+    nh->getParam("Camera_r/cx", cx);
+    nh->getParam("Camera_r/cy", cy);
+    nh->getParam("Camera_r/k1", k1);
+    nh->getParam("Camera_r/k2", k2);
+    nh->getParam("Camera_r/p1", p1);
+    nh->getParam("Camera_r/p2", p2);
+    nh->getParam("Camera_r/k3", k3);
+
+    {
+      std::vector< float > matrix = {fx, 0.0f, cx, 0.0f, fy, cy, 0.0f, 0.0f, 1};
+      std::vector< float > dist = {k1, k2, p1, p2, k3};
+      // leftCameraMatrix[0]
+      for (size_t i = 0; i < 9; i++)
+      {
+        rightCameraMatrix.push_back(matrix[i]);
+        if (i < 5)
+        {
+          distRight.push_back(dist[i]);
+        }
+      }
+      
+      // std::copy(std::begin(matrix), std::end(matrix), leftCameraMatrix);
+    }
+    {
+      std::vector< float > transf;
+      nh->getParam("Stereo/T_c1_c2/data", transf);
+      for (size_t i = 0; i < 12; i++)
+      {
+        if (i == 3 || i == 7 || i == 11)
+        {
+          sensorsTranslate.push_back(transf[i]);
+        }
+        else
+        {
+          sensorsRotate.push_back(transf[i]);
+        }
+      }
+      
+    }
+    std::cout << "XDDDDDDDDDDDDD         \n";
+    for (size_t i = 0; i < 9; i++)
+    {
+      if (i % 3 == 0)
+      {
+        std::cout << '\n'; 
+      }
+      std::cout << sensorsRotate[i] << "  ";
+
+    }
+    std::cout << '\n';
+    for (size_t i = 0; i < 3; i++)
+    {
+      std::cout << sensorsTranslate[i] << "  ";
+    }
+    std::cout << '\n';
+    for (size_t i = 0; i < 9; i++)
+    {
+      if (i % 3 == 0)
+      {
+        std::cout << '\n'; 
+      }
+      std::cout << leftCameraMatrix[i] << "  ";
+
+    }
+    std::cout << '\n';
+    for (size_t i = 0; i < 9; i++)
+    {
+      if (i % 3 == 0)
+      {
+        std::cout << '\n'; 
+      }
+      std::cout << rightCameraMatrix[i] << "  ";
+
+    }
+    std::cout << '\n'; 
+    for (size_t i = 0; i < 5; i++)
+    {
+      std::cout << distLeft[i] << "  ";
+    }
+    
+    std::cout << '\n'; 
+
+    for (size_t i = 0; i < 5; i++)
+    {
+      std::cout << distRight[i] << "  ";
+    }
+    
+    std::cout << '\n'; 
+    cv::Size imgSize = cv::Size(width, height);
+    cv::stereoRectify(leftCameraMatrix, distLeft, rightCameraMatrix, distRight, imgSize, sensorsRotate, sensorsTranslate, R1, R2, P1, P2, Q);
+
+}
+
 FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchStrat) : m_it(*nh), img_sync(MySyncPolicy(10), leftIm, rightIm)
 {
     nh->getParam("Camera_l_path", mLeftCameraPath);
     nh->getParam("Camera_r_path", mRightCameraPath);
+    nh->getParam("Camera/width", width);
+    nh->getParam("Camera/height", height);
+    getCameraMatrix(nh);
     std::cout << "Feature Matching Strategy Option : ";
     mFeatureMatchStrat = featureMatchStrat;
     switch (featureMatchStrat)
@@ -65,12 +191,12 @@ FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchS
 //     }
 // }
 
-void FeatureDrawer::findFeatures(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm, cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptor, image_transport::Publisher publish)
+void FeatureDrawer::findFeatures(const sensor_msgs::ImageConstPtr& imageRef, cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptor, image_transport::Publisher publish)
 {
     cv_bridge::CvImagePtr cv_ptr;
     try
     {
-      cv_ptr = cv_bridge::toCvCopy(lIm, sensor_msgs::image_encodings::RGB8);
+      cv_ptr = cv_bridge::toCvCopy(imageRef, sensor_msgs::image_encodings::RGB8);
     }
     catch (cv_bridge::Exception& e)
     {
@@ -86,7 +212,7 @@ void FeatureDrawer::findFeatures(const sensor_msgs::ImageConstPtr& lIm, const se
       detector->detectAndCompute( cv_ptr->image, cv::Mat(), keypoints, descriptor);
       cv::drawKeypoints(cv_ptr->image, keypoints, outImage, {255, 0, 0, 255} );
       cv_bridge::CvImage out_msg;
-      out_msg.header   = lIm->header; // Same timestamp and tf frame as input image
+      out_msg.header   = imageRef->header; // Same timestamp and tf frame as input image
       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
       out_msg.image    = outImage; // Your cv::Mat
       image = cv_ptr->image;
@@ -94,7 +220,7 @@ void FeatureDrawer::findFeatures(const sensor_msgs::ImageConstPtr& lIm, const se
     }
 }
 
-void FeatureDrawer::findMatches(const sensor_msgs::ImageConstPtr& lIm)
+std::vector<cv::DMatch> FeatureDrawer::findMatches(const sensor_msgs::ImageConstPtr& lIm)
 {
     if (mFeatureMatchStrat == FeatureStrategy::orb)
     {
@@ -132,14 +258,26 @@ void FeatureDrawer::findMatches(const sensor_msgs::ImageConstPtr& lIm)
       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
       out_msg.image    = img_matches; // Your cv::Mat
       mImageMatches.publish(out_msg.toImageMsg());
+      return matches;
     }
+    
 }
 
 void FeatureDrawer::FeatureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
 {
-    findFeatures(lIm, rIm, leftImage, leftKeypoints, leftDescript, mLeftImagePub);
-    findFeatures(lIm, rIm, rightImage, rightKeypoints, rightDescript, mRightImagePub);
-    findMatches(lIm);
+    findFeatures(lIm, leftImage, leftKeypoints, leftDescript, mLeftImagePub);
+    findFeatures(rIm, rightImage, rightKeypoints, rightDescript, mRightImagePub);
+    std::cout << "WIDTH : " << lIm->width << '\n';
+    std::cout << "HEIGHT : " << lIm->height << '\n';
+    std::cout << "WIDTH : " << rIm->width << '\n';
+    std::cout << "HEIGHT : " << rIm->height << '\n';
+    std::vector<cv::DMatch> matches = findMatches(lIm);
+    std::cout << "POINT X query : " << leftKeypoints[matches[0].queryIdx].pt.x << '\n';
+    std::cout << "POINT X train : " << rightKeypoints[matches[0].trainIdx].pt.x << '\n';
+    cv::Size imgSize = cv::Size(width, height);
+    cv::Mat rmap[2][2];
+    cv::initUndistortRectifyMap(leftCameraMatrix, distLeft, R1, P1, imgSize, CV_16SC2, rmap[0][0], rmap[0][1]);
+    cv::initUndistortRectifyMap(rightCameraMatrix, distRight, R2, P2, imgSize, CV_16SC2, rmap[1][0], rmap[1][1]);
 }
 
 FeatureDrawer::~FeatureDrawer()
