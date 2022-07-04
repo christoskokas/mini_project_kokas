@@ -21,16 +21,20 @@ void FeatureDrawer::getCameraMatrix(ros::NodeHandle *nh)
     nh->getParam("Camera_l/k3", k3);
 
     {
-      std::vector< float > matrix = {fx, 0.0f, cx, 0.0f, fy, cy, 0.0f, 0.0f, 1};
-      std::vector< float > dist = {k1, k2, p1, p2, k3};
-      for (size_t i = 0; i < 9; i++)
-      {
-        leftCameraMatrix.push_back(matrix[i]);
-        if (i < 5)
-        {
-          distLeft.push_back(dist[i]);
-        }
-      }
+      double matrix[3][3] = {{fx, 0.0f, cx}, {0.0f, fy, cy},{ 0.0f, 0.0f, 1}};
+      double dist[1][5] = {k1, k2, p1, p2, k3};
+      // leftCameraMatrix =  cv::Mat(3, 3, CV_64F, matrix);
+      leftCameraMatrix = (cv::Mat_<double>(3,3) << fx, 0.0f, cx, 0.0f, fy, cy, 0.0f, 0.0f, 1);
+      distLeft = (cv::Mat_<double>(1,5) << k1, k2, p1, p2, k3);
+      // distLeft = cv::Mat(1, 5, CV_64F, dist);
+      // for (size_t i = 0; i < 9; i++)
+      // {
+      //   leftCameraMatrix.push_back(matrix[i]);
+      //   if (i < 5)
+      //   {
+      //     distLeft.push_back(dist[i]);
+      //   }
+      // }
       
     }
     nh->getParam("Camera_r/fx", fx);
@@ -44,88 +48,182 @@ void FeatureDrawer::getCameraMatrix(ros::NodeHandle *nh)
     nh->getParam("Camera_r/k3", k3);
 
     {
-      std::vector< float > matrix = {fx, 0.0f, cx, 0.0f, fy, cy, 0.0f, 0.0f, 1};
-      std::vector< float > dist = {k1, k2, p1, p2, k3};
+      // std::vector< double > matrix = {fx, 0.0f, cx, 0.0f, fy, cy, 0.0f, 0.0f, 1};
+      // std::vector< double > dist = {k1, k2, p1, p2, k3};
+      double matrix[3][3] = {{fx, 0.0f, cx}, {0.0f, fy, cy},{ 0.0f, 0.0f, 1}};
+      double dist[1][5] = {k1, k2, p1, p2, k3};
+      // rightCameraMatrix =  cv::Mat(3, 3, CV_64F, matrix);
+      rightCameraMatrix = (cv::Mat_<double>(3,3) << fx, 0.0f, cx, 0.0f, fy, cy, 0.0f, 0.0f, 1);
+      distRight = (cv::Mat_<double>(1,5) << k1, k2, p1, p2, k3);
+      // distRight = cv::Mat(1, 5, CV_64F, dist);
       // leftCameraMatrix[0]
-      for (size_t i = 0; i < 9; i++)
-      {
-        rightCameraMatrix.push_back(matrix[i]);
-        if (i < 5)
-        {
-          distRight.push_back(dist[i]);
-        }
-      }
+      // for (size_t i = 0; i < 9; i++)
+      // {
+      //   rightCameraMatrix.push_back(matrix[i]);
+      //   if (i < 5)
+      //   {
+      //     distRight.push_back(dist[i]);
+      //   }
+      // }
       
       // std::copy(std::begin(matrix), std::end(matrix), leftCameraMatrix);
     }
     {
-      std::vector< float > transf;
+      std::vector< double > transf;
       nh->getParam("Stereo/T_c1_c2/data", transf);
-      for (size_t i = 0; i < 12; i++)
-      {
-        if (i == 3 || i == 7 || i == 11)
-        {
-          sensorsTranslate.push_back(transf[i]);
-        }
-        else
-        {
-          sensorsRotate.push_back(transf[i]);
-        }
-      }
+      double translate[3][1] = {{transf[3]}, {transf[7]}, {transf[11]}};
+      double rotate[3][3] = {{transf[0],transf[1],transf[2]},{transf[4],transf[5],transf[6]},{transf[8],transf[9],transf[10]}};
+      
+      sensorsTranslate = cv::Mat(3, 1, CV_64F, translate);
+      sensorsRotate = cv::Mat(3, 3, CV_64F, rotate);
+      // for (size_t i = 0; i < 12; i++)
+      // {
+      //   if (i == 3 || i == 7 || i == 11)
+      //   {
+      //     sensorsTranslate.push_back(transf[i]);
+      //   }
+      //   else
+      //   {
+      //     sensorsRotate.push_back(transf[i]);
+      //   }
+      // }
       
     }
-    std::cout << "XDDDDDDDDDDDDD         \n";
-    for (size_t i = 0; i < 9; i++)
-    {
-      if (i % 3 == 0)
-      {
-        std::cout << '\n'; 
-      }
-      std::cout << sensorsRotate[i] << "  ";
+    // std::cout << "XDDDDDDDDDDDDD         \n";
+    // for (size_t i = 0; i < 9; i++)
+    // {
+    //   if (i % 3 == 0)
+    //   {
+    //     std::cout << '\n'; 
+    //   }
+    //   std::cout << sensorsRotate[i] << "  ";
 
-    }
-    std::cout << '\n';
-    for (size_t i = 0; i < 3; i++)
-    {
-      std::cout << sensorsTranslate[i] << "  ";
-    }
-    std::cout << '\n';
-    for (size_t i = 0; i < 9; i++)
-    {
-      if (i % 3 == 0)
-      {
-        std::cout << '\n'; 
-      }
-      std::cout << leftCameraMatrix[i] << "  ";
+    // }
+    // std::cout << '\n';
+    // for (size_t i = 0; i < 3; i++)
+    // {
+    //   std::cout << sensorsTranslate[i] << "  ";
+    // }
+    // std::cout << '\n';
+    // for (size_t i = 0; i < 9; i++)
+    // {
+    //   if (i % 3 == 0)
+    //   {
+    //     std::cout << '\n'; 
+    //   }
+    //   std::cout << leftCameraMatrix[i] << "  ";
 
-    }
-    std::cout << '\n';
-    for (size_t i = 0; i < 9; i++)
-    {
-      if (i % 3 == 0)
-      {
-        std::cout << '\n'; 
-      }
-      std::cout << rightCameraMatrix[i] << "  ";
+    // }
+    // std::cout << '\n';
+    // for (size_t i = 0; i < 9; i++)
+    // {
+    //   if (i % 3 == 0)
+    //   {
+    //     std::cout << '\n'; 
+    //   }
+    //   std::cout << rightCameraMatrix[i] << "  ";
 
-    }
-    std::cout << '\n'; 
-    for (size_t i = 0; i < 5; i++)
-    {
-      std::cout << distLeft[i] << "  ";
-    }
+    // }
+    // std::cout << '\n'; 
+    // for (size_t i = 0; i < 5; i++)
+    // {
+    //   std::cout << distLeft[i] << "  ";
+    // }
     
-    std::cout << '\n'; 
+    // std::cout << '\n'; 
 
-    for (size_t i = 0; i < 5; i++)
-    {
-      std::cout << distRight[i] << "  ";
-    }
+    // for (size_t i = 0; i < 5; i++)
+    // {
+    //   std::cout << distRight[i] << "  ";
+    // }
     
     std::cout << '\n'; 
     cv::Size imgSize = cv::Size(width, height);
     cv::stereoRectify(leftCameraMatrix, distLeft, rightCameraMatrix, distRight, imgSize, sensorsRotate, sensorsTranslate, R1, R2, P1, P2, Q);
-
+    cv::initUndistortRectifyMap(leftCameraMatrix, distLeft, R1, P1, imgSize, CV_16SC2, rmap[0][0], rmap[0][1]);
+    cv::initUndistortRectifyMap(rightCameraMatrix, distRight, R2, P2, imgSize, CV_16SC2, rmap[1][0], rmap[1][1]);
+    for (size_t i = 0; i < 3; i++)
+    {
+      for (size_t j = 0; j < 3; j++)
+      {
+        std::cout << R1.at<double>(i,j) << "    "; 
+      }
+      std::cout << '\n';
+    }
+    for (size_t i = 0; i < 3; i++)
+    {
+      for (size_t j = 0; j < 3; j++)
+      {
+        std::cout << R2.at<double>(i,j) << "    "; 
+      }
+      std::cout << '\n';
+    }
+    for (size_t i = 0; i < 4; i++)
+    {
+      for (size_t j = 0; j < 4; j++)
+      {
+        std::cout << P1.at<double>(i,j) << "    "; 
+      }
+      std::cout << '\n';
+    }
+    for (size_t i = 0; i < 4; i++)
+    {
+      for (size_t j = 0; j < 4; j++)
+      {
+        std::cout << P2.at<double>(i,j) << "    "; 
+      }
+      std::cout << '\n';
+    }
+    for (size_t i = 0; i < 3; i++)
+    {
+      for (size_t j = 0; j < 3; j++)
+      {
+        std::cout << sensorsRotate.at<double>(i,j) << "    "; 
+      }
+      std::cout << '\n';
+    }
+    for (size_t i = 0; i < 3; i++)
+    {
+      for (size_t j = 0; j < 1; j++)
+      {
+        std::cout << sensorsTranslate.at<double>(i,j) << "    "; 
+      }
+      std::cout << '\n';
+    }
+    for (size_t i = 0; i < 3; i++)
+    {
+      for (size_t j = 0; j < 3; j++)
+      {
+        std::cout << leftCameraMatrix.at<double>(i,j) << "    "; 
+      }
+      std::cout << '\n';
+    }
+    for (size_t i = 0; i < 3; i++)
+    {
+      for (size_t j = 0; j < 3; j++)
+      {
+        std::cout << rightCameraMatrix.at<double>(i,j) << "    "; 
+      }
+      std::cout << '\n';
+    }
+    for (size_t i = 0; i < 1; i++)
+    {
+      for (size_t j = 0; j < 5; j++)
+      {
+        std::cout << distLeft.at<double>(i,j) << "    "; 
+      }
+      std::cout << '\n';
+    }
+    for (size_t i = 0; i < 1; i++)
+    {
+      for (size_t j = 0; j < 5; j++)
+      {
+        std::cout << distRight.at<double>(i,j) << "    "; 
+      }
+      std::cout << '\n';
+    }
+    
+    
 }
 
 FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchStrat) : m_it(*nh), img_sync(MySyncPolicy(10), leftIm, rightIm)
@@ -257,7 +355,7 @@ std::vector<cv::DMatch> FeatureDrawer::findMatches(const sensor_msgs::ImageConst
       out_msg.header   = lIm->header; // Same timestamp and tf frame as input image
       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
       out_msg.image    = img_matches; // Your cv::Mat
-      mImageMatches.publish(out_msg.toImageMsg());
+      // mImageMatches.publish(out_msg.toImageMsg());
       return matches;
     }
     
@@ -267,17 +365,22 @@ void FeatureDrawer::FeatureDetectionCallback(const sensor_msgs::ImageConstPtr& l
 {
     findFeatures(lIm, leftImage, leftKeypoints, leftDescript, mLeftImagePub);
     findFeatures(rIm, rightImage, rightKeypoints, rightDescript, mRightImagePub);
-    std::cout << "WIDTH : " << lIm->width << '\n';
-    std::cout << "HEIGHT : " << lIm->height << '\n';
-    std::cout << "WIDTH : " << rIm->width << '\n';
-    std::cout << "HEIGHT : " << rIm->height << '\n';
     std::vector<cv::DMatch> matches = findMatches(lIm);
     std::cout << "POINT X query : " << leftKeypoints[matches[0].queryIdx].pt.x << '\n';
     std::cout << "POINT X train : " << rightKeypoints[matches[0].trainIdx].pt.x << '\n';
-    cv::Size imgSize = cv::Size(width, height);
-    cv::Mat rmap[2][2];
-    cv::initUndistortRectifyMap(leftCameraMatrix, distLeft, R1, P1, imgSize, CV_16SC2, rmap[0][0], rmap[0][1]);
-    cv::initUndistortRectifyMap(rightCameraMatrix, distRight, R2, P2, imgSize, CV_16SC2, rmap[1][0], rmap[1][1]);
+    cv::Mat dstle, dstri;
+    cv_bridge::CvImage out_msg;
+    // cv::undistort(leftImage, dstle, leftCameraMatrix, distLeft);
+    // cv::undistort(rightImage,dstri, rightCameraMatrix, distRight);
+    cv::remap(leftImage, dstle, rmap[0][0], rmap[0][1],cv::INTER_LINEAR);
+    cv::remap(rightImage, dstri, rmap[1][0], rmap[1][1],cv::INTER_LINEAR);
+    cv::hconcat(leftImage, dstle, dstle);                       //add 2 images horizontally (image1, image2, destination)
+    cv::hconcat(rightImage, dstri, dstri);                      //add 2 images horizontally (image1, image2, destination)
+    cv::vconcat(dstle, dstri, dstle);                           //add 2 images vertically
+    out_msg.header   = lIm->header; // Same timestamp and tf frame as input image
+    out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+    out_msg.image    = dstle; // Your cv::Mat
+    mImageMatches.publish(out_msg.toImageMsg());
 }
 
 FeatureDrawer::~FeatureDrawer()

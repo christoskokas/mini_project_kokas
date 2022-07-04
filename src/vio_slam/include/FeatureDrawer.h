@@ -52,20 +52,21 @@ class FeatureDrawer
         cv::Mat rightImage;
         cv::Mat leftDescript;
         cv::Mat rightDescript;
+        cv::Mat rmap[2][2];
         cv:: Mat R1, R2, P1, P2, Q;
-        std::vector< float > leftCameraMatrix = {};
-        std::vector< float > rightCameraMatrix = {};
-        std::vector< float > distLeft = {};
-        std::vector< float > distRight = {};
-        std::vector< float > sensorsRotate = {};
-        std::vector< float > sensorsTranslate = {};
+        cv::Mat leftCameraMatrix = {};
+        cv::Mat rightCameraMatrix = {};
+        cv::Mat distLeft = {};
+        cv::Mat distRight = {};
+        cv::Mat sensorsRotate = {};
+        cv::Mat sensorsTranslate = {};
         std::vector<cv::KeyPoint> leftKeypoints;
         std::vector<cv::KeyPoint> rightKeypoints;
         std::string mLeftCameraPath;
         std::string mRightCameraPath;
         FeatureStrategy mFeatureMatchStrat;
-
         int width {}, height {};
+
     public:
         message_filters::Subscriber<sensor_msgs::Image> leftIm;
         message_filters::Subscriber<sensor_msgs::Image> rightIm;
