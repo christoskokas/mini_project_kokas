@@ -16,6 +16,10 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
+#include <opencv2/calib3d.hpp>
+#include <pcl_ros/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
 
 typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
 
@@ -41,51 +45,47 @@ enum class FeatureStrategy
  * 
  */
 
+class Features
+{
+    private:
+
+    public:
+        cv::Mat image;
+        cv::Mat previousimage;
+        cv::Mat descriptors;
+        std::vector< cv::KeyPoint > keypoints;
+        std::vector< pcl::PointXYZ > pointsPosition;
+        void findFeatures();
+        std::vector<cv::DMatch> findMatches(const Features& secondImage, const std_msgs::Header& lIm, image_transport::Publisher& mImageMatches);
+        void getPoints();
+};
+
 class FeatureDrawer
 {
     private:
         image_transport::ImageTransport m_it;
-        image_transport::Subscriber mLeftImageSub;
-        image_transport::Subscriber mRightImageSub;
-        image_transport::Publisher mLeftImagePub;
-        image_transport::Publisher mRightImagePub;
         image_transport::Publisher mImageMatches;
-        cv::Mat leftImage;
-        cv::Mat rightImage;
-        cv::Mat leftDescript;
-        cv::Mat rightDescript;
-        cv::Mat rmap[2][2];
-        cv:: Mat R1, R2, P1, P2, Q;
-        cv::Mat leftCameraMatrix = {};
-        cv::Mat rightCameraMatrix = {};
-        cv::Mat distLeft = {};
-        cv::Mat distRight = {};
-        cv::Mat sensorsRotate = {};
-        cv::Mat sensorsTranslate = {};
-        std::vector<cv::KeyPoint> leftKeypoints;
-        std::vector<cv::KeyPoint> rightKeypoints;
-        std::string mLeftCameraPath;
-        std::string mRightCameraPath;
-        FeatureStrategy mFeatureMatchStrat;
-        int width {}, height {};
-        double mbaseline {};
-        const Zed_Camera* zedcamera;
-    public:
         message_filters::Subscriber<sensor_msgs::Image> leftIm;
         message_filters::Subscriber<sensor_msgs::Image> rightIm;
         message_filters::Synchronizer<MySyncPolicy> img_sync;
+        cv::Mat rmap[2][2];
+        cv:: Mat R1, R2, P1, P2, Q;
+        FeatureStrategy mFeatureMatchStrat;
+        const Zed_Camera* zedcamera;
+        bool firstImage {true};
+        // image_transport::Publisher mLeftImagePub;
+        // image_transport::Publisher mRightImagePub;
+    public:
+        Features leftImage;
+        Features rightImage;
         FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchStrat, const Zed_Camera* zedptr);
         ~FeatureDrawer();
-        void leftImageCallback(const sensor_msgs::ImageConstPtr& msg);
-        void rightImageCallback(const sensor_msgs::ImageConstPtr& msg);
-        void addFeatures();
-        void FeatureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
-        void featureMatch();
-        void findFeatures(const cv::Mat& imageRef, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptor, image_transport::Publisher publish);
-        std::vector<cv::DMatch> findMatches(const sensor_msgs::ImageConstPtr& lIm);
-        void getCameraMatrix(ros::NodeHandle *nh);
-        void getImage(const sensor_msgs::ImageConstPtr& imageRef, cv::Mat& image);
+        void featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
+        void setUndistortMap(ros::NodeHandle *nh);
+        void setImage(const sensor_msgs::ImageConstPtr& imageRef, cv::Mat& image);
         void calculateFeaturePosition(const std::vector<cv::DMatch>& matches);
+        // void findFeatures(const cv::Mat& imageRef, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptor, image_transport::Publisher publish);
+        // std::vector<cv::DMatch> findMatches(const std_msgs::Header& lIm);
 
 
 };

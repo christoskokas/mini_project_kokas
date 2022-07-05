@@ -1,51 +1,40 @@
 #include "Camera.h"
-#include <ros/ros.h>
-#include <std_msgs/Int64.h>
-#include <std_srvs/SetBool.h>
-#include <std_msgs/String.h>
-#include <sensor_msgs/Image.h>
-#include <sensor_msgs/Imu.h>
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <pcl_ros/point_cloud.h>
-#include <pcl/point_types.h>
-#include <boost/foreach.hpp>
 
 
-#define CAMERA_PATH "/camera_1/right/image_raw"
-#define CAMERA_PATH_2 "/camera_1/left/image_raw"
-#define POINTCLOUD_PATH "/camera_1/points2"
-#define IMU_PATH "/imu/data"
 
 namespace vio_slam
 {
 
-Zed_Camera::Zed_Camera(ros::NodeHandle *nh)
+Zed_Camera::Zed_Camera(ros::NodeHandle *nh, bool rectified)
 {
+    this->rectified = rectified;
+    setCameraValues(nh);
+    setCameraMatrices(nh);
 
-    nh->getParam("/Camera/width",m_width);
-    nh->getParam("/Camera/height",m_height);
-    nh->getParam("/Camera/fps",m_fps);
-    nh->getParam("/Camera/bl",m_baseline);
-    nh->getParam("/Camera_l/fx",camera_left.fx);
-    nh->getParam("/Camera_l/fy",camera_left.fy);
-    nh->getParam("/Camera_l/cx",camera_left.cx);
-    nh->getParam("/Camera_l/cy",camera_left.cy);
-    nh->getParam("/Camera_l/k1",camera_left.k1);
-    nh->getParam("/Camera_l/k2",camera_left.k2);
-    nh->getParam("/Camera_l/p1",camera_left.p1);
-    nh->getParam("/Camera_l/p2",camera_left.p2);
-    nh->getParam("/Camera_l/k3",camera_left.k3);
-    nh->getParam("/Camera_r/fx",camera_right.fx);
-    nh->getParam("/Camera_r/fy",camera_right.fy);
-    nh->getParam("/Camera_r/cx",camera_right.cx);
-    nh->getParam("/Camera_r/cy",camera_right.cy);
-    nh->getParam("/Camera_r/k1",camera_right.k1);
-    nh->getParam("/Camera_r/k2",camera_right.k2);
-    nh->getParam("/Camera_r/p1",camera_right.p1);
-    nh->getParam("/Camera_r/p2",camera_right.p2);
-    nh->getParam("/Camera_r/k3",camera_right.k3);
+}
+
+void Zed_Camera::setCameraMatrices(ros::NodeHandle* nh)
+{
+    std::vector< double > transf;
+    nh->getParam("Stereo/T_c1_c2/data", transf);
+    cameraLeft.cameraMatrix = (cv::Mat_<double>(3,3) << cameraLeft.fx, 0.0f, cameraLeft.cx, 0.0f, cameraLeft.fy, cameraLeft.cy, 0.0f, 0.0f, 1);
+    cameraLeft.distCoeffs = (cv::Mat_<double>(1,5) << cameraLeft.k1, cameraLeft.k2, cameraLeft.p1, cameraLeft.p2, cameraLeft.k3);
+    cameraRight.cameraMatrix = (cv::Mat_<double>(3,3) << cameraRight.fx, 0.0f, cameraRight.cx, 0.0f, cameraRight.fy, cameraRight.cy, 0.0f, 0.0f, 1);
+    cameraRight.distCoeffs = (cv::Mat_<double>(1,5) << cameraRight.k1, cameraRight.k2, cameraRight.p1, cameraRight.p2, cameraRight.k3);
+    double translate[3][1] = {{transf[3]}, {transf[7]}, {transf[11]}};
+    double rotate[3][3] = {{transf[0],transf[1],transf[2]},{transf[4],transf[5],transf[6]},{transf[8],transf[9],transf[10]}};
+    sensorsTranslate = (cv::Mat_<double>(3,1) << transf[3], transf[7], transf[11]);
+    sensorsRotate = (cv::Mat_<double>(3,3) << transf[0], transf[1], transf[2], transf[4], transf[5], transf[6], transf[8], transf[9], transf[10]);
+}
+
+void Zed_Camera::setCameraValues(ros::NodeHandle* nh)
+{
+    nh->getParam("/Camera/width",mWidth);
+    nh->getParam("/Camera/height",mHeight);
+    nh->getParam("/Camera/fps",mFps);
+    nh->getParam("/Camera/bl",mBaseline);
+    cameraLeft.setIntrinsicValues(nh, "Camera_l");
+    cameraRight.setIntrinsicValues(nh, "Camera_r");
 }
 
 Zed_Camera::~Zed_Camera()
@@ -55,18 +44,12 @@ Zed_Camera::~Zed_Camera()
 
 void Zed_Camera::GetResolution()
 {
-    ROS_INFO("Height : [%d], Width : [%d]", m_height, m_width);
+    ROS_INFO("Height : [%d], Width : [%d]", mHeight, mWidth);
 }
 
 Camera::Camera(ros::NodeHandle *nh)
 {
-    // counter = 0;
-    // camera_time = 0;
-    // imu_time = 0;
-    // camera_subscriber = nh->subscribe(CAMERA_PATH_2, 1000, 
-    //     &Camera::callback_number, this);
-    // imu_subscriber = nh->subscribe(IMU_PATH, 1000, 
-    //     &Camera::callback_number_2, this);
+
 }
 
 Camera::~Camera()
@@ -74,25 +57,24 @@ Camera::~Camera()
     
 }
 
-// void Camera::callback_number(const sensor_msgs::Image& msg) 
-// {
-//     camera_time = msg.header.stamp.sec + msg.header.stamp.nsec*1e-9;
-// }
-
-// void Camera::callback_number_2(const sensor_msgs::Imu& msg_2)
-// {
-//     imu_time = msg_2.header.stamp.sec + msg_2.header.stamp.nsec*1e-9;
-//     // ROS_INFO("The time difference between camera-imu is : [%f] \n", imu_time - camera_time);
-// }
 
 float Camera::GetFx()
 {
     return fx;
 }
 
-void Camera::GetIntrinsicValues()
+void Camera::setIntrinsicValues(ros::NodeHandle* nh, const std::string& cameraPath)
 {
-    ROS_INFO("\n fx : [%f] \n fy : [%f] \n cx : [%f] \n cy : [%f] \n", fx, fy, cx, cy);
+    nh->getParam(cameraPath + "/fx",fx);
+    nh->getParam(cameraPath + "/fy",fy);
+    nh->getParam(cameraPath + "/cx",cx);
+    nh->getParam(cameraPath + "/cy",cy);
+    nh->getParam(cameraPath + "/k1",k1);
+    nh->getParam(cameraPath + "/k2",k2);
+    nh->getParam(cameraPath + "/p1",p1);
+    nh->getParam(cameraPath + "/p2",p2);
+    nh->getParam(cameraPath + "/k3",k3);
+    nh->getParam(cameraPath + "_path", path);
 }
 
 } //namespace vio_slam

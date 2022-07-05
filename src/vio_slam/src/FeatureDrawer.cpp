@@ -1,239 +1,28 @@
 #include "FeatureDrawer.h"
-#include <opencv2/calib3d.hpp>
+
 
 static const std::string OPENCV_WINDOW = "Features Detected";
 
 namespace vio_slam
 {
 
-void FeatureDrawer::getCameraMatrix(ros::NodeHandle *nh)
+void FeatureDrawer::setUndistortMap(ros::NodeHandle *nh)
 {
-    double fx {},fy {},cx {}, cy {};
-    double k1 {}, k2 {}, p1 {}, p2 {}, k3{};
-    nh->getParam("Camera_l/fx", fx);
-    nh->getParam("Camera_l/fy", fy);
-    nh->getParam("Camera_l/cx", cx);
-    nh->getParam("Camera_l/cy", cy);
-    nh->getParam("Camera_l/k1", k1);
-    nh->getParam("Camera_l/k2", k2);
-    nh->getParam("Camera_l/p1", p1);
-    nh->getParam("Camera_l/p2", p2);
-    nh->getParam("Camera_l/k3", k3);
-
-    {
-      double matrix[3][3] = {{fx, 0.0f, cx}, {0.0f, fy, cy},{ 0.0f, 0.0f, 1}};
-      double dist[1][5] = {k1, k2, p1, p2, k3};
-      // leftCameraMatrix =  cv::Mat(3, 3, CV_64F, matrix);
-      leftCameraMatrix = (cv::Mat_<double>(3,3) << fx, 0.0f, cx, 0.0f, fy, cy, 0.0f, 0.0f, 1);
-      distLeft = (cv::Mat_<double>(1,5) << k1, k2, p1, p2, k3);
-      // distLeft = cv::Mat(1, 5, CV_64F, dist);
-      // for (size_t i = 0; i < 9; i++)
-      // {
-      //   leftCameraMatrix.push_back(matrix[i]);
-      //   if (i < 5)
-      //   {
-      //     distLeft.push_back(dist[i]);
-      //   }
-      // }
-      
-    }
-    nh->getParam("Camera_r/fx", fx);
-    nh->getParam("Camera_r/fy", fy);
-    nh->getParam("Camera_r/cx", cx);
-    nh->getParam("Camera_r/cy", cy);
-    nh->getParam("Camera_r/k1", k1);
-    nh->getParam("Camera_r/k2", k2);
-    nh->getParam("Camera_r/p1", p1);
-    nh->getParam("Camera_r/p2", p2);
-    nh->getParam("Camera_r/k3", k3);
-
-    {
-      // std::vector< double > matrix = {fx, 0.0f, cx, 0.0f, fy, cy, 0.0f, 0.0f, 1};
-      // std::vector< double > dist = {k1, k2, p1, p2, k3};
-      double matrix[3][3] = {{fx, 0.0f, cx}, {0.0f, fy, cy},{ 0.0f, 0.0f, 1}};
-      double dist[1][5] = {k1, k2, p1, p2, k3};
-      // rightCameraMatrix =  cv::Mat(3, 3, CV_64F, matrix);
-      rightCameraMatrix = (cv::Mat_<double>(3,3) << fx, 0.0f, cx, 0.0f, fy, cy, 0.0f, 0.0f, 1);
-      distRight = (cv::Mat_<double>(1,5) << k1, k2, p1, p2, k3);
-      // distRight = cv::Mat(1, 5, CV_64F, dist);
-      // leftCameraMatrix[0]
-      // for (size_t i = 0; i < 9; i++)
-      // {
-      //   rightCameraMatrix.push_back(matrix[i]);
-      //   if (i < 5)
-      //   {
-      //     distRight.push_back(dist[i]);
-      //   }
-      // }
-      
-      // std::copy(std::begin(matrix), std::end(matrix), leftCameraMatrix);
-    }
-    {
-      std::vector< double > transf;
-      nh->getParam("Stereo/T_c1_c2/data", transf);
-      double translate[3][1] = {{transf[3]}, {transf[7]}, {transf[11]}};
-      double rotate[3][3] = {{transf[0],transf[1],transf[2]},{transf[4],transf[5],transf[6]},{transf[8],transf[9],transf[10]}};
-      
-      sensorsTranslate = cv::Mat(3, 1, CV_64F, translate);
-      sensorsRotate = cv::Mat(3, 3, CV_64F, rotate);
-      // for (size_t i = 0; i < 12; i++)
-      // {
-      //   if (i == 3 || i == 7 || i == 11)
-      //   {
-      //     sensorsTranslate.push_back(transf[i]);
-      //   }
-      //   else
-      //   {
-      //     sensorsRotate.push_back(transf[i]);
-      //   }
-      // }
-      
-    }
-    // std::cout << "XDDDDDDDDDDDDD         \n";
-    // for (size_t i = 0; i < 9; i++)
-    // {
-    //   if (i % 3 == 0)
-    //   {
-    //     std::cout << '\n'; 
-    //   }
-    //   std::cout << sensorsRotate[i] << "  ";
-
-    // }
-    // std::cout << '\n';
-    // for (size_t i = 0; i < 3; i++)
-    // {
-    //   std::cout << sensorsTranslate[i] << "  ";
-    // }
-    // std::cout << '\n';
-    // for (size_t i = 0; i < 9; i++)
-    // {
-    //   if (i % 3 == 0)
-    //   {
-    //     std::cout << '\n'; 
-    //   }
-    //   std::cout << leftCameraMatrix[i] << "  ";
-
-    // }
-    // std::cout << '\n';
-    // for (size_t i = 0; i < 9; i++)
-    // {
-    //   if (i % 3 == 0)
-    //   {
-    //     std::cout << '\n'; 
-    //   }
-    //   std::cout << rightCameraMatrix[i] << "  ";
-
-    // }
-    // std::cout << '\n'; 
-    // for (size_t i = 0; i < 5; i++)
-    // {
-    //   std::cout << distLeft[i] << "  ";
-    // }
-    
-    // std::cout << '\n'; 
-
-    // for (size_t i = 0; i < 5; i++)
-    // {
-    //   std::cout << distRight[i] << "  ";
-    // }
-    
     std::cout << '\n'; 
-    cv::Size imgSize = cv::Size(width, height);
-    cv::stereoRectify(leftCameraMatrix, distLeft, rightCameraMatrix, distRight, imgSize, sensorsRotate, sensorsTranslate, R1, R2, P1, P2, Q);
-    cv::initUndistortRectifyMap(leftCameraMatrix, distLeft, R1, P1, imgSize, CV_16SC2, rmap[0][0], rmap[0][1]);
-    cv::initUndistortRectifyMap(rightCameraMatrix, distRight, R2, P2, imgSize, CV_16SC2, rmap[1][0], rmap[1][1]);
-    for (size_t i = 0; i < 3; i++)
-    {
-      for (size_t j = 0; j < 3; j++)
-      {
-        std::cout << R1.at<double>(i,j) << "    "; 
-      }
-      std::cout << '\n';
-    }
-    for (size_t i = 0; i < 3; i++)
-    {
-      for (size_t j = 0; j < 3; j++)
-      {
-        std::cout << R2.at<double>(i,j) << "    "; 
-      }
-      std::cout << '\n';
-    }
-    for (size_t i = 0; i < 4; i++)
-    {
-      for (size_t j = 0; j < 4; j++)
-      {
-        std::cout << P1.at<double>(i,j) << "    "; 
-      }
-      std::cout << '\n';
-    }
-    for (size_t i = 0; i < 4; i++)
-    {
-      for (size_t j = 0; j < 4; j++)
-      {
-        std::cout << P2.at<double>(i,j) << "    "; 
-      }
-      std::cout << '\n';
-    }
-    for (size_t i = 0; i < 3; i++)
-    {
-      for (size_t j = 0; j < 3; j++)
-      {
-        std::cout << sensorsRotate.at<double>(i,j) << "    "; 
-      }
-      std::cout << '\n';
-    }
-    for (size_t i = 0; i < 3; i++)
-    {
-      for (size_t j = 0; j < 1; j++)
-      {
-        std::cout << sensorsTranslate.at<double>(i,j) << "    "; 
-      }
-      std::cout << '\n';
-    }
-    for (size_t i = 0; i < 3; i++)
-    {
-      for (size_t j = 0; j < 3; j++)
-      {
-        std::cout << leftCameraMatrix.at<double>(i,j) << "    "; 
-      }
-      std::cout << '\n';
-    }
-    for (size_t i = 0; i < 3; i++)
-    {
-      for (size_t j = 0; j < 3; j++)
-      {
-        std::cout << rightCameraMatrix.at<double>(i,j) << "    "; 
-      }
-      std::cout << '\n';
-    }
-    for (size_t i = 0; i < 1; i++)
-    {
-      for (size_t j = 0; j < 5; j++)
-      {
-        std::cout << distLeft.at<double>(i,j) << "    "; 
-      }
-      std::cout << '\n';
-    }
-    for (size_t i = 0; i < 1; i++)
-    {
-      for (size_t j = 0; j < 5; j++)
-      {
-        std::cout << distRight.at<double>(i,j) << "    "; 
-      }
-      std::cout << '\n';
-    }
-    
+    cv::Size imgSize = cv::Size(zedcamera->mWidth, zedcamera->mHeight);
+    cv::stereoRectify(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, imgSize, zedcamera->sensorsRotate, zedcamera->sensorsTranslate, R1, R2, P1, P2, Q);
+    cv::initUndistortRectifyMap(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, R1, P1, imgSize, CV_16SC2, rmap[0][0], rmap[0][1]);
+    cv::initUndistortRectifyMap(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, R2, P2, imgSize, CV_16SC2, rmap[1][0], rmap[1][1]);
     
 }
 
 FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchStrat, const Zed_Camera* zedptr) : m_it(*nh), img_sync(MySyncPolicy(10), leftIm, rightIm)
 {
     this->zedcamera = zedptr;
-    nh->getParam("Camera_l_path", mLeftCameraPath);
-    nh->getParam("Camera_r_path", mRightCameraPath);
-    nh->getParam("Camera/width", width);
-    nh->getParam("Camera/height", height);
-    getCameraMatrix(nh);
+    if (!zedcamera->rectified)
+    {
+      setUndistortMap(nh);
+    }
     std::cout << "Feature Matching Strategy Option : ";
     mFeatureMatchStrat = featureMatchStrat;
     switch (featureMatchStrat)
@@ -251,19 +40,150 @@ FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchS
       break;
     }
     std::cout << '\n';
-    // mLeftImageSub = m_it.subscribe(mLeftCameraPath, 1, &FeatureDrawer::leftImageCallback, this);
-    // mRightImageSub = m_it.subscribe(mRightCameraPath, 1, &FeatureDrawer::rightImageCallback, this);
-    leftIm.subscribe(*nh, mLeftCameraPath, 1);
-    rightIm.subscribe(*nh, mRightCameraPath, 1);
+    leftIm.subscribe(*nh, zedcamera->cameraLeft.path, 1);
+    rightIm.subscribe(*nh, zedcamera->cameraRight.path, 1);
+    img_sync.registerCallback(boost::bind(&FeatureDrawer::featureDetectionCallback, this, _1, _2));
+    mImageMatches = m_it.advertise("/camera/matches", 1);
     // typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
     // img_sync {MySyncPolicy(10), leftIm, rightIm};
     // img_sync.ApproximateTimeSynchronizer(MySyncPolicy(10), leftIm, rightIm);
     // img_sync.init();
     // img_sync.init(MySyncPolicy(10));
-    img_sync.registerCallback(boost::bind(&FeatureDrawer::FeatureDetectionCallback, this, _1, _2));
-    mLeftImagePub = m_it.advertise("/left_camera/features", 1);
-    mRightImagePub = m_it.advertise("/right_camera/features", 1);
-    mImageMatches = m_it.advertise("/camera/matches", 1);
+    // mLeftImagePub = m_it.advertise("/left_camera/features", 1);
+    // mRightImagePub = m_it.advertise("/right_camera/features", 1);
+}
+
+
+
+void FeatureDrawer::setImage(const sensor_msgs::ImageConstPtr& imageRef, cv::Mat& image)
+{
+    cv_bridge::CvImagePtr cv_ptr;
+    try
+    {
+      cv_ptr = cv_bridge::toCvCopy(imageRef, sensor_msgs::image_encodings::RGB8);
+    }
+    catch (cv_bridge::Exception& e)
+    {
+      ROS_ERROR("cv_bridge exception: %s", e.what());
+      return;
+    }
+    image = cv_ptr->image;
+}
+
+
+
+void Features::findFeatures()
+{
+    cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
+    // detect features and descriptor
+    cv::Mat outImage;
+    detector->detectAndCompute( image, cv::Mat(), keypoints, descriptors);
+    cv::drawKeypoints(image, keypoints, outImage, {255, 0, 0, 255} );
+}
+
+void Features::getPoints()
+{
+    std::cout << "x : " << pointsPosition.at(0).x << " y : " << pointsPosition.at(0).y << " z : " << pointsPosition.at(0).z << '\n'; 
+}
+
+std::vector<cv::DMatch> Features::findMatches(const Features& secondImage, const std_msgs::Header& header, image_transport::Publisher& mImageMatches)
+{
+    if ( descriptors.empty() )
+      cvError(0,"MatchFinder","1st descriptor empty",__FILE__,__LINE__);    
+    if ( secondImage.descriptors.empty() )
+      cvError(0,"MatchFinder","2nd descriptor empty",__FILE__,__LINE__);
+
+    std::vector<cv::DMatch> matches;
+    cv::BFMatcher matcher = cv::BFMatcher(cv::NORM_HAMMING, true);  
+    matcher.match(descriptors, secondImage.descriptors, matches);
+    for (int i = 0; i < matches.size(); i++)
+    {
+      for (int j = 0; j < matches.size() - 1; j++)
+      {
+        if (matches[j].distance > matches[j + 1].distance)
+        {
+          auto temp = matches[j];
+          matches[j] = matches[j + 1];
+          matches[j + 1] = temp;
+        }
+      }
+    }
+    if (matches.size() > 100)
+    {
+      matches.resize(100);
+    }
+    cv::Mat img_matches;
+    drawMatches( image, keypoints, secondImage.image, secondImage.keypoints, matches, img_matches, cv::Scalar::all(-1),
+          cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+
+
+    cv_bridge::CvImage out_msg;
+    out_msg.header   = header; // Same timestamp and tf frame as input image
+    out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+    out_msg.image    = img_matches; // Your cv::Mat
+    mImageMatches.publish(out_msg.toImageMsg());
+    return matches;
+}
+
+void FeatureDrawer::calculateFeaturePosition(const std::vector<cv::DMatch>& matches)
+{
+    for (size_t i = 0; i < matches.size(); i++)
+    {
+
+      double x = zedcamera->mBaseline*(leftImage.keypoints[matches[i].queryIdx].pt.x - zedcamera->cameraLeft.cx)/(leftImage.keypoints[matches[i].queryIdx].pt.x - rightImage.keypoints[matches[i].trainIdx].pt.x);
+      double y = zedcamera->mBaseline * zedcamera->cameraLeft.fx * (leftImage.keypoints[matches[i].queryIdx].pt.y - zedcamera->cameraLeft.cy)/(zedcamera->cameraLeft.fy * (leftImage.keypoints[matches[i].queryIdx].pt.x - rightImage.keypoints[matches[i].trainIdx].pt.x));
+      double z = zedcamera->mBaseline*zedcamera->cameraLeft.fx/(leftImage.keypoints[matches[i].queryIdx].pt.x - rightImage.keypoints[matches[i].trainIdx].pt.x);
+      // std::cout << " x : " << x << " y : " << y << " z : " << z << '\n'; 
+      leftImage.pointsPosition.push_back(pcl::PointXYZ(x,y,z));
+      x = zedcamera->mBaseline*(leftImage.keypoints[matches[i].queryIdx].pt.x - zedcamera->cameraRight.cx)/(leftImage.keypoints[matches[i].queryIdx].pt.x - rightImage.keypoints[matches[i].trainIdx].pt.x);
+      y = zedcamera->mBaseline * zedcamera->cameraRight.fx * (leftImage.keypoints[matches[i].queryIdx].pt.y - zedcamera->cameraRight.cy)/(zedcamera->cameraRight.fy * (leftImage.keypoints[matches[i].queryIdx].pt.x - rightImage.keypoints[matches[i].trainIdx].pt.x));
+      z = zedcamera->mBaseline*zedcamera->cameraRight.fx/(leftImage.keypoints[matches[i].queryIdx].pt.x - rightImage.keypoints[matches[i].trainIdx].pt.x);
+      // std::cout << " x : " << x << " y : " << y << " z : " << z << '\n' << "XDD " << '\n'; 
+      rightImage.pointsPosition.push_back(pcl::PointXYZ(x,y,z));
+    }
+    rightImage.getPoints();
+  
+}
+
+void FeatureDrawer::featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
+{
+    leftImage.pointsPosition.clear();
+    rightImage.pointsPosition.clear();
+    setImage(lIm, leftImage.image);
+    setImage(rIm, rightImage.image);
+    cv::Mat dstle, dstri;
+    if (!zedcamera->rectified)
+    {
+      cv::remap(leftImage.image, dstle, rmap[0][0], rmap[0][1],cv::INTER_LINEAR);
+      cv::remap(rightImage.image, dstri, rmap[1][0], rmap[1][1],cv::INTER_LINEAR);
+      cv::hconcat(leftImage.image, dstle, dstle);                       //add 2 images horizontally (image1, image2, destination)
+      cv::hconcat(rightImage.image, dstri, dstri);                      //add 2 images horizontally (image1, image2, destination)
+      cv::vconcat(dstle, dstri, dstle);                           //add 2 images vertically
+      cv_bridge::CvImage out_msg;
+      out_msg.header   = lIm->header; // Same timestamp and tf frame as input image
+      out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+      out_msg.image    = dstle; // Your cv::Mat
+      // mImageMatches.publish(out_msg.toImageMsg());
+      // std::cout << "NOT RECTIFIED" << '\n';
+    }
+    leftImage.findFeatures();
+    rightImage.findFeatures();
+    std::vector<cv::DMatch> matches = leftImage.findMatches(rightImage, lIm->header, mImageMatches);
+    calculateFeaturePosition(matches);
+    if (!firstImage)
+    {
+
+    }
+    leftImage.previousimage = leftImage.image;
+    rightImage.previousimage = rightImage.image;
+    
+    // std::cout << "POINT X query : " << leftImage.keypoints[matches[0].queryIdx].pt.x << '\n';
+    // std::cout << "POINT X train : " << rightImage.keypoints[matches[0].trainIdx].pt.x << '\n';
+}
+
+FeatureDrawer::~FeatureDrawer()
+{
+    cv::destroyWindow(OPENCV_WINDOW);
 }
 
 // void FeatureDrawer::FeatureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
@@ -290,238 +210,183 @@ FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchS
 //     }
 // }
 
-void FeatureDrawer::getImage(const sensor_msgs::ImageConstPtr& imageRef, cv::Mat& image)
-{
-    cv_bridge::CvImagePtr cv_ptr;
-    try
-    {
-      cv_ptr = cv_bridge::toCvCopy(imageRef, sensor_msgs::image_encodings::RGB8);
-    }
-    catch (cv_bridge::Exception& e)
-    {
-      ROS_ERROR("cv_bridge exception: %s", e.what());
-      return;
-    }
-    image = cv_ptr->image;
-}
+// void FeatureDrawer::findFeatures(const cv::Mat& imageRef, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors, image_transport::Publisher publish)
+// {
 
-void FeatureDrawer::findFeatures(const cv::Mat& imageRef, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptor, image_transport::Publisher publish)
-{
+//     if (mFeatureMatchStrat == FeatureStrategy::orb)
+//     {
+//       cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
+//       // detect features and descriptor
+//       cv::Mat outImage;
+//       detector->detectAndCompute( imageRef, cv::Mat(), keypoints, descriptors);
+//       cv::drawKeypoints(imageRef, keypoints, outImage, {255, 0, 0, 255} );
+//       // cv_bridge::CvImage out_msg;
+//       // out_msg.header   = imageRef->header; // Same timestamp and tf frame as input image
+//       // out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+//       // out_msg.image    = outImage; // Your cv::Mat
+//       // publish.publish(out_msg.toImageMsg());
+//     }
+// }
 
-    if (mFeatureMatchStrat == FeatureStrategy::orb)
-    {
-      cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
-      // detect features and descriptor
-      cv::Mat outImage;
-      detector->detectAndCompute( imageRef, cv::Mat(), keypoints, descriptor);
-      cv::drawKeypoints(imageRef, keypoints, outImage, {255, 0, 0, 255} );
-      // cv_bridge::CvImage out_msg;
-      // out_msg.header   = imageRef->header; // Same timestamp and tf frame as input image
-      // out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-      // out_msg.image    = outImage; // Your cv::Mat
-      // publish.publish(out_msg.toImageMsg());
-    }
-}
+// std::vector<cv::DMatch> FeatureDrawer::findMatches(const std_msgs::Header& header)
+// {
+//     if (mFeatureMatchStrat == FeatureStrategy::orb)
+//     {
+//       if ( leftImage.descriptors.empty() )
+//         cvError(0,"MatchFinder","1st descriptor empty",__FILE__,__LINE__);    
+//       if ( rightImage.descriptors.empty() )
+//         cvError(0,"MatchFinder","2nd descriptor empty",__FILE__,__LINE__);
 
-std::vector<cv::DMatch> FeatureDrawer::findMatches(const sensor_msgs::ImageConstPtr& lIm)
-{
-    if (mFeatureMatchStrat == FeatureStrategy::orb)
-    {
-      if ( leftDescript.empty() )
-        cvError(0,"MatchFinder","1st descriptor empty",__FILE__,__LINE__);    
-      if ( rightDescript.empty() )
-        cvError(0,"MatchFinder","2nd descriptor empty",__FILE__,__LINE__);
-
-      std::vector<cv::DMatch> matches;
-    	cv::BFMatcher matcher = cv::BFMatcher(cv::NORM_HAMMING, true);  
-      matcher.match(leftDescript, rightDescript, matches);
-      for (int i = 0; i < matches.size(); i++)
-      {
-        for (int j = 0; j < matches.size() - 1; j++)
-        {
-          if (matches[j].distance > matches[j + 1].distance)
-          {
-            auto temp = matches[j];
-            matches[j] = matches[j + 1];
-            matches[j + 1] = temp;
-          }
-        }
-      }
-      if (matches.size() > 100)
-      {
-        matches.resize(100);
-      }
-      cv::Mat img_matches;
-      drawMatches( leftImage, leftKeypoints, rightImage, rightKeypoints, matches, img_matches, cv::Scalar::all(-1),
-            cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+//       std::vector<cv::DMatch> matches;
+//     	cv::BFMatcher matcher = cv::BFMatcher(cv::NORM_HAMMING, true);  
+//       matcher.match(leftImage.descriptors, rightImage.descriptors, matches);
+//       for (int i = 0; i < matches.size(); i++)
+//       {
+//         for (int j = 0; j < matches.size() - 1; j++)
+//         {
+//           if (matches[j].distance > matches[j + 1].distance)
+//           {
+//             auto temp = matches[j];
+//             matches[j] = matches[j + 1];
+//             matches[j + 1] = temp;
+//           }
+//         }
+//       }
+//       if (matches.size() > 100)
+//       {
+//         matches.resize(100);
+//       }
+//       cv::Mat img_matches;
+//       drawMatches( leftImage.image, leftImage.keypoints, rightImage.image, rightImage.keypoints, matches, img_matches, cv::Scalar::all(-1),
+//             cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
 
 
-      cv_bridge::CvImage out_msg;
-      out_msg.header   = lIm->header; // Same timestamp and tf frame as input image
-      out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-      out_msg.image    = img_matches; // Your cv::Mat
-      // mImageMatches.publish(out_msg.toImageMsg());
-      return matches;
-    }
+//       cv_bridge::CvImage out_msg;
+//       out_msg.header   = header; // Same timestamp and tf frame as input image
+//       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+//       out_msg.image    = img_matches; // Your cv::Mat
+//       // mImageMatches.publish(out_msg.toImageMsg());
+//       return matches;
+//     }
     
-}
+// }
 
-void FeatureDrawer::calculateFeaturePosition(const std::vector<cv::DMatch>& matches)
-{
-
-}
-
-void FeatureDrawer::FeatureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
-{
-    getImage(lIm, leftImage);
-    getImage(rIm, rightImage);
-    cv::Mat dstle, dstri;
-    cv::remap(leftImage, dstle, rmap[0][0], rmap[0][1],cv::INTER_LINEAR);
-    cv::remap(rightImage, dstri, rmap[1][0], rmap[1][1],cv::INTER_LINEAR);
-    findFeatures(dstle, leftKeypoints, leftDescript, mLeftImagePub);
-    findFeatures(dstri, rightKeypoints, rightDescript, mRightImagePub);
-    std::vector<cv::DMatch> matches = findMatches(lIm);
-    std::cout << "POINT X query : " << leftKeypoints[matches[0].queryIdx].pt.x << '\n';
-    std::cout << "POINT X train : " << rightKeypoints[matches[0].trainIdx].pt.x << '\n';
-    cv_bridge::CvImage out_msg;
-    // cv::undistort(leftImage, dstle, leftCameraMatrix, distLeft);
-    // cv::undistort(rightImage,dstri, rightCameraMatrix, distRight);
-    cv::hconcat(leftImage, dstle, dstle);                       //add 2 images horizontally (image1, image2, destination)
-    cv::hconcat(rightImage, dstri, dstri);                      //add 2 images horizontally (image1, image2, destination)
-    cv::vconcat(dstle, dstri, dstle);                           //add 2 images vertically
-    out_msg.header   = lIm->header; // Same timestamp and tf frame as input image
-    out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-    out_msg.image    = dstle; // Your cv::Mat
-    mImageMatches.publish(out_msg.toImageMsg());
-}
-
-FeatureDrawer::~FeatureDrawer()
-{
-    cv::destroyWindow(OPENCV_WINDOW);
-}
-
-
-void FeatureDrawer::leftImageCallback(const sensor_msgs::ImageConstPtr& msg)
-{
-    cv_bridge::CvImagePtr cv_ptr;
-    try
-    {
-      cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::RGB8);
-    }
-    catch (cv_bridge::Exception& e)
-    {
-      ROS_ERROR("cv_bridge exception: %s", e.what());
-      return;
-    }
+// void FeatureDrawer::leftImageCallback(const sensor_msgs::ImageConstPtr& msg)
+// {
+//     cv_bridge::CvImagePtr cv_ptr;
+//     try
+//     {
+//       cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::RGB8);
+//     }
+//     catch (cv_bridge::Exception& e)
+//     {
+//       ROS_ERROR("cv_bridge exception: %s", e.what());
+//       return;
+//     }
     
-    if (mFeatureMatchStrat == FeatureStrategy::orb)
-    {
-      cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
-      // detect features and descriptor
-      cv::Mat outImage;
-      detector->detectAndCompute( cv_ptr->image, cv::Mat(), leftKeypoints, leftDescript);
-      cv::drawKeypoints(cv_ptr->image, leftKeypoints, outImage, {255, 0, 0, 255} );
-      cv_bridge::CvImage out_msg;
-      out_msg.header   = msg->header; // Same timestamp and tf frame as input image
-      out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-      out_msg.image    = outImage; // Your cv::Mat
-      leftImage = cv_ptr->image;
-      mLeftImagePub.publish(out_msg.toImageMsg());
-    }
-    if (mFeatureMatchStrat == FeatureStrategy::fast)
-    {
-      cv::Ptr<cv::FeatureDetector> detector = cv::FastFeatureDetector::create();
-      // detect features and descriptor
-      cv::Mat outImage;
-      detector->detect( cv_ptr->image, leftKeypoints);
-      cv::drawKeypoints(cv_ptr->image, leftKeypoints, outImage, {0, 255, 0, 255} );
-      cv_bridge::CvImage out_msg;
-      out_msg.header   = msg->header; // Same timestamp and tf frame as input image
-      out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-      out_msg.image    = outImage; // Your cv::Mat
-      leftImage = cv_ptr->image;
-      mLeftImagePub.publish(out_msg.toImageMsg());
-    }
-    if (mFeatureMatchStrat == FeatureStrategy::brisk)
-    {
-      cv::Ptr<cv::FeatureDetector> detector = cv::BRISK::create();
-      // detect features and descriptor
-      cv::Mat outImage;
-      detector->detectAndCompute( cv_ptr->image, cv::Mat(), leftKeypoints, leftDescript);
-      cv::drawKeypoints(cv_ptr->image, leftKeypoints, outImage, {0, 0, 255, 255} );
-      cv_bridge::CvImage out_msg;
-      out_msg.header   = msg->header; // Same timestamp and tf frame as input image
-      out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-      out_msg.image    = outImage; // Your cv::Mat
-      leftImage = cv_ptr->image;
-      mLeftImagePub.publish(out_msg.toImageMsg());
-    }
-}
+//     if (mFeatureMatchStrat == FeatureStrategy::orb)
+//     {
+//       cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
+//       // detect features and descriptor
+//       cv::Mat outImage;
+//       detector->detectAndCompute( cv_ptr->image, cv::Mat(), leftKeypoints, leftDescript);
+//       cv::drawKeypoints(cv_ptr->image, leftKeypoints, outImage, {255, 0, 0, 255} );
+//       cv_bridge::CvImage out_msg;
+//       out_msg.header   = msg->header; // Same timestamp and tf frame as input image
+//       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+//       out_msg.image    = outImage; // Your cv::Mat
+//       leftImage = cv_ptr->image;
+//       mLeftImagePub.publish(out_msg.toImageMsg());
+//     }
+//     if (mFeatureMatchStrat == FeatureStrategy::fast)
+//     {
+//       cv::Ptr<cv::FeatureDetector> detector = cv::FastFeatureDetector::create();
+//       // detect features and descriptor
+//       cv::Mat outImage;
+//       detector->detect( cv_ptr->image, leftKeypoints);
+//       cv::drawKeypoints(cv_ptr->image, leftKeypoints, outImage, {0, 255, 0, 255} );
+//       cv_bridge::CvImage out_msg;
+//       out_msg.header   = msg->header; // Same timestamp and tf frame as input image
+//       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+//       out_msg.image    = outImage; // Your cv::Mat
+//       leftImage = cv_ptr->image;
+//       mLeftImagePub.publish(out_msg.toImageMsg());
+//     }
+//     if (mFeatureMatchStrat == FeatureStrategy::brisk)
+//     {
+//       cv::Ptr<cv::FeatureDetector> detector = cv::BRISK::create();
+//       // detect features and descriptor
+//       cv::Mat outImage;
+//       detector->detectAndCompute( cv_ptr->image, cv::Mat(), leftKeypoints, leftDescript);
+//       cv::drawKeypoints(cv_ptr->image, leftKeypoints, outImage, {0, 0, 255, 255} );
+//       cv_bridge::CvImage out_msg;
+//       out_msg.header   = msg->header; // Same timestamp and tf frame as input image
+//       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+//       out_msg.image    = outImage; // Your cv::Mat
+//       leftImage = cv_ptr->image;
+//       mLeftImagePub.publish(out_msg.toImageMsg());
+//     }
+// }
 
-void FeatureDrawer::rightImageCallback(const sensor_msgs::ImageConstPtr& msg)
-{
-    cv_bridge::CvImagePtr cv_ptr;
-    try
-    {
-      cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::RGB8);
-    }
-    catch (cv_bridge::Exception& e)
-    {
-      ROS_ERROR("cv_bridge exception: %s", e.what());
-      return;
-    }
-    if (mFeatureMatchStrat == FeatureStrategy::orb)
-    {
-      cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
-      // detect features and descriptor
-      cv::Mat outImage;
-      detector->detectAndCompute( cv_ptr->image, cv::Mat(), rightKeypoints, rightDescript);
-      cv::drawKeypoints(cv_ptr->image, rightKeypoints, outImage, {255, 0, 0, 255} );
-      cv_bridge::CvImage out_msg;
-      // rightKeypoints[0].size;
-      // rightKeypoints[0].pt.x;
-      out_msg.header   = msg->header; // Same timestamp and tf frame as input image
-      out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-      out_msg.image    = outImage; // Your cv::Mat
-      rightImage = cv_ptr->image;
-      mRightImagePub.publish(out_msg.toImageMsg());
-    }
-    if (mFeatureMatchStrat == FeatureStrategy::fast)
-    {
-      cv::Ptr<cv::FeatureDetector> detector = cv::FastFeatureDetector::create();
-      // detect features and descriptor
-      cv::Mat outImage;
-      detector->detect( cv_ptr->image, rightKeypoints);
-      cv::drawKeypoints(cv_ptr->image, rightKeypoints, outImage, {0, 255, 0, 255} );
-      cv_bridge::CvImage out_msg;
-      out_msg.header   = msg->header; // Same timestamp and tf frame as input image
-      out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-      out_msg.image    = outImage; // Your cv::Mat
-      rightImage = cv_ptr->image;
-      mRightImagePub.publish(out_msg.toImageMsg());
-    }
-    if (mFeatureMatchStrat == FeatureStrategy::brisk)
-    {
-      cv::Ptr<cv::FeatureDetector> detector = cv::BRISK::create();
-      // detect features and descriptor
-      cv::Mat outImage;
-      detector->detectAndCompute( cv_ptr->image, cv::Mat(), rightKeypoints, rightDescript);
-      cv::drawKeypoints(cv_ptr->image, rightKeypoints, outImage, {0, 0, 255, 255} );
-      cv_bridge::CvImage out_msg;
-      // rightKeypoints[0].size;
-      // rightKeypoints[0].pt.x;
-      out_msg.header   = msg->header; // Same timestamp and tf frame as input image
-      out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-      out_msg.image    = outImage; // Your cv::Mat
-      rightImage = cv_ptr->image;
-      mRightImagePub.publish(out_msg.toImageMsg());
-    }
-}
-
-void FeatureDrawer::addFeatures()
-{
-
-}
+// void FeatureDrawer::rightImageCallback(const sensor_msgs::ImageConstPtr& msg)
+// {
+//     cv_bridge::CvImagePtr cv_ptr;
+//     try
+//     {
+//       cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::RGB8);
+//     }
+//     catch (cv_bridge::Exception& e)
+//     {
+//       ROS_ERROR("cv_bridge exception: %s", e.what());
+//       return;
+//     }
+//     if (mFeatureMatchStrat == FeatureStrategy::orb)
+//     {
+//       cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
+//       // detect features and descriptor
+//       cv::Mat outImage;
+//       detector->detectAndCompute( cv_ptr->image, cv::Mat(), rightKeypoints, rightDescript);
+//       cv::drawKeypoints(cv_ptr->image, rightKeypoints, outImage, {255, 0, 0, 255} );
+//       cv_bridge::CvImage out_msg;
+//       // rightKeypoints[0].size;
+//       // rightKeypoints[0].pt.x;
+//       out_msg.header   = msg->header; // Same timestamp and tf frame as input image
+//       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+//       out_msg.image    = outImage; // Your cv::Mat
+//       rightImage = cv_ptr->image;
+//       mRightImagePub.publish(out_msg.toImageMsg());
+//     }
+//     if (mFeatureMatchStrat == FeatureStrategy::fast)
+//     {
+//       cv::Ptr<cv::FeatureDetector> detector = cv::FastFeatureDetector::create();
+//       // detect features and descriptor
+//       cv::Mat outImage;
+//       detector->detect( cv_ptr->image, rightKeypoints);
+//       cv::drawKeypoints(cv_ptr->image, rightKeypoints, outImage, {0, 255, 0, 255} );
+//       cv_bridge::CvImage out_msg;
+//       out_msg.header   = msg->header; // Same timestamp and tf frame as input image
+//       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+//       out_msg.image    = outImage; // Your cv::Mat
+//       rightImage = cv_ptr->image;
+//       mRightImagePub.publish(out_msg.toImageMsg());
+//     }
+//     if (mFeatureMatchStrat == FeatureStrategy::brisk)
+//     {
+//       cv::Ptr<cv::FeatureDetector> detector = cv::BRISK::create();
+//       // detect features and descriptor
+//       cv::Mat outImage;
+//       detector->detectAndCompute( cv_ptr->image, cv::Mat(), rightKeypoints, rightDescript);
+//       cv::drawKeypoints(cv_ptr->image, rightKeypoints, outImage, {0, 0, 255, 255} );
+//       cv_bridge::CvImage out_msg;
+//       // rightKeypoints[0].size;
+//       // rightKeypoints[0].pt.x;
+//       out_msg.header   = msg->header; // Same timestamp and tf frame as input image
+//       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+//       out_msg.image    = outImage; // Your cv::Mat
+//       rightImage = cv_ptr->image;
+//       mRightImagePub.publish(out_msg.toImageMsg());
+//     }
+// }
 
 } //namespace vio_slam
 

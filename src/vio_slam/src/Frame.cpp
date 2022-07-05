@@ -1,5 +1,4 @@
 #include "Frame.h"
-#include <tf/tf.h>
 
 
 namespace vio_slam
@@ -50,7 +49,7 @@ void Frame::printList(std::list< KeyFrameVars >& keyFrames)
     }
 }
 
-void Frame::pangoQuit(ros::NodeHandle *nh)
+void Frame::pangoQuit(ros::NodeHandle *nh, const std::vector<pcl::PointXYZ>* pointsFromImage)
 {
     const int UI_WIDTH = 180;
     
@@ -97,6 +96,7 @@ void Frame::pangoQuit(ros::NodeHandle *nh)
         lines->getValues(temp.mT,camera->T_pc.m);
         if (pangolin::Pushed(a_button))
         {
+            auto points = std::make_shared<Points>(pointsFromImage);
             ROS_INFO("Keyframe Added \n");
             {
                 auto keyframe = std::make_shared<CameraFrame>();
@@ -134,7 +134,7 @@ void CameraFrame::Subscribers(ros::NodeHandle *nh)
     nh->getParam("ground_truth_path", mGroundTruthPath);
     nh->getParam("pointcloud_path", mPointCloudPath);
     groundSub = nh->subscribe(mGroundTruthPath, 1, &CameraFrame::groundCallback, this);
-    pointSub = nh->subscribe<PointCloud>(mPointCloudPath, 1, &CameraFrame::pointCallback, this);
+    // pointSub = nh->subscribe<PointCloud>(mPointCloudPath, 1, &CameraFrame::pointCallback, this);
 
 }
 
@@ -159,14 +159,14 @@ void CameraFrame::groundCallback(const nav_msgs::Odometry& msg)
     this->T_pc.m[14] = msg.pose.pose.position.x;            // X on Gazebo is Z on Pangolin
 }
 
-void CameraFrame::pointCallback(const PointCloud::ConstPtr& msg)
-{
-    BOOST_FOREACH (const pcl::PointXYZ& pt, msg->points)
-    if (!(pt.x != pt.x || pt.y != pt.y || pt.z != pt.z))
-    {
-        mPointCloud.push_back(pt);
-    }
-}
+// void CameraFrame::pointCallback(const PointCloud::ConstPtr& msg)
+// {
+//     BOOST_FOREACH (const pcl::PointXYZ& pt, msg->points)
+//     if (!(pt.x != pt.x || pt.y != pt.y || pt.z != pt.z))
+//     {
+//         mPointCloud.push_back(pt);
+//     }
+// }
 
 void CameraFrame::Render(const pangolin::RenderParams&)
 {
@@ -257,6 +257,20 @@ void CameraFrame::lineFromKeyFrameToCamera(std::vector < pangolin::GLprecision >
     glVertex3f(T_pc.m[12], T_pc.m[13], T_pc.m[14]);
     glEnd();
     glPopMatrix();
+}
+
+Points::Points(const std::vector<pcl::PointXYZ>* point)
+{
+    if(!point->empty())
+    {
+        points = point;
+        std::cout << "LLLLLLOOOOOOOOOOOOOOOOOOLLLL \n" << points->at(0).x;
+    }
+}
+
+void Points::Render(const pangolin::RenderParams& params)
+{
+
 }
 
 

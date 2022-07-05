@@ -15,8 +15,9 @@
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <boost/foreach.hpp>
+#include <tf/tf.h>
 
-typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+// typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 namespace vio_slam
 {
@@ -43,7 +44,7 @@ class Frame
     public:
         Frame();
         std::list< KeyFrameVars > keyFrames;
-        void pangoQuit(ros::NodeHandle *nh);                    
+        void pangoQuit(ros::NodeHandle *nh, const std::vector<pcl::PointXYZ>* pointsFromImage);                    
         void printList(std::list< KeyFrameVars >& keyFrames);
 
 
@@ -56,16 +57,23 @@ struct Lines : public pangolin::Renderable
     void getValues(std::vector < pangolin::GLprecision >& mKeyFrame, pangolin::GLprecision mCamera[16]);
 };
 
+struct Points : public pangolin::Renderable
+{
+    const std::vector<pcl::PointXYZ>* points;
+    Points(const std::vector<pcl::PointXYZ>* point);
+    void Render(const pangolin::RenderParams& params) override;
+};
+
 struct CameraFrame : public pangolin::Renderable
 {
     std::string mGroundTruthPath, mPointCloudPath;
     const char *color;
     std::vector < pcl::PointXYZ > mPointCloud;
     ros::Subscriber groundSub;
-    ros::Subscriber pointSub;
+    // ros::Subscriber pointSub;
     void Subscribers(ros::NodeHandle *nh);
     void groundCallback(const nav_msgs::Odometry& msg);
-    void pointCallback(const PointCloud::ConstPtr& msg);
+    // void pointCallback(const PointCloud::ConstPtr& msg);
     void lineFromKeyFrameToCamera(std::vector < pangolin::GLprecision >& mT);
     void Render(const pangolin::RenderParams&) override;
 
