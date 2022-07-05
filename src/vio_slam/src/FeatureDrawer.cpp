@@ -8,8 +8,8 @@ namespace vio_slam
 
 void FeatureDrawer::getCameraMatrix(ros::NodeHandle *nh)
 {
-    float fx {},fy {},cx {}, cy {};
-    float k1 {}, k2 {}, p1 {}, p2 {}, k3{};
+    double fx {},fy {},cx {}, cy {};
+    double k1 {}, k2 {}, p1 {}, p2 {}, k3{};
     nh->getParam("Camera_l/fx", fx);
     nh->getParam("Camera_l/fy", fy);
     nh->getParam("Camera_l/cx", cx);
@@ -226,8 +226,9 @@ void FeatureDrawer::getCameraMatrix(ros::NodeHandle *nh)
     
 }
 
-FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchStrat) : m_it(*nh), img_sync(MySyncPolicy(10), leftIm, rightIm)
+FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchStrat, const Zed_Camera* zedptr) : m_it(*nh), img_sync(MySyncPolicy(10), leftIm, rightIm)
 {
+    this->zedcamera = zedptr;
     nh->getParam("Camera_l_path", mLeftCameraPath);
     nh->getParam("Camera_r_path", mRightCameraPath);
     nh->getParam("Camera/width", width);
@@ -289,7 +290,7 @@ FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchS
 //     }
 // }
 
-void FeatureDrawer::findFeatures(const sensor_msgs::ImageConstPtr& imageRef, cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptor, image_transport::Publisher publish)
+void FeatureDrawer::getImage(const sensor_msgs::ImageConstPtr& imageRef, cv::Mat& image)
 {
     cv_bridge::CvImagePtr cv_ptr;
     try
@@ -301,20 +302,24 @@ void FeatureDrawer::findFeatures(const sensor_msgs::ImageConstPtr& imageRef, cv:
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
-    
+    image = cv_ptr->image;
+}
+
+void FeatureDrawer::findFeatures(const cv::Mat& imageRef, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptor, image_transport::Publisher publish)
+{
+
     if (mFeatureMatchStrat == FeatureStrategy::orb)
     {
       cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
       // detect features and descriptor
       cv::Mat outImage;
-      detector->detectAndCompute( cv_ptr->image, cv::Mat(), keypoints, descriptor);
-      cv::drawKeypoints(cv_ptr->image, keypoints, outImage, {255, 0, 0, 255} );
-      cv_bridge::CvImage out_msg;
-      out_msg.header   = imageRef->header; // Same timestamp and tf frame as input image
-      out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-      out_msg.image    = outImage; // Your cv::Mat
-      image = cv_ptr->image;
-      publish.publish(out_msg.toImageMsg());
+      detector->detectAndCompute( imageRef, cv::Mat(), keypoints, descriptor);
+      cv::drawKeypoints(imageRef, keypoints, outImage, {255, 0, 0, 255} );
+      // cv_bridge::CvImage out_msg;
+      // out_msg.header   = imageRef->header; // Same timestamp and tf frame as input image
+      // out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+      // out_msg.image    = outImage; // Your cv::Mat
+      // publish.publish(out_msg.toImageMsg());
     }
 }
 
@@ -361,19 +366,26 @@ std::vector<cv::DMatch> FeatureDrawer::findMatches(const sensor_msgs::ImageConst
     
 }
 
+void FeatureDrawer::calculateFeaturePosition(const std::vector<cv::DMatch>& matches)
+{
+
+}
+
 void FeatureDrawer::FeatureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
 {
-    findFeatures(lIm, leftImage, leftKeypoints, leftDescript, mLeftImagePub);
-    findFeatures(rIm, rightImage, rightKeypoints, rightDescript, mRightImagePub);
+    getImage(lIm, leftImage);
+    getImage(rIm, rightImage);
+    cv::Mat dstle, dstri;
+    cv::remap(leftImage, dstle, rmap[0][0], rmap[0][1],cv::INTER_LINEAR);
+    cv::remap(rightImage, dstri, rmap[1][0], rmap[1][1],cv::INTER_LINEAR);
+    findFeatures(dstle, leftKeypoints, leftDescript, mLeftImagePub);
+    findFeatures(dstri, rightKeypoints, rightDescript, mRightImagePub);
     std::vector<cv::DMatch> matches = findMatches(lIm);
     std::cout << "POINT X query : " << leftKeypoints[matches[0].queryIdx].pt.x << '\n';
     std::cout << "POINT X train : " << rightKeypoints[matches[0].trainIdx].pt.x << '\n';
-    cv::Mat dstle, dstri;
     cv_bridge::CvImage out_msg;
     // cv::undistort(leftImage, dstle, leftCameraMatrix, distLeft);
     // cv::undistort(rightImage,dstri, rightCameraMatrix, distRight);
-    cv::remap(leftImage, dstle, rmap[0][0], rmap[0][1],cv::INTER_LINEAR);
-    cv::remap(rightImage, dstri, rmap[1][0], rmap[1][1],cv::INTER_LINEAR);
     cv::hconcat(leftImage, dstle, dstle);                       //add 2 images horizontally (image1, image2, destination)
     cv::hconcat(rightImage, dstri, dstri);                      //add 2 images horizontally (image1, image2, destination)
     cv::vconcat(dstle, dstri, dstle);                           //add 2 images vertically

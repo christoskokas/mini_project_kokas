@@ -27,7 +27,8 @@ class Camera
         ros::Subscriber camera_subscriber;
         ros::Subscriber imu_subscriber;
     public:
-        float fx,fy,cx,cy;
+        double fx {},fy {},cx {}, cy {};
+        double k1 {}, k2 {}, p1 {}, p2 {}, k3{};
         Camera(ros::NodeHandle *nh);
         Camera() = default;
         ~Camera();
@@ -40,9 +41,9 @@ class Camera
 class Zed_Camera
 {
     private:
+    public:
         float m_baseline, m_fps;
         int m_width, m_height;
-    public:
         Camera camera_left;
         Camera camera_right;
         Zed_Camera(ros::NodeHandle *nh);

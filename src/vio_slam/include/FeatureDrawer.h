@@ -3,6 +3,8 @@
 #ifndef VIEWER_H
 #define VIEWER_H
 
+#include <Camera.h>
+
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
@@ -66,21 +68,24 @@ class FeatureDrawer
         std::string mRightCameraPath;
         FeatureStrategy mFeatureMatchStrat;
         int width {}, height {};
-
+        double mbaseline {};
+        const Zed_Camera* zedcamera;
     public:
         message_filters::Subscriber<sensor_msgs::Image> leftIm;
         message_filters::Subscriber<sensor_msgs::Image> rightIm;
         message_filters::Synchronizer<MySyncPolicy> img_sync;
-        FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchStrat);
+        FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchStrat, const Zed_Camera* zedptr);
         ~FeatureDrawer();
         void leftImageCallback(const sensor_msgs::ImageConstPtr& msg);
         void rightImageCallback(const sensor_msgs::ImageConstPtr& msg);
         void addFeatures();
         void FeatureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
         void featureMatch();
-        void findFeatures(const sensor_msgs::ImageConstPtr& imageRef, cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptor, image_transport::Publisher publish);
+        void findFeatures(const cv::Mat& imageRef, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptor, image_transport::Publisher publish);
         std::vector<cv::DMatch> findMatches(const sensor_msgs::ImageConstPtr& lIm);
         void getCameraMatrix(ros::NodeHandle *nh);
+        void getImage(const sensor_msgs::ImageConstPtr& imageRef, cv::Mat& image);
+        void calculateFeaturePosition(const std::vector<cv::DMatch>& matches);
 
 
 };

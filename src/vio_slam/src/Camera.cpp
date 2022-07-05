@@ -32,10 +32,20 @@ Zed_Camera::Zed_Camera(ros::NodeHandle *nh)
     nh->getParam("/Camera_l/fy",camera_left.fy);
     nh->getParam("/Camera_l/cx",camera_left.cx);
     nh->getParam("/Camera_l/cy",camera_left.cy);
+    nh->getParam("/Camera_l/k1",camera_left.k1);
+    nh->getParam("/Camera_l/k2",camera_left.k2);
+    nh->getParam("/Camera_l/p1",camera_left.p1);
+    nh->getParam("/Camera_l/p2",camera_left.p2);
+    nh->getParam("/Camera_l/k3",camera_left.k3);
     nh->getParam("/Camera_r/fx",camera_right.fx);
     nh->getParam("/Camera_r/fy",camera_right.fy);
     nh->getParam("/Camera_r/cx",camera_right.cx);
     nh->getParam("/Camera_r/cy",camera_right.cy);
+    nh->getParam("/Camera_r/k1",camera_right.k1);
+    nh->getParam("/Camera_r/k2",camera_right.k2);
+    nh->getParam("/Camera_r/p1",camera_right.p1);
+    nh->getParam("/Camera_r/p2",camera_right.p2);
+    nh->getParam("/Camera_r/k3",camera_right.k3);
 }
 
 Zed_Camera::~Zed_Camera()

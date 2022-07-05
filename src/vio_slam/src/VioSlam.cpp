@@ -32,7 +32,8 @@ int main (int argc, char **argv)
     zedcamera.camera_left.GetIntrinsicValues();
     std::cout << "Right Camera" << std::endl;
     zedcamera.camera_right.GetIntrinsicValues();
-    vio_slam::FeatureDrawer fv(&nh, featureMatchingStrat);
+    const vio_slam::Zed_Camera* zedptr = &zedcamera;
+    vio_slam::FeatureDrawer fv(&nh, featureMatchingStrat, zedptr);
     vio_slam::Frame frame;
     std::thread worker(&vio_slam::Frame::pangoQuit, frame, &nh);
     std::cout << "Right Camera" << std::endl;
