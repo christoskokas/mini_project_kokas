@@ -20,6 +20,9 @@
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
+#include <boost/foreach.hpp>
+#include <tf/tf.h>
+#include <nav_msgs/Odometry.h>
 
 typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
 
@@ -51,7 +54,6 @@ class Features
 
     public:
         cv::Mat image;
-        cv::Mat previousimage;
         cv::Mat descriptors;
         std::vector< cv::KeyPoint > keypoints;
         std::vector< pcl::PointXYZ > pointsPosition;
@@ -68,22 +70,35 @@ class FeatureDrawer
         message_filters::Subscriber<sensor_msgs::Image> leftIm;
         message_filters::Subscriber<sensor_msgs::Image> rightIm;
         message_filters::Synchronizer<MySyncPolicy> img_sync;
+        ros::Publisher pose_pub;
+        std::vector<cv::DMatch> previousMatches;
+        float sums[3] {};
+        float previousSums[3] {};
         cv::Mat rmap[2][2];
+        cv::Mat previousPoints4D;
         cv:: Mat R1, R2, P1, P2, Q;
         FeatureStrategy mFeatureMatchStrat;
         const Zed_Camera* zedcamera;
         bool firstImage {true};
+        ros::Time prevTime;
         // image_transport::Publisher mLeftImagePub;
         // image_transport::Publisher mRightImagePub;
     public:
         Features leftImage;
         Features rightImage;
+        Features previousLeftImage;
+        Features previousRightImage;
         FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchStrat, const Zed_Camera* zedptr);
         ~FeatureDrawer();
         void featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
         void setUndistortMap(ros::NodeHandle *nh);
         void setImage(const sensor_msgs::ImageConstPtr& imageRef, cv::Mat& image);
-        void calculateFeaturePosition(const std::vector<cv::DMatch>& matches);
+        cv::Mat calculateFeaturePosition(const std::vector<cv::DMatch>& matches);
+        void setPrevious(std::vector<cv::DMatch> matches, cv::Mat points4D);
+        void allMatches(const std_msgs::Header& header);
+        void clearFeaturePosition();
+        void calculateMovementFeatures(std::vector<cv::DMatch> matches, std::vector<cv::DMatch> matches2, cv::Mat Points4D, bool left);
+        void publishMovement(const std_msgs::Header& header);
         // void findFeatures(const cv::Mat& imageRef, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptor, image_transport::Publisher publish);
         // std::vector<cv::DMatch> findMatches(const std_msgs::Header& lIm);
 

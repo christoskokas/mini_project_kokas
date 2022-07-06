@@ -1,4 +1,9 @@
 #include "FeatureDrawer.h"
+#include <nav_msgs/Odometry.h>
+#include <math.h>       /* tan */
+#include <boost/assign.hpp>
+
+#define PI 3.14159265
 
 
 static const std::string OPENCV_WINDOW = "Features Detected";
@@ -44,6 +49,7 @@ FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchS
     rightIm.subscribe(*nh, zedcamera->cameraRight.path, 1);
     img_sync.registerCallback(boost::bind(&FeatureDrawer::featureDetectionCallback, this, _1, _2));
     mImageMatches = m_it.advertise("/camera/matches", 1);
+    pose_pub = nh->advertise<nav_msgs::Odometry>("odom/ground_truth",1);
     // typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
     // img_sync {MySyncPolicy(10), leftIm, rightIm};
     // img_sync.ApproximateTimeSynchronizer(MySyncPolicy(10), leftIm, rightIm);
@@ -81,9 +87,118 @@ void Features::findFeatures()
     cv::drawKeypoints(image, keypoints, outImage, {255, 0, 0, 255} );
 }
 
+void FeatureDrawer::setPrevious(std::vector<cv::DMatch> matches, cv::Mat points4D)
+{
+    previousLeftImage = leftImage;
+    previousRightImage = rightImage;
+    previousPoints4D = points4D;
+    previousMatches.clear();
+    for (size_t i = 0; i < sizeof(sums)/sizeof(sums[0]); i++)
+    {
+      previousSums[i] = sums[i];
+      sums[i] = 0;
+    }
+    previousMatches = matches;
+}
+
 void Features::getPoints()
 {
     std::cout << "x : " << pointsPosition.at(0).x << " y : " << pointsPosition.at(0).y << " z : " << pointsPosition.at(0).z << '\n'; 
+}
+
+void FeatureDrawer::allMatches(const std_msgs::Header& header)
+{
+    leftImage.findFeatures();
+    rightImage.findFeatures();
+    std::vector<cv::DMatch> matches = leftImage.findMatches(rightImage, header, mImageMatches);
+    cv::Mat points4D = calculateFeaturePosition(matches);
+    if (!firstImage)
+    {
+      int difmatches = 2;
+      std::vector<cv::DMatch> matchesLpL = leftImage.findMatches(previousLeftImage, header, mImageMatches);
+      calculateMovementFeatures(matches, matchesLpL, points4D, true);
+      std::vector<cv::DMatch> matchesRpR = rightImage.findMatches(previousRightImage, header, mImageMatches);
+      calculateMovementFeatures(matches, matchesRpR, points4D, false);
+      std::cout << "NEW ONE \n";
+      for (size_t i = 0; i < sizeof(sums)/sizeof(sums[0]); i++)
+      {
+        sums[i] = sums[0]/difmatches;
+      }
+      publishMovement(header);
+    }
+    // calculateFeaturePosition(matchesLpL);
+    // calculateMovementFeatures(matchesLpL, leftImage, previousLeftImage);
+    // std::vector<cv::DMatch> matchesLpR = leftImage.findMatches(previousRightImage, header, mImageMatches);
+    // calculateFeaturePosition(matchesLpR);
+    // calculateMovementFeatures(matchesLpR, leftImage, previousRightImage);
+    // std::vector<cv::DMatch> matchesRpL = rightImage.findMatches(previousLeftImage, header, mImageMatches);
+    // calculateFeaturePosition(matchesRpL);
+    // calculateMovementFeatures(matchesRpL, rightImage, previousLeftImage);
+    // std::vector<cv::DMatch> matchesRpR = rightImage.findMatches(previousRightImage, header, mImageMatches);
+    // calculateFeaturePosition(matchesRpR);
+    // calculateMovementFeatures(matchesRpR, rightImage, previousRightImage);
+    
+    setPrevious(matches, points4D);
+
+}
+
+void FeatureDrawer::publishMovement(const std_msgs::Header& header)
+{
+  nav_msgs::Odometry position;
+  tf::poseTFToMsg(tf::Pose(tf::Quaternion(tan(sums[1]/sums[2]), tan(sums[0]/sums[2]), 0),  tf::Vector3(sums[0], sums[1], sums[2])), position.pose.pose); //Aria returns pose in mm.
+  position.pose.covariance =  boost::assign::list_of(1e-3) (0) (0)  (0)  (0)  (0)
+                                                       (0) (1e-3)  (0)  (0)  (0)  (0)
+                                                       (0)   (0)  (1e6) (0)  (0)  (0)
+                                                       (0)   (0)   (0) (1e6) (0)  (0)
+                                                       (0)   (0)   (0)  (0) (1e6) (0)
+                                                       (0)   (0)   (0)  (0)  (0)  (1e3) ;
+
+  position.twist.twist.linear.x = (sums[2]-previousSums[2])*15; //15 fps
+  position.twist.twist.angular.z = 0.0;
+  position.twist.covariance =  boost::assign::list_of(1e-3) (0)   (0)  (0)  (0)  (0)
+                                                      (0) (1e-3)  (0)  (0)  (0)  (0)
+                                                      (0)   (0)  (1e6) (0)  (0)  (0)
+                                                      (0)   (0)   (0) (1e6) (0)  (0)
+                                                      (0)   (0)   (0)  (0) (1e6) (0)
+                                                      (0)   (0)   (0)  (0)  (0)  (1e3) ; 
+
+
+  position.header.frame_id = header.frame_id;
+  position.header.stamp = ros::Time::now();
+  pose_pub.publish(position);
+}
+
+void FeatureDrawer::calculateMovementFeatures(std::vector<cv::DMatch> matches, std::vector<cv::DMatch> matches2, cv::Mat Points4D, bool left)
+{
+  int count {0};
+  float xSum {0.0f};
+  float ySum {0.0f};
+  float zSum {0.0f};
+  for (size_t i = 0; i < matches.size(); i++)
+  {
+    for (size_t j = 0; j < matches2.size(); j++)
+    {
+      if ((left && matches[i].queryIdx == matches2[j].queryIdx) || (!left && matches[i].trainIdx == matches2[j].trainIdx))
+      {
+        float sumx = Points4D.at<float>(0,i)/Points4D.at<float>(3,i) + previousPoints4D.at<float>(0,j)/previousPoints4D.at<float>(3,j);
+        float sumy  = Points4D.at<float>(1,i)/Points4D.at<float>(3,i) + previousPoints4D.at<float>(1,j)/previousPoints4D.at<float>(3,j);
+        float sumz  = Points4D.at<float>(2,i)/Points4D.at<float>(3,i) + previousPoints4D.at<float>(2,j)/previousPoints4D.at<float>(3,j);
+        if (!(isnan(abs(sumx)) || isnan(abs(sumy)) || isnan(abs(sumz))) && !(isinf(sumx) || isinf(sumy) || isinf(sumz)) && !((sumx > zedcamera->mBaseline * 60) || (sumy > zedcamera->mBaseline * 60) || (sumz > zedcamera->mBaseline * 60)))
+        {
+          xSum += sumx;
+          ySum += sumy;
+          zSum += sumz;
+          count++;
+          break;
+        }
+      }
+    }
+  }
+  sums[0] += xSum/count;
+  sums[1] += ySum/count;
+  sums[2] += zSum/count;
+  std::cout << "x sum : " << sums[0] << "y sum : " << sums[1] << "z sum : " << sums[2] << '\n';
+  
 }
 
 std::vector<cv::DMatch> Features::findMatches(const Features& secondImage, const std_msgs::Header& header, image_transport::Publisher& mImageMatches)
@@ -125,30 +240,38 @@ std::vector<cv::DMatch> Features::findMatches(const Features& secondImage, const
     return matches;
 }
 
-void FeatureDrawer::calculateFeaturePosition(const std::vector<cv::DMatch>& matches)
+cv::Mat FeatureDrawer::calculateFeaturePosition(const std::vector<cv::DMatch>& matches)
 {
+
+  cv::Mat points4D;
+  if ( matches.size() > 0 )
+  {
+    std::vector<cv::Point2f> pointsL;
+    std::vector<cv::Point2f> pointsR;
     for (size_t i = 0; i < matches.size(); i++)
     {
-
-      double x = zedcamera->mBaseline*(leftImage.keypoints[matches[i].queryIdx].pt.x - zedcamera->cameraLeft.cx)/(leftImage.keypoints[matches[i].queryIdx].pt.x - rightImage.keypoints[matches[i].trainIdx].pt.x);
-      double y = zedcamera->mBaseline * zedcamera->cameraLeft.fx * (leftImage.keypoints[matches[i].queryIdx].pt.y - zedcamera->cameraLeft.cy)/(zedcamera->cameraLeft.fy * (leftImage.keypoints[matches[i].queryIdx].pt.x - rightImage.keypoints[matches[i].trainIdx].pt.x));
-      double z = zedcamera->mBaseline*zedcamera->cameraLeft.fx/(leftImage.keypoints[matches[i].queryIdx].pt.x - rightImage.keypoints[matches[i].trainIdx].pt.x);
-      // std::cout << " x : " << x << " y : " << y << " z : " << z << '\n'; 
-      leftImage.pointsPosition.push_back(pcl::PointXYZ(x,y,z));
-      x = zedcamera->mBaseline*(leftImage.keypoints[matches[i].queryIdx].pt.x - zedcamera->cameraRight.cx)/(leftImage.keypoints[matches[i].queryIdx].pt.x - rightImage.keypoints[matches[i].trainIdx].pt.x);
-      y = zedcamera->mBaseline * zedcamera->cameraRight.fx * (leftImage.keypoints[matches[i].queryIdx].pt.y - zedcamera->cameraRight.cy)/(zedcamera->cameraRight.fy * (leftImage.keypoints[matches[i].queryIdx].pt.x - rightImage.keypoints[matches[i].trainIdx].pt.x));
-      z = zedcamera->mBaseline*zedcamera->cameraRight.fx/(leftImage.keypoints[matches[i].queryIdx].pt.x - rightImage.keypoints[matches[i].trainIdx].pt.x);
-      // std::cout << " x : " << x << " y : " << y << " z : " << z << '\n' << "XDD " << '\n'; 
-      rightImage.pointsPosition.push_back(pcl::PointXYZ(x,y,z));
+      pointsL.push_back(leftImage.keypoints[matches[i].queryIdx].pt);
+      pointsR.push_back(rightImage.keypoints[matches[i].trainIdx].pt);
     }
-    rightImage.getPoints();
-  
+
+    cv::Mat leftKey(pointsL);
+    cv::Mat rightKey(pointsR);
+    cv::triangulatePoints(P1, P2, leftKey, rightKey, points4D);
+  }
+  return points4D;
+}
+
+void FeatureDrawer::clearFeaturePosition()
+{
+    leftImage.pointsPosition.clear();
+    rightImage.pointsPosition.clear();
+    previousLeftImage.pointsPosition.clear();
+    previousRightImage.pointsPosition.clear();
 }
 
 void FeatureDrawer::featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
 {
-    leftImage.pointsPosition.clear();
-    rightImage.pointsPosition.clear();
+    prevTime = ros::Time::now();
     setImage(lIm, leftImage.image);
     setImage(rIm, rightImage.image);
     cv::Mat dstle, dstri;
@@ -156,29 +279,20 @@ void FeatureDrawer::featureDetectionCallback(const sensor_msgs::ImageConstPtr& l
     {
       cv::remap(leftImage.image, dstle, rmap[0][0], rmap[0][1],cv::INTER_LINEAR);
       cv::remap(rightImage.image, dstri, rmap[1][0], rmap[1][1],cv::INTER_LINEAR);
-      cv::hconcat(leftImage.image, dstle, dstle);                       //add 2 images horizontally (image1, image2, destination)
-      cv::hconcat(rightImage.image, dstri, dstri);                      //add 2 images horizontally (image1, image2, destination)
-      cv::vconcat(dstle, dstri, dstle);                           //add 2 images vertically
-      cv_bridge::CvImage out_msg;
-      out_msg.header   = lIm->header; // Same timestamp and tf frame as input image
-      out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-      out_msg.image    = dstle; // Your cv::Mat
+      // cv::hconcat(leftImage.image, dstle, dstle);                       //add 2 images horizontally (image1, image2, destination)
+      // cv::hconcat(rightImage.image, dstri, dstri);                      //add 2 images horizontally (image1, image2, destination)
+      // cv::vconcat(dstle, dstri, dstle);                           //add 2 images vertically
+      // cv_bridge::CvImage out_msg;
+      // out_msg.header   = lIm->header; // Same timestamp and tf frame as input image
+      // out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+      // out_msg.image    = dstle; // Your cv::Mat
       // mImageMatches.publish(out_msg.toImageMsg());
       // std::cout << "NOT RECTIFIED" << '\n';
     }
-    leftImage.findFeatures();
-    rightImage.findFeatures();
-    std::vector<cv::DMatch> matches = leftImage.findMatches(rightImage, lIm->header, mImageMatches);
-    calculateFeaturePosition(matches);
-    if (!firstImage)
-    {
-
-    }
-    leftImage.previousimage = leftImage.image;
-    rightImage.previousimage = rightImage.image;
+    allMatches(lIm->header);
     
-    // std::cout << "POINT X query : " << leftImage.keypoints[matches[0].queryIdx].pt.x << '\n';
-    // std::cout << "POINT X train : " << rightImage.keypoints[matches[0].trainIdx].pt.x << '\n';
+    
+    firstImage = false;
 }
 
 FeatureDrawer::~FeatureDrawer()
