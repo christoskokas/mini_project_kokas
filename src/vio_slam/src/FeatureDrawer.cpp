@@ -11,14 +11,77 @@ static const std::string OPENCV_WINDOW = "Features Detected";
 namespace vio_slam
 {
 
+bool matIsEqual(const cv::Mat Mat1, const cv::Mat Mat2)
+{
+  if( Mat1.dims == Mat2.dims && 
+    Mat1.size == Mat2.size && 
+    Mat1.elemSize() == Mat2.elemSize())
+  {
+    if( Mat1.isContinuous() && Mat2.isContinuous())
+    {
+      return 0==memcmp( Mat1.ptr(), Mat2.ptr(), Mat1.total()*Mat1.elemSize());
+    }
+    else
+    {
+      const cv::Mat* arrays[] = {&Mat1, &Mat2, 0};
+      uchar* ptrs[2];
+      cv::NAryMatIterator it( arrays, ptrs, 2);
+      for(unsigned int p = 0; p < it.nplanes; p++, ++it)
+        if( 0!=memcmp( it.ptrs[0], it.ptrs[1], it.size*Mat1.elemSize()) )
+          return false;
+
+      return true;
+    }
+  }
+
+  return false;
+}
+
 void FeatureDrawer::setUndistortMap(ros::NodeHandle *nh)
 {
     std::cout << '\n'; 
+
+    std::cout << "CL : " << '\n';
+    printMat(zedcamera->cameraLeft.cameraMatrix);
+    std::cout << "CR : " << '\n';
+    printMat(zedcamera->cameraRight.cameraMatrix);
     cv::Size imgSize = cv::Size(zedcamera->mWidth, zedcamera->mHeight);
     cv::stereoRectify(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, imgSize, zedcamera->sensorsRotate, zedcamera->sensorsTranslate, R1, R2, P1, P2, Q);
+    std::cout << "P1 : " << '\n';
+    printMat(P1);
+    std::cout << "P2 : " << '\n';
+    printMat(P2);
+    std::cout << "CL : " << '\n';
+    printMat(zedcamera->cameraLeft.cameraMatrix);
+    std::cout << "CR : " << '\n';
+    printMat(zedcamera->cameraRight.cameraMatrix);
+    std::cout << "DL : " << '\n';
+    printMat(zedcamera->cameraLeft.distCoeffs);
+    std::cout << "DR : " << '\n';
+    printMat(zedcamera->cameraRight.distCoeffs);
+    std::cout << "SR : " << '\n';
+    printMat(zedcamera->sensorsRotate);
+    std::cout << "ST : " << '\n';
+    printMat(zedcamera->sensorsTranslate);
+    std::cout << "\n fx" << zedcamera->cameraRight.fx;
+    std::cout << "\n fy" << zedcamera->cameraRight.fy;
+    std::cout << "\n k1" << zedcamera->cameraRight.k1;
     cv::initUndistortRectifyMap(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, R1, P1, imgSize, CV_16SC2, rmap[0][0], rmap[0][1]);
     cv::initUndistortRectifyMap(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, R2, P2, imgSize, CV_16SC2, rmap[1][0], rmap[1][1]);
     
+}
+
+void FeatureDrawer::printMat(cv::Mat matrix)
+{
+  for (size_t i = 0; i < matrix.rows; i++)
+  {
+    for (size_t j = 0; j < matrix.cols; j++)
+    {
+      std::cout << matrix.at<double>(i,j) << "  ";
+    }
+    std::cout << '\n';
+  }
+  
 }
 
 FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchStrat, const Zed_Camera* zedptr) : m_it(*nh), img_sync(MySyncPolicy(10), leftIm, rightIm)
@@ -89,14 +152,21 @@ void Features::findFeatures()
 
 void FeatureDrawer::setPrevious(std::vector<cv::DMatch> matches, cv::Mat points4D)
 {
+    if (matIsEqual(previousLeftImage.image, leftImage.image))
+    {
+      std::cout << "FIRST MATS ARE EQUAL \n";
+    }
     previousLeftImage = leftImage;
     previousRightImage = rightImage;
+    if (matIsEqual(previousLeftImage.image, leftImage.image))
+    {
+      std::cout << "MATS ARE EQUAL \n";
+    }
     previousPoints4D = points4D;
     previousMatches.clear();
     for (size_t i = 0; i < sizeof(sums)/sizeof(sums[0]); i++)
     {
       previousSums[i] = sums[i];
-      sums[i] = 0;
     }
     previousMatches = matches;
 }
@@ -110,19 +180,21 @@ void FeatureDrawer::allMatches(const std_msgs::Header& header)
 {
     leftImage.findFeatures();
     rightImage.findFeatures();
-    std::vector<cv::DMatch> matches = leftImage.findMatches(rightImage, header, mImageMatches);
+    bool LR = true;
+    std::vector<cv::DMatch> matches = leftImage.findMatches(rightImage, header, mImageMatches, LR);
     cv::Mat points4D = calculateFeaturePosition(matches);
     if (!firstImage)
     {
       int difmatches = 2;
-      std::vector<cv::DMatch> matchesLpL = leftImage.findMatches(previousLeftImage, header, mImageMatches);
+      LR = false;
+      std::vector<cv::DMatch> matchesLpL = leftImage.findMatches(previousLeftImage, header, mImageMatches, LR);
       calculateMovementFeatures(matches, matchesLpL, points4D, true);
-      std::vector<cv::DMatch> matchesRpR = rightImage.findMatches(previousRightImage, header, mImageMatches);
+      std::vector<cv::DMatch> matchesRpR = rightImage.findMatches(previousRightImage, header, mImageMatches, LR);
       calculateMovementFeatures(matches, matchesRpR, points4D, false);
-      std::cout << "NEW ONE \n";
+      // std::cout << "NEW ONE \n";
       for (size_t i = 0; i < sizeof(sums)/sizeof(sums[0]); i++)
       {
-        sums[i] = sums[0]/difmatches;
+        sums[i] = sums[i]/difmatches;
       }
       publishMovement(header);
     }
@@ -145,7 +217,12 @@ void FeatureDrawer::allMatches(const std_msgs::Header& header)
 void FeatureDrawer::publishMovement(const std_msgs::Header& header)
 {
   nav_msgs::Odometry position;
-  tf::poseTFToMsg(tf::Pose(tf::Quaternion(tan(sums[1]/sums[2]), tan(sums[0]/sums[2]), 0),  tf::Vector3(sums[0], sums[1], sums[2])), position.pose.pose); //Aria returns pose in mm.
+
+  sumsMovement[0] += sqrt(pow(sums[0],2)+pow(sums[2],2))*sin(sums[0]/sums[2]);
+  sumsMovement[1] += sums[1];
+  sumsMovement[2] += sqrt(pow(sums[0],2)+pow(sums[2],2))*cos(sums[0]/sums[2]);
+
+  tf::poseTFToMsg(tf::Pose(tf::Quaternion(tan(sums[1]/sums[2]), tan(-sums[0]/sums[2]), 0),  tf::Vector3(sumsMovement[0], sumsMovement[1], sumsMovement[2])), position.pose.pose); //Aria returns pose in mm.
   position.pose.covariance =  boost::assign::list_of(1e-3) (0) (0)  (0)  (0)  (0)
                                                        (0) (1e-3)  (0)  (0)  (0)  (0)
                                                        (0)   (0)  (1e6) (0)  (0)  (0)
@@ -153,7 +230,7 @@ void FeatureDrawer::publishMovement(const std_msgs::Header& header)
                                                        (0)   (0)   (0)  (0) (1e6) (0)
                                                        (0)   (0)   (0)  (0)  (0)  (1e3) ;
 
-  position.twist.twist.linear.x = (sums[2]-previousSums[2])*15; //15 fps
+  position.twist.twist.linear.x = 0.0;                  //(sumsMovement[0]-previoussumsMovement[0])*15 //15 fps
   position.twist.twist.angular.z = 0.0;
   position.twist.covariance =  boost::assign::list_of(1e-3) (0)   (0)  (0)  (0)  (0)
                                                       (0) (1e-3)  (0)  (0)  (0)  (0)
@@ -165,6 +242,11 @@ void FeatureDrawer::publishMovement(const std_msgs::Header& header)
 
   position.header.frame_id = header.frame_id;
   position.header.stamp = ros::Time::now();
+  std::cout << " x sum : " << sumsMovement[0] << " y sum : " << sumsMovement[1] << " z sum : " << sumsMovement[2] << '\n';
+  for (size_t i = 0; i < 3; i++)
+  {
+    previoussumsMovement[i] = sumsMovement[i];
+  }
   pose_pub.publish(position);
 }
 
@@ -178,12 +260,12 @@ void FeatureDrawer::calculateMovementFeatures(std::vector<cv::DMatch> matches, s
   {
     for (size_t j = 0; j < matches2.size(); j++)
     {
-      if ((left && matches[i].queryIdx == matches2[j].queryIdx) || (!left && matches[i].trainIdx == matches2[j].trainIdx))
+      if ((left && (matches[i].queryIdx == matches2[j].queryIdx)) || (!left && (matches[i].trainIdx == matches2[j].trainIdx)))
       {
-        float sumx = Points4D.at<float>(0,i)/Points4D.at<float>(3,i) + previousPoints4D.at<float>(0,j)/previousPoints4D.at<float>(3,j);
-        float sumy  = Points4D.at<float>(1,i)/Points4D.at<float>(3,i) + previousPoints4D.at<float>(1,j)/previousPoints4D.at<float>(3,j);
-        float sumz  = Points4D.at<float>(2,i)/Points4D.at<float>(3,i) + previousPoints4D.at<float>(2,j)/previousPoints4D.at<float>(3,j);
-        if (!(isnan(abs(sumx)) || isnan(abs(sumy)) || isnan(abs(sumz))) && !(isinf(sumx) || isinf(sumy) || isinf(sumz)) && !((sumx > zedcamera->mBaseline * 60) || (sumy > zedcamera->mBaseline * 60) || (sumz > zedcamera->mBaseline * 60)))
+        float sumx = Points4D.at<float>(0,i)/Points4D.at<float>(3,i) - previousPoints4D.at<float>(0,j)/previousPoints4D.at<float>(3,j);
+        float sumy  = Points4D.at<float>(1,i)/Points4D.at<float>(3,i) - previousPoints4D.at<float>(1,j)/previousPoints4D.at<float>(3,j);
+        float sumz  = Points4D.at<float>(2,i)/Points4D.at<float>(3,i) - previousPoints4D.at<float>(2,j)/previousPoints4D.at<float>(3,j);
+        if (!(isnan(abs(sumx)) || isnan(abs(sumy)) || isnan(abs(sumz))) && !(isinf(sumx) || isinf(sumy) || isinf(sumz)) && !((abs(sumx)> zedcamera->mBaseline * 10000) || (abs(sumy) > zedcamera->mBaseline * 10000) || (abs(sumz) > zedcamera->mBaseline * 10000)))
         {
           xSum += sumx;
           ySum += sumy;
@@ -194,14 +276,14 @@ void FeatureDrawer::calculateMovementFeatures(std::vector<cv::DMatch> matches, s
       }
     }
   }
-  sums[0] += xSum/count;
-  sums[1] += ySum/count;
-  sums[2] += zSum/count;
-  std::cout << "x sum : " << sums[0] << "y sum : " << sums[1] << "z sum : " << sums[2] << '\n';
+  sums[0] = xSum/count;
+  sums[1] = ySum/count;
+  sums[2] = zSum/count;
+  
   
 }
 
-std::vector<cv::DMatch> Features::findMatches(const Features& secondImage, const std_msgs::Header& header, image_transport::Publisher& mImageMatches)
+std::vector<cv::DMatch> Features::findMatches(const Features& secondImage, const std_msgs::Header& header, image_transport::Publisher& mImageMatches, bool LR)
 {
     if ( descriptors.empty() )
       cvError(0,"MatchFinder","1st descriptor empty",__FILE__,__LINE__);    
@@ -231,12 +313,14 @@ std::vector<cv::DMatch> Features::findMatches(const Features& secondImage, const
     drawMatches( image, keypoints, secondImage.image, secondImage.keypoints, matches, img_matches, cv::Scalar::all(-1),
           cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
 
-
-    cv_bridge::CvImage out_msg;
-    out_msg.header   = header; // Same timestamp and tf frame as input image
-    out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-    out_msg.image    = img_matches; // Your cv::Mat
-    mImageMatches.publish(out_msg.toImageMsg());
+    if (LR)
+    {
+      cv_bridge::CvImage out_msg;
+      out_msg.header   = header; // Same timestamp and tf frame as input image
+      out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+      out_msg.image    = img_matches; // Your cv::Mat
+      mImageMatches.publish(out_msg.toImageMsg());
+    }
     return matches;
 }
 
@@ -277,8 +361,8 @@ void FeatureDrawer::featureDetectionCallback(const sensor_msgs::ImageConstPtr& l
     cv::Mat dstle, dstri;
     if (!zedcamera->rectified)
     {
-      cv::remap(leftImage.image, dstle, rmap[0][0], rmap[0][1],cv::INTER_LINEAR);
-      cv::remap(rightImage.image, dstri, rmap[1][0], rmap[1][1],cv::INTER_LINEAR);
+      cv::remap(leftImage.image, leftImage.image, rmap[0][0], rmap[0][1],cv::INTER_LINEAR);
+      cv::remap(rightImage.image, rightImage.image, rmap[1][0], rmap[1][1],cv::INTER_LINEAR);
       // cv::hconcat(leftImage.image, dstle, dstle);                       //add 2 images horizontally (image1, image2, destination)
       // cv::hconcat(rightImage.image, dstri, dstri);                      //add 2 images horizontally (image1, image2, destination)
       // cv::vconcat(dstle, dstri, dstle);                           //add 2 images vertically
