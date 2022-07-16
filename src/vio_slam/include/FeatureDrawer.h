@@ -90,6 +90,8 @@ class FeatureDrawer
         Features rightImage;
         Features previousLeftImage;
         Features previousRightImage;
+        double camera[6];
+        Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
         FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchStrat, const Zed_Camera* zedptr);
         ~FeatureDrawer();
         void featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
@@ -102,6 +104,7 @@ class FeatureDrawer
         void calculateMovementFeatures(std::vector<cv::DMatch> matches, std::vector<cv::DMatch> matches2, cv::Mat Points4D, bool left);
         void publishMovement(const std_msgs::Header& header);
         void printMat(cv::Mat matrix);
+        void keepMatches(std::vector<cv::DMatch> matches, std::vector<cv::DMatch> matches2, bool left);
         // void findFeatures(const cv::Mat& imageRef, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptor, image_transport::Publisher publish);
         // std::vector<cv::DMatch> findMatches(const std_msgs::Header& lIm);
 

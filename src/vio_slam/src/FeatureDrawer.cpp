@@ -2,6 +2,13 @@
 #include <nav_msgs/Odometry.h>
 #include <math.h>       /* tan */
 #include <boost/assign.hpp>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf2/LinearMath/Vector3.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include "ceres/ceres.h"
+#include "Optimizer.h"
+
 
 #define PI 3.14159265
 
@@ -66,18 +73,18 @@ void FeatureDrawer::setUndistortMap(ros::NodeHandle *nh)
     std::cout << "\n fx" << zedcamera->cameraRight.fx;
     std::cout << "\n fy" << zedcamera->cameraRight.fy;
     std::cout << "\n k1" << zedcamera->cameraRight.k1;
-    cv::initUndistortRectifyMap(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, R1, P1, imgSize, CV_16SC2, rmap[0][0], rmap[0][1]);
-    cv::initUndistortRectifyMap(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, R2, P2, imgSize, CV_16SC2, rmap[1][0], rmap[1][1]);
+    cv::initUndistortRectifyMap(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, R1, P1, imgSize, CV_32FC1, rmap[0][0], rmap[0][1]);
+    cv::initUndistortRectifyMap(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, R2, P2, imgSize, CV_32FC1, rmap[1][0], rmap[1][1]);
     
 }
 
 void FeatureDrawer::printMat(cv::Mat matrix)
 {
-  for (size_t i = 0; i < matrix.rows; i++)
+  for (size_t i = 0; i < matrix.cols; i++)
   {
-    for (size_t j = 0; j < matrix.cols; j++)
+    for (size_t j = 0; j < matrix.rows; j++)
     {
-      std::cout << matrix.at<double>(i,j) << "  ";
+      std::cout << matrix.at<double>(j,i) << "  ";
     }
     std::cout << '\n';
   }
@@ -108,11 +115,20 @@ FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchS
       break;
     }
     std::cout << '\n';
+    cv::Mat rod;
+    cv::Rodrigues(R1, rod);
+    camera[0] = rod.at<double>(0);
+    camera[1] = rod.at<double>(1);
+    camera[2] = rod.at<double>(2);
+    camera[3] = zedcamera->sensorsTranslate.at<double>(0);
+    camera[4] = zedcamera->sensorsTranslate.at<double>(1);
+    camera[5] = zedcamera->sensorsTranslate.at<double>(2);
+
     leftIm.subscribe(*nh, zedcamera->cameraLeft.path, 1);
     rightIm.subscribe(*nh, zedcamera->cameraRight.path, 1);
     img_sync.registerCallback(boost::bind(&FeatureDrawer::featureDetectionCallback, this, _1, _2));
     mImageMatches = m_it.advertise("/camera/matches", 1);
-    pose_pub = nh->advertise<nav_msgs::Odometry>("odom/ground_truth",1);
+    pose_pub = nh->advertise<nav_msgs::Odometry>("odom/ground_truth/2",1);
     // typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
     // img_sync {MySyncPolicy(10), leftIm, rightIm};
     // img_sync.ApproximateTimeSynchronizer(MySyncPolicy(10), leftIm, rightIm);
@@ -152,28 +168,90 @@ void Features::findFeatures()
 
 void FeatureDrawer::setPrevious(std::vector<cv::DMatch> matches, cv::Mat points4D)
 {
-    if (matIsEqual(previousLeftImage.image, leftImage.image))
-    {
-      std::cout << "FIRST MATS ARE EQUAL \n";
-    }
+    // if (matIsEqual(previousLeftImage.image, leftImage.image))
+    // {
+    //   std::cout << "FIRST MATS ARE EQUAL \n";
+    // }
     previousLeftImage = leftImage;
     previousRightImage = rightImage;
-    if (matIsEqual(previousLeftImage.image, leftImage.image))
-    {
-      std::cout << "MATS ARE EQUAL \n";
-    }
+    // if (matIsEqual(previousLeftImage.image, leftImage.image))
+    // {
+    //   std::cout << "MATS ARE EQUAL \n";
+    // }
     previousPoints4D = points4D;
     previousMatches.clear();
+    previousMatches = matches;
     for (size_t i = 0; i < sizeof(sums)/sizeof(sums[0]); i++)
     {
       previousSums[i] = sums[i];
     }
-    previousMatches = matches;
 }
 
 void Features::getPoints()
 {
     std::cout << "x : " << pointsPosition.at(0).x << " y : " << pointsPosition.at(0).y << " z : " << pointsPosition.at(0).z << '\n'; 
+}
+
+void FeatureDrawer::keepMatches(std::vector<cv::DMatch> matches, std::vector<cv::DMatch> matches2, bool left)
+{
+  cv::Mat points4D = calculateFeaturePosition(matches);
+  std::vector<cv::DMatch> matched;
+  ceres::Problem problem;
+  ceres::LossFunction* lossfunction = NULL;
+  for (size_t i = 0; i < matches.size(); i++)
+  {
+    for (size_t j = 0; j < matches2.size(); j++)
+    {
+      if ((left && (leftImage.keypoints[matches[i].queryIdx].pt.x == leftImage.keypoints[matches2[j].queryIdx].pt.x) && (leftImage.keypoints[matches[i].queryIdx].pt.y == leftImage.keypoints[matches2[j].queryIdx].pt.y)) || (!left && (rightImage.keypoints[matches[i].trainIdx].pt.x == rightImage.keypoints[matches2[j].trainIdx].pt.x) && (rightImage.keypoints[matches[i].trainIdx].pt.y == rightImage.keypoints[matches2[j].trainIdx].pt.y)))
+      {
+        // matched.push_back(matches[i]);
+        // float sumx = points4D.at<float>(0,i)/points4D.at<float>(3,i) - previousPoints4D.at<float>(0,j)/previousPoints4D.at<float>(3,j);
+        // float sumy  = points4D.at<float>(1,i)/points4D.at<float>(3,i) - previousPoints4D.at<float>(1,j)/previousPoints4D.at<float>(3,j);
+        // float sumz  = points4D.at<float>(2,i)/points4D.at<float>(3,i) - previousPoints4D.at<float>(2,j)/previousPoints4D.at<float>(3,j);
+        // if (!(isnan(abs(sumx)) || isnan(abs(sumy)) || isnan(abs(sumz))) && !(isinf(sumx) || isinf(sumy) || isinf(sumz)) && !((abs(sumx)> zedcamera->mBaseline * 10000) || (abs(sumy) > zedcamera->mBaseline * 10000) || (abs(sumz) > zedcamera->mBaseline * 10000)))
+        // {
+        if (points4D.at<double>(2,i)/points4D.at<double>(3,i) < 100)
+        {
+          Eigen::Vector3d p3d(points4D.at<double>(0,i)/points4D.at<double>(3,i), points4D.at<double>(1,i)/points4D.at<double>(3,i), points4D.at<double>(2,i)/points4D.at<double>(3,i));
+          Eigen::Vector3d pp3d(previousPoints4D.at<double>(0,j)/previousPoints4D.at<double>(3,j), previousPoints4D.at<double>(1,j)/previousPoints4D.at<double>(3,j), previousPoints4D.at<double>(2,j)/previousPoints4D.at<double>(3,j));
+          ceres::CostFunction* costfunction = Reprojection3dError::Create(p3d, pp3d);
+          problem.AddResidualBlock(costfunction, lossfunction, camera);
+        }
+        //   break;
+        // }
+        // Eigen::Vector2d p2d;
+        // Eigen::Vector2d pp2d;
+        // if(left)
+        // {
+        //   p2d(leftImage.keypoints[matches[i].queryIdx].pt.x,leftImage.keypoints[matches[i].queryIdx].pt.y);
+        //   pp2d(previousLeftImage.keypoints[matches2[j].queryIdx].pt.x,previousLeftImage.keypoints[matches2[j].queryIdx].pt.y);
+        // }
+        // else
+        // {
+        //   p2d(rightImage.keypoints[matches[i].trainIdx].pt.x,rightImage.keypoints[matches[i].trainIdx].pt.y);
+        //   pp2d(previousRightImage.keypoints[matches2[j].trainIdx].pt.x,previousRightImage.keypoints[matches2[j].trainIdx].pt.y);
+        // }
+      }
+    }
+  }
+  ceres::Solver::Options options;
+  options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+  options.max_num_iterations = 100;
+  options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
+  options.minimizer_progress_to_stdout = false;
+
+  ceres::Solver::Summary summary;
+  ceres::Solve(options, &problem, &summary);
+  // std::cout << summary.BriefReport() << std::endl;
+  // std::cout << "After Optimizing: "  << std::endl;
+  
+  double quat[4];
+  ceres::AngleAxisToQuaternion(camera, quat);
+  Eigen::Quaterniond q(quat[0], quat[1], quat[2], quat[3]);
+  Eigen::Isometry3d Transform(q.matrix());
+  Transform.pretranslate(Eigen::Vector3d(camera[3], camera[4], camera[5]));
+  T = Transform.matrix();
+  std::cout << "T=\n" << T << std::endl;
 }
 
 void FeatureDrawer::allMatches(const std_msgs::Header& header)
@@ -188,9 +266,9 @@ void FeatureDrawer::allMatches(const std_msgs::Header& header)
       int difmatches = 2;
       LR = false;
       std::vector<cv::DMatch> matchesLpL = leftImage.findMatches(previousLeftImage, header, mImageMatches, LR);
-      calculateMovementFeatures(matches, matchesLpL, points4D, true);
+      keepMatches(matches, matchesLpL, true);
       std::vector<cv::DMatch> matchesRpR = rightImage.findMatches(previousRightImage, header, mImageMatches, LR);
-      calculateMovementFeatures(matches, matchesRpR, points4D, false);
+      // keepMatches(matches, matchesRpR, false);
       // std::cout << "NEW ONE \n";
       for (size_t i = 0; i < sizeof(sums)/sizeof(sums[0]); i++)
       {
@@ -198,17 +276,6 @@ void FeatureDrawer::allMatches(const std_msgs::Header& header)
       }
       publishMovement(header);
     }
-    // calculateFeaturePosition(matchesLpL);
-    // calculateMovementFeatures(matchesLpL, leftImage, previousLeftImage);
-    // std::vector<cv::DMatch> matchesLpR = leftImage.findMatches(previousRightImage, header, mImageMatches);
-    // calculateFeaturePosition(matchesLpR);
-    // calculateMovementFeatures(matchesLpR, leftImage, previousRightImage);
-    // std::vector<cv::DMatch> matchesRpL = rightImage.findMatches(previousLeftImage, header, mImageMatches);
-    // calculateFeaturePosition(matchesRpL);
-    // calculateMovementFeatures(matchesRpL, rightImage, previousLeftImage);
-    // std::vector<cv::DMatch> matchesRpR = rightImage.findMatches(previousRightImage, header, mImageMatches);
-    // calculateFeaturePosition(matchesRpR);
-    // calculateMovementFeatures(matchesRpR, rightImage, previousRightImage);
     
     setPrevious(matches, points4D);
 
@@ -217,37 +284,45 @@ void FeatureDrawer::allMatches(const std_msgs::Header& header)
 void FeatureDrawer::publishMovement(const std_msgs::Header& header)
 {
   nav_msgs::Odometry position;
-
-  sumsMovement[0] += sqrt(pow(sums[0],2)+pow(sums[2],2))*sin(sums[0]/sums[2]);
-  sumsMovement[1] += sums[1];
-  sumsMovement[2] += sqrt(pow(sums[0],2)+pow(sums[2],2))*cos(sums[0]/sums[2]);
-
-  tf::poseTFToMsg(tf::Pose(tf::Quaternion(tan(sums[1]/sums[2]), tan(-sums[0]/sums[2]), 0),  tf::Vector3(sumsMovement[0], sumsMovement[1], sumsMovement[2])), position.pose.pose); //Aria returns pose in mm.
-  position.pose.covariance =  boost::assign::list_of(1e-3) (0) (0)  (0)  (0)  (0)
-                                                       (0) (1e-3)  (0)  (0)  (0)  (0)
-                                                       (0)   (0)  (1e6) (0)  (0)  (0)
-                                                       (0)   (0)   (0) (1e6) (0)  (0)
-                                                       (0)   (0)   (0)  (0) (1e6) (0)
-                                                       (0)   (0)   (0)  (0)  (0)  (1e3) ;
-
-  position.twist.twist.linear.x = 0.0;                  //(sumsMovement[0]-previoussumsMovement[0])*15 //15 fps
-  position.twist.twist.angular.z = 0.0;
-  position.twist.covariance =  boost::assign::list_of(1e-3) (0)   (0)  (0)  (0)  (0)
-                                                      (0) (1e-3)  (0)  (0)  (0)  (0)
-                                                      (0)   (0)  (1e6) (0)  (0)  (0)
-                                                      (0)   (0)   (0) (1e6) (0)  (0)
-                                                      (0)   (0)   (0)  (0) (1e6) (0)
-                                                      (0)   (0)   (0)  (0)  (0)  (1e3) ; 
-
-
-  position.header.frame_id = header.frame_id;
-  position.header.stamp = ros::Time::now();
-  std::cout << " x sum : " << sumsMovement[0] << " y sum : " << sumsMovement[1] << " z sum : " << sumsMovement[2] << '\n';
-  for (size_t i = 0; i < 3; i++)
+  if (abs(T(0,3)) < 100 && abs(T(1,3)) < 100 && abs(T(2,3)) < 100)
   {
-    previoussumsMovement[i] = sumsMovement[i];
+    sumsMovement[0] += T(0,3);
+    sumsMovement[1] += T(1,3);
+    sumsMovement[2] += T(2,3);
+
+    // tf2::Matrix3x3 tf2_rot(T(0,0),T(0,1),T(0,2),
+    //                        T(1,0),T(1,1),T(1,2),
+    //                        T(2,0),T(2,1),T(2,2));
+    // tf2::Transform tf2_transform(tf2_rot,tf2::Vector3());
+    double quat[4];
+    ceres::AngleAxisToQuaternion(camera, quat);
+    tf::poseTFToMsg(tf::Pose(tf::Quaternion(quat[1],quat[2],quat[3],quat[0]),  tf::Vector3(T(0,3), T(1,3), T(2,3))), position.pose.pose); //Aria returns pose in mm.
+    // tf2::toMsg(tf2_transform,position.pose.pose);
+    position.pose.covariance =  boost::assign::list_of(1e-3) (0) (0)  (0)  (0)  (0)
+                                                        (0) (1e-3)  (0)  (0)  (0)  (0)
+                                                        (0)   (0)  (1e6) (0)  (0)  (0)
+                                                        (0)   (0)   (0) (1e6) (0)  (0)
+                                                        (0)   (0)   (0)  (0) (1e6) (0)
+                                                        (0)   (0)   (0)  (0)  (0)  (1e3) ;
+
+    position.twist.twist.linear.x = 0.0;                  //(sumsMovement[0]-previoussumsMovement[0])*15 //15 fps
+    position.twist.twist.angular.z = 0.0;
+    position.twist.covariance =  boost::assign::list_of(1e-3) (0)   (0)  (0)  (0)  (0)
+                                                        (0) (1e-3)  (0)  (0)  (0)  (0)
+                                                        (0)   (0)  (1e6) (0)  (0)  (0)
+                                                        (0)   (0)   (0) (1e6) (0)  (0)
+                                                        (0)   (0)   (0)  (0) (1e6) (0)
+                                                        (0)   (0)   (0)  (0)  (0)  (1e3) ; 
+
+    position.header.frame_id = header.frame_id;
+    position.header.stamp = ros::Time::now();
+    // std::cout << " x sum : " << sumsMovement[0] << " y sum : " << sumsMovement[1] << " z sum : " << sumsMovement[2] << '\n';
+    for (size_t i = 0; i < 3; i++)
+    {
+      previoussumsMovement[i] = sumsMovement[i];
+    }
+    pose_pub.publish(position);
   }
-  pose_pub.publish(position);
 }
 
 void FeatureDrawer::calculateMovementFeatures(std::vector<cv::DMatch> matches, std::vector<cv::DMatch> matches2, cv::Mat Points4D, bool left)
@@ -260,6 +335,7 @@ void FeatureDrawer::calculateMovementFeatures(std::vector<cv::DMatch> matches, s
   {
     for (size_t j = 0; j < matches2.size(); j++)
     {
+      if ((left && (leftImage.keypoints[matches[i].queryIdx].pt == leftImage.keypoints[matches2[j].queryIdx].pt))|| (!left && (rightImage.keypoints[matches[i].trainIdx].pt == rightImage.keypoints[matches2[j].trainIdx].pt)))
       if ((left && (matches[i].queryIdx == matches2[j].queryIdx)) || (!left && (matches[i].trainIdx == matches2[j].trainIdx)))
       {
         float sumx = Points4D.at<float>(0,i)/Points4D.at<float>(3,i) - previousPoints4D.at<float>(0,j)/previousPoints4D.at<float>(3,j);
@@ -305,9 +381,9 @@ std::vector<cv::DMatch> Features::findMatches(const Features& secondImage, const
         }
       }
     }
-    if (matches.size() > 100)
+    if (matches.size() > 20)
     {
-      matches.resize(100);
+      matches.resize(20);
     }
     cv::Mat img_matches;
     drawMatches( image, keypoints, secondImage.image, secondImage.keypoints, matches, img_matches, cv::Scalar::all(-1),
@@ -327,20 +403,42 @@ std::vector<cv::DMatch> Features::findMatches(const Features& secondImage, const
 cv::Mat FeatureDrawer::calculateFeaturePosition(const std::vector<cv::DMatch>& matches)
 {
 
-  cv::Mat points4D;
+  cv::Mat points4D(4,1,CV_64F);
   if ( matches.size() > 0 )
   {
-    std::vector<cv::Point2f> pointsL;
-    std::vector<cv::Point2f> pointsR;
+    std::vector<cv::Point2d> pointsL;
+    std::vector<cv::Point2d> pointsR;
     for (size_t i = 0; i < matches.size(); i++)
     {
       pointsL.push_back(leftImage.keypoints[matches[i].queryIdx].pt);
       pointsR.push_back(rightImage.keypoints[matches[i].trainIdx].pt);
     }
 
-    cv::Mat leftKey(pointsL);
-    cv::Mat rightKey(pointsR);
-    cv::triangulatePoints(P1, P2, leftKey, rightKey, points4D);
+    // cv::Mat leftKey(pointsL);
+    // cv::Mat rightKey(pointsR);
+    // cv::Mat caml(3,4,CV_64F);
+    // cv::Mat camr(3,4,CV_64F);
+    // caml = P1;
+    // camr = P2;
+    // printMat(caml);
+    // printMat(P1);
+    // cv::undistortPoints(pointsL,pointsL,zedcamera->cameraLeft.cameraMatrix,zedcamera->cameraLeft.distCoeffs, R1, P1);
+    // cv::undistortPoints(pointsR,pointsR,zedcamera->cameraRight.cameraMatrix,zedcamera->cameraRight.distCoeffs, R2, P2);
+    // cv::Mat C1 = (cv::Mat_<float>(3,4) << 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0);
+    // cv::Mat C2 = (cv::Mat_<float>(3,4) << 1, 0, 0, zedcamera->sensorsTranslate.at<float>(0,0), 0, 1, 0, 0, 0, 0, 1, 0);
+    // std::cout << pointsL.at(0).x << " y " <<  pointsL.at(0).y << "LEL \n";
+    // std::cout << pointsR.at(0).x << " y " <<  pointsR.at(0).y << "LEL \n";
+    cv::triangulatePoints(P1, P2, pointsL, pointsR, points4D);
+    // std::cout << leftImage.keypoints[matches[0].queryIdx].pt << '\n';
+    // std::cout << rightImage.keypoints[matches[0].trainIdx].pt << '\n';
+    // std::cout << "x : " << points4D.at<float>(0,0)/points4D.at<float>(3,0) << " y : " << points4D.at<float>(1,0)/points4D.at<float>(3,0) << " z : " << points4D.at<float>(2,0)/points4D.at<float>(3,0) << '\n';
+    // std::cout << pointsL.at(0).x << " y " <<  pointsL.at(0).y << "LEL \n";
+    // std::cout << pointsR.at(0).x << " y " <<  pointsR.at(0).y << "LEL \n";
+    // std::cout << "points \n";
+    // printMat(points4D);
+    // std::cout << "right \n";
+    // printMat(rightKey);
+
   }
   return points4D;
 }
@@ -358,11 +456,11 @@ void FeatureDrawer::featureDetectionCallback(const sensor_msgs::ImageConstPtr& l
     prevTime = ros::Time::now();
     setImage(lIm, leftImage.image);
     setImage(rIm, rightImage.image);
-    cv::Mat dstle, dstri;
+    // cv::Mat dstle, dstri;
     if (!zedcamera->rectified)
     {
-      cv::remap(leftImage.image, leftImage.image, rmap[0][0], rmap[0][1],cv::INTER_LINEAR);
-      cv::remap(rightImage.image, rightImage.image, rmap[1][0], rmap[1][1],cv::INTER_LINEAR);
+      cv::remap(leftImage.image, leftImage.image, rmap[0][0], rmap[0][1], cv::INTER_LINEAR);
+      cv::remap(rightImage.image, rightImage.image, rmap[1][0], rmap[1][1], cv::INTER_LINEAR);
       // cv::hconcat(leftImage.image, dstle, dstle);                       //add 2 images horizontally (image1, image2, destination)
       // cv::hconcat(rightImage.image, dstri, dstri);                      //add 2 images horizontally (image1, image2, destination)
       // cv::vconcat(dstle, dstri, dstle);                           //add 2 images vertically
