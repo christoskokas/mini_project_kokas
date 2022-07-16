@@ -59,7 +59,6 @@ class Features
         std::vector< pcl::PointXYZ > pointsPosition;
         void findFeatures();
         std::vector<cv::DMatch> findMatches(const Features& secondImage, const std_msgs::Header& lIm, image_transport::Publisher& mImageMatches, bool LR);
-        void getPoints();
 };
 
 class FeatureDrawer
@@ -92,7 +91,7 @@ class FeatureDrawer
         Features previousRightImage;
         double camera[6];
         Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
-        FeatureDrawer(ros::NodeHandle *nh, FeatureStrategy& featureMatchStrat, const Zed_Camera* zedptr);
+        FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr);
         ~FeatureDrawer();
         void featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
         void setUndistortMap(ros::NodeHandle *nh);
@@ -101,7 +100,6 @@ class FeatureDrawer
         void setPrevious(std::vector<cv::DMatch> matches, cv::Mat points4D);
         void allMatches(const std_msgs::Header& header);
         void clearFeaturePosition();
-        void calculateMovementFeatures(std::vector<cv::DMatch> matches, std::vector<cv::DMatch> matches2, cv::Mat Points4D, bool left);
         void publishMovement(const std_msgs::Header& header);
         void printMat(cv::Mat matrix);
         void keepMatches(std::vector<cv::DMatch> matches, std::vector<cv::DMatch> matches2, bool left);
