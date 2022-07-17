@@ -91,6 +91,7 @@ class FeatureDrawer
         Features previousRightImage;
         double camera[6];
         Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d previousT = Eigen::Matrix4d::Identity();
         FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr);
         ~FeatureDrawer();
         void featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);

@@ -125,12 +125,14 @@ cv::Mat FeatureDrawer::calculateFeaturePosition(const std::vector<cv::DMatch>& m
     std::cout << "NEW IMAGE\n";
     for (size_t i = 0; i < points4D.cols; i++)
     {
-      for (size_t j = 0; j < 3; j++)
-      {
-        std::cout << points4D.at<double>(j,i)/points4D.at<double>(3,i) << "  ";
-      }
-      std::cout << pointsL.at(i);
-      std::cout << '\n';
+      // for (size_t j = 0; j < 3; j++)
+      // {
+      //   std::cout << points4D.at<double>(j,i)/points4D.at<double>(3,i) << "  ";
+      // }
+      // std::cout << '\n';
+      // std::cout << pointsL.at(i);
+      // std::cout << pointsR.at(i);
+      // std::cout << '\n';
     }
     
     
@@ -178,10 +180,12 @@ void FeatureDrawer::keepMatches(std::vector<cv::DMatch> matches, std::vector<cv:
     {
       if ((left && (leftImage.keypoints[matches[i].queryIdx].pt.x == leftImage.keypoints[matches2[j].queryIdx].pt.x) && (leftImage.keypoints[matches[i].queryIdx].pt.y == leftImage.keypoints[matches2[j].queryIdx].pt.y)) || (!left && (rightImage.keypoints[matches[i].trainIdx].pt.x == rightImage.keypoints[matches2[j].trainIdx].pt.x) && (rightImage.keypoints[matches[i].trainIdx].pt.y == rightImage.keypoints[matches2[j].trainIdx].pt.y)))
       {
-        if (points4D.at<double>(2,i)/points4D.at<double>(3,i) < 100)
+        if ((abs(points4D.at<double>(0,i)/points4D.at<double>(3,i)) < 100) && (abs(points4D.at<double>(1,i)/points4D.at<double>(3,i)) < 100) && (abs(points4D.at<double>(2,i)/points4D.at<double>(3,i)) < 100) && !isnan(abs(points4D.at<double>(0,i))) && !isnan(abs(points4D.at<double>(1,i))) && !isnan(abs(points4D.at<double>(2,i))) && !isnan(abs(points4D.at<double>(3,i))))
         {
           Eigen::Vector3d p3d(points4D.at<double>(0,i)/points4D.at<double>(3,i), points4D.at<double>(1,i)/points4D.at<double>(3,i), points4D.at<double>(2,i)/points4D.at<double>(3,i));
           Eigen::Vector3d pp3d(previousPoints4D.at<double>(0,j)/previousPoints4D.at<double>(3,j), previousPoints4D.at<double>(1,j)/previousPoints4D.at<double>(3,j), previousPoints4D.at<double>(2,j)/previousPoints4D.at<double>(3,j));
+          // std::cout << p3d << '\n';
+          // std::cout << '\n';
           ceres::CostFunction* costfunction = Reprojection3dError::Create(p3d, pp3d);
           problem.AddResidualBlock(costfunction, lossfunction, camera);
         }
@@ -194,7 +198,6 @@ void FeatureDrawer::keepMatches(std::vector<cv::DMatch> matches, std::vector<cv:
   options.max_num_iterations = 100;
   options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
   options.minimizer_progress_to_stdout = false;
-
   ceres::Solver::Summary summary;
   ceres::Solve(options, &problem, &summary);
   // std::cout << summary.BriefReport() << std::endl;
@@ -217,10 +220,26 @@ void FeatureDrawer::publishMovement(const std_msgs::Header& header)
     sumsMovement[0] += T(0,3);
     sumsMovement[1] += T(1,3);
     sumsMovement[2] += T(2,3);
-
-    double quat[4];
-    ceres::AngleAxisToQuaternion(camera, quat);
-    tf::poseTFToMsg(tf::Pose(tf::Quaternion(quat[1],quat[2],quat[3],quat[0]),  tf::Vector3(T(0,3), T(1,3), T(2,3))), position.pose.pose); //Aria returns pose in mm.
+    Eigen::Matrix3d Rot;
+    {
+      Eigen::Matrix4d temp = previousT;
+      for (size_t i = 0; i < 3; i++)
+      {
+        for (size_t j = 0; j < 4; j++)
+        {
+          previousT(i,j) = temp(i,0)*T(0,j) + temp(i,1)*T(1,j) + temp(i,2)*T(2,j) + temp(i,3)*T(3,j);
+          if (j < 3)
+            Rot(i,j) = previousT(i,j);
+        }
+      }
+    }
+    Eigen::Quaterniond quat(Rot.topLeftCorner<3,3>());
+    // std::cout << "T=\n" << T << std::endl;
+    // std::cout << "Tprev=\n" << previousT << std::endl;
+    // std::cout << "Rot=\n" << Rot << std::endl;
+    // std::cout << "quat=\n" << quat.x() << " " << quat.y() << " " << quat.z() << " " << quat.w() << std::endl;
+    // ceres::AngleAxisToQuaternion(camera, quat);
+    tf::poseTFToMsg(tf::Pose(tf::Quaternion(quat.x(),quat.y(),quat.z(),quat.w()),  tf::Vector3(previousT(0,3), previousT(1,3), previousT(2,3))), position.pose.pose); //Aria returns pose in mm.
     position.pose.covariance =  boost::assign::list_of(1e-3) (0) (0)  (0)  (0)  (0)
                                                         (0) (1e-3)  (0)  (0)  (0)  (0)
                                                         (0)   (0)  (1e6) (0)  (0)  (0)
@@ -270,18 +289,28 @@ std::vector<cv::DMatch> Features::findMatches(const Features& secondImage, const
         }
       }
     }
-    if (matches.size() > 100)
+    if (matches.size() > 300)
     {
-      matches.resize(100);
+      matches.resize(300);
     }
     
-    cv::Mat img_matches;
-    drawMatches( image, keypoints, secondImage.image, secondImage.keypoints, matches, img_matches, cv::Scalar::all(-1),
-          cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
 
     if (LR)
     {
+      std::cout << "size before removal : " << matches.size();
+      for (size_t i = 0; i < matches.size(); i++)
+      {
+        if (abs(keypoints[matches[i].queryIdx].pt.y - secondImage.keypoints[matches[i].trainIdx].pt.y) > 3)
+        {
+          matches.erase(matches.begin() + i);
+          i--;
+        }
+      }
+      std::cout << "\n size after removal : " << matches.size() << '\n';
       cv_bridge::CvImage out_msg;
+      cv::Mat img_matches;
+      drawMatches( image, keypoints, secondImage.image, secondImage.keypoints, matches, img_matches, cv::Scalar::all(-1),
+            cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
       out_msg.header   = header; // Same timestamp and tf frame as input image
       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
       out_msg.image    = img_matches; // Your cv::Mat

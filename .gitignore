@@ -1,3 +1,4 @@
 .vscode/
 push.sh
 src/vio_slam/.vscode
+src/vio_slam/build
