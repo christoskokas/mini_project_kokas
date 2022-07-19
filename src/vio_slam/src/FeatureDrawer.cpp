@@ -96,6 +96,7 @@ void FeatureDrawer::featureDetectionCallback(const sensor_msgs::ImageConstPtr& l
     allMatches(lIm->header);
     
     
+    
     firstImage = false;
 }
 
@@ -122,7 +123,6 @@ cv::Mat FeatureDrawer::calculateFeaturePosition(const std::vector<cv::DMatch>& m
       pointsR.push_back(rightImage.keypoints[matches[i].trainIdx].pt);
     }
     cv::triangulatePoints(P1, P2, pointsL, pointsR, points4D);
-    std::cout << "NEW IMAGE\n";
     for (size_t i = 0; i < points4D.cols; i++)
     {
       // for (size_t j = 0; j < 3; j++)
@@ -138,15 +138,6 @@ cv::Mat FeatureDrawer::calculateFeaturePosition(const std::vector<cv::DMatch>& m
     
   }
   return points4D;
-}
-
-void Features::findFeatures()
-{
-    cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
-    // detect features and descriptor
-    cv::Mat outImage;
-    detector->detectAndCompute( image, cv::Mat(), keypoints, descriptors);
-    cv::drawKeypoints(image, keypoints, outImage, {255, 0, 0, 255} );
 }
 
 void FeatureDrawer::allMatches(const std_msgs::Header& header)
@@ -268,55 +259,270 @@ void FeatureDrawer::publishMovement(const std_msgs::Header& header)
 
 std::vector<cv::DMatch> Features::findMatches(const Features& secondImage, const std_msgs::Header& header, image_transport::Publisher& mImageMatches, bool LR)
 {
+    std::cout << "enter matches \n";
     if ( descriptors.empty() )
       cvError(0,"MatchFinder","1st descriptor empty",__FILE__,__LINE__);    
     if ( secondImage.descriptors.empty() )
       cvError(0,"MatchFinder","2nd descriptor empty",__FILE__,__LINE__);
 
-    std::vector<cv::DMatch> matches;
+    // std::vector<cv::DMatch> matches;
+    std::vector< std::vector<cv::DMatch> > matches, matches2;
     cv::FlannBasedMatcher matcher = cv::FlannBasedMatcher(cv::makePtr<cv::flann::LshIndexParams>(12, 20, 2));
-    // cv::BFMatcher matcher = cv::BFMatcher(cv::NORM_HAMMING, true);  
-    matcher.match(descriptors, secondImage.descriptors, matches);
-    for (int i = 0; i < matches.size(); i++)
+    // cv::BFMatcher matcher(cv::NORM_HAMMING);  
+    // matcher.knnMatch(descriptors, secondImage.descriptors, matches, 2);
+    // matcher.knnMatch(secondImage.descriptors, descriptors, matches2, 2);
+    // for(size_t i = 0; i < matches.size(); i++) {
+    //   if(matches[i].size() != 0 && matches2[matches[i][0].trainIdx].size() != 0)
+    //   {
+    //     cv::DMatch first = matches[i][0];
+    //     cv::DMatch second = matches2[matches[i][0].trainIdx][0];
+    //     if (second.trainIdx == first.queryIdx)
+    //     {
+    //       float dist1 = matches[i][0].distance;
+    //       float dist2 = matches[i][1].distance;
+    //       if(dist1 < 0.8f * dist2) {
+    //           matched1.push_back(keypoints[first.queryIdx]);
+    //           matched2.push_back(secondImage.keypoints[first.trainIdx]);
+    //           pointl.push_back(keypoints[first.queryIdx].pt);
+    //           pointr.push_back(secondImage.keypoints[first.trainIdx].pt);
+    //       }
+    //     }
+    //   }
+    // }
+    std::vector <std::vector< std::vector<cv::DMatch> > > match;
+    std::vector< std::vector<cv::DMatch> >  matchedscale;
+    
+    std::vector<cv::KeyPoint> matched1, matched2;
+    std::vector<cv::Point2f> pointl, pointr;
+    int steps = 4;
+    for (size_t i = 0; i < steps; i++)
     {
-      for (int j = 0; j < matches.size() - 1; j++)
+      std::cout << "0 size : " << multiDescriptors[0].size() <<  " next size : " <<  secondImage.multiDescriptors[i].size() << '\n';
+      std::vector< std::vector<cv::DMatch> > matchedd;
+      matcher.knnMatch(multiDescriptors[0], secondImage.multiDescriptors[i], matchedd, 2);
+      match.push_back(matchedd);
+      std::cout << matchedd.size()<< "exit matcheeeer \n";
+      std::cout << match[i].size()<< "exit matcheeeer \n";
+    }
+
+    for (size_t j = 0; j < steps; j++)
+    {
+      std::vector<cv::DMatch> matcheddd;
+      for(size_t i = 0; i < match[j].size(); i++) 
       {
-        if (matches[j].distance > matches[j + 1].distance)
+
+        // std::cout << match[j][i].size()<< "yes \n";
+        if(match[j][i].size() != 0)
         {
-          auto temp = matches[j];
-          matches[j] = matches[j + 1];
-          matches[j + 1] = temp;
+          
+          cv::DMatch first = match[j][i][0];
+          float dist1 = match[j][i][0].distance;
+          float dist2 = match[j][i][1].distance;
+          if(dist1 < 0.8f * dist2) 
+          {
+
+            matcheddd.push_back(match[j][i][0]);
+          }
+        }
+      }
+    for (int i = 0; i < matcheddd.size(); i++)
+    {
+      for (int j = 0; j < matcheddd.size() - 1; j++)
+      {
+        if (matcheddd[j].distance > matcheddd[j + 1].distance)
+        {
+          auto temp = matcheddd[j];
+          matcheddd[j] = matcheddd[j + 1];
+          matcheddd[j + 1] = temp;
         }
       }
     }
-    if (matches.size() > 300)
+    if (matcheddd.size() > 200)
     {
-      matches.resize(300);
+      matcheddd.resize(200);
+    }
+    matchedscale.push_back(matcheddd);
+    matcheddd.clear();
+    }
+
+    // Find Minimum distance
+    
+    for (size_t i = 0; i < matchedscale[0].size(); i++)
+    {
+      for (size_t j = 1; j < steps; j++)
+      {
+        for (size_t k = 0; k < matchedscale[j].size(); k++)
+        {
+          if (multiKeypoints[0][matchedscale[0][i].queryIdx].pt == secondImage.multiKeypoints[j][matchedscale[j][k].queryIdx].pt)
+          {
+            if (matchedscale[0][i].distance > matchedscale[j][i].distance)
+            {
+              matchedscale[0][i].distance = matchedscale[j][i].distance;
+              // matchedscale[0][i].trainIdx = matchedscale[j][i].trainIdx;
+              multiKeypoints[0][matchedscale[0][i].trainIdx].pt.x = secondImage.multiKeypoints[j][matchedscale[j][k].trainIdx].pt.x/(1+1/(steps*j));
+              multiKeypoints[0][matchedscale[0][i].trainIdx].pt.y = secondImage.multiKeypoints[j][matchedscale[j][k].trainIdx].pt.y/(1+1/(steps*j));
+
+              break;
+            }
+          }
+          
+        }
+        
+        
+      }
+      matched1.push_back(multiKeypoints[0][matchedscale[0][i].queryIdx]);
+      matched2.push_back(multiKeypoints[0][matchedscale[0][i].trainIdx]);
+      pointl.push_back(multiKeypoints[0][matchedscale[0][i].queryIdx].pt);
+      pointr.push_back(multiKeypoints[0][matchedscale[0][i].trainIdx].pt);
     }
     
-
-    if (LR)
-    {
-      std::cout << "size before removal : " << matches.size();
-      for (size_t i = 0; i < matches.size(); i++)
-      {
-        if (abs(keypoints[matches[i].queryIdx].pt.y - secondImage.keypoints[matches[i].trainIdx].pt.y) > 3)
-        {
-          matches.erase(matches.begin() + i);
-          i--;
+  
+    std::vector<cv::DMatch> good_matches;
+    std::vector<cv::KeyPoint> inliers1, inliers2;
+    cv::Mat h = findHomography( pointl, pointr, cv::RANSAC);
+    std::cout << "matches size : " << matched1.size() << '\n'; 
+    for(size_t i = 0; i < matched1.size(); i++) {
+        cv::Mat col = cv::Mat::ones(3, 1, CV_64F);
+        col.at<double>(0) = matched1[i].pt.x;
+        col.at<double>(1) = matched1[i].pt.y;
+        col = h * col;
+        col /= col.at<double>(2);
+        double dist = sqrt( pow(col.at<double>(0) - matched2[i].pt.x, 2) +
+                            pow(col.at<double>(1) - matched2[i].pt.y, 2));
+        if(dist < 2.5f) {
+            int new_i = static_cast<int>(inliers1.size());
+            inliers1.push_back(matched1[i]);
+            inliers2.push_back(matched2[i]);
+            good_matches.push_back(cv::DMatch(new_i, new_i, 0));
         }
-      }
-      std::cout << "\n size after removal : " << matches.size() << '\n';
-      cv_bridge::CvImage out_msg;
-      cv::Mat img_matches;
-      drawMatches( image, keypoints, secondImage.image, secondImage.keypoints, matches, img_matches, cv::Scalar::all(-1),
-            cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+    }
+    std::cout << "good matches size : " << good_matches.size() << '\n'; 
+
+
+    cv::Mat img_matches;
+    cv_bridge::CvImage out_msg;
+    drawMatches( image, inliers1, secondImage.image, inliers2, good_matches, img_matches, cv::Scalar::all(-1),
+          cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+    // drawMatches(img1, inliers1, img2, inliers2, good_matches, res);
+    // drawMatches( image, keypoints, secondImage.image, secondImage.keypoints, matches, img_matches, cv::Scalar::all(-1),
+    //       cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+    if(!LR)
+    {
       out_msg.header   = header; // Same timestamp and tf frame as input image
       out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
       out_msg.image    = img_matches; // Your cv::Mat
       mImageMatches.publish(out_msg.toImageMsg());
     }
-    return matches;
+    // for (int i = 0; i < matches.size(); i++)
+    // {
+    //   for (int j = 0; j < matches.size() - 1; j++)
+    //   {
+    //     if (matches[j].distance > matches[j + 1].distance)
+    //     {
+    //       auto temp = matches[j];
+    //       matches[j] = matches[j + 1];
+    //       matches[j + 1] = temp;
+    //     }
+    //   }
+    // }
+    // if (matches.size() > 300)
+    // {
+    //   matches.resize(300);
+    // }
+    
+
+    // if (LR)
+    // {
+    //   std::cout << "size before removal : " << matches.size();
+    //   for (size_t i = 0; i < matches.size(); i++)
+    //   {
+    //     if (abs(keypoints[matches[i].queryIdx].pt.y - secondImage.keypoints[matches[i].trainIdx].pt.y) > 3)
+    //     {
+    //       matches.erase(matches.begin() + i);
+    //       i--;
+    //     }
+    //   }
+    //   std::cout << "\n size after removal : " << matches.size() << '\n';
+    // }
+    // else
+    // {
+    //   std::vector<cv::KeyPoint> points1, points2;
+    //   std::vector<cv::Point2f> pointsl, pointsr;
+    //   for( size_t i = 0; i < matches.size(); i++ )
+    //     {
+    //       points1.push_back( keypoints[ matches[i].queryIdx ] );
+    //       points2.push_back( secondImage.keypoints[ matches[i].trainIdx ] );
+    //       pointsl.push_back( keypoints[ matches[i].queryIdx ].pt );
+    //       pointsr.push_back( secondImage.keypoints[ matches[i].trainIdx ].pt );
+    //     }
+    //   cv::Mat h = findHomography( pointsl, pointsr, cv::RANSAC );
+    //   std::vector<cv::DMatch> good_matches;
+    //   std::vector<cv::KeyPoint> inliers1, inliers2;
+    //   for(size_t i = 0; i < matches.size(); i++) 
+    //   {
+    //     cv::Mat col = cv::Mat::ones(3, 1, CV_64F);
+    //     col.at<double>(0) = points1[i].pt.x;
+    //     col.at<double>(1) = points1[i].pt.y;
+    //     col = h * col;
+    //     col /= col.at<double>(2);
+    //     double dist = sqrt( pow(col.at<double>(0) - points2[i].pt.x, 2) +
+    //                         pow(col.at<double>(1) - points2[i].pt.y, 2));
+    //     if(dist < 2.5f) {
+    //         int new_i = static_cast<int>(inliers1.size());
+    //         inliers1.push_back(points1[i]);
+    //         inliers2.push_back(points2[i]);
+    //         good_matches.push_back(cv::DMatch(new_i, new_i, 0));
+    //     }
+    //   }
+    //   cv::Mat img_matches;
+    //   std::cout << " BEST MATCH : " << matches[100].distance << '\n';
+    //   cv_bridge::CvImage out_msg;
+    //   drawMatches( image, inliers1, secondImage.image, inliers2, good_matches, img_matches, cv::Scalar::all(-1),
+    //         cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+    //   // drawMatches(img1, inliers1, img2, inliers2, good_matches, res);
+    //   // drawMatches( image, keypoints, secondImage.image, secondImage.keypoints, matches, img_matches, cv::Scalar::all(-1),
+    //   //       cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+    //   out_msg.header   = header; // Same timestamp and tf frame as input image
+    //   out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+    //   out_msg.image    = img_matches; // Your cv::Mat
+    //   mImageMatches.publish(out_msg.toImageMsg());
+
+    // }
+    std::cout << "exit matches \n";
+    return good_matches;
+}
+
+void Features::findFeatures()
+{
+    std::cout << "enter features \n";
+    cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
+    // detect features and descriptor
+    cv::Mat outImage;
+    detector->detectAndCompute( image, cv::Mat(), keypoints, descriptors);
+    cv::drawKeypoints(image, keypoints, outImage, {255, 0, 0, 255} );
+    if (true)
+    {
+      std::vector<cv::KeyPoint> xdkey;
+      detector->detect(image,xdkey, cv::Mat());
+      int steps {4};
+      for (int i = 0; i < steps; i++)
+      {
+        std::vector<cv::KeyPoint> pyrKeypoints = xdkey;
+        for (size_t j = 0; j < xdkey.size(); j++)
+        {
+          pyrKeypoints[j].pt = pyrKeypoints[j].pt*(1 + static_cast<float>(i)/steps);
+        }
+        multiKeypoints.push_back(pyrKeypoints);
+        cv::Mat imageScale, descr;
+        cv::resize(image, imageScale, cv::Size(static_cast<int>(image.cols*(1 + static_cast<float>(i)/steps)), static_cast<int>(image.rows*(1 + static_cast<float>(i)/steps))));
+        cv::blur(imageScale, imageScale,cv::Size(51,51));
+        // cv::pyrUp(image, imageScale, cv::Size(static_cast<int>(image.cols*(1 + static_cast<float>(i)/steps)), static_cast<int>(image.rows*(1 + static_cast<float>(i)/steps))));
+        detector->compute(imageScale,pyrKeypoints,descr);
+        multiDescriptors.push_back(descr);
+        
+      }
+      std::cout << "exit features \n";
+    }
 }
 
 void FeatureDrawer::clearFeaturePosition()
@@ -331,6 +537,10 @@ void FeatureDrawer::setPrevious(std::vector<cv::DMatch> matches, cv::Mat points4
 {
     previousLeftImage = leftImage;
     previousRightImage = rightImage;
+    leftImage.multiDescriptors.clear();
+    rightImage.multiDescriptors.clear();
+    leftImage.multiKeypoints.clear();
+    rightImage.multiKeypoints.clear();
     previousPoints4D = points4D;
     previousMatches.clear();
     previousMatches = matches;
@@ -352,7 +562,7 @@ void FeatureDrawer::setImage(const sensor_msgs::ImageConstPtr& imageRef, cv::Mat
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
-    image = cv_ptr->image;
+    cv::cvtColor(cv_ptr->image, image, cv::COLOR_BGR2GRAY);
 }
 
 FeatureDrawer::~FeatureDrawer()

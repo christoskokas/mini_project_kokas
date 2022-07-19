@@ -55,6 +55,8 @@ class Features
     public:
         cv::Mat image;
         cv::Mat descriptors;
+        std::vector< cv::Mat > multiDescriptors;
+        std::vector< std::vector< cv::KeyPoint > > multiKeypoints;
         std::vector< cv::KeyPoint > keypoints;
         std::vector< pcl::PointXYZ > pointsPosition;
         void findFeatures();
