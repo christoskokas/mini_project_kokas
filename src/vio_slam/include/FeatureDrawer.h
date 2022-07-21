@@ -55,8 +55,6 @@ class Features
     public:
         cv::Mat image;
         cv::Mat descriptors;
-        std::vector< cv::Mat > multiDescriptors;
-        std::vector< std::vector< cv::KeyPoint > > multiKeypoints;
         std::vector< cv::KeyPoint > keypoints;
         std::vector< pcl::PointXYZ > pointsPosition;
         void findFeatures();
@@ -78,7 +76,7 @@ class FeatureDrawer
         float previousSums[3] {};
         float previoussumsMovement[3] {};
         cv::Mat rmap[2][2];
-        cv::Mat previousPoints4D;
+        cv::Mat previouspoints3D;
         cv:: Mat R1, R2, P1, P2, Q;
         FeatureStrategy mFeatureMatchStrat;
         const Zed_Camera* zedcamera;
@@ -100,7 +98,7 @@ class FeatureDrawer
         void setUndistortMap(ros::NodeHandle *nh);
         void setImage(const sensor_msgs::ImageConstPtr& imageRef, cv::Mat& image);
         cv::Mat calculateFeaturePosition(const std::vector<cv::DMatch>& matches);
-        void setPrevious(std::vector<cv::DMatch> matches, cv::Mat points4D);
+        void setPrevious(std::vector<cv::DMatch> matches, cv::Mat points3D);
         void allMatches(const std_msgs::Header& header);
         void clearFeaturePosition();
         void publishMovement(const std_msgs::Header& header);
