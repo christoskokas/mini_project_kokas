@@ -70,7 +70,6 @@ class FeatureDrawer
         message_filters::Subscriber<sensor_msgs::Image> rightIm;
         message_filters::Synchronizer<MySyncPolicy> img_sync;
         ros::Publisher pose_pub;
-        std::vector<cv::DMatch> previousMatches;
         float sums[3] {};
         float sumsMovement[3] {};
         float previousSums[3] {};
@@ -82,8 +81,6 @@ class FeatureDrawer
         const Zed_Camera* zedcamera;
         bool firstImage {true};
         ros::Time prevTime;
-        // image_transport::Publisher mLeftImagePub;
-        // image_transport::Publisher mRightImagePub;
     public:
         Features leftImage;
         Features rightImage;

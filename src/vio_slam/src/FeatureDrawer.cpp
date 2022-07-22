@@ -149,8 +149,8 @@ void Features::findFeatures()
 
 void FeatureDrawer::allMatches(const std_msgs::Header& header)
 {
-    leftImage.findFeatures();
-    rightImage.findFeatures();
+    // leftImage.findFeatures();
+    // rightImage.findFeatures();
     bool LR = true;
     std::vector<cv::DMatch> matches = leftImage.findMatches(rightImage, header, mImageMatches, LR);
     cv::Mat points3D = calculateFeaturePosition(matches);
@@ -268,10 +268,10 @@ std::vector<cv::DMatch> Features::findMatches(Features& secondImage, const std_m
 {
     if (!LR)
     {
-      findFeatures();
-      secondImage.findFeatures();
       std::cout << "MATRICES EQUAL INSIDE : " << matIsEqual(image, secondImage.image) << '\n';
     }
+    findFeatures();
+    secondImage.findFeatures();
     
     if ( descriptors.empty() )
       cvError(0,"MatchFinder","1st descriptor empty",__FILE__,__LINE__);    
@@ -361,10 +361,8 @@ void FeatureDrawer::setPrevious(std::vector<cv::DMatch> matches, cv::Mat points3
     previousLeftImage.image = leftImage.image;
     std::cout << "MATRICES EQUAL AFTER : " << matIsEqual(leftImage.image, previousLeftImage.image) << '\n';
 
-    previousRightImage = rightImage;
+    previousRightImage.image = rightImage.image;
     previouspoints3D = points3D;
-    previousMatches.clear();
-    previousMatches = matches;
     for (size_t i = 0; i < sizeof(sums)/sizeof(sums[0]); i++)
     {
       previousSums[i] = sums[i];
