@@ -58,7 +58,7 @@ class Features
         std::vector< cv::KeyPoint > keypoints;
         std::vector< pcl::PointXYZ > pointsPosition;
         void findFeatures();
-        std::vector<cv::DMatch> findMatches(const Features& secondImage, const std_msgs::Header& lIm, image_transport::Publisher& mImageMatches, bool LR);
+        std::vector<cv::DMatch> findMatches(Features& secondImage, const std_msgs::Header& lIm, image_transport::Publisher& mImageMatches, bool LR);
 };
 
 class FeatureDrawer
@@ -96,7 +96,7 @@ class FeatureDrawer
         ~FeatureDrawer();
         void featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
         void setUndistortMap(ros::NodeHandle *nh);
-        void setImage(const sensor_msgs::ImageConstPtr& imageRef, cv::Mat& image);
+        cv::Mat setImage(const sensor_msgs::ImageConstPtr& imageRef);
         cv::Mat calculateFeaturePosition(const std::vector<cv::DMatch>& matches);
         void setPrevious(std::vector<cv::DMatch> matches, cv::Mat points3D);
         void allMatches(const std_msgs::Header& header);

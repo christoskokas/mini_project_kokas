@@ -86,8 +86,8 @@ FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr) : m_
 void FeatureDrawer::featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
 {
     prevTime = ros::Time::now();
-    setImage(lIm, leftImage.image);
-    setImage(rIm, rightImage.image);
+    leftImage.image = setImage(lIm);
+    rightImage.image = setImage(rIm);
     if (!zedcamera->rectified)
     {
       cv::remap(leftImage.image, leftImage.image, rmap[0][0], rmap[0][1], cv::INTER_LINEAR);
@@ -264,61 +264,55 @@ void FeatureDrawer::publishMovement(const std_msgs::Header& header)
   }
 }
 
-std::vector<cv::DMatch> Features::findMatches(const Features& secondImage, const std_msgs::Header& header, image_transport::Publisher& mImageMatches, bool LR)
+std::vector<cv::DMatch> Features::findMatches(Features& secondImage, const std_msgs::Header& header, image_transport::Publisher& mImageMatches, bool LR)
 {
+    if (!LR)
+    {
+      findFeatures();
+      secondImage.findFeatures();
+      std::cout << "MATRICES EQUAL INSIDE : " << matIsEqual(image, secondImage.image) << '\n';
+    }
+    
     if ( descriptors.empty() )
       cvError(0,"MatchFinder","1st descriptor empty",__FILE__,__LINE__);    
     if ( secondImage.descriptors.empty() )
       cvError(0,"MatchFinder","2nd descriptor empty",__FILE__,__LINE__);
-
-    // std::vector<cv::DMatch> matches;
-    std::vector< std::vector<cv::DMatch> > matches, matches2;
+    std::vector< std::vector<cv::DMatch> > matches;
     cv::FlannBasedMatcher matcher = cv::FlannBasedMatcher(cv::makePtr<cv::flann::LshIndexParams>(12, 20, 2));
-    cv::FlannBasedMatcher matcher2 = cv::FlannBasedMatcher(cv::makePtr<cv::flann::LshIndexParams>(12, 20, 2));
     // cv::BFMatcher matcher(cv::NORM_HAMMING);  
     matcher.knnMatch(descriptors, secondImage.descriptors, matches, 2);
-    matcher2.knnMatch(secondImage.descriptors, descriptors, matches2, 2);
     std::vector<cv::KeyPoint> matched1, matched2;
     std::vector<cv::Point2f> pointl, pointr;
-    for(size_t i = 0; i < matches.size(); i++) {
-      if(matches[i].size() != 0 && matches2[matches[i][0].trainIdx].size() != 0)
+    for(size_t i = 0; i < matches.size(); i++) 
+    {
+      if(matches[i].size() != 0)
       {
         cv::DMatch first = matches[i][0];
-        cv::DMatch second = matches2[matches[i][0].trainIdx][0];
-        if (second.trainIdx == first.queryIdx)
+        float dist1 = matches[i][0].distance;
+        float dist2 = matches[i][1].distance;
+
+        if(dist1 < 0.8f * dist2) 
         {
-          float dist1 = matches[i][0].distance;
-          float dist2 = matches[i][1].distance;
-          if(dist1 < 0.8f * dist2) {
-              matched1.push_back(keypoints[first.queryIdx]);
-              matched2.push_back(secondImage.keypoints[first.trainIdx]);
-              pointl.push_back(keypoints[first.queryIdx].pt);
-              pointr.push_back(secondImage.keypoints[first.trainIdx].pt);
-          }
+
+          matched1.push_back(keypoints[first.queryIdx]);
+          matched2.push_back(secondImage.keypoints[first.trainIdx]);
+          pointl.push_back(keypoints[first.queryIdx].pt);
+          pointr.push_back(secondImage.keypoints[first.trainIdx].pt);
+          
+          
         }
       }
 
     }
-    // TO DO ADD SCALE INVARIANCE
-    // Check remap for distortion
-    // find matches that are close to the position of the previous keypoint 
-
-    // CROSS-CHECK
-    // cv::BruteForceMatcher<L2<float> > descriptorMatcher;
-    // vector<DMatch> filteredMatches12, matches12, matches21;
-    // descriptorMatcher.match( descriptors1, descriptors2, matches12 );
-    // descriptorMatcher.match( descriptors2, descriptors1, matches21 );
-    // for( size_t i = 0; i < matches12.size(); i++ )
-    // { 
-    //     DMatch forward = matches12[i]; 
-    //     DMatch backward = matches21[forward.trainIdx]; 
-    //     if( backward.trainIdx == forward.queryIdx ) 
-    //         filteredMatches12.push_back( forward ); 
-    // }
-    std::vector<cv::DMatch> good_matches;
     std::vector<cv::KeyPoint> inliers1, inliers2;
+    std::vector<cv::DMatch> good_matches;
     cv::Mat h = findHomography( pointl, pointr, cv::RANSAC);
-    for(size_t i = 0; i < matched1.size(); i++) {
+    if (h.rows == 3)
+    {
+      for(size_t i = 0; i < matched1.size(); i++) 
+      {
+      std::cout << "findHomography size : " << h.rows << '\n'; 
+        
         cv::Mat col = cv::Mat::ones(3, 1, CV_64F);
         col.at<double>(0) = matched1[i].pt.x;
         col.at<double>(1) = matched1[i].pt.y;
@@ -332,96 +326,23 @@ std::vector<cv::DMatch> Features::findMatches(const Features& secondImage, const
             inliers2.push_back(matched2[i]);
             good_matches.push_back(cv::DMatch(new_i, new_i, 0));
         }
+      
+      }
+      cv::Mat img_matches;
+      cv_bridge::CvImage out_msg;
+      drawMatches( image, inliers1, secondImage.image, inliers2, good_matches, img_matches, cv::Scalar::all(-1),
+            cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+      if(!LR)
+      {
+        out_msg.header   = header; // Same timestamp and tf frame as input image
+        out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+        out_msg.image    = img_matches; // Your cv::Mat
+        mImageMatches.publish(out_msg.toImageMsg());
+      }
     }
-    cv::Mat img_matches;
-    cv_bridge::CvImage out_msg;
-    drawMatches( image, inliers1, secondImage.image, inliers2, good_matches, img_matches, cv::Scalar::all(-1),
-          cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
-    // drawMatches(img1, inliers1, img2, inliers2, good_matches, res);
-    // drawMatches( image, keypoints, secondImage.image, secondImage.keypoints, matches, img_matches, cv::Scalar::all(-1),
-    //       cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
-    if(!LR)
-    {
-      out_msg.header   = header; // Same timestamp and tf frame as input image
-      out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-      out_msg.image    = img_matches; // Your cv::Mat
-      mImageMatches.publish(out_msg.toImageMsg());
-    }
-    // for (int i = 0; i < matches.size(); i++)
-    // {
-    //   for (int j = 0; j < matches.size() - 1; j++)
-    //   {
-    //     if (matches[j].distance > matches[j + 1].distance)
-    //     {
-    //       auto temp = matches[j];
-    //       matches[j] = matches[j + 1];
-    //       matches[j + 1] = temp;
-    //     }
-    //   }
-    // }
-    // if (matches.size() > 300)
-    // {
-    //   matches.resize(300);
-    // }
     
+  
 
-    // if (LR)
-    // {
-    //   std::cout << "size before removal : " << matches.size();
-    //   for (size_t i = 0; i < matches.size(); i++)
-    //   {
-    //     if (abs(keypoints[matches[i].queryIdx].pt.y - secondImage.keypoints[matches[i].trainIdx].pt.y) > 3)
-    //     {
-    //       matches.erase(matches.begin() + i);
-    //       i--;
-    //     }
-    //   }
-    //   std::cout << "\n size after removal : " << matches.size() << '\n';
-    // }
-    // else
-    // {
-    //   std::vector<cv::KeyPoint> points1, points2;
-    //   std::vector<cv::Point2f> pointsl, pointsr;
-    //   for( size_t i = 0; i < matches.size(); i++ )
-    //     {
-    //       points1.push_back( keypoints[ matches[i].queryIdx ] );
-    //       points2.push_back( secondImage.keypoints[ matches[i].trainIdx ] );
-    //       pointsl.push_back( keypoints[ matches[i].queryIdx ].pt );
-    //       pointsr.push_back( secondImage.keypoints[ matches[i].trainIdx ].pt );
-    //     }
-    //   cv::Mat h = findHomography( pointsl, pointsr, cv::RANSAC );
-    //   std::vector<cv::DMatch> good_matches;
-    //   std::vector<cv::KeyPoint> inliers1, inliers2;
-    //   for(size_t i = 0; i < matches.size(); i++) 
-    //   {
-    //     cv::Mat col = cv::Mat::ones(3, 1, CV_64F);
-    //     col.at<double>(0) = points1[i].pt.x;
-    //     col.at<double>(1) = points1[i].pt.y;
-    //     col = h * col;
-    //     col /= col.at<double>(2);
-    //     double dist = sqrt( pow(col.at<double>(0) - points2[i].pt.x, 2) +
-    //                         pow(col.at<double>(1) - points2[i].pt.y, 2));
-    //     if(dist < 2.5f) {
-    //         int new_i = static_cast<int>(inliers1.size());
-    //         inliers1.push_back(points1[i]);
-    //         inliers2.push_back(points2[i]);
-    //         good_matches.push_back(cv::DMatch(new_i, new_i, 0));
-    //     }
-    //   }
-    //   cv::Mat img_matches;
-    //   std::cout << " BEST MATCH : " << matches[100].distance << '\n';
-    //   cv_bridge::CvImage out_msg;
-    //   drawMatches( image, inliers1, secondImage.image, inliers2, good_matches, img_matches, cv::Scalar::all(-1),
-    //         cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
-    //   // drawMatches(img1, inliers1, img2, inliers2, good_matches, res);
-    //   // drawMatches( image, keypoints, secondImage.image, secondImage.keypoints, matches, img_matches, cv::Scalar::all(-1),
-    //   //       cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
-    //   out_msg.header   = header; // Same timestamp and tf frame as input image
-    //   out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-    //   out_msg.image    = img_matches; // Your cv::Mat
-    //   mImageMatches.publish(out_msg.toImageMsg());
-
-    // }
     return good_matches;
 }
 
@@ -435,7 +356,11 @@ void FeatureDrawer::clearFeaturePosition()
 
 void FeatureDrawer::setPrevious(std::vector<cv::DMatch> matches, cv::Mat points3D)
 {
-    previousLeftImage = leftImage;
+    std::cout << "MATRICES EQUAL : " << matIsEqual(leftImage.image, previousLeftImage.image) << '\n';
+
+    previousLeftImage.image = leftImage.image;
+    std::cout << "MATRICES EQUAL AFTER : " << matIsEqual(leftImage.image, previousLeftImage.image) << '\n';
+
     previousRightImage = rightImage;
     previouspoints3D = points3D;
     previousMatches.clear();
@@ -446,7 +371,7 @@ void FeatureDrawer::setPrevious(std::vector<cv::DMatch> matches, cv::Mat points3
     }
 }
 
-void FeatureDrawer::setImage(const sensor_msgs::ImageConstPtr& imageRef, cv::Mat& image)
+cv::Mat FeatureDrawer::setImage(const sensor_msgs::ImageConstPtr& imageRef)
 {
     cv_bridge::CvImagePtr cv_ptr;
     try
@@ -456,9 +381,11 @@ void FeatureDrawer::setImage(const sensor_msgs::ImageConstPtr& imageRef, cv::Mat
     catch (cv_bridge::Exception& e)
     {
       ROS_ERROR("cv_bridge exception: %s", e.what());
-      return;
+      return cv::Mat();
     }
+    cv::Mat image;
     cv::cvtColor(cv_ptr->image, image, cv::COLOR_BGR2GRAY);
+    return image;
 }
 
 FeatureDrawer::~FeatureDrawer()
