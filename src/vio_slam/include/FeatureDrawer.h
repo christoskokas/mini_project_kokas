@@ -72,8 +72,6 @@ class FeatureDrawer
         ros::Publisher pose_pub;
         float sums[3] {};
         float sumsMovement[3] {};
-        float previousSums[3] {};
-        float previoussumsMovement[3] {};
         cv::Mat rmap[2][2];
         cv::Mat previouspoints3D;
         cv:: Mat R1, R2, P1, P2, Q;
@@ -95,12 +93,11 @@ class FeatureDrawer
         void setUndistortMap(ros::NodeHandle *nh);
         cv::Mat setImage(const sensor_msgs::ImageConstPtr& imageRef);
         cv::Mat calculateFeaturePosition(const std::vector<cv::DMatch>& matches);
-        void setPrevious(std::vector<cv::DMatch> matches, cv::Mat points3D);
+        void setPrevious(cv::Mat& points3D);
         void allMatches(const std_msgs::Header& header);
-        void clearFeaturePosition();
         void publishMovement(const std_msgs::Header& header);
         void printMat(cv::Mat matrix);
-        void keepMatches(std::vector<cv::DMatch> matches, std::vector<cv::DMatch> matches2, bool left);
+        void keepMatches(const std::vector<cv::DMatch>& matches, const std::vector<cv::DMatch>& matches2, const vio_slam::Features& secondImage, const cv::Mat& points3D, bool left);
         // void findFeatures(const cv::Mat& imageRef, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptor, image_transport::Publisher publish);
         // std::vector<cv::DMatch> findMatches(const std_msgs::Header& lIm);
 

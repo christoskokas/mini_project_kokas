@@ -129,9 +129,6 @@ cv::Mat FeatureDrawer::calculateFeaturePosition(const std::vector<cv::DMatch>& m
       {
         points3D.at<double>(j,i) = points4D.at<double>(j,i)/points4D.at<double>(3,i);
       }
-      // std::cout << pointsL.at(i);
-      // std::cout << pointsR.at(i);
-      // std::cout << '\n';
     }
     return points3D;
   }
@@ -142,15 +139,11 @@ void Features::findFeatures()
 {
     cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
     // detect features and descriptor
-    cv::Mat outImage;
     detector->detectAndCompute( image, cv::Mat(), keypoints, descriptors);
-    cv::drawKeypoints(image, keypoints, outImage, {255, 0, 0, 255} );
 }
 
 void FeatureDrawer::allMatches(const std_msgs::Header& header)
 {
-    // leftImage.findFeatures();
-    // rightImage.findFeatures();
     bool LR = true;
     std::vector<cv::DMatch> matches = leftImage.findMatches(rightImage, header, mImageMatches, LR);
     cv::Mat points3D = calculateFeaturePosition(matches);
@@ -158,17 +151,16 @@ void FeatureDrawer::allMatches(const std_msgs::Header& header)
     {
       LR = false;
       std::vector<cv::DMatch> matchesLpL = leftImage.findMatches(previousLeftImage, header, mImageMatches, LR);
-      keepMatches(matches, matchesLpL, true);
+      keepMatches(matches, matchesLpL, previousLeftImage, points3D, true);
       publishMovement(header);
     }
     
-    setPrevious(matches, points3D);
+    setPrevious(points3D);
 
 }
 
-void FeatureDrawer::keepMatches(std::vector<cv::DMatch> matches, std::vector<cv::DMatch> matches2, bool left)
+void FeatureDrawer::keepMatches(const std::vector<cv::DMatch>& matches, const std::vector<cv::DMatch>& matches2, const vio_slam::Features& secondImage, const cv::Mat& points3D, bool left)
 {
-  cv::Mat points3D = calculateFeaturePosition(matches);
   std::vector<cv::DMatch> matched;
   ceres::Problem problem;
   ceres::LossFunction* lossfunction = NULL;
@@ -176,16 +168,26 @@ void FeatureDrawer::keepMatches(std::vector<cv::DMatch> matches, std::vector<cv:
   {
     for (size_t j = 0; j < matches2.size(); j++)
     {
-      if ((left && (leftImage.keypoints[matches[i].queryIdx].pt.x == leftImage.keypoints[matches2[j].queryIdx].pt.x) && (leftImage.keypoints[matches[i].queryIdx].pt.y == leftImage.keypoints[matches2[j].queryIdx].pt.y)) || (!left && (rightImage.keypoints[matches[i].trainIdx].pt.x == rightImage.keypoints[matches2[j].trainIdx].pt.x) && (rightImage.keypoints[matches[i].trainIdx].pt.y == rightImage.keypoints[matches2[j].trainIdx].pt.y)))
+      if ((left && (leftImage.keypoints[matches[i].queryIdx].pt.x == leftImage.keypoints[matches2[j].queryIdx].pt.x) && (leftImage.keypoints[matches[i].queryIdx].pt.y == leftImage.keypoints[matches2[j].queryIdx].pt.y)) || (!left && (secondImage.keypoints[matches[i].trainIdx].pt.x == secondImage.keypoints[matches2[j].trainIdx].pt.x) && (secondImage.keypoints[matches[i].trainIdx].pt.y == secondImage.keypoints[matches2[j].trainIdx].pt.y)))
       {
-        if ((abs(points3D.at<double>(0,i)) < 100) && (abs(points3D.at<double>(1,i)) < 100) && (abs(points3D.at<double>(2,i)) < 100) && !isnan(abs(points3D.at<double>(0,i))) && !isnan(abs(points3D.at<double>(1,i))) && !isnan(abs(points3D.at<double>(2,i))))
+        double x = points3D.at<double>(0,i);
+        double y = points3D.at<double>(1,i);
+        double z = points3D.at<double>(2,i);
+        double xp = previouspoints3D.at<double>(0,j);
+        double yp = previouspoints3D.at<double>(1,j);
+        double zp = previouspoints3D.at<double>(2,j);
+        if ((abs(x) < 100) && (abs(y) < 100) && (abs(z) < 100) && !isnan(abs(x)) && !isnan(abs(y)) && !isnan(abs(z)) && !isinf(abs(x)) && !isinf(abs(y)) && !isinf(abs(z)))
         {
-          Eigen::Vector3d p3d(points3D.at<double>(0,i), points3D.at<double>(1,i), points3D.at<double>(2,i));
-          Eigen::Vector3d pp3d(previouspoints3D.at<double>(0,j), previouspoints3D.at<double>(1,j), previouspoints3D.at<double>(2,j));
+          Eigen::Vector3d p3d(x, y, z);
+          Eigen::Vector3d pp3d(xp, yp, zp);
           // std::cout << p3d << '\n';
           // std::cout << '\n';
-          ceres::CostFunction* costfunction = Reprojection3dError::Create(p3d, pp3d);
+          ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
           problem.AddResidualBlock(costfunction, lossfunction, camera);
+        }
+        else
+        {
+
         }
         break;
       }
@@ -207,7 +209,6 @@ void FeatureDrawer::keepMatches(std::vector<cv::DMatch> matches, std::vector<cv:
   Eigen::Isometry3d Transform(q.matrix());
   Transform.pretranslate(Eigen::Vector3d(camera[3], camera[4], camera[5]));
   T = Transform.matrix();
-  // std::cout << "T=\n" << T << std::endl;
 }
 
 void FeatureDrawer::publishMovement(const std_msgs::Header& header)
@@ -220,18 +221,19 @@ void FeatureDrawer::publishMovement(const std_msgs::Header& header)
     sumsMovement[2] += T(2,3);
     Eigen::Matrix3d Rot;
     {
-      Eigen::Matrix4d temp = previousT;
-      for (size_t i = 0; i < 3; i++)
-      {
-        for (size_t j = 0; j < 4; j++)
-        {
-          previousT(i,j) = temp(i,0)*T(0,j) + temp(i,1)*T(1,j) + temp(i,2)*T(2,j) + temp(i,3)*T(3,j);
-          if (j < 3)
-            Rot(i,j) = previousT(i,j);
-        }
-      }
+      // Eigen::Matrix4d temp = previousT;
+      // for (size_t i = 0; i < 3; i++)
+      // {
+      //   for (size_t j = 0; j < 4; j++)
+      //   {
+      //     previousT(i,j) = temp(i,0)*T(0,j) + temp(i,1)*T(1,j) + temp(i,2)*T(2,j) + temp(i,3)*T(3,j);
+      //     if (j < 3)
+      //       Rot(i,j) = previousT(i,j);
+      //   }
+      // }
+      previousT = previousT * T;
     }
-    Eigen::Quaterniond quat(Rot.topLeftCorner<3,3>());
+    Eigen::Quaterniond quat(previousT.topLeftCorner<3,3>());
     // std::cout << "T=\n" << T << std::endl;
     // std::cout << "Tprev=\n" << previousT << std::endl;
     // std::cout << "Rot=\n" << Rot << std::endl;
@@ -256,20 +258,12 @@ void FeatureDrawer::publishMovement(const std_msgs::Header& header)
 
     position.header.frame_id = header.frame_id;
     position.header.stamp = ros::Time::now();
-    for (size_t i = 0; i < 3; i++)
-    {
-      previoussumsMovement[i] = sumsMovement[i];
-    }
     pose_pub.publish(position);
   }
 }
 
 std::vector<cv::DMatch> Features::findMatches(Features& secondImage, const std_msgs::Header& header, image_transport::Publisher& mImageMatches, bool LR)
 {
-    if (!LR)
-    {
-      std::cout << "MATRICES EQUAL INSIDE : " << matIsEqual(image, secondImage.image) << '\n';
-    }
     findFeatures();
     secondImage.findFeatures();
     
@@ -311,7 +305,6 @@ std::vector<cv::DMatch> Features::findMatches(Features& secondImage, const std_m
     {
       for(size_t i = 0; i < matched1.size(); i++) 
       {
-      std::cout << "findHomography size : " << h.rows << '\n'; 
         
         cv::Mat col = cv::Mat::ones(3, 1, CV_64F);
         col.at<double>(0) = matched1[i].pt.x;
@@ -346,27 +339,16 @@ std::vector<cv::DMatch> Features::findMatches(Features& secondImage, const std_m
     return good_matches;
 }
 
-void FeatureDrawer::clearFeaturePosition()
+void FeatureDrawer::setPrevious(cv::Mat& points3D)
 {
-    leftImage.pointsPosition.clear();
-    rightImage.pointsPosition.clear();
-    previousLeftImage.pointsPosition.clear();
-    previousRightImage.pointsPosition.clear();
-}
 
-void FeatureDrawer::setPrevious(std::vector<cv::DMatch> matches, cv::Mat points3D)
-{
-    std::cout << "MATRICES EQUAL : " << matIsEqual(leftImage.image, previousLeftImage.image) << '\n';
-
+    // std::cout << "MATRICES EQUAL : " << matIsEqual(previousLeftImage.image, leftImage.image) << '\n';
     previousLeftImage.image = leftImage.image;
-    std::cout << "MATRICES EQUAL AFTER : " << matIsEqual(leftImage.image, previousLeftImage.image) << '\n';
 
+    // std::cout << "MATRICES EQUAL AFTER : " << matIsEqual(previousLeftImage.image, leftImage.image) << '\n';
     previousRightImage.image = rightImage.image;
     previouspoints3D = points3D;
-    for (size_t i = 0; i < sizeof(sums)/sizeof(sums[0]); i++)
-    {
-      previousSums[i] = sums[i];
-    }
+    // std::cout << "MATRICES EQUAL AFTER : " << matIsEqual(previouspoints3D, points3D) << '\n';
 }
 
 cv::Mat FeatureDrawer::setImage(const sensor_msgs::ImageConstPtr& imageRef)
