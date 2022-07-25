@@ -55,6 +55,7 @@ class Features
     public:
         cv::Mat image;
         cv::Mat descriptors;
+        std::vector<bool> close;
         std::vector< cv::KeyPoint > keypoints;
         std::vector< pcl::PointXYZ > pointsPosition;
         void findFeatures();
@@ -84,6 +85,7 @@ class FeatureDrawer
         Features rightImage;
         Features previousLeftImage;
         Features previousRightImage;
+        std::vector<cv::DMatch> previousMatches;
         double camera[6];
         Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d previousT = Eigen::Matrix4d::Identity();
@@ -93,7 +95,7 @@ class FeatureDrawer
         void setUndistortMap(ros::NodeHandle *nh);
         cv::Mat setImage(const sensor_msgs::ImageConstPtr& imageRef);
         cv::Mat calculateFeaturePosition(const std::vector<cv::DMatch>& matches);
-        void setPrevious(cv::Mat& points3D);
+        void setPrevious(cv::Mat& points3D, std::vector < cv::DMatch> matches);
         void allMatches(const std_msgs::Header& header);
         void publishMovement(const std_msgs::Header& header);
         void printMat(cv::Mat matrix);
