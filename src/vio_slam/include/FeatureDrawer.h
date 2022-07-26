@@ -86,6 +86,7 @@ class FeatureDrawer
         Features previousLeftImage;
         Features previousRightImage;
         std::vector<cv::DMatch> previousMatches;
+        std::vector<cv::KeyPoint> previousleftKeypoints;
         double camera[6];
         Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d previousT = Eigen::Matrix4d::Identity();
