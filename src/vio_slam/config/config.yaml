@@ -11,7 +11,7 @@ Camera_l:
   p2: 0.000225869
   k3: -0.00521306
 
-Camera_l_path: /zed2i/zed_node/left_raw/image_raw_color
+Camera_l_path: /camera_1/left/image_raw
 # /zed2i/zed_node/left_raw/image_raw_color
 # /camera_1/left/image_raw
 
@@ -26,7 +26,7 @@ Camera_r:
   p2: -0.000249686
   k3: -0.00489882
   
-Camera_r_path: /zed2i/zed_node/right_raw/image_raw_color
+Camera_r_path: /camera_1/right/image_raw
 # /zed2i/zed_node/right_raw/image_raw_color
 # /camera_1/right/image_raw
 

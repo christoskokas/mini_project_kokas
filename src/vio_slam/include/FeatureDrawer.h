@@ -58,7 +58,7 @@ class Features
         std::vector<bool> close;
         std::vector< cv::KeyPoint > keypoints;
         std::vector< pcl::PointXYZ > pointsPosition;
-        void findFeatures();
+        void findFeatures(bool LR);
         std::vector<cv::DMatch> findMatches(Features& secondImage, const std_msgs::Header& lIm, image_transport::Publisher& mImageMatches, bool LR);
 };
 
@@ -100,7 +100,8 @@ class FeatureDrawer
         void allMatches(const std_msgs::Header& header);
         void publishMovement(const std_msgs::Header& header);
         void printMat(cv::Mat matrix);
-        void keepMatches(const std::vector<cv::DMatch>& matches, const std::vector<cv::DMatch>& matches2, const vio_slam::Features& secondImage, const cv::Mat& points3D, bool left);
+        void matchTrial(const std::vector<cv::DMatch>& matches, const std::vector<cv::DMatch>& LpLmatches, const vio_slam::Features& secondImage);
+        void keepMatches(const std::vector<cv::DMatch>& matches, const std::vector<cv::DMatch>& LpLmatches, const vio_slam::Features& secondImage, std::vector<cv::KeyPoint> tempKeypoints, const cv::Mat& points3D, bool left);
         // void findFeatures(const cv::Mat& imageRef, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptor, image_transport::Publisher publish);
         // std::vector<cv::DMatch> findMatches(const std_msgs::Header& lIm);
 
