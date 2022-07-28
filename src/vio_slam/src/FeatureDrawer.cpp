@@ -46,11 +46,11 @@ bool matIsEqual(const cv::Mat Mat1, const cv::Mat Mat2)
 
 void FeatureDrawer::printMat(cv::Mat matrix)
 {
-  for (size_t i = 0; i < matrix.cols; i++)
+  for (size_t i = 0; i < matrix.rows; i++)
   {
-    for (size_t j = 0; j < matrix.rows; j++)
+    for (size_t j = 0; j < matrix.cols; j++)
     {
-      std::cout << matrix.at<double>(j,i) << "  ";
+      std::cout << matrix.at<double>(i,j) << "  ";
     }
     std::cout << '\n';
   }
@@ -83,25 +83,48 @@ FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr) : m_
     pose_pub = nh->advertise<nav_msgs::Odometry>(position_path,1);
 }
 
+void Features::findFeaturesTrial()
+{
+  cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
+
+  detector->detect(image, keypoints,cv::Mat());
+  // cv::PCA()
+  detector->compute(image, keypoints, descriptors);
+
+}
+
+void FeatureDrawer::again()
+{
+  leftImage.findFeaturesTrial();
+  rightImage.findFeaturesTrial();
+}
+
 void FeatureDrawer::featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
 {
-    cv::Mat left,right;
-    if (!zedcamera->rectified)
+    if (firstImage || count == 3)
     {
-      left = setImage(lIm);
-      right = setImage(rIm);
-      cv::remap(left, leftImage.image, rmap[0][0], rmap[0][1], cv::INTER_LINEAR);
-      cv::remap(right, rightImage.image, rmap[1][0], rmap[1][1], cv::INTER_LINEAR);
+      if (!zedcamera->rectified)
+      {
+        leftImage.image = setImage(lIm);
+        rightImage.image = setImage(rIm);
+        // cv::remap(leftImage.image, leftImage.image, rmap[0][0], rmap[0][1], cv::INTER_LINEAR);
+        // cv::remap(rightImage.image, rightImage.image, rmap[1][0], rmap[1][1], cv::INTER_LINEAR);
+      }
+      else
+      {
+        leftImage.image = setImage(lIm);
+        rightImage.image = setImage(rIm);
+      }
+      allMatches(lIm->header);
+      
+      
+      firstImage = false;
+      count = 0;
     }
     else
     {
-      leftImage.image = setImage(lIm);
-      rightImage.image = setImage(rIm);
+      count ++;
     }
-    allMatches(lIm->header);
-    
-    
-    firstImage = false;
 }
 
 void FeatureDrawer::setUndistortMap(ros::NodeHandle *nh)
@@ -110,6 +133,10 @@ void FeatureDrawer::setUndistortMap(ros::NodeHandle *nh)
     cv::stereoRectify(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, imgSize, zedcamera->sensorsRotate, zedcamera->sensorsTranslate, R1, R2, P1, P2, Q);
     cv::initUndistortRectifyMap(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, R1, P1, imgSize, CV_32FC1, rmap[0][0], rmap[0][1]);
     cv::initUndistortRectifyMap(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, R2, P2, imgSize, CV_32FC1, rmap[1][0], rmap[1][1]);
+    std::cout << "P1 : \n";
+    printMat(P1);
+    std::cout << "P2 : \n";
+    printMat(P2);
     
 }
 
@@ -184,7 +211,7 @@ void FeatureDrawer::allMatches(const std_msgs::Header& header)
     {
       LR = false;
       std::vector<cv::DMatch> matchesLpL = leftImage.findMatches(previousLeftImage, header, mImageMatches, LR);
-      keepMatches(matches, matchesLpL, leftImage, tempKeypoints, points3D, true);
+      keepMatches(matches, matchesLpL, leftImage, tempKeypoints, points3D, header, true);
       publishMovement(header);
     }
     previousleftKeypoints = tempKeypoints;
@@ -271,8 +298,9 @@ void FeatureDrawer::matchTrial(const std::vector<cv::DMatch>& matches, const std
 
 }
 
-void FeatureDrawer::keepMatches(const std::vector<cv::DMatch>& matches, const std::vector<cv::DMatch>& LpLmatches, const vio_slam::Features& secondImage, std::vector<cv::KeyPoint> tempKeypoints, const cv::Mat& points3D, bool left)
+void FeatureDrawer::keepMatches(const std::vector<cv::DMatch>& matches, const std::vector<cv::DMatch>& LpLmatches, const vio_slam::Features& secondImage, std::vector<cv::KeyPoint> tempKeypoints, const cv::Mat& points3D, const std_msgs::Header& header, bool left)
 {
+  cv::Mat trial = leftImage.image.clone();
   ceres::Problem problem;
   ceres::LossFunction* lossfunction = NULL;
   for (auto mLpL:LpLmatches)
@@ -294,12 +322,17 @@ void FeatureDrawer::keepMatches(const std::vector<cv::DMatch>& matches, const st
             double zp = previouspoints3D.at<double>(2,keypos);
             Eigen::Vector3d p3d(x, y, z);
             Eigen::Vector3d pp3d(xp, yp, zp);
-
+            // cv::Point(leftImage.keypoints[mLR.queryIdx].pt);
+            leftImage.keypoints[mLR.queryIdx].pt;
             std::cout << "PREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
             std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
-            
+            // cv2.line(image, point1, point2, [0, 255, 0], 2) 
+            cv::line(trial,cv::Point(leftImage.keypoints[mLR.queryIdx].pt.x,leftImage.keypoints[mLR.queryIdx].pt.y), cv::Point(previousleftKeypoints[keypos].pt.x, previousleftKeypoints[keypos].pt.y), (255,255,255));
+            std::cout << "leftImage : " <<  leftImage.keypoints[mLR.queryIdx].pt.x << " " << leftImage.keypoints[mLR.queryIdx].pt.y << '\n';
+            std::cout << "previousLeftImage : " <<  previousleftKeypoints[keypos].pt.x << " " << previousleftKeypoints[keypos].pt.y << '\n';
             ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
             problem.AddResidualBlock(costfunction, lossfunction, camera);
+            
             break;
           }
           keypos ++;
@@ -308,6 +341,11 @@ void FeatureDrawer::keepMatches(const std::vector<cv::DMatch>& matches, const st
       }
     }
   }
+  cv_bridge::CvImage out_msg;
+  out_msg.header   = header; // Same timestamp and tf frame as input image
+  out_msg.encoding = sensor_msgs::image_encodings::MONO8; // Or whatever
+  out_msg.image    = trial; // Your cv::Mat
+  mImageMatches.publish(out_msg.toImageMsg());
   // for (auto m:matches)
   // {
   //   std::cout << "LR matches : " << leftImage.keypoints[m.queryIdx].pt << '\n';
@@ -478,10 +516,10 @@ std::vector<cv::DMatch> Features::findMatches(Features& secondImage, const std_m
               cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
         if(!LR)
         {
-          out_msg.header   = header; // Same timestamp and tf frame as input image
-          out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-          out_msg.image    = img_matches; // Your cv::Mat
-          mImageMatches.publish(out_msg.toImageMsg());
+          // out_msg.header   = header; // Same timestamp and tf frame as input image
+          // out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+          // out_msg.image    = img_matches; // Your cv::Mat
+          // mImageMatches.publish(out_msg.toImageMsg());
         }
       }
     }
