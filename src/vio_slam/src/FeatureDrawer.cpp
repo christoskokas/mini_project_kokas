@@ -84,6 +84,130 @@ FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr) : m_
 }
 
 /**
+ * @brief Find Matches between Images according to Computed Descriptors. Using KnnMatcher to find better matches, removing some outliers with Lowe's ratio, and remove more outliers with Homography. Returns good matches.
+ * 
+ * @param secondImage second Image for Feature Matching (Features class)
+ * @param mImageMatches ROS Publisher 
+ * @param LR If the matches are Left and Right Image or not
+ * @return std::vector<cv::DMatch> 
+ */
+std::vector<cv::DMatch> Features::getMatches(Features& secondImage, image_transport::Publisher& mImageMatches, bool LR)
+{
+  if ( descriptors.empty() )
+      cvError(0,"MatchFinder","1st descriptor empty",__FILE__,__LINE__);    
+    if ( secondImage.descriptors.empty() )
+      cvError(0,"MatchFinder","2nd descriptor empty",__FILE__,__LINE__);
+    std::vector< std::vector<cv::DMatch> > matches;
+    cv::FlannBasedMatcher matcher = cv::FlannBasedMatcher(cv::makePtr<cv::flann::LshIndexParams>(12, 20, 2));
+    // cv::BFMatcher matcher(cv::NORM_HAMMING);  
+    matcher.knnMatch(descriptors, secondImage.descriptors, matches, 2);
+    std::vector<cv::KeyPoint> matched1, matched2;
+    std::vector<cv::Point2f> pointl, pointr;
+    for(size_t i = 0; i < matches.size(); i++) 
+    {
+      if(matches[i].size() >= 2)
+      {
+        cv::DMatch first = matches[i][0];
+        float dist1 = matches[i][0].distance;
+        float dist2 = matches[i][1].distance;
+
+        if(dist1 < 0.8f * dist2) 
+        {
+          matched1.push_back(keypoints[first.queryIdx]);
+          matched2.push_back(secondImage.keypoints[first.trainIdx]);
+          pointl.push_back(keypoints[first.queryIdx].pt);
+          pointr.push_back(secondImage.keypoints[first.trainIdx].pt);
+        }
+      }
+
+    }
+    std::vector<cv::DMatch> good_matches;
+    if (pointl.size() > 4)
+    {
+      std::vector<cv::KeyPoint> inliers1, inliers2;
+      cv::Mat h = findHomography( pointl, pointr, cv::RANSAC);
+      if (h.rows == 3)
+      {
+        for(size_t i = 0; i < matched1.size(); i++) 
+        {
+          
+          cv::Mat col = cv::Mat::ones(3, 1, CV_64F);
+          col.at<double>(0) = matched1[i].pt.x;
+          col.at<double>(1) = matched1[i].pt.y;
+          col = h * col;
+          col /= col.at<double>(2);
+          double dist = sqrt( pow(col.at<double>(0) - matched2[i].pt.x, 2) +
+                              pow(col.at<double>(1) - matched2[i].pt.y, 2));
+          if(dist < 2.5f) {
+              int new_i = static_cast<int>(inliers1.size());
+              inliers1.push_back(matched1[i]);
+              inliers2.push_back(matched2[i]);
+              // std::cout << "first : " << matched1[i].pt << " second : " << matched2[i].pt << '\n';
+              good_matches.push_back(cv::DMatch(new_i, new_i, 0));
+          }
+        
+        }
+        keypointsLR = inliers1;
+        secondImage.keypointsLR = inliers2;
+        cv::Mat img_matches;
+        cv_bridge::CvImage out_msg;
+        drawMatches( image, inliers1, secondImage.image, inliers2, good_matches, img_matches, cv::Scalar::all(-1),
+              cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+        if(LR)
+        {
+          // out_msg.header   = header; // Same timestamp and tf frame as input image
+          // out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+          // out_msg.image    = img_matches; // Your cv::Mat
+          // mImageMatches.publish(out_msg.toImageMsg());
+        }
+      }
+    }
+    
+    
+  
+
+    return good_matches;
+}
+
+
+void Features::getDescriptors()
+{
+  cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(75,1.2f,8,30, 0, 2, cv::ORB::HARRIS_SCORE,30);
+  detector->compute(image, keypoints, descriptors);
+}
+
+
+/**
+ * @brief Find Features with Adaptive Fast Threshold. This is used to be certain that a number of features will be found on each grid image so that features are homogeneous on the whole image
+ * 
+ * @param patch the cropped image
+ * @param step the step with which the fast threshold is changed per iteration
+ * @param interations the number of iterations the fast threshold is changed
+ * @return std::vector< cv::KeyPoint > returns the resulting keypoints
+ */
+std::vector< cv::KeyPoint > Features::featuresAdaptiveThreshold(cv::Mat& patch, int step = 3, unsigned int interations = 5)
+{
+  int fastThreshold = 20;
+  std::vector< cv::KeyPoint > tempkeys;
+  for (size_t iii = 0; iii < interations; iii++)
+  {
+    int numbOfFeatures = 200;
+    int numbNeeded = 80;
+    int edgeThreshold = 0;
+    findORBFeatures(patch, tempkeys, numbOfFeatures, edgeThreshold, fastThreshold);
+    if (tempkeys.size() >=(numbNeeded-10))
+    {
+      cv::KeyPointsFilter::retainBest(tempkeys, numbNeeded);
+      // std::cout << "fast : " << fastThreshold << " size : " << tempkeys.size() << '\n';
+      return tempkeys;
+    }
+    else
+      fastThreshold -= step;
+  }
+  return tempkeys;
+}
+
+/**
  * @brief Get Features from image with adaptive threshold and grid based feature extraction
  * 
  * @param rows How many rows to separate image
@@ -93,13 +217,14 @@ FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr) : m_
 void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImageMatches, bool left)
 {
   // separate image to grid for homogeneity of features
-  cv::Mat croppedImage;
+
   // Crop image 30 pixels round to have 0 edge threshold
+  const int edgeThreshold = 30; 
+  cv::Mat croppedImage;
   {
-    cv::Rect crop(30, 30, image.cols - 60, image.rows - 60);
+    cv::Rect crop(edgeThreshold, edgeThreshold, image.cols - 2*edgeThreshold, image.rows - 2*edgeThreshold);
     croppedImage = image(crop);
   }
-
 
   for (int iii = 0; iii < rows; iii++)
   {
@@ -108,40 +233,26 @@ void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImage
       int grid[2] {iii, jjj};
       cv::Size imgSize = cv::Size(croppedImage.cols/cols,croppedImage.rows/rows);
       cv::Mat patch = gridBasedFeatures(croppedImage, grid, imgSize);
-      std::vector< cv::KeyPoint > tempkeys;
-      int numbOfFeatures = 75;
-      int edgeThreshold = 0;
-      findORBFeatures(patch, tempkeys, numbOfFeatures, edgeThreshold);
-      std::for_each(tempkeys.begin(),tempkeys.end(), [&](cv::KeyPoint &n){n.pt.x +=jjj*imgSize.width + 30;
-                                                                          n.pt.y +=iii*imgSize.height + 30;});
-      std::cout << tempkeys.size() << "\n";
+      std::vector< cv::KeyPoint > tempkeys = featuresAdaptiveThreshold(patch);
+      std::for_each(tempkeys.begin(),tempkeys.end(), [&](cv::KeyPoint &n){n.pt.x +=jjj*imgSize.width + edgeThreshold;
+                                                                          n.pt.y +=iii*imgSize.height + edgeThreshold;});
+      // std::cout << tempkeys.size() << "\n";
       keypoints.insert(keypoints.end(),std::begin(tempkeys),std::end(tempkeys));
-      // if (iii == 2 && jjj == 3)
-      // {
-      // //   // for (size_t kkk = 0; kkk < tempkeys.size(); kkk++)
-      // //   // {
-      // //   //   std::cout << " x : " << tempkeys[kkk].pt.x << " y : " << tempkeys[kkk].pt.y <<  '\n';
-      // //   // }
-        
-      //   for (size_t kkk = 0; kkk < tempkeys.size(); kkk++)
-      //   {
-      //     std::cout << " x : " << tempkeys[kkk].pt.x << " y : " << tempkeys[kkk].pt.y <<  '\n';
-      //   }
-      // }
     }
     
   }
-  if (!left)
-  {
-    cv::Mat trial;
-    cv::drawKeypoints(image, keypoints,trial, cv::Scalar(255,0,0,255));
-    std::cout << " NEW IMAGE \n";
-    cv_bridge::CvImage out_msg;
-    out_msg.header   = header; // Same timestamp and tf frame as input image
-    out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-    out_msg.image    = trial; // Your cv::Mat
-    mImageMatches.publish(out_msg.toImageMsg());
-  }
+  std::cout << "NEW IMAGE \n";
+  // if (left)
+  // {
+  //   cv::Mat trial;
+  //   cv::drawKeypoints(image, keypoints,trial, cv::Scalar(255,0,0,255));
+  //   std::cout << " NEW IMAGE \n";
+  //   cv_bridge::CvImage out_msg;
+  //   out_msg.header   = header; // Same timestamp and tf frame as input image
+  //   out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+  //   out_msg.image    = trial; // Your cv::Mat
+  //   mImageMatches.publish(out_msg.toImageMsg());
+  // }
   
   
 }
@@ -167,48 +278,154 @@ cv::Mat Features::gridBasedFeatures(cv::Mat croppedImage, const int grid[2], cv:
 }
   
 
-void Features::findORBFeatures(cv::Mat& image, std::vector< cv::KeyPoint >& keypoints, int numbOfFeatures, int edgeThreshold)
+void Features::findORBFeatures(cv::Mat& image, std::vector< cv::KeyPoint >& keypoints, int numbOfFeatures, int edgeThreshold, int fastThreshold)
 {
-  cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(numbOfFeatures,1.2f,8, edgeThreshold, 0, 2, cv::ORB::HARRIS_SCORE,30);
+  cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(numbOfFeatures,1.2f,8, edgeThreshold, 0, 2, cv::ORB::HARRIS_SCORE,30, fastThreshold);
 
   detector->detect(image, keypoints,cv::Mat());
 }
 
-void Features::findFeaturesTrial()
+cv::Mat FeatureDrawer::featurePosition(std::vector < cv::Point2f> pointsL, std::vector < cv::Point2f> pointsR)
 {
-  cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
+  cv::Mat points4D(4,1,CV_64F);
 
-  detector->detect(image, keypoints,cv::Mat());
-  cv::Mat data_pts = cv::Mat(keypoints.size(), 2, CV_64F);
-  for (int i = 0; i < data_pts.rows; i++)
+  cv::triangulatePoints(P1, P2, pointsL, pointsR, points4D);
+  // std::cout << "LEFT : " << leftImage.keypoints[matches[0].queryIdx].pt << '\n';
+  // std::cout << "RIGHT : " << rightImage.keypoints[matches[0].trainIdx].pt << '\n';
+  // std::cout << "points4D : " << " x :" << points4D.at<double>(0,0)/points4D.at<double>(3,0) << " y :" << points4D.at<double>(1,0)/points4D.at<double>(3,0) << " z :" << points4D.at<double>(2,0)/points4D.at<double>(3,0) << '\n';
+  cv::Mat points3D(3, points4D.cols,CV_64F);
+  leftImage.close.clear();
+  for (size_t i = 0; i < points4D.cols; i++)
   {
-      data_pts.at<double>(i, 0) = keypoints[i].pt.x;
-      data_pts.at<double>(i, 1) = keypoints[i].pt.y;
+    for (size_t j = 0; j < 3; j++)
+    {
+      points3D.at<double>(j,i) = points4D.at<double>(j,i)/points4D.at<double>(3,i);
+      
+    }
+    if (abs(points3D.at<double>(2,i)) > zedcamera->mBaseline*40)
+    {
+      leftImage.close.push_back(false);
+      // std::cout << "left : " << pointsL[i] <<'\n'; 
+      // std::cout << "right : " << pointsR[i] <<'\n'; 
+      // std::cout << "size points : " << points4D.cols <<'\n'; 
+      // std::cout << "size leftkeys : " << pointsL.size() <<'\n'; 
+      // std::cout << "size rightkeys : " << pointsR.size() <<'\n'; 
+    }
+    else
+    {
+      leftImage.close.push_back(true);
+    }
   }
-  cv::PCA pca_analysis(data_pts, cv::Mat(), cv::PCA::DATA_AS_ROW);
-  cv::Mat normkeypoints = pca_analysis.project(data_pts);
-  std::cout << "norm keys : " << normkeypoints.at<double>(0,0) << " " << normkeypoints.at<double>(0,1) << "\n";
-  std::cout << "keypoint : " << keypoints[0].pt << '\n';
-  std::cout << "mean : " << pca_analysis.mean << '\n';
-  cv::Mat back = pca_analysis.backProject(normkeypoints);
-  std::cout << "back keys : " << back.at<double>(0,0) << " " << back.at<double>(0,1) << "\n";
-  std::cout << "image size : " << image.size()  << "  " << image.cols << '\n';
-  // printMat(normkeypoints);
-  // cv::Point cntr = cv::Point(static_cast<int>(pca_analysis.mean.at<double>(0, 0)), static_cast<int>(pca_analysis.mean.at<double>(0, 1)));
-  // std::cout << "center : " << cntr << '\n';
-  detector->compute(image, keypoints, descriptors);
+  return points3D;
+}
 
+void Features::opticalFlowRANSAC(std::vector < cv::Point2f>& pointL, std::vector < cv::Point2f>& pointpL, cv::Mat status)
+{
+  cv::Mat h = findHomography( pointL, pointpL, cv::RANSAC);
+  std::vector < cv::Point2f> inliersL, inlierspL;
+  for(size_t i = 0; i < pointpL.size(); i++) 
+  {
+    if (status.at<bool>(i))
+    {
+      cv::Mat col = cv::Mat::ones(3, 1, CV_64F);
+      col.at<double>(0) = pointpL[i].x;
+      col.at<double>(1) = pointpL[i].y;
+      col = h * col;
+      col /= col.at<double>(2);
+      double dist = sqrt( pow(col.at<double>(0) - pointL[i].x, 2) +
+                          pow(col.at<double>(1) - pointL[i].y, 2));
+      if(dist < 60.0f) {
+          inliersL.push_back(pointL[i]);
+          inlierspL.push_back(pointpL[i]);
+      }
+    }
+  }
+  pointL = inliersL;
+  pointpL = inlierspL;
+}
+
+std::vector < cv::Point2f> Features::opticalFlow(Features& prevImage, image_transport::Publisher& mImageMatches, bool left)
+{
+  cv::Mat status, err;
+  std::vector < cv::Point2f> pointL, pointpL;
+  // std::for_each(leftImage.keypoints.begin(), leftImage.keypoints.end(),[&](cv::KeyPoint &n){pointL.push_back(n.pt);});
+  std::for_each(prevImage.keypoints.begin(), prevImage.keypoints.end(),[&](cv::KeyPoint &n){pointpL.push_back(n.pt);});
+  // pointpL = prevImage.inlierPoints;
+  cv::calcOpticalFlowPyrLK(prevImage.image, image, pointpL, pointL, status, err, cv::Size(21,21), 3, cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 30, (0.01000000000000000021)),cv::OPTFLOW_LK_GET_MIN_EIGENVALS);
+  cv::Mat optFlow = image.clone();
+  
+  // std::cout << err.at<float>(j) << "prev point : " << pointpL[j] << "new point : " << pointL[j] << '\n';
+  opticalFlowRANSAC(pointL, pointpL, status);
+  for(int j=0; j<pointpL.size(); j++)
+  {
+    cv::line(optFlow,pointpL[j],pointL[j],cv::Scalar(255,0,0,255));
+  }
+  if (!left)
+  {
+    cv_bridge::CvImage out_msg;
+    out_msg.header   = header; // Same timestamp and tf frame as input image
+    out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+    out_msg.image    = optFlow; // Your cv::Mat
+    mImageMatches.publish(out_msg.toImageMsg());
+  }
+  prevImage.inlierPoints = pointpL;
+  return pointL;
+}
+
+void FeatureDrawer::ceresSolver(const cv::Mat& points3D)
+{
+  ceres::Problem problem;
+  ceres::LossFunction* lossfunction = NULL;
+  for (size_t iii = 0; iii < points3D.cols; iii++)
+  {
+    double x = points3D.at<double>(0,iii);
+    double y = points3D.at<double>(1,iii);
+    double z = points3D.at<double>(2,iii);
+    double xp = previouspoints3D.at<double>(0,iii);
+    double yp = previouspoints3D.at<double>(1,iii);
+    double zp = previouspoints3D.at<double>(2,iii);
+  }
+  
+  
 }
 
 void FeatureDrawer::again()
 {
-  // leftImage.findFeaturesTrial();
-  // rightImage.findFeaturesTrial();
+  // Get Features of Each Image
   leftImage.getFeatures(3,4, mImageMatches, true);
   rightImage.getFeatures(3,4, mImageMatches, false);
 
+  // Get Descriptors of Each Image
+  leftImage.getDescriptors();
+  rightImage.getDescriptors();
+
+  std::vector<cv::DMatch> matches = leftImage.getMatches(rightImage, mImageMatches, true);
+
+  // TODO KMean clustering of features.
+
+  // TODO Optical Flow for rotation? maybe
+
+
+  std::vector<cv::Point2f> pointsL, pointsR;
+  if (firstImage)
+  {
+    std::for_each(leftImage.keypointsLR.begin(), leftImage.keypointsLR.end(),[&](cv::KeyPoint &n){leftImage.inlierPoints.push_back(n.pt);});
+    std::for_each(rightImage.keypointsLR.begin(), rightImage.keypointsLR.end(),[&](cv::KeyPoint &n){rightImage.inlierPoints.push_back(n.pt);});
+  }
+  else
+  {
+    pointsL = leftImage.opticalFlow(previousLeftImage, mImageMatches, true);
+    pointsR = rightImage.opticalFlow(previousRightImage, mImageMatches, false);
+    // cv::Mat points3D = featurePosition(pointsL, pointsR);
+    // cv::Mat prevPoints3D = featurePosition(previousLeftImage.inlierPoints, previousRightImage.inlierPoints);
+    // ceresSolver(points3D);
+  }
+
+  // cv::Mat points3D = calculateFeaturePosition(matches);
+  setPrevious(matches);
   leftImage.clearFeatures();
   rightImage.clearFeatures();
+  firstImage = false;
 }
 
 void Features::clearFeatures()
@@ -239,6 +456,32 @@ void FeatureDrawer::featureDetectionCallback(const sensor_msgs::ImageConstPtr& l
       count = 0;
 }
 
+void Features::findFeaturesTrial()
+{
+  cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
+
+  detector->detect(image, keypoints,cv::Mat());
+  cv::Mat data_pts = cv::Mat(keypoints.size(), 2, CV_64F);
+  for (int i = 0; i < data_pts.rows; i++)
+  {
+      data_pts.at<double>(i, 0) = keypoints[i].pt.x;
+      data_pts.at<double>(i, 1) = keypoints[i].pt.y;
+  }
+  cv::PCA pca_analysis(data_pts, cv::Mat(), cv::PCA::DATA_AS_ROW);
+  cv::Mat normkeypoints = pca_analysis.project(data_pts);
+  std::cout << "norm keys : " << normkeypoints.at<double>(0,0) << " " << normkeypoints.at<double>(0,1) << "\n";
+  std::cout << "keypoint : " << keypoints[0].pt << '\n';
+  std::cout << "mean : " << pca_analysis.mean << '\n';
+  cv::Mat back = pca_analysis.backProject(normkeypoints);
+  std::cout << "back keys : " << back.at<double>(0,0) << " " << back.at<double>(0,1) << "\n";
+  std::cout << "image size : " << image.size()  << "  " << image.cols << '\n';
+  // printMat(normkeypoints);
+  // cv::Point cntr = cv::Point(static_cast<int>(pca_analysis.mean.at<double>(0, 0)), static_cast<int>(pca_analysis.mean.at<double>(0, 1)));
+  // std::cout << "center : " << cntr << '\n';
+  detector->compute(image, keypoints, descriptors);
+
+}
+
 void FeatureDrawer::setUndistortMap(ros::NodeHandle *nh)
 {
     cv::Size imgSize = cv::Size(zedcamera->mWidth, zedcamera->mHeight);
@@ -264,8 +507,8 @@ cv::Mat FeatureDrawer::calculateFeaturePosition(const std::vector<cv::DMatch>& m
     std::vector<cv::Point2d> pointsR;
     for (size_t i = 0; i < matches.size(); i++)
     {
-      pointsL.push_back(leftImage.keypoints[matches[i].queryIdx].pt);
-      pointsR.push_back(rightImage.keypoints[matches[i].trainIdx].pt);
+      pointsL.push_back(leftImage.keypointsLR[matches[i].queryIdx].pt);
+      pointsR.push_back(rightImage.keypointsLR[matches[i].trainIdx].pt);
     }
     cv::triangulatePoints(P1, P2, pointsL, pointsR, points4D);
     // std::cout << "LEFT : " << leftImage.keypoints[matches[0].queryIdx].pt << '\n';
@@ -330,7 +573,7 @@ void FeatureDrawer::allMatches(const std_msgs::Header& header)
     }
     previousleftKeypoints = tempKeypoints;
     
-    setPrevious(points3D, matches);
+    setPrevious(matches);
 
 }
 
@@ -644,16 +887,20 @@ std::vector<cv::DMatch> Features::findMatches(Features& secondImage, const std_m
     return good_matches;
 }
 
-void FeatureDrawer::setPrevious(cv::Mat& points3D, std::vector < cv::DMatch> matches)
+void FeatureDrawer::setPrevious(std::vector < cv::DMatch> matches)
 {
 
     // std::cout << "MATRICES EQUAL : " << matIsEqual(previousLeftImage.image, leftImage.image) << '\n';
     previousLeftImage.image = leftImage.image.clone();
+    previousLeftImage.keypoints = leftImage.keypoints;
+    previousLeftImage.keypointsLR = leftImage.keypointsLR;
     // std::cout << "MATRICES EQUAL AFTER : " << matIsEqual(previousLeftImage.image, leftImage.image) << '\n';
     previousRightImage.image = rightImage.image.clone();
-    previouspoints3D = points3D.clone();
+    previousRightImage.keypoints = rightImage.keypoints;
+    previousRightImage.keypointsLR = rightImage.keypointsLR;
+    // previouspoints3D = points3D.clone();
     previousMatches = matches;
-    previousLeftImage.close = leftImage.close;
+    // previousLeftImage.close = leftImage.close;
 }
 
 void Features::setImage(const sensor_msgs::ImageConstPtr& imageRef)

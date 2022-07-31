@@ -13,6 +13,7 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/features2d.hpp"
 #include "opencv2/core.hpp"
+#include <opencv2/video/tracking.hpp>
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
@@ -57,14 +58,21 @@ class Features
         cv::Mat descriptors;
         std::vector<bool> close;
         std::vector< cv::KeyPoint > keypoints;
+        std::vector< cv::KeyPoint > keypointsLR;
         std::vector< pcl::PointXYZ > pointsPosition;
+        std::vector < cv::Point2f> inlierPoints;
         std_msgs::Header header;
+        void opticalFlowRANSAC(std::vector < cv::Point2f>& pointL, std::vector < cv::Point2f>& pointpL, cv::Mat status);
+        std::vector < cv::Point2f> opticalFlow(Features& prevImage, image_transport::Publisher& mImageMatches, bool left);
+        std::vector< cv::KeyPoint > featuresAdaptiveThreshold(cv::Mat& patch, int step, unsigned int interations);
         void findFeatures(bool LR);
         cv::Mat gridBasedFeatures(cv::Mat croppedImage, const int grid[2], cv::Size imgSize);
         void getFeatures(int rows, int cols,image_transport::Publisher& mImageMatches, bool left);
+        void getDescriptors();
+        std::vector<cv::DMatch> getMatches(Features& secondImage, image_transport::Publisher& mImageMatches, bool LR);
         void findFeaturesTrial();
         void clearFeatures();
-        void findORBFeatures(cv::Mat& image, std::vector< cv::KeyPoint >& keypoints, int numbOfFeatures, int edgeThreshold);
+        void findORBFeatures(cv::Mat& image, std::vector< cv::KeyPoint >& keypoints, int numbOfFeatures, int edgeThreshold, int fastThreshold);
         void setImage(const sensor_msgs::ImageConstPtr& imageRef);
         std::vector<cv::DMatch> findMatches(Features& secondImage, const std_msgs::Header& lIm, image_transport::Publisher& mImageMatches, bool LR);
 };
@@ -98,12 +106,14 @@ class FeatureDrawer
         double camera[6];
         Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d previousT = Eigen::Matrix4d::Identity();
+        void ceresSolver(const cv::Mat& points3D);
+        cv::Mat featurePosition(std::vector < cv::Point2f> pointsL, std::vector < cv::Point2f> pointsR);
         FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr);
         ~FeatureDrawer();
         void featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
         void setUndistortMap(ros::NodeHandle *nh);
         cv::Mat calculateFeaturePosition(const std::vector<cv::DMatch>& matches);
-        void setPrevious(cv::Mat& points3D, std::vector < cv::DMatch> matches);
+        void setPrevious(std::vector < cv::DMatch> matches);
         void allMatches(const std_msgs::Header& header);
         void publishMovement(const std_msgs::Header& header);
         void matchTrial(const std::vector<cv::DMatch>& matches, const std::vector<cv::DMatch>& LpLmatches, const vio_slam::Features& secondImage);
