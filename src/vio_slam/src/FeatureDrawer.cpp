@@ -44,7 +44,7 @@ bool matIsEqual(const cv::Mat Mat1, const cv::Mat Mat2)
   return false;
 }
 
-void FeatureDrawer::printMat(cv::Mat matrix)
+void printMat(cv::Mat matrix)
 {
   for (size_t i = 0; i < matrix.rows; i++)
   {
@@ -83,56 +83,128 @@ FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr) : m_
     pose_pub = nh->advertise<nav_msgs::Odometry>(position_path,1);
 }
 
+/**
+ * @brief Get Features from image with adaptive threshold and grid based feature extraction
+ * 
+ * @param rows How many rows to separate image
+ * @param cols How many columns to separate image
+ */
+void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImageMatches)
+{
+  // separate image to grid for homogeneity of features
+  cv::Mat trial;
+  for (int iii = 0; iii < rows; iii++)
+  {
+    for (int jjj = 0; jjj < cols; jjj++)
+    {
+      int grid[2] {iii, jjj};
+      cv::Mat patch = gridBasedFeatures(grid, rows, cols);
+      if (iii == 2 && jjj == 0)
+      {
+        trial = patch.clone();
+      }
+      
+    }
+    
+  }
+  cv_bridge::CvImage out_msg;
+  out_msg.header   = header; // Same timestamp and tf frame as input image
+  out_msg.encoding = sensor_msgs::image_encodings::MONO8; // Or whatever
+  out_msg.image    = trial; // Your cv::Mat
+  mImageMatches.publish(out_msg.toImageMsg());
+  
+}
+
+cv::Mat Features::gridBasedFeatures(const int grid[2], const int rows, const int cols)
+{
+  cv::Rect crop(grid[1]*image.cols/cols, grid[0]*image.rows/rows, image.cols/cols, image.rows/rows);
+  cv::Mat patch =  image(crop);
+  return patch;
+  // std::cout << image.cols << " " << image.rows << " " << grid[1] << " " << grid[0] <<" LOL \n";
+  // cv::Size imgSize = cv::Size(image.cols/cols,image.rows/rows);
+  // std::cout << " LOL \n";
+  // cv::Point2f center;
+  // center = cv::Point2f(imgSize.width*(grid[1] + 0.5f), imgSize.height*(grid[0] + 0.5f));
+  // std::cout << " LOL \n";
+  // cv::getRectSubPix(image, imgSize, center, patch);
+  // std::cout << "Size : " << patch.size() << " Center : " << center << '\n';
+  // std::cout << "Image Size : " << image.size() << '\n'; 
+
+}
+  
+
+void Features::findORBFeatures(cv::Mat& image, std::vector< cv::KeyPoint >& keypoints, int numbOfFeatures)
+{
+  cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(numbOfFeatures);
+
+  detector->detect(image, keypoints,cv::Mat());
+}
+
 void Features::findFeaturesTrial()
 {
   cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
 
   detector->detect(image, keypoints,cv::Mat());
-  // cv::PCA()
+  cv::Mat data_pts = cv::Mat(keypoints.size(), 2, CV_64F);
+  for (int i = 0; i < data_pts.rows; i++)
+  {
+      data_pts.at<double>(i, 0) = keypoints[i].pt.x;
+      data_pts.at<double>(i, 1) = keypoints[i].pt.y;
+  }
+  cv::PCA pca_analysis(data_pts, cv::Mat(), cv::PCA::DATA_AS_ROW);
+  cv::Mat normkeypoints = pca_analysis.project(data_pts);
+  std::cout << "norm keys : " << normkeypoints.at<double>(0,0) << " " << normkeypoints.at<double>(0,1) << "\n";
+  std::cout << "keypoint : " << keypoints[0].pt << '\n';
+  std::cout << "mean : " << pca_analysis.mean << '\n';
+  cv::Mat back = pca_analysis.backProject(normkeypoints);
+  std::cout << "back keys : " << back.at<double>(0,0) << " " << back.at<double>(0,1) << "\n";
+  std::cout << "image size : " << image.size()  << "  " << image.cols << '\n';
+  // printMat(normkeypoints);
+  // cv::Point cntr = cv::Point(static_cast<int>(pca_analysis.mean.at<double>(0, 0)), static_cast<int>(pca_analysis.mean.at<double>(0, 1)));
+  // std::cout << "center : " << cntr << '\n';
   detector->compute(image, keypoints, descriptors);
 
 }
 
 void FeatureDrawer::again()
 {
-  leftImage.findFeaturesTrial();
-  rightImage.findFeaturesTrial();
+  // leftImage.findFeaturesTrial();
+  // rightImage.findFeaturesTrial();
+  leftImage.getFeatures(3,4, mImageMatches);
 }
 
 void FeatureDrawer::featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
 {
-    if (firstImage || count == 3)
-    {
+    cv::Mat left,right;
       if (!zedcamera->rectified)
       {
-        leftImage.image = setImage(lIm);
-        rightImage.image = setImage(rIm);
-        // cv::remap(leftImage.image, leftImage.image, rmap[0][0], rmap[0][1], cv::INTER_LINEAR);
-        // cv::remap(rightImage.image, rightImage.image, rmap[1][0], rmap[1][1], cv::INTER_LINEAR);
+        leftImage.setImage(lIm);
+        rightImage.setImage(rIm);
+        cv::remap(leftImage.image, leftImage.image, rmap[0][0], rmap[0][1], cv::INTER_LINEAR);
+        cv::remap(rightImage.image, rightImage.image, rmap[1][0], rmap[1][1], cv::INTER_LINEAR);
+        // std::cout << "MATRIX SAME : " << matIsEqual(left,leftImage.image) << '\n';
+        // std::cout << "MATRIX SAME : " << matIsEqual(right,rightImage.image) << '\n';
       }
       else
       {
-        leftImage.image = setImage(lIm);
-        rightImage.image = setImage(rIm);
+        leftImage.setImage(lIm);
+        rightImage.setImage(rIm);
       }
-      allMatches(lIm->header);
-      
+      // allMatches(lIm->header);
+      again();
       
       firstImage = false;
       count = 0;
-    }
-    else
-    {
-      count ++;
-    }
 }
 
 void FeatureDrawer::setUndistortMap(ros::NodeHandle *nh)
 {
     cv::Size imgSize = cv::Size(zedcamera->mWidth, zedcamera->mHeight);
     cv::stereoRectify(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, imgSize, zedcamera->sensorsRotate, zedcamera->sensorsTranslate, R1, R2, P1, P2, Q);
-    cv::initUndistortRectifyMap(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, R1, P1, imgSize, CV_32FC1, rmap[0][0], rmap[0][1]);
-    cv::initUndistortRectifyMap(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, R2, P2, imgSize, CV_32FC1, rmap[1][0], rmap[1][1]);
+    cv::Mat leftCamera = cv::getOptimalNewCameraMatrix(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs,imgSize, 0);
+    cv::Mat rightCamera = cv::getOptimalNewCameraMatrix(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs,imgSize, 0);
+    cv::initUndistortRectifyMap(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, R1, leftCamera, imgSize, CV_32FC1, rmap[0][0], rmap[0][1]);
+    cv::initUndistortRectifyMap(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, R2, rightCamera, imgSize, CV_32FC1, rmap[1][0], rmap[1][1]);
     std::cout << "P1 : \n";
     printMat(P1);
     std::cout << "P2 : \n";
@@ -324,12 +396,12 @@ void FeatureDrawer::keepMatches(const std::vector<cv::DMatch>& matches, const st
             Eigen::Vector3d pp3d(xp, yp, zp);
             // cv::Point(leftImage.keypoints[mLR.queryIdx].pt);
             leftImage.keypoints[mLR.queryIdx].pt;
-            std::cout << "PREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
-            std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
+            // std::cout << "PREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
+            // std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
             // cv2.line(image, point1, point2, [0, 255, 0], 2) 
             cv::line(trial,cv::Point(leftImage.keypoints[mLR.queryIdx].pt.x,leftImage.keypoints[mLR.queryIdx].pt.y), cv::Point(previousleftKeypoints[keypos].pt.x, previousleftKeypoints[keypos].pt.y), (255,255,255));
-            std::cout << "leftImage : " <<  leftImage.keypoints[mLR.queryIdx].pt.x << " " << leftImage.keypoints[mLR.queryIdx].pt.y << '\n';
-            std::cout << "previousLeftImage : " <<  previousleftKeypoints[keypos].pt.x << " " << previousleftKeypoints[keypos].pt.y << '\n';
+            // std::cout << "leftImage : " <<  leftImage.keypoints[mLR.queryIdx].pt.x << " " << leftImage.keypoints[mLR.queryIdx].pt.y << '\n';
+            // std::cout << "previousLeftImage : " <<  previousleftKeypoints[keypos].pt.x << " " << previousleftKeypoints[keypos].pt.y << '\n';
             ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
             problem.AddResidualBlock(costfunction, lossfunction, camera);
             
@@ -542,7 +614,7 @@ void FeatureDrawer::setPrevious(cv::Mat& points3D, std::vector < cv::DMatch> mat
     previousLeftImage.close = leftImage.close;
 }
 
-cv::Mat FeatureDrawer::setImage(const sensor_msgs::ImageConstPtr& imageRef)
+void Features::setImage(const sensor_msgs::ImageConstPtr& imageRef)
 {
     cv_bridge::CvImagePtr cv_ptr;
     try
@@ -552,11 +624,9 @@ cv::Mat FeatureDrawer::setImage(const sensor_msgs::ImageConstPtr& imageRef)
     catch (cv_bridge::Exception& e)
     {
       ROS_ERROR("cv_bridge exception: %s", e.what());
-      return cv::Mat();
     }
-    cv::Mat image;
     cv::cvtColor(cv_ptr->image, image, cv::COLOR_BGR2GRAY);
-    return image;
+    header = cv_ptr->header;
 }
 
 FeatureDrawer::~FeatureDrawer()

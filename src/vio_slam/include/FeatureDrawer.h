@@ -58,8 +58,13 @@ class Features
         std::vector<bool> close;
         std::vector< cv::KeyPoint > keypoints;
         std::vector< pcl::PointXYZ > pointsPosition;
+        std_msgs::Header header;
         void findFeatures(bool LR);
+        cv::Mat gridBasedFeatures(const int grid[2], const int rows, const int cols);
+        void getFeatures(int rows, int cols,image_transport::Publisher& mImageMatches);
         void findFeaturesTrial();
+        void findORBFeatures(cv::Mat& image, std::vector< cv::KeyPoint >& keypoints, int numbOfFeatures);
+        void setImage(const sensor_msgs::ImageConstPtr& imageRef);
         std::vector<cv::DMatch> findMatches(Features& secondImage, const std_msgs::Header& lIm, image_transport::Publisher& mImageMatches, bool LR);
 };
 
@@ -96,12 +101,10 @@ class FeatureDrawer
         ~FeatureDrawer();
         void featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
         void setUndistortMap(ros::NodeHandle *nh);
-        cv::Mat setImage(const sensor_msgs::ImageConstPtr& imageRef);
         cv::Mat calculateFeaturePosition(const std::vector<cv::DMatch>& matches);
         void setPrevious(cv::Mat& points3D, std::vector < cv::DMatch> matches);
         void allMatches(const std_msgs::Header& header);
         void publishMovement(const std_msgs::Header& header);
-        void printMat(cv::Mat matrix);
         void matchTrial(const std::vector<cv::DMatch>& matches, const std::vector<cv::DMatch>& LpLmatches, const vio_slam::Features& secondImage);
         void keepMatches(const std::vector<cv::DMatch>& matches, const std::vector<cv::DMatch>& LpLmatches, const vio_slam::Features& secondImage, std::vector<cv::KeyPoint> tempKeypoints, const cv::Mat& points3D, const std_msgs::Header& header, bool left);
         void again();
