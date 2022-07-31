@@ -60,7 +60,7 @@ class Features
         std::vector< pcl::PointXYZ > pointsPosition;
         std_msgs::Header header;
         void findFeatures(bool LR);
-        cv::Mat gridBasedFeatures(const int grid[2], const int rows, const int cols);
+        cv::Mat gridBasedFeatures(const int grid[2], cv::Size imgSize);
         void getFeatures(int rows, int cols,image_transport::Publisher& mImageMatches);
         void findFeaturesTrial();
         void findORBFeatures(cv::Mat& image, std::vector< cv::KeyPoint >& keypoints, int numbOfFeatures);

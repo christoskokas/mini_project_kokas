@@ -88,45 +88,65 @@ FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr) : m_
  * 
  * @param rows How many rows to separate image
  * @param cols How many columns to separate image
+ * @param mImageMatches ROS Image Publisher 
  */
 void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImageMatches)
 {
   // separate image to grid for homogeneity of features
-  cv::Mat trial;
   for (int iii = 0; iii < rows; iii++)
   {
     for (int jjj = 0; jjj < cols; jjj++)
     {
       int grid[2] {iii, jjj};
-      cv::Mat patch = gridBasedFeatures(grid, rows, cols);
-      if (iii == 2 && jjj == 0)
-      {
-        trial = patch.clone();
-      }
-      
+      cv::Size imgSize = cv::Size(image.cols/cols,image.rows/rows);
+      cv::Mat patch = gridBasedFeatures(grid, imgSize);
+      std::vector< cv::KeyPoint > tempkeys;
+      int numbOfFeatures = 100;
+      findORBFeatures(patch, tempkeys, numbOfFeatures);
+      std::for_each(tempkeys.begin(),tempkeys.end(), [&](cv::KeyPoint &n){n.pt.x +=jjj*imgSize.width;
+                                                                          n.pt.y +=iii*imgSize.height;});
+      keypoints.insert(keypoints.end(),std::begin(tempkeys),std::end(tempkeys));
+      // if (iii == 2 && jjj == 3)
+      // {
+      //   // for (size_t kkk = 0; kkk < tempkeys.size(); kkk++)
+      //   // {
+      //   //   std::cout << " x : " << tempkeys[kkk].pt.x << " y : " << tempkeys[kkk].pt.y <<  '\n';
+      //   // }
+        
+      //   for (size_t kkk = 0; kkk < keypoints.size(); kkk++)
+      //   {
+      //     std::cout << " x : " << keypoints[kkk].pt.x << " y : " << keypoints[kkk].pt.y <<  '\n';
+      //   }
+      // }
     }
     
   }
+  cv::Mat trial;
+  cv::drawKeypoints(image, keypoints,trial, cv::Scalar(255,0,0,255));
+  keypoints.clear();
+  std::cout << trial.size() << " TRIAL \n";
   cv_bridge::CvImage out_msg;
   out_msg.header   = header; // Same timestamp and tf frame as input image
-  out_msg.encoding = sensor_msgs::image_encodings::MONO8; // Or whatever
+  out_msg.encoding = sensor_msgs::image_encodings::MONO16; // Or whatever
   out_msg.image    = trial; // Your cv::Mat
   mImageMatches.publish(out_msg.toImageMsg());
   
 }
 
-cv::Mat Features::gridBasedFeatures(const int grid[2], const int rows, const int cols)
+cv::Mat Features::gridBasedFeatures(const int grid[2], cv::Size imgSize)
 {
-  cv::Rect crop(grid[1]*image.cols/cols, grid[0]*image.rows/rows, image.cols/cols, image.rows/rows);
-  cv::Mat patch =  image(crop);
-  return patch;
+  // cv::Rect crop(grid[1]*imgSize.width, grid[0]*imgSize.height, imgSize.width, imgSize.height);
+  // cv::Mat patch =  image(crop);
+  // return patch;
   // std::cout << image.cols << " " << image.rows << " " << grid[1] << " " << grid[0] <<" LOL \n";
   // cv::Size imgSize = cv::Size(image.cols/cols,image.rows/rows);
   // std::cout << " LOL \n";
-  // cv::Point2f center;
-  // center = cv::Point2f(imgSize.width*(grid[1] + 0.5f), imgSize.height*(grid[0] + 0.5f));
+  cv::Point2f center;
+  center = cv::Point2f(imgSize.width*(grid[1] + 0.5f), imgSize.height*(grid[0] + 0.5f));
   // std::cout << " LOL \n";
-  // cv::getRectSubPix(image, imgSize, center, patch);
+  cv::Mat patch;
+  cv::getRectSubPix(image, imgSize, center, patch);
+  return patch;
   // std::cout << "Size : " << patch.size() << " Center : " << center << '\n';
   // std::cout << "Image Size : " << image.size() << '\n'; 
 
@@ -175,7 +195,6 @@ void FeatureDrawer::again()
 
 void FeatureDrawer::featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
 {
-    cv::Mat left,right;
       if (!zedcamera->rectified)
       {
         leftImage.setImage(lIm);
