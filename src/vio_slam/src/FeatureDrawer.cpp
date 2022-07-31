@@ -90,72 +90,86 @@ FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr) : m_
  * @param cols How many columns to separate image
  * @param mImageMatches ROS Image Publisher 
  */
-void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImageMatches)
+void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImageMatches, bool left)
 {
   // separate image to grid for homogeneity of features
+  cv::Mat croppedImage;
+  // Crop image 30 pixels round to have 0 edge threshold
+  {
+    cv::Rect crop(30, 30, image.cols - 60, image.rows - 60);
+    croppedImage = image(crop);
+  }
+
+
   for (int iii = 0; iii < rows; iii++)
   {
     for (int jjj = 0; jjj < cols; jjj++)
     {
       int grid[2] {iii, jjj};
-      cv::Size imgSize = cv::Size(image.cols/cols,image.rows/rows);
-      cv::Mat patch = gridBasedFeatures(grid, imgSize);
+      cv::Size imgSize = cv::Size(croppedImage.cols/cols,croppedImage.rows/rows);
+      cv::Mat patch = gridBasedFeatures(croppedImage, grid, imgSize);
       std::vector< cv::KeyPoint > tempkeys;
-      int numbOfFeatures = 100;
-      findORBFeatures(patch, tempkeys, numbOfFeatures);
-      std::for_each(tempkeys.begin(),tempkeys.end(), [&](cv::KeyPoint &n){n.pt.x +=jjj*imgSize.width;
-                                                                          n.pt.y +=iii*imgSize.height;});
+      int numbOfFeatures = 75;
+      int edgeThreshold = 0;
+      findORBFeatures(patch, tempkeys, numbOfFeatures, edgeThreshold);
+      std::for_each(tempkeys.begin(),tempkeys.end(), [&](cv::KeyPoint &n){n.pt.x +=jjj*imgSize.width + 30;
+                                                                          n.pt.y +=iii*imgSize.height + 30;});
+      std::cout << tempkeys.size() << "\n";
       keypoints.insert(keypoints.end(),std::begin(tempkeys),std::end(tempkeys));
       // if (iii == 2 && jjj == 3)
       // {
-      //   // for (size_t kkk = 0; kkk < tempkeys.size(); kkk++)
-      //   // {
-      //   //   std::cout << " x : " << tempkeys[kkk].pt.x << " y : " << tempkeys[kkk].pt.y <<  '\n';
-      //   // }
+      // //   // for (size_t kkk = 0; kkk < tempkeys.size(); kkk++)
+      // //   // {
+      // //   //   std::cout << " x : " << tempkeys[kkk].pt.x << " y : " << tempkeys[kkk].pt.y <<  '\n';
+      // //   // }
         
-      //   for (size_t kkk = 0; kkk < keypoints.size(); kkk++)
+      //   for (size_t kkk = 0; kkk < tempkeys.size(); kkk++)
       //   {
-      //     std::cout << " x : " << keypoints[kkk].pt.x << " y : " << keypoints[kkk].pt.y <<  '\n';
+      //     std::cout << " x : " << tempkeys[kkk].pt.x << " y : " << tempkeys[kkk].pt.y <<  '\n';
       //   }
       // }
     }
     
   }
-  cv::Mat trial;
-  cv::drawKeypoints(image, keypoints,trial, cv::Scalar(255,0,0,255));
-  keypoints.clear();
-  std::cout << trial.size() << " TRIAL \n";
-  cv_bridge::CvImage out_msg;
-  out_msg.header   = header; // Same timestamp and tf frame as input image
-  out_msg.encoding = sensor_msgs::image_encodings::MONO16; // Or whatever
-  out_msg.image    = trial; // Your cv::Mat
-  mImageMatches.publish(out_msg.toImageMsg());
+  if (!left)
+  {
+    cv::Mat trial;
+    cv::drawKeypoints(image, keypoints,trial, cv::Scalar(255,0,0,255));
+    std::cout << " NEW IMAGE \n";
+    cv_bridge::CvImage out_msg;
+    out_msg.header   = header; // Same timestamp and tf frame as input image
+    out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+    out_msg.image    = trial; // Your cv::Mat
+    mImageMatches.publish(out_msg.toImageMsg());
+  }
+  
   
 }
 
-cv::Mat Features::gridBasedFeatures(const int grid[2], cv::Size imgSize)
+cv::Mat Features::gridBasedFeatures(cv::Mat croppedImage, const int grid[2], cv::Size imgSize)
 {
-  // cv::Rect crop(grid[1]*imgSize.width, grid[0]*imgSize.height, imgSize.width, imgSize.height);
-  // cv::Mat patch =  image(crop);
+  cv::Rect crop(grid[1]*imgSize.width, grid[0]*imgSize.height, imgSize.width, imgSize.height);
+  cv::Mat patch =  croppedImage(crop);
+  return patch;
+  // std::cout << "top left x : " << grid[1]*imgSize.width << " top left y : " << grid[0]*imgSize.height << " width : " << imgSize.width << " height : " << imgSize.height << '\n';
   // return patch;
   // std::cout << image.cols << " " << image.rows << " " << grid[1] << " " << grid[0] <<" LOL \n";
   // cv::Size imgSize = cv::Size(image.cols/cols,image.rows/rows);
   // std::cout << " LOL \n";
-  cv::Point2f center;
-  center = cv::Point2f(imgSize.width*(grid[1] + 0.5f), imgSize.height*(grid[0] + 0.5f));
+  // cv::Point2f center;
+  // center = cv::Point2f(imgSize.width*(grid[1] + 0.5f), imgSize.height*(grid[0] + 0.5f));
   // std::cout << " LOL \n";
-  cv::Mat patch;
-  cv::getRectSubPix(image, imgSize, center, patch);
-  return patch;
+  // cv::Mat patch;
+  // cv::getRectSubPix(image, imgSize, center, patch);
   // std::cout << "Size : " << patch.size() << " Center : " << center << '\n';
   // std::cout << "Image Size : " << image.size() << '\n'; 
 
 }
   
 
-void Features::findORBFeatures(cv::Mat& image, std::vector< cv::KeyPoint >& keypoints, int numbOfFeatures)
+void Features::findORBFeatures(cv::Mat& image, std::vector< cv::KeyPoint >& keypoints, int numbOfFeatures, int edgeThreshold)
 {
-  cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(numbOfFeatures);
+  cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(numbOfFeatures,1.2f,8, edgeThreshold, 0, 2, cv::ORB::HARRIS_SCORE,30);
 
   detector->detect(image, keypoints,cv::Mat());
 }
@@ -190,7 +204,16 @@ void FeatureDrawer::again()
 {
   // leftImage.findFeaturesTrial();
   // rightImage.findFeaturesTrial();
-  leftImage.getFeatures(3,4, mImageMatches);
+  leftImage.getFeatures(3,4, mImageMatches, true);
+  rightImage.getFeatures(3,4, mImageMatches, false);
+
+  leftImage.clearFeatures();
+  rightImage.clearFeatures();
+}
+
+void Features::clearFeatures()
+{
+  keypoints.clear();
 }
 
 void FeatureDrawer::featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
@@ -644,7 +667,8 @@ void Features::setImage(const sensor_msgs::ImageConstPtr& imageRef)
     {
       ROS_ERROR("cv_bridge exception: %s", e.what());
     }
-    cv::cvtColor(cv_ptr->image, image, cv::COLOR_BGR2GRAY);
+    // cv::cvtColor(cv_ptr->image, image, cv::COLOR_BGR2GRAY);
+    image = cv_ptr->image.clone();
     header = cv_ptr->header;
 }
 
