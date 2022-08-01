@@ -96,8 +96,12 @@ FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr) : m_
  * @param LR If the matches are Left and Right Image or not
  * @return std::vector<cv::DMatch> 
  */
-std::vector<cv::DMatch> Features::getMatches(Features& secondImage, image_transport::Publisher& mImageMatches, bool LR)
+std::vector<cv::DMatch> Features::getMatches(Features& secondImage, image_transport::Publisher& mImageMatches, std::vector<cv::KeyPoint>& previousleftKeypoints, bool LR)
 {
+  if (!LR)
+  {
+    previousleftKeypoints = secondImage.keypoints;
+  }
   if ( descriptors.empty() )
       cvError(0,"MatchFinder","1st descriptor empty",__FILE__,__LINE__);    
     if ( secondImage.descriptors.empty() )
@@ -116,7 +120,7 @@ std::vector<cv::DMatch> Features::getMatches(Features& secondImage, image_transp
         float dist1 = matches[i][0].distance;
         float dist2 = matches[i][1].distance;
 
-        if(dist1 < 0.9f * dist2) 
+        if(dist1 < 0.8f * dist2) 
         {
           matched1.push_back(keypoints[first.queryIdx]);
           matched2.push_back(secondImage.keypoints[first.trainIdx]);
@@ -124,14 +128,6 @@ std::vector<cv::DMatch> Features::getMatches(Features& secondImage, image_transp
           pointr.push_back(secondImage.keypoints[first.trainIdx].pt);
         }
       }
-      else if (matches[i].size() == 1)
-      {
-        matched1.push_back(keypoints[matches[i][0].queryIdx]);
-        matched2.push_back(secondImage.keypoints[matches[i][0].trainIdx]);
-        pointl.push_back(keypoints[matches[i][0].queryIdx].pt);
-        pointr.push_back(secondImage.keypoints[matches[i][0].trainIdx].pt);
-      }
-      
 
     }
     std::vector<cv::DMatch> good_matches;
@@ -162,16 +158,18 @@ std::vector<cv::DMatch> Features::getMatches(Features& secondImage, image_transp
         }
         keypointsLR = inliers1;
         secondImage.keypointsLR = inliers2;
+        keypoints = inliers1;
+        secondImage.keypoints = inliers2;
         cv::Mat img_matches;
         cv_bridge::CvImage out_msg;
         drawMatches( image, inliers1, secondImage.image, inliers2, good_matches, img_matches, cv::Scalar::all(-1),
               cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
         if(LR)
         {
-          // out_msg.header   = header; // Same timestamp and tf frame as input image
-          // out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
-          // out_msg.image    = img_matches; // Your cv::Mat
-          // mImageMatches.publish(out_msg.toImageMsg());
+          out_msg.header   = header; // Same timestamp and tf frame as input image
+          out_msg.encoding = sensor_msgs::image_encodings::RGB8; // Or whatever
+          out_msg.image    = img_matches; // Your cv::Mat
+          mImageMatches.publish(out_msg.toImageMsg());
         }
       }
     }
@@ -204,8 +202,8 @@ std::vector< cv::KeyPoint > Features::featuresAdaptiveThreshold(cv::Mat& patch, 
   std::vector< cv::KeyPoint > tempkeys;
   for (size_t iii = 0; iii < interations; iii++)
   {
-    int numbOfFeatures = 200;
-    int numbNeeded = 80;
+    int numbOfFeatures = 1000;
+    int numbNeeded = 200;
     int edgeThreshold = 0;
     findORBFeatures(patch, tempkeys, numbOfFeatures, edgeThreshold, fastThreshold);
     if (tempkeys.size() >=(numbNeeded-10))
@@ -331,33 +329,18 @@ cv::Mat FeatureDrawer::featurePosition(std::vector < cv::Point2f>& pointsL, std:
 
 void Features::removeOutliersOpticalFlow(std::vector < cv::Point2f>& pointL, std::vector < cv::Point2f>& pointpL, cv::Mat status)
 {
-  float sum = 0;
-  int count = 0;
-  for(size_t i = 0; i < pointpL.size(); i++) 
-  {
-    if (status.at<bool>(i))
-    {
-      sum += distance(pointpL[i].x, pointpL[i].y, pointL[i].x, pointL[i].y);
-      count++;
-    }
-  }
-  float average = sum/count;
-  std::cout << "average : " << average << '\n';
   std::vector < cv::Point2f> inliersL, inlierspL;
   for(size_t i = 0; i < pointpL.size(); i++) 
   {
     if (status.at<bool>(i))
     {
-      if (status.at<bool>(i) && distance(pointpL[i].x, pointpL[i].y, pointL[i].x, pointL[i].y) < 2.5f*average)
-      {
-        statusOfKeys.push_back(true);
-        inliersL.push_back(pointL[i]);
-        inlierspL.push_back(pointpL[i]);
-      }
-      else
-      {
-        statusOfKeys.push_back(false);
-      }
+      statusOfKeys.push_back(true);
+      inliersL.push_back(pointL[i]);
+      inlierspL.push_back(pointpL[i]);
+    }
+    else
+    {
+      statusOfKeys.push_back(false);
     }
   }
   pointL = inliersL;
@@ -392,36 +375,41 @@ std::vector < cv::Point2f> Features::opticalFlow(Features& prevImage, image_tran
   return pointL;
 }
 
-void FeatureDrawer::ceresSolver(const cv::Mat& points3D, const cv::Mat& prevpoints3D)
+void FeatureDrawer::ceresSolver(std::vector<cv::DMatch>& matches, const cv::Mat& points3D, const cv::Mat& prevpoints3D)
 {
   ceres::Problem problem;
   ceres::LossFunction* lossfunction = NULL;
   int count = 0;
-  for (size_t iii = 0; iii < prevpoints3D.cols; iii++)
+  for (size_t iii = 0; iii < matches.size(); iii++)
   {
-    if (leftImage.close[iii])
+    for (size_t jjj = 0; jjj < previousleftKeypoints.size(); jjj++)
     {
-      float x = points3D.at<float>(0,iii);
-      float y = points3D.at<float>(1,iii);
-      float z = points3D.at<float>(2,iii);
-      float xp = prevpoints3D.at<float>(0,iii);
-      float yp = prevpoints3D.at<float>(1,iii);
-      float zp = prevpoints3D.at<float>(2,iii);
-      // std::cout << "PREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
-      // std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
-      // std::cout << "x : " << x << " p3d : " << p3d.x() << '\n';
-      Eigen::Vector3d p3d(x, y, z);
-      Eigen::Vector3d pp3d(xp, yp, zp);
-      ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
-      problem.AddResidualBlock(costfunction, lossfunction, camera);
-      count ++;
+      if (leftImage.close[matches[iii].queryIdx] && previousLeftImage.close[matches[iii].trainIdx] && previousleftKeypoints[jjj].pt == previousLeftImage.keypoints[matches[iii].trainIdx].pt)
+      {
+        double x = points3D.at<double>(0,matches[iii].queryIdx);
+        double y = points3D.at<double>(1,matches[iii].queryIdx);
+        double z = points3D.at<double>(2,matches[iii].queryIdx);
+        double xp = prevpoints3D.at<double>(0,jjj);
+        double yp = prevpoints3D.at<double>(1,jjj);
+        double zp = prevpoints3D.at<double>(2,jjj);
+        std::cout << "PREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
+        std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
+        // std::cout << "x : " << x << " p3d : " << p3d.x() << '\n';
+        Eigen::Vector3d p3d(x, y, z);
+        Eigen::Vector3d pp3d(xp, yp, zp);
+        ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
+        problem.AddResidualBlock(costfunction, lossfunction, camera);
+        count ++;
+        break;
+      }
     }
+    
     
   }
   std::cout << "Count : " << count << '\n';
   ceres::Solver::Options options;
   options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-  options.max_num_iterations = 10;
+  options.max_num_iterations = 100;
   options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
   options.minimizer_progress_to_stdout = false;
   ceres::Solver::Summary summary;
@@ -448,6 +436,10 @@ void FeatureDrawer::again()
   leftImage.getDescriptors();
   rightImage.getDescriptors();
 
+  std::vector<cv::DMatch> matches = leftImage.getMatches(rightImage, mImageMatches, previousleftKeypoints, true);
+
+  // get feature position
+  cv::Mat points3D = calculateFeaturePosition(matches);
 
   // TODO KMean clustering of features.
 
@@ -456,18 +448,22 @@ void FeatureDrawer::again()
 
   if (!firstImage)
   {
-    std::vector<cv::Point2f> pointsL, pointsR;
-    std::vector<cv::DMatch> matches = previousLeftImage.getMatches(previousRightImage, mImageMatches, true);
-    pointsL = leftImage.opticalFlow(previousLeftImage, mImageMatches, true);
-    pointsR = rightImage.opticalFlow(previousRightImage, mImageMatches, false);
-    cv::Mat points3D = featurePosition(pointsL, pointsR, leftImage.statusOfKeys, rightImage.statusOfKeys);
-    cv::Mat prevPoints3D = featurePosition(previousLeftImage.inlierPoints, previousRightImage.inlierPoints, leftImage.statusOfKeys, rightImage.statusOfKeys);
-    ceresSolver(points3D, prevPoints3D);
+    previousLeftImage.getDescriptors();
+    std::vector<cv::KeyPoint> realleftkeypoints = leftImage.keypoints;
+    std::vector<cv::DMatch> matchesLpL = leftImage.getMatches(previousLeftImage, mImageMatches, previousleftKeypoints, false);
+
+    // std::vector<cv::DMatch> matches = previousLeftImage.getMatches(previousRightImage, mImageMatches, true);
+    // pointsL = leftImage.opticalFlow(previousLeftImage, mImageMatches, true);
+    // pointsR = rightImage.opticalFlow(previousRightImage, mImageMatches, false);
+    // cv::Mat points3D = featurePosition(pointsL, pointsR, leftImage.statusOfKeys, rightImage.statusOfKeys);
+    // cv::Mat prevPoints3D = featurePosition(previousLeftImage.inlierPoints, previousRightImage.inlierPoints, leftImage.statusOfKeys, rightImage.statusOfKeys);
+    ceresSolver(matchesLpL, points3D, previouspoints3D);
     publishMovement();
+    leftImage.keypoints = realleftkeypoints;
   }
 
   // cv::Mat points3D = calculateFeaturePosition(matches);
-  setPrevious();
+  setPrevious(points3D);
   leftImage.clearFeatures();
   rightImage.clearFeatures();
   firstImage = false;
@@ -618,85 +614,7 @@ void FeatureDrawer::allMatches(const std_msgs::Header& header)
     }
     previousleftKeypoints = tempKeypoints;
     
-    setPrevious();
-
-}
-
-void FeatureDrawer::matchTrial(const std::vector<cv::DMatch>& matches, const std::vector<cv::DMatch>& LpLmatches, const vio_slam::Features& secondImage)
-{
-  // for (auto m1:LpLmatches)
-  // {
-  //   for (auto prevm:previousMatches)
-  //   {
-  //     if (previousLeftImage.keypoints[m1.trainIdx].pt == previousleftKeypoints[prevm.queryIdx].pt)
-  //     {
-  //       for (auto mnew:matches)
-  //       {
-  //         if (secondImage.keypoints[m1.queryIdx].pt == leftImage.keypoints[mnew.queryIdx].pt)
-  //         {
-  //           double x = points3D.at<double>(0,mnew.queryIdx);
-  //           double y = points3D.at<double>(1,mnew.queryIdx);
-  //           double z = points3D.at<double>(2,mnew.queryIdx);
-  //           double xp = previouspoints3D.at<double>(0,prevm.queryIdx);
-  //           double yp = previouspoints3D.at<double>(1,prevm.queryIdx);
-  //           double zp = previouspoints3D.at<double>(2,prevm.queryIdx);
-  //           Eigen::Vector3d p3d(x, y, z);
-  //           Eigen::Vector3d pp3d(xp, yp, zp);
-
-  //           // std::cout << "size previous : " <<  previouspoints3D.size() << " k : " << k << '\n';
-  //           // std::cout << "size new : " <<  points3D.size() << " i : " << i  << '\n';
-  //           std::cout << "PREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
-  //           std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
-  //           // std::cout << "Previousleft same : " << previousLeftImage.keypoints[matches2[j].trainIdx].pt << '\n';
-  //           // std::cout << "Previousleft previous: " << previousLeftImage.keypoints[matches2[j].trainIdx].pt << '\n';
-  //           // std::cout << "previousleftKeypoints : " << previousleftKeypoints[previousMatches[k].queryIdx].pt << '\n';
-  //           // std::cout << "left : " << previousleftKeypoints[previousMatches[k].queryIdx].pt << '\n';
-            
-  //           ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
-  //           problem.AddResidualBlock(costfunction, lossfunction, camera);
-  //           break;
-  //         }
-  //       }
-  //     }
-  //   }
-    
-  // }
-  // cv::Mat points3D;
-  // ceres::Problem problem;
-  // ceres::LossFunction* lossfunction = NULL;
-  // for (auto mLpL:LpLmatches)
-  // {
-  //   for (auto mLR:matches)
-  //   {
-  //     if (leftImage.keypoints[mLpL.queryIdx].pt == leftImage.keypoints[mLR.queryIdx].pt)
-  //     {
-  //       int keypos = 0;
-  //       for (auto keys:previousleftKeypoints)
-  //       {
-  //         if (previousLeftImage.keypoints[mLpL.trainIdx].pt == keys.pt)
-  //         {
-  //           double x = points3D.at<double>(0,mLR.queryIdx);
-  //           double y = points3D.at<double>(1,mLR.queryIdx);
-  //           double z = points3D.at<double>(2,mLR.queryIdx);
-  //           double xp = previouspoints3D.at<double>(0,keypos);
-  //           double yp = previouspoints3D.at<double>(1,keypos);
-  //           double zp = previouspoints3D.at<double>(2,keypos);
-  //           Eigen::Vector3d p3d(x, y, z);
-  //           Eigen::Vector3d pp3d(xp, yp, zp);
-
-  //           std::cout << "PREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
-  //           std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
-            
-  //           ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
-  //           problem.AddResidualBlock(costfunction, lossfunction, camera);
-  //           break;
-  //         }
-  //         keypos ++;
-  //       }
-  //       break;
-  //     }
-  //   }
-  // }
+    setPrevious(points3D);
 
 }
 
@@ -914,7 +832,7 @@ std::vector<cv::DMatch> Features::findMatches(Features& secondImage, const std_m
     return good_matches;
 }
 
-void FeatureDrawer::setPrevious()
+void FeatureDrawer::setPrevious(cv::Mat& points3D)
 {
 
     // std::cout << "MATRICES EQUAL : " << matIsEqual(previousLeftImage.image, leftImage.image) << '\n';
@@ -923,13 +841,14 @@ void FeatureDrawer::setPrevious()
     previousLeftImage.keypoints = leftImage.keypoints;
     previousLeftImage.keypointsLR = leftImage.keypointsLR;
     previousLeftImage.statusOfKeys = leftImage.statusOfKeys;
+    previousLeftImage.close = leftImage.close;
     // std::cout << "MATRICES EQUAL AFTER : " << matIsEqual(previousLeftImage.image, leftImage.image) << '\n';
     previousRightImage.image = rightImage.image.clone();
     previousRightImage.descriptors = rightImage.descriptors.clone();
     previousRightImage.keypoints = rightImage.keypoints;
     previousRightImage.keypointsLR = rightImage.keypointsLR;
     previousRightImage.statusOfKeys = rightImage.statusOfKeys;
-    // previouspoints3D = points3D.clone();
+    previouspoints3D = points3D.clone();
     // previousLeftImage.close = leftImage.close;
 }
 

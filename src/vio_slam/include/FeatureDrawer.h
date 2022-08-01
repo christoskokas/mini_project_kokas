@@ -70,7 +70,7 @@ class Features
         cv::Mat gridBasedFeatures(cv::Mat croppedImage, const int grid[2], cv::Size imgSize);
         void getFeatures(int rows, int cols,image_transport::Publisher& mImageMatches, bool left);
         void getDescriptors();
-        std::vector<cv::DMatch> getMatches(Features& secondImage, image_transport::Publisher& mImageMatches, bool LR);
+        std::vector<cv::DMatch> getMatches(Features& secondImage, image_transport::Publisher& mImageMatches, std::vector<cv::KeyPoint>& previousleftKeypoints, bool LR);
         void findFeaturesTrial();
         void clearFeatures();
         void findORBFeatures(cv::Mat& image, std::vector< cv::KeyPoint >& keypoints, int numbOfFeatures, int edgeThreshold, int fastThreshold);
@@ -107,14 +107,14 @@ class FeatureDrawer
         double camera[6];
         Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d previousT = Eigen::Matrix4d::Identity();
-        void ceresSolver(const cv::Mat& points3D, const cv::Mat& prevpoints3D);
+        void ceresSolver(std::vector<cv::DMatch>& matches, const cv::Mat& points3D, const cv::Mat& prevpoints3D);
         cv::Mat featurePosition(std::vector < cv::Point2f>& pointsL, std::vector < cv::Point2f>& pointsR, std::vector<bool>& left, std::vector<bool>& right);
         FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr);
         ~FeatureDrawer();
         void featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
         void setUndistortMap(ros::NodeHandle *nh);
         cv::Mat calculateFeaturePosition(const std::vector<cv::DMatch>& matches);
-        void setPrevious();
+        void setPrevious(cv::Mat& points3D);
         void allMatches(const std_msgs::Header& header);
         void publishMovement();
         void matchTrial(const std::vector<cv::DMatch>& matches, const std::vector<cv::DMatch>& LpLmatches, const vio_slam::Features& secondImage);
