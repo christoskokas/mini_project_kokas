@@ -57,6 +57,11 @@ void printMat(cv::Mat matrix)
   
 }
 
+float distance(int x1, int y1, int x2, int y2)
+{
+    // Calculating distance
+    return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2) * 1.0);
+}
 
 FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr) : m_it(*nh), img_sync(MySyncPolicy(10), leftIm, rightIm)
 {
@@ -71,9 +76,9 @@ FeatureDrawer::FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr) : m_
     camera[0] = rod.at<double>(0);
     camera[1] = rod.at<double>(1);
     camera[2] = rod.at<double>(2);
-    camera[3] = zedcamera->sensorsTranslate.at<double>(0);
-    camera[4] = zedcamera->sensorsTranslate.at<double>(1);
-    camera[5] = zedcamera->sensorsTranslate.at<double>(2);
+    camera[3] = 0;
+    camera[4] = 0;
+    camera[5] = 0;
     std::string position_path;
     nh->getParam("ground_truth_path", position_path);
     leftIm.subscribe(*nh, zedcamera->cameraLeft.path, 1);
@@ -111,7 +116,7 @@ std::vector<cv::DMatch> Features::getMatches(Features& secondImage, image_transp
         float dist1 = matches[i][0].distance;
         float dist2 = matches[i][1].distance;
 
-        if(dist1 < 0.8f * dist2) 
+        if(dist1 < 0.9f * dist2) 
         {
           matched1.push_back(keypoints[first.queryIdx]);
           matched2.push_back(secondImage.keypoints[first.trainIdx]);
@@ -119,6 +124,14 @@ std::vector<cv::DMatch> Features::getMatches(Features& secondImage, image_transp
           pointr.push_back(secondImage.keypoints[first.trainIdx].pt);
         }
       }
+      else if (matches[i].size() == 1)
+      {
+        matched1.push_back(keypoints[matches[i][0].queryIdx]);
+        matched2.push_back(secondImage.keypoints[matches[i][0].trainIdx]);
+        pointl.push_back(keypoints[matches[i][0].queryIdx].pt);
+        pointr.push_back(secondImage.keypoints[matches[i][0].trainIdx].pt);
+      }
+      
 
     }
     std::vector<cv::DMatch> good_matches;
@@ -241,7 +254,7 @@ void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImage
     }
     
   }
-  std::cout << "NEW IMAGE \n";
+  // std::cout << "NEW IMAGE \n";
   // if (left)
   // {
   //   cv::Mat trial;
@@ -262,19 +275,6 @@ cv::Mat Features::gridBasedFeatures(cv::Mat croppedImage, const int grid[2], cv:
   cv::Rect crop(grid[1]*imgSize.width, grid[0]*imgSize.height, imgSize.width, imgSize.height);
   cv::Mat patch =  croppedImage(crop);
   return patch;
-  // std::cout << "top left x : " << grid[1]*imgSize.width << " top left y : " << grid[0]*imgSize.height << " width : " << imgSize.width << " height : " << imgSize.height << '\n';
-  // return patch;
-  // std::cout << image.cols << " " << image.rows << " " << grid[1] << " " << grid[0] <<" LOL \n";
-  // cv::Size imgSize = cv::Size(image.cols/cols,image.rows/rows);
-  // std::cout << " LOL \n";
-  // cv::Point2f center;
-  // center = cv::Point2f(imgSize.width*(grid[1] + 0.5f), imgSize.height*(grid[0] + 0.5f));
-  // std::cout << " LOL \n";
-  // cv::Mat patch;
-  // cv::getRectSubPix(image, imgSize, center, patch);
-  // std::cout << "Size : " << patch.size() << " Center : " << center << '\n';
-  // std::cout << "Image Size : " << image.size() << '\n'; 
-
 }
   
 
@@ -285,58 +285,78 @@ void Features::findORBFeatures(cv::Mat& image, std::vector< cv::KeyPoint >& keyp
   detector->detect(image, keypoints,cv::Mat());
 }
 
-cv::Mat FeatureDrawer::featurePosition(std::vector < cv::Point2f> pointsL, std::vector < cv::Point2f> pointsR)
+cv::Mat FeatureDrawer::featurePosition(std::vector < cv::Point2f>& pointsL, std::vector < cv::Point2f>& pointsR, std::vector<bool>& left, std::vector<bool>& right)
 {
-  cv::Mat points4D(4,1,CV_64F);
-
-  cv::triangulatePoints(P1, P2, pointsL, pointsR, points4D);
-  // std::cout << "LEFT : " << leftImage.keypoints[matches[0].queryIdx].pt << '\n';
-  // std::cout << "RIGHT : " << rightImage.keypoints[matches[0].trainIdx].pt << '\n';
-  // std::cout << "points4D : " << " x :" << points4D.at<double>(0,0)/points4D.at<double>(3,0) << " y :" << points4D.at<double>(1,0)/points4D.at<double>(3,0) << " z :" << points4D.at<double>(2,0)/points4D.at<double>(3,0) << '\n';
-  cv::Mat points3D(3, points4D.cols,CV_64F);
-  leftImage.close.clear();
-  for (size_t i = 0; i < points4D.cols; i++)
+  cv::Mat points4D(4,1,CV_32F);
+  std::vector < cv::Point2f> pL, pR;
+  for (size_t iii = 0; iii < pointsL.size(); iii++)
   {
-    for (size_t j = 0; j < 3; j++)
+    if (left[iii] && right[iii])
     {
-      points3D.at<double>(j,i) = points4D.at<double>(j,i)/points4D.at<double>(3,i);
-      
-    }
-    if (abs(points3D.at<double>(2,i)) > zedcamera->mBaseline*40)
-    {
-      leftImage.close.push_back(false);
-      // std::cout << "left : " << pointsL[i] <<'\n'; 
-      // std::cout << "right : " << pointsR[i] <<'\n'; 
-      // std::cout << "size points : " << points4D.cols <<'\n'; 
-      // std::cout << "size leftkeys : " << pointsL.size() <<'\n'; 
-      // std::cout << "size rightkeys : " << pointsR.size() <<'\n'; 
-    }
-    else
-    {
-      leftImage.close.push_back(true);
+      pL.push_back(pointsL[iii]);
+      pR.push_back(pointsR[iii]);
     }
   }
-  return points3D;
+  pointsL = pL;
+  pointsR = pR;
+  // std::cout << "l size : " << pointsL.size() << " r size : " << pointsR.size() << '\n';
+  if (pointsL.size() >= 4)
+  {
+
+    cv::triangulatePoints(P1, P2, pointsL, pointsR, points4D);
+    cv::Mat points3D(3, points4D.cols,CV_32F);
+    leftImage.close.clear();
+    for (size_t i = 0; i < points4D.cols; i++)
+    {
+      for (size_t j = 0; j < 3; j++)
+      {
+        points3D.at<float>(j,i) = points4D.at<float>(j,i)/points4D.at<float>(3,i);
+        
+      }
+      if (abs(points3D.at<float>(2,i)) > zedcamera->mBaseline*40)
+      {
+        leftImage.close.push_back(false);
+      }
+      else
+      {
+        leftImage.close.push_back(true);
+      }
+    }
+    return points3D;
+  }
+  else
+    return cv::Mat();
+  
 }
 
-void Features::opticalFlowRANSAC(std::vector < cv::Point2f>& pointL, std::vector < cv::Point2f>& pointpL, cv::Mat status)
+void Features::removeOutliersOpticalFlow(std::vector < cv::Point2f>& pointL, std::vector < cv::Point2f>& pointpL, cv::Mat status)
 {
-  cv::Mat h = findHomography( pointL, pointpL, cv::RANSAC);
+  float sum = 0;
+  int count = 0;
+  for(size_t i = 0; i < pointpL.size(); i++) 
+  {
+    if (status.at<bool>(i))
+    {
+      sum += distance(pointpL[i].x, pointpL[i].y, pointL[i].x, pointL[i].y);
+      count++;
+    }
+  }
+  float average = sum/count;
+  std::cout << "average : " << average << '\n';
   std::vector < cv::Point2f> inliersL, inlierspL;
   for(size_t i = 0; i < pointpL.size(); i++) 
   {
     if (status.at<bool>(i))
     {
-      cv::Mat col = cv::Mat::ones(3, 1, CV_64F);
-      col.at<double>(0) = pointpL[i].x;
-      col.at<double>(1) = pointpL[i].y;
-      col = h * col;
-      col /= col.at<double>(2);
-      double dist = sqrt( pow(col.at<double>(0) - pointL[i].x, 2) +
-                          pow(col.at<double>(1) - pointL[i].y, 2));
-      if(dist < 60.0f) {
-          inliersL.push_back(pointL[i]);
-          inlierspL.push_back(pointpL[i]);
+      if (status.at<bool>(i) && distance(pointpL[i].x, pointpL[i].y, pointL[i].x, pointL[i].y) < 2.5f*average)
+      {
+        statusOfKeys.push_back(true);
+        inliersL.push_back(pointL[i]);
+        inlierspL.push_back(pointpL[i]);
+      }
+      else
+      {
+        statusOfKeys.push_back(false);
       }
     }
   }
@@ -349,13 +369,13 @@ std::vector < cv::Point2f> Features::opticalFlow(Features& prevImage, image_tran
   cv::Mat status, err;
   std::vector < cv::Point2f> pointL, pointpL;
   // std::for_each(leftImage.keypoints.begin(), leftImage.keypoints.end(),[&](cv::KeyPoint &n){pointL.push_back(n.pt);});
-  std::for_each(prevImage.keypoints.begin(), prevImage.keypoints.end(),[&](cv::KeyPoint &n){pointpL.push_back(n.pt);});
+  std::for_each(prevImage.keypointsLR.begin(), prevImage.keypointsLR.end(),[&](cv::KeyPoint &n){pointpL.push_back(n.pt);});
   // pointpL = prevImage.inlierPoints;
-  cv::calcOpticalFlowPyrLK(prevImage.image, image, pointpL, pointL, status, err, cv::Size(21,21), 3, cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 30, (0.01000000000000000021)),cv::OPTFLOW_LK_GET_MIN_EIGENVALS);
+  cv::calcOpticalFlowPyrLK(prevImage.image, image, pointpL, pointL, status, err);
   cv::Mat optFlow = image.clone();
-  
+  std::cout << "prev size : " << pointpL.size() << " new size : " << pointL.size() << '\n';
   // std::cout << err.at<float>(j) << "prev point : " << pointpL[j] << "new point : " << pointL[j] << '\n';
-  opticalFlowRANSAC(pointL, pointpL, status);
+  removeOutliersOpticalFlow(pointL, pointpL, status);
   for(int j=0; j<pointpL.size(); j++)
   {
     cv::line(optFlow,pointpL[j],pointL[j],cv::Scalar(255,0,0,255));
@@ -372,20 +392,49 @@ std::vector < cv::Point2f> Features::opticalFlow(Features& prevImage, image_tran
   return pointL;
 }
 
-void FeatureDrawer::ceresSolver(const cv::Mat& points3D)
+void FeatureDrawer::ceresSolver(const cv::Mat& points3D, const cv::Mat& prevpoints3D)
 {
   ceres::Problem problem;
   ceres::LossFunction* lossfunction = NULL;
-  for (size_t iii = 0; iii < points3D.cols; iii++)
+  int count = 0;
+  for (size_t iii = 0; iii < prevpoints3D.cols; iii++)
   {
-    double x = points3D.at<double>(0,iii);
-    double y = points3D.at<double>(1,iii);
-    double z = points3D.at<double>(2,iii);
-    double xp = previouspoints3D.at<double>(0,iii);
-    double yp = previouspoints3D.at<double>(1,iii);
-    double zp = previouspoints3D.at<double>(2,iii);
+    if (leftImage.close[iii])
+    {
+      float x = points3D.at<float>(0,iii);
+      float y = points3D.at<float>(1,iii);
+      float z = points3D.at<float>(2,iii);
+      float xp = prevpoints3D.at<float>(0,iii);
+      float yp = prevpoints3D.at<float>(1,iii);
+      float zp = prevpoints3D.at<float>(2,iii);
+      // std::cout << "PREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
+      // std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
+      // std::cout << "x : " << x << " p3d : " << p3d.x() << '\n';
+      Eigen::Vector3d p3d(x, y, z);
+      Eigen::Vector3d pp3d(xp, yp, zp);
+      ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
+      problem.AddResidualBlock(costfunction, lossfunction, camera);
+      count ++;
+    }
+    
   }
+  std::cout << "Count : " << count << '\n';
+  ceres::Solver::Options options;
+  options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+  options.max_num_iterations = 10;
+  options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
+  options.minimizer_progress_to_stdout = false;
+  ceres::Solver::Summary summary;
+  ceres::Solve(options, &problem, &summary);
+  // std::cout << summary.BriefReport() << std::endl;
+  // std::cout << "After Optimizing: "  << std::endl;
   
+  double quat[4];
+  ceres::AngleAxisToQuaternion(camera, quat);
+  Eigen::Quaterniond q(quat[0], quat[1], quat[2], quat[3]);
+  Eigen::Isometry3d Transform(q.matrix());
+  Transform.pretranslate(Eigen::Vector3d(camera[3], camera[4], camera[5]));
+  T = Transform.matrix();
   
 }
 
@@ -399,30 +448,26 @@ void FeatureDrawer::again()
   leftImage.getDescriptors();
   rightImage.getDescriptors();
 
-  std::vector<cv::DMatch> matches = leftImage.getMatches(rightImage, mImageMatches, true);
 
   // TODO KMean clustering of features.
 
   // TODO Optical Flow for rotation? maybe
 
 
-  std::vector<cv::Point2f> pointsL, pointsR;
-  if (firstImage)
+  if (!firstImage)
   {
-    std::for_each(leftImage.keypointsLR.begin(), leftImage.keypointsLR.end(),[&](cv::KeyPoint &n){leftImage.inlierPoints.push_back(n.pt);});
-    std::for_each(rightImage.keypointsLR.begin(), rightImage.keypointsLR.end(),[&](cv::KeyPoint &n){rightImage.inlierPoints.push_back(n.pt);});
-  }
-  else
-  {
+    std::vector<cv::Point2f> pointsL, pointsR;
+    std::vector<cv::DMatch> matches = previousLeftImage.getMatches(previousRightImage, mImageMatches, true);
     pointsL = leftImage.opticalFlow(previousLeftImage, mImageMatches, true);
     pointsR = rightImage.opticalFlow(previousRightImage, mImageMatches, false);
-    // cv::Mat points3D = featurePosition(pointsL, pointsR);
-    // cv::Mat prevPoints3D = featurePosition(previousLeftImage.inlierPoints, previousRightImage.inlierPoints);
-    // ceresSolver(points3D);
+    cv::Mat points3D = featurePosition(pointsL, pointsR, leftImage.statusOfKeys, rightImage.statusOfKeys);
+    cv::Mat prevPoints3D = featurePosition(previousLeftImage.inlierPoints, previousRightImage.inlierPoints, leftImage.statusOfKeys, rightImage.statusOfKeys);
+    ceresSolver(points3D, prevPoints3D);
+    publishMovement();
   }
 
   // cv::Mat points3D = calculateFeaturePosition(matches);
-  setPrevious(matches);
+  setPrevious();
   leftImage.clearFeatures();
   rightImage.clearFeatures();
   firstImage = false;
@@ -569,11 +614,11 @@ void FeatureDrawer::allMatches(const std_msgs::Header& header)
       LR = false;
       std::vector<cv::DMatch> matchesLpL = leftImage.findMatches(previousLeftImage, header, mImageMatches, LR);
       keepMatches(matches, matchesLpL, leftImage, tempKeypoints, points3D, header, true);
-      publishMovement(header);
+      publishMovement();
     }
     previousleftKeypoints = tempKeypoints;
     
-    setPrevious(matches);
+    setPrevious();
 
 }
 
@@ -731,7 +776,7 @@ void FeatureDrawer::keepMatches(const std::vector<cv::DMatch>& matches, const st
   
 }
 
-void FeatureDrawer::publishMovement(const std_msgs::Header& header)
+void FeatureDrawer::publishMovement()
 {
   nav_msgs::Odometry position;
   if (abs(T(0,3)) < 100 && abs(T(1,3)) < 100 && abs(T(2,3)) < 100)
@@ -740,28 +785,10 @@ void FeatureDrawer::publishMovement(const std_msgs::Header& header)
     sumsMovement[1] += T(1,3);
     sumsMovement[2] += T(2,3);
     Eigen::Matrix3d Rot;
-    {
-      // Eigen::Matrix4d temp = previousT;
-      // for (size_t i = 0; i < 3; i++)
-      // {
-      //   for (size_t j = 0; j < 4; j++)
-      //   {
-      //     previousT(i,j) = temp(i,0)*T(0,j) + temp(i,1)*T(1,j) + temp(i,2)*T(2,j) + temp(i,3)*T(3,j);
-      //     if (j < 3)
-      //       Rot(i,j) = previousT(i,j);
-      //   }
-      // }
-      previousT = previousT * T;
-    }
-    // std::cout << "T : \n" << previousT << '\n';
+    previousT = previousT * T;
     Eigen::Quaterniond quat(previousT.topLeftCorner<3,3>());
-    // std::cout << "T=\n" << T << std::endl;
-    // std::cout << "camera =\n" << camera[0] << " " << camera[1] << " " << camera[2] << " " << camera[3] << " " << camera[4] << " " << camera[5] << std::endl;
-    // std::cout << "Tprev=\n" << previousT << std::endl;
-    // std::cout << "Rot=\n" << Rot << std::endl;
-    // std::cout << "quat=\n" << quat.x() << " " << quat.y() << " " << quat.z() << " " << quat.w() << std::endl;
-    // ceres::AngleAxisToQuaternion(camera, quat);
     tf::poseTFToMsg(tf::Pose(tf::Quaternion(quat.x(),quat.y(),quat.z(),quat.w()),  tf::Vector3(previousT(0,3), previousT(1,3), previousT(2,3))), position.pose.pose); //Aria returns pose in mm.
+    std::cout << "T : " << previousT << '\n';
     position.pose.covariance =  boost::assign::list_of(1e-3) (0) (0)  (0)  (0)  (0)
                                                         (0) (1e-3)  (0)  (0)  (0)  (0)
                                                         (0)   (0)  (1e6) (0)  (0)  (0)
@@ -778,7 +805,7 @@ void FeatureDrawer::publishMovement(const std_msgs::Header& header)
                                                         (0)   (0)   (0)  (0) (1e6) (0)
                                                         (0)   (0)   (0)  (0)  (0)  (1e3) ; 
 
-    position.header.frame_id = header.frame_id;
+    position.header.frame_id = leftImage.header.frame_id;
     position.header.stamp = ros::Time::now();
     pose_pub.publish(position);
   }
@@ -887,19 +914,22 @@ std::vector<cv::DMatch> Features::findMatches(Features& secondImage, const std_m
     return good_matches;
 }
 
-void FeatureDrawer::setPrevious(std::vector < cv::DMatch> matches)
+void FeatureDrawer::setPrevious()
 {
 
     // std::cout << "MATRICES EQUAL : " << matIsEqual(previousLeftImage.image, leftImage.image) << '\n';
     previousLeftImage.image = leftImage.image.clone();
+    previousLeftImage.descriptors = leftImage.descriptors.clone();
     previousLeftImage.keypoints = leftImage.keypoints;
     previousLeftImage.keypointsLR = leftImage.keypointsLR;
+    previousLeftImage.statusOfKeys = leftImage.statusOfKeys;
     // std::cout << "MATRICES EQUAL AFTER : " << matIsEqual(previousLeftImage.image, leftImage.image) << '\n';
     previousRightImage.image = rightImage.image.clone();
+    previousRightImage.descriptors = rightImage.descriptors.clone();
     previousRightImage.keypoints = rightImage.keypoints;
     previousRightImage.keypointsLR = rightImage.keypointsLR;
+    previousRightImage.statusOfKeys = rightImage.statusOfKeys;
     // previouspoints3D = points3D.clone();
-    previousMatches = matches;
     // previousLeftImage.close = leftImage.close;
 }
 
