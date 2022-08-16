@@ -65,11 +65,11 @@ class Features
         std_msgs::Header header;
         void removeOutliersOpticalFlow(std::vector < cv::Point2f>& pointL, std::vector < cv::Point2f>& pointpL, cv::Mat status);
         std::vector < cv::Point2f> opticalFlow(Features& prevImage, image_transport::Publisher& mImageMatches, bool left);
-        std::vector< cv::KeyPoint > featuresAdaptiveThreshold(cv::Mat& patch, int step, unsigned int interations);
+        std::vector< cv::KeyPoint > featuresAdaptiveThreshold(cv::Mat& patch, int step, unsigned int iterations);
         void findFeatures(bool LR);
         cv::Mat gridBasedFeatures(cv::Mat croppedImage, const int grid[2], cv::Size imgSize);
         void getFeatures(int rows, int cols,image_transport::Publisher& mImageMatches, bool left);
-        void getDescriptors();
+        void getDescriptors(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors);
         std::vector<cv::DMatch> getMatches(Features& secondImage, image_transport::Publisher& mImageMatches, std::vector<cv::KeyPoint>& previousleftKeypoints, bool LR);
         void findFeaturesTrial();
         void clearFeatures();
@@ -107,6 +107,7 @@ class FeatureDrawer
         double camera[6];
         Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d previousT = Eigen::Matrix4d::Identity();
+        std::vector<cv::DMatch> matchesLR(Features& leftImage, Features& rightImage);
         void ceresSolver(std::vector<cv::DMatch>& matches, const cv::Mat& points3D, const cv::Mat& prevpoints3D);
         cv::Mat featurePosition(std::vector < cv::Point2f>& pointsL, std::vector < cv::Point2f>& pointsR, std::vector<bool>& left, std::vector<bool>& right);
         FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr);
