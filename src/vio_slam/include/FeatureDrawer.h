@@ -108,6 +108,8 @@ class FeatureDrawer
         Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d previousT = Eigen::Matrix4d::Identity();
         std::vector<cv::DMatch> matchesLR(Features& leftImage, Features& rightImage);
+        std::vector<cv::DMatch> findMatches(Features& firstImage, Features& secondImage, bool LR);
+        void KnnMatcher(cv::Mat& firstDescr, cv::Mat& secondDescr);
         void ceresSolver(std::vector<cv::DMatch>& matches, const cv::Mat& points3D, const cv::Mat& prevpoints3D);
         cv::Mat featurePosition(std::vector < cv::Point2f>& pointsL, std::vector < cv::Point2f>& pointsR, std::vector<bool>& left, std::vector<bool>& right);
         FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr);
