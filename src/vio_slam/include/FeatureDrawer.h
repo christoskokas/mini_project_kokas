@@ -109,10 +109,10 @@ class FeatureDrawer
         Eigen::Matrix4d previousT = Eigen::Matrix4d::Identity();
         std::vector<cv::DMatch> matchesLR(Features& leftImage, Features& rightImage);
         std::vector<cv::DMatch> findMatches(Features& firstImage, Features& secondImage, bool LR);
-        std::vector< cv::DMatch > knnMatcher(Features& firstImage, Features& secondImage, bool LR);
-        std::vector< cv::DMatch > removeOutliersStereoMatch(std::vector< cv::DMatch >& matches, Features& leftImage, Features& rightImage);
-        std::vector< cv::DMatch > removeOutliersHomography(std::vector< cv::DMatch >& matches, Features& firstImage, Features& secondImage);
-        void drawFeatureMatches(std::vector<cv::DMatch>& matches, Features& firstImage, Features& secondImage);
+        std::vector< cv::DMatch > knnMatcher(const Features& firstImage, const Features& secondImage, const bool LR);
+        std::vector< cv::DMatch > removeOutliersStereoMatch(const std::vector< cv::DMatch >& matches, const Features& leftImage, const Features& rightImage);
+        std::vector< cv::DMatch > removeOutliersHomography(const std::vector< cv::DMatch >& matches, const Features& firstImage, const Features& secondImage);
+        void drawFeatureMatches(const std::vector<cv::DMatch>& matches, const Features& firstImage, const Features& secondImage);
         void ceresSolver(std::vector<cv::DMatch>& matches, const cv::Mat& points3D, const cv::Mat& prevpoints3D);
         cv::Mat featurePosition(std::vector < cv::Point2f>& pointsL, std::vector < cv::Point2f>& pointsR, std::vector<bool>& left, std::vector<bool>& right);
         FeatureDrawer(ros::NodeHandle *nh, const Zed_Camera* zedptr);

@@ -312,7 +312,7 @@ void Features::getDescriptors(cv::Mat& image, std::vector<cv::KeyPoint>& keypoin
  * 
  * @param patch the cropped image
  * @param step the step with which the fast threshold is changed per iteration
- * @param iterations the number of iterations the fast threshold is changed
+ * @param iterations the number of times the fast threshold is changed
  * @return std::vector< cv::KeyPoint > returns the resulting keypoints
  */
 std::vector< cv::KeyPoint > Features::featuresAdaptiveThreshold(cv::Mat& patch, int step = 3, unsigned int iterations = 5)
@@ -321,8 +321,8 @@ std::vector< cv::KeyPoint > Features::featuresAdaptiveThreshold(cv::Mat& patch, 
   std::vector< cv::KeyPoint > tempkeys;
   for (size_t iii = 0; iii < iterations; iii++)
   {
-    int numbOfFeatures = 110;
-    int numbNeeded = 100;
+    int numbOfFeatures = 100;
+    int numbNeeded = 80;
     int edgeThreshold = 0;
     findORBFeatures(patch, tempkeys, numbOfFeatures, edgeThreshold, fastThreshold);
     if (tempkeys.size() >=(numbNeeded-10))
@@ -494,7 +494,7 @@ std::vector < cv::Point2f> Features::opticalFlow(Features& prevImage, image_tran
   return pointL;
 }
 
-void FeatureDrawer::drawFeatureMatches(std::vector<cv::DMatch>& matches, Features& firstImage, Features& secondImage)
+void FeatureDrawer::drawFeatureMatches(const std::vector<cv::DMatch>& matches, const Features& firstImage, const Features& secondImage)
 {
   cv::Mat img_matches;
   drawMatches( firstImage.image, firstImage.keypoints, secondImage.image, secondImage.keypoints, matches, img_matches, cv::Scalar::all(-1),
@@ -506,7 +506,7 @@ void FeatureDrawer::drawFeatureMatches(std::vector<cv::DMatch>& matches, Feature
   mImageMatches.publish(out_msg.toImageMsg());
 }
 
-std::vector< cv::DMatch > FeatureDrawer::knnMatcher(Features& firstImage, Features& secondImage, bool LR)
+std::vector< cv::DMatch > FeatureDrawer::knnMatcher(const Features& firstImage, const Features& secondImage, const bool LR)
 {
   std::vector< std::vector<cv::DMatch> > knnmatches;
   std::vector< cv::DMatch > matches, good_matches;
@@ -544,7 +544,7 @@ std::vector< cv::DMatch > FeatureDrawer::knnMatcher(Features& firstImage, Featur
   return good_matches;
 }
 
-std::vector< cv::DMatch > FeatureDrawer::removeOutliersHomography(std::vector< cv::DMatch >& matches, Features& firstImage, Features& secondImage)
+std::vector< cv::DMatch > FeatureDrawer::removeOutliersHomography(const std::vector< cv::DMatch >& matches, const Features& firstImage, const Features& secondImage)
 {
   std::vector<cv::KeyPoint> matched1, matched2;
   std::vector<cv::Point2f> pointl, pointr;
@@ -577,7 +577,7 @@ std::vector< cv::DMatch > FeatureDrawer::removeOutliersHomography(std::vector< c
   return good_matches;
 }
 
-std::vector< cv::DMatch > FeatureDrawer::removeOutliersStereoMatch(std::vector< cv::DMatch >& matches, Features& leftImage, Features& rightImage)
+std::vector< cv::DMatch > FeatureDrawer::removeOutliersStereoMatch(const std::vector< cv::DMatch >& matches, const Features& leftImage, const Features& rightImage)
 {
   std::vector< cv::DMatch > good_matches;
   for (auto m:matches)
@@ -769,6 +769,9 @@ void FeatureDrawer::again()
   previousLeftImage.image = leftImage.image.clone();
   previousLeftImage.keypoints = leftImage.keypoints;
   previousLeftImage.descriptors = leftImage.descriptors.clone(); 
+  previousRightImage.image = rightImage.image.clone();
+  previousRightImage.keypoints = rightImage.keypoints;
+  previousRightImage.descriptors = rightImage.descriptors.clone(); 
   leftImage.clearFeatures();
   rightImage.clearFeatures();
   firstImage = false;
