@@ -112,6 +112,8 @@ class FeatureDrawer
         std::vector< cv::DMatch > knnMatcher(const Features& firstImage, const Features& secondImage, const bool LR);
         std::vector< cv::DMatch > removeOutliersStereoMatch(const std::vector< cv::DMatch >& matches, const Features& leftImage, const Features& rightImage);
         std::vector< cv::DMatch > removeOutliersHomography(const std::vector< cv::DMatch >& matches, const Features& firstImage, const Features& secondImage);
+        std::vector< cv::DMatch > FeatureDrawer::loweRatioTest(std::vector< std::vector<cv::DMatch> >& knnmatches);
+        void positionOfMatchedFeatures(const std::vector<cv::DMatch>& matches, const Features& leftImage, const Features& rightImage, const Features& previousLeftImage, const Features& previousRightImage);
         void drawFeatureMatches(const std::vector<cv::DMatch>& matches, const Features& firstImage, const Features& secondImage);
         void ceresSolver(std::vector<cv::DMatch>& matches, const cv::Mat& points3D, const cv::Mat& prevpoints3D);
         cv::Mat featurePosition(std::vector < cv::Point2f>& pointsL, std::vector < cv::Point2f>& pointsR, std::vector<bool>& left, std::vector<bool>& right);

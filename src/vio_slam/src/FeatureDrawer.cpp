@@ -506,13 +506,9 @@ void FeatureDrawer::drawFeatureMatches(const std::vector<cv::DMatch>& matches, c
   mImageMatches.publish(out_msg.toImageMsg());
 }
 
-std::vector< cv::DMatch > FeatureDrawer::knnMatcher(const Features& firstImage, const Features& secondImage, const bool LR)
+std::vector< cv::DMatch > FeatureDrawer::loweRatioTest(std::vector< std::vector<cv::DMatch> >& knnmatches)
 {
-  std::vector< std::vector<cv::DMatch> > knnmatches;
-  std::vector< cv::DMatch > matches, good_matches;
-  cv::FlannBasedMatcher matcher = cv::FlannBasedMatcher(cv::makePtr<cv::flann::LshIndexParams>(12, 20, 2));
-  // cv::BFMatcher matcher(cv::NORM_HAMMING);  
-  matcher.knnMatch(firstImage.descriptors, secondImage.descriptors, knnmatches, 2);
+  std::vector< cv::DMatch > matches;
   for(size_t i = 0; i < knnmatches.size(); i++) 
   {
     if(knnmatches[i].size() >= 2)
@@ -528,20 +524,51 @@ std::vector< cv::DMatch > FeatureDrawer::knnMatcher(const Features& firstImage, 
     }
 
   }
+  return matches;
+}
+
+std::vector< cv::DMatch > FeatureDrawer::knnMatcher(const Features& firstImage, const Features& secondImage, const bool LR)
+{
+  std::vector< std::vector<cv::DMatch> > knnmatches;
+  std::vector< cv::DMatch > good_matches;
+  cv::FlannBasedMatcher matcher = cv::FlannBasedMatcher(cv::makePtr<cv::flann::LshIndexParams>(12, 20, 2));
+  // cv::BFMatcher matcher(cv::NORM_HAMMING);  
+  matcher.knnMatch(firstImage.descriptors, secondImage.descriptors, knnmatches, 2);
+  std::cout << "size : " << firstImage.keypoints.size() << '\n';
+  std::cout << "size : " << secondImage.keypoints.size() << '\n';
+  std::cout << "matches size : " << knnmatches.size() << '\n';
+  std::vector< cv::DMatch > matches = loweRatioTest(knnmatches);
   if (LR)
   {
     good_matches = removeOutliersStereoMatch(matches, firstImage, secondImage);
-    // std::cout << "size : " << firstImage.keypoints.size() << '\n';
-    // std::cout << "size : " << secondImage.keypoints.size() << '\n';
   }
   else
   {
     good_matches = removeOutliersHomography(matches, firstImage, secondImage);
-    std::cout << "size : " << good_matches.size() << '\n';
+    // std::cout << "size : " << good_matches.size() << '\n';
     drawFeatureMatches(good_matches, firstImage, secondImage);
   }
   
   return good_matches;
+}
+
+void FeatureDrawer::positionOfMatchedFeatures(const std::vector<cv::DMatch>& matches, const Features& leftImage, const Features& rightImage, const Features& previousLeftImage, const Features& previousRightImage)
+{
+  std::vector< std::vector<cv::DMatch> > knnmatches;
+  std::vector< cv::DMatch > matches, good_matches;
+  cv::FlannBasedMatcher matcher = cv::FlannBasedMatcher(cv::makePtr<cv::flann::LshIndexParams>(12, 20, 2));
+  // cv::BFMatcher matcher(cv::NORM_HAMMING);  
+  std::vector < cv::KeyPoint > matchedKeypoints, matchedPreviousKeypoints;
+  for (auto m:matches)
+  {
+    matchedKeypoints.push_back(leftImage.keypoints[m.queryIdx]);
+    matchedPreviousKeypoints.push_back(previousLeftImage.keypoints[m.trainIdx]);
+  }
+
+  // USE MATCHEDKEYPOINTS get descriptors and get left only with matches that are on both images
+
+  matcher.knnMatch(previousLeftImage.descriptors, previousRightImage.descriptors, knnmatches, 2);
+  std::vector< cv::DMatch > matchesPrev = loweRatioTest(knnmatches);
 }
 
 std::vector< cv::DMatch > FeatureDrawer::removeOutliersHomography(const std::vector< cv::DMatch >& matches, const Features& firstImage, const Features& secondImage)
@@ -1171,8 +1198,8 @@ void Features::setImage(const sensor_msgs::ImageConstPtr& imageRef)
     {
       ROS_ERROR("cv_bridge exception: %s", e.what());
     }
-    // cv::cvtColor(cv_ptr->image, image, cv::COLOR_BGR2GRAY);
-    image = cv_ptr->image.clone();
+    cv::cvtColor(cv_ptr->image, image, cv::COLOR_BGR2GRAY);
+    // image = cv_ptr->image.clone();
     header = cv_ptr->header;
 }
 
