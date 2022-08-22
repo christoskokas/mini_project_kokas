@@ -44,6 +44,15 @@ enum class FeatureStrategy
     brisk,
 };
 
+class PointsWithIndexes
+{
+    private:
+
+    public:
+        std::vector < cv::Point2f > points;
+        std::vector < bool > removed;
+};
+
 /**
  * @brief 
  * 
@@ -63,13 +72,17 @@ class Features
         std::vector< pcl::PointXYZ > pointsPosition;
         std::vector < cv::Point2f> inlierPoints;
         std_msgs::Header header;
+        void updateFeatureRemoval(std::vector < int > indexes, std::vector<bool>& removed);
+        int findMinimumResponse(std::vector < int > indexes);
+        void removeClosestNeighbors(std::vector < bool >& removed);
+        void sortFeaturesKdTree();
         void removeOutliersOpticalFlow(std::vector < cv::Point2f>& pointL, std::vector < cv::Point2f>& pointpL, cv::Mat status);
         std::vector < cv::Point2f> opticalFlow(Features& prevImage, image_transport::Publisher& mImageMatches, bool left);
         std::vector< cv::KeyPoint > featuresAdaptiveThreshold(cv::Mat& patch, int step, unsigned int iterations);
         void findFeatures(bool LR);
         cv::Mat gridBasedFeatures(cv::Mat croppedImage, const int grid[2], cv::Size imgSize);
         void getFeatures(int rows, int cols,image_transport::Publisher& mImageMatches, bool left);
-        void getDescriptors(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors);
+        void getDescriptors(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors);
         std::vector<cv::DMatch> getMatches(Features& secondImage, image_transport::Publisher& mImageMatches, std::vector<cv::KeyPoint>& previousleftKeypoints, bool LR);
         void findFeaturesTrial();
         void clearFeatures();
@@ -112,8 +125,8 @@ class FeatureDrawer
         std::vector< cv::DMatch > knnMatcher(const Features& firstImage, const Features& secondImage, const bool LR);
         std::vector< cv::DMatch > removeOutliersStereoMatch(const std::vector< cv::DMatch >& matches, const Features& leftImage, const Features& rightImage);
         std::vector< cv::DMatch > removeOutliersHomography(const std::vector< cv::DMatch >& matches, const Features& firstImage, const Features& secondImage);
-        std::vector< cv::DMatch > FeatureDrawer::loweRatioTest(std::vector< std::vector<cv::DMatch> >& knnmatches);
-        void positionOfMatchedFeatures(const std::vector<cv::DMatch>& matches, const Features& leftImage, const Features& rightImage, const Features& previousLeftImage, const Features& previousRightImage);
+        void positionOfMatchedFeatures(const std::vector<cv::DMatch>& matches, Features& leftImage, const Features& rightImage, const Features& previousLeftImage, const Features& previousRightImage);
+        std::vector< cv::DMatch > loweRatioTest(std::vector< std::vector<cv::DMatch> >& knnmatches);
         void drawFeatureMatches(const std::vector<cv::DMatch>& matches, const Features& firstImage, const Features& secondImage);
         void ceresSolver(std::vector<cv::DMatch>& matches, const cv::Mat& points3D, const cv::Mat& prevpoints3D);
         cv::Mat featurePosition(std::vector < cv::Point2f>& pointsL, std::vector < cv::Point2f>& pointsR, std::vector<bool>& left, std::vector<bool>& right);

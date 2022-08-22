@@ -9,6 +9,7 @@
 #include "ceres/ceres.h"
 #include <algorithm>
 #include "Optimizer.h"
+#include <opencv2/flann.hpp>
 
 
 #define PI 3.14159265
@@ -300,7 +301,7 @@ std::vector<cv::DMatch> Features::getMatches(Features& secondImage, image_transp
 }
 
 
-void Features::getDescriptors(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
+void Features::getDescriptors(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
 {
   cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(75,1.2f,8,30, 0, 2, cv::ORB::HARRIS_SCORE,30);
   detector->compute(image, keypoints, descriptors);
@@ -315,17 +316,17 @@ void Features::getDescriptors(cv::Mat& image, std::vector<cv::KeyPoint>& keypoin
  * @param iterations the number of times the fast threshold is changed
  * @return std::vector< cv::KeyPoint > returns the resulting keypoints
  */
-std::vector< cv::KeyPoint > Features::featuresAdaptiveThreshold(cv::Mat& patch, int step = 3, unsigned int iterations = 5)
+std::vector< cv::KeyPoint > Features::featuresAdaptiveThreshold(cv::Mat& patch, int step = 3, unsigned int iterations = 10)
 {
   int fastThreshold = 20;
   std::vector< cv::KeyPoint > tempkeys;
   for (size_t iii = 0; iii < iterations; iii++)
   {
-    int numbOfFeatures = 100;
-    int numbNeeded = 80;
+    int numbOfFeatures = 500;
+    int numbNeeded = 100;
     int edgeThreshold = 0;
     findORBFeatures(patch, tempkeys, numbOfFeatures, edgeThreshold, fastThreshold);
-    if (tempkeys.size() >=(numbNeeded-10))
+    if (tempkeys.size() >=(numbNeeded-5))
     {
       cv::KeyPointsFilter::retainBest(tempkeys, numbNeeded);
       // std::cout << "fast : " << fastThreshold << " size : " << tempkeys.size() << '\n';
@@ -385,6 +386,103 @@ void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImage
   // }
   
   
+}
+
+void Features::updateFeatureRemoval(std::vector < int > indexes, std::vector<bool>& removed)
+{
+  int minInd = findMinimumResponse(indexes);
+  for (auto ind:indexes)
+  {
+    if (ind != minInd)
+      removed[ind] = true;
+  }
+}
+
+void Features::removeClosestNeighbors(std::vector < bool >& removed)
+{
+  for (int iii = keypoints.size()-1; iii >= 0; iii--)
+  {
+    // std::cout << "size : " << removed.size() << '\n';
+    if (removed[iii])
+      keypoints.erase(keypoints.begin()+iii);
+  }
+  
+}
+
+int Features::findMinimumResponse(std::vector < int > indexes)
+{
+  int min = indexes[0];
+  for (auto ind : indexes)
+  {
+    if (keypoints[min].response > keypoints[ind].response)
+      min = ind;
+  }
+  return min;
+}
+
+void Features::sortFeaturesKdTree()
+{
+  PointsWithIndexes featurePoints;
+  int count = 0;
+  std::cout << "size before : " << keypoints.size() << '\n';
+  for (auto key:keypoints)
+  {
+    featurePoints.points.push_back(cv::Point2f(key.pt.x,key.pt.y));
+    featurePoints.removed.push_back(false);
+    count ++;
+  }
+  cv::flann::KDTreeIndexParams indexParams;
+  // cv::flann::Index kdtree(cv::Mat(featurePoints.points).reshape(1), indexParams);
+  // cv::Mat hol;
+  cv::flann::GenericIndex<cvflann::L2<float> > kdtree(cv::Mat(featurePoints.points), cvflann::KDTreeIndexParams(4));
+  // cv::flann::GenericIndex<cvflann::L2<float> >
+
+  // cv::flann::GenericIndex<cvflann::L2<float> >* m_flann;
+  // cv::flann::GenericIndex< cvflann::L2<float> > *kdtrees;
+  // cv::Mat ClusterMembers;
+  // cv::Mat ClusterCenters;
+  // ClusterMembers.create(cvSize(2,100), CV_32S); // The set A
+  // ClusterCenters.create(cvSize(2,5000), CV_32S); // The set B
+  // randu(ClusterCenters, cv::Scalar::all(0), cv::Scalar::all(1000));
+  // randu(ClusterMembers, cv::Scalar::all(0), cv::Scalar::all(1000));
+  // kdtrees =  new cv::flann::GenericIndex< cvflann::L2<float> >(ClusterCenters, cvflann::KDTreeIndexParams(4));
+  // // ...
+  // // we have 3d features
+  // cv::Mat features( keypoints.size(), 2, CV_32FC1 );
+  // // features(featurePoints.points);
+  // // ... fill the features matrix ...
+
+  // // ... build the index ...
+  // m_flann = new cv::flann::GenericIndex<cvflann::L2<float> > (features, indexParams);
+  // cv::flann::GenericIndex::GenericIndex<cvflann::L2<int> > index(cv::Mat(featurePoints.points), indexParams);
+  // kdtree.build(cv::Mat(featurePoints.points), indexParams);
+  // cv::flann::GenericIndex<cvflann::L2<float> > kdtree(indexParams);
+  int keySize = keypoints.size();
+  count = 0;
+  while (keySize > 0)
+  {
+    if (!featurePoints.removed[count])
+    {
+      std::vector < float > query;
+      query.push_back(featurePoints.points[count].x);
+      query.push_back(featurePoints.points[count].y);
+      std::vector < int > indices;
+      std::vector < float > dists;
+      double radius = 100.0f;
+      int numOfPoints = 100;
+      kdtree.radiusSearch(query, indices, dists, radius, numOfPoints);
+      indices.push_back(count);
+
+      updateFeatureRemoval(indices, featurePoints.removed);
+      keySize -= (indices.size()-1);
+      std::cout << "last indices : " << indices[indices.size()-5] << '\n';
+    }
+    count ++;
+  }
+  removeClosestNeighbors(featurePoints.removed);
+  std::cout << "size after : " << keypoints.size() << '\n';
+
+
 }
 
 cv::Mat Features::gridBasedFeatures(cv::Mat croppedImage, const int grid[2], cv::Size imgSize)
@@ -531,11 +629,12 @@ std::vector< cv::DMatch > FeatureDrawer::knnMatcher(const Features& firstImage, 
 {
   std::vector< std::vector<cv::DMatch> > knnmatches;
   std::vector< cv::DMatch > good_matches;
-  cv::FlannBasedMatcher matcher = cv::FlannBasedMatcher(cv::makePtr<cv::flann::LshIndexParams>(12, 20, 2));
-  // cv::BFMatcher matcher(cv::NORM_HAMMING);  
-  matcher.knnMatch(firstImage.descriptors, secondImage.descriptors, knnmatches, 2);
-  std::cout << "size : " << firstImage.keypoints.size() << '\n';
-  std::cout << "size : " << secondImage.keypoints.size() << '\n';
+  // cv::FlannBasedMatcher matcher = cv::FlannBasedMatcher(cv::makePtr<cv::flann::LshIndexParams>(12, 20, 2));
+  // cv::BFMatcher matcher(cv::NORM_HAMMING, true);  
+  auto matcher = cv::BFMatcher::create(cv::NORM_HAMMING, false);
+  matcher->knnMatch(firstImage.descriptors, secondImage.descriptors, knnmatches, 2);
+  // std::cout << "size : " << firstImage.keypoints.size() << '\n';
+  // std::cout << "size : " << secondImage.keypoints.size() << '\n';
   std::cout << "matches size : " << knnmatches.size() << '\n';
   std::vector< cv::DMatch > matches = loweRatioTest(knnmatches);
   if (LR)
@@ -545,30 +644,41 @@ std::vector< cv::DMatch > FeatureDrawer::knnMatcher(const Features& firstImage, 
   else
   {
     good_matches = removeOutliersHomography(matches, firstImage, secondImage);
-    // std::cout << "size : " << good_matches.size() << '\n';
+    std::cout << "good matches size : " << good_matches.size() << '\n';
     drawFeatureMatches(good_matches, firstImage, secondImage);
   }
   
   return good_matches;
 }
 
-void FeatureDrawer::positionOfMatchedFeatures(const std::vector<cv::DMatch>& matches, const Features& leftImage, const Features& rightImage, const Features& previousLeftImage, const Features& previousRightImage)
+void FeatureDrawer::positionOfMatchedFeatures(const std::vector<cv::DMatch>& matches, Features& leftImage, const Features& rightImage, const Features& previousLeftImage, const Features& previousRightImage)
 {
-  std::vector< std::vector<cv::DMatch> > knnmatches;
-  std::vector< cv::DMatch > matches, good_matches;
   cv::FlannBasedMatcher matcher = cv::FlannBasedMatcher(cv::makePtr<cv::flann::LshIndexParams>(12, 20, 2));
   // cv::BFMatcher matcher(cv::NORM_HAMMING);  
   std::vector < cv::KeyPoint > matchedKeypoints, matchedPreviousKeypoints;
   for (auto m:matches)
   {
     matchedKeypoints.push_back(leftImage.keypoints[m.queryIdx]);
-    matchedPreviousKeypoints.push_back(previousLeftImage.keypoints[m.trainIdx]);
   }
 
   // USE MATCHEDKEYPOINTS get descriptors and get left only with matches that are on both images
+  cv::Mat ldisc, prevldisc;
+  leftImage.getDescriptors(leftImage.image, matchedKeypoints, ldisc);
+  std::vector< std::vector<cv::DMatch> > knnmatches;
+  matcher.knnMatch(ldisc, rightImage.descriptors, knnmatches, 2);
+  std::vector< cv::DMatch > matchesLR = loweRatioTest(knnmatches);
+  int count = 0;
+  for (auto m:matches)
+  {
+    matchedPreviousKeypoints.push_back(previousLeftImage.keypoints[m.trainIdx]);
+    count ++;
+  }
 
-  matcher.knnMatch(previousLeftImage.descriptors, previousRightImage.descriptors, knnmatches, 2);
+  leftImage.getDescriptors(previousLeftImage.image, matchedPreviousKeypoints, ldisc);
+  matcher.knnMatch(prevldisc, previousRightImage.descriptors, knnmatches, 2);
   std::vector< cv::DMatch > matchesPrev = loweRatioTest(knnmatches);
+
+  // std::vector< cv::DMatch > matches, good_matches;
 }
 
 std::vector< cv::DMatch > FeatureDrawer::removeOutliersHomography(const std::vector< cv::DMatch >& matches, const Features& firstImage, const Features& secondImage)
@@ -757,6 +867,9 @@ void FeatureDrawer::again()
   // Get Features of Each Image
   leftImage.getFeatures(3,4, mImageMatches, true);
   rightImage.getFeatures(3,4, mImageMatches, false);
+
+  leftImage.sortFeaturesKdTree();
+  rightImage.sortFeaturesKdTree();
 
   leftImage.getDescriptors(leftImage.image, leftImage.keypoints, leftImage.descriptors);
   rightImage.getDescriptors(rightImage.image, rightImage.keypoints, rightImage.descriptors);
