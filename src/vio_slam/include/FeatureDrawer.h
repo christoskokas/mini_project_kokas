@@ -21,6 +21,7 @@
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
+#include <pcl/kdtree/kdtree_flann.h>
 #include <boost/foreach.hpp>
 #include <tf/tf.h>
 #include <nav_msgs/Odometry.h>
@@ -72,7 +73,7 @@ class Features
         std::vector< pcl::PointXYZ > pointsPosition;
         std::vector < cv::Point2f> inlierPoints;
         std_msgs::Header header;
-        void updateFeatureRemoval(std::vector < int > indexes, std::vector<bool>& removed);
+        int updateFeatureRemoval(std::vector < int > indexes, std::vector < cv::Point2f >& points, int& count, bool& first);
         int findMinimumResponse(std::vector < int > indexes);
         void removeClosestNeighbors(std::vector < bool >& removed);
         void sortFeaturesKdTree();

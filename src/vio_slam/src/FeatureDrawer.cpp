@@ -322,8 +322,8 @@ std::vector< cv::KeyPoint > Features::featuresAdaptiveThreshold(cv::Mat& patch, 
   std::vector< cv::KeyPoint > tempkeys;
   for (size_t iii = 0; iii < iterations; iii++)
   {
-    int numbOfFeatures = 500;
-    int numbNeeded = 100;
+    int numbOfFeatures = 100;
+    int numbNeeded = 25;
     int edgeThreshold = 0;
     findORBFeatures(patch, tempkeys, numbOfFeatures, edgeThreshold, fastThreshold);
     if (tempkeys.size() >=(numbNeeded-5))
@@ -388,14 +388,36 @@ void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImage
   
 }
 
-void Features::updateFeatureRemoval(std::vector < int > indexes, std::vector<bool>& removed)
+int Features::updateFeatureRemoval(std::vector < int > indexes, std::vector < cv::Point2f >& points, int& count, bool& first)
 {
   int minInd = findMinimumResponse(indexes);
-  for (auto ind:indexes)
+  std::sort(indexes.begin(), indexes.end(),[](int a, int b) {return a > b;});
+  // std::cout << count << "Lel\n";
+  for (auto ind : indexes)
   {
+    if (ind == 0 && !first)
+      break;
+    if (ind == 0 && first)
+      first = false;
     if (ind != minInd)
-      removed[ind] = true;
+    {
+      keypoints.erase(keypoints.begin() + ind);
+      points.erase(points.begin() + ind);
+      if (count > ind)
+      {
+
+        // std::cout << count << "Lellllllllllllllllllllllllllllllllllllllllll\n";
+
+        count --;
+      }
+    }
+    else
+    {
+      keypoints.push_back(keypoints[ind]);
+      keypoints.erase(keypoints.begin() + ind + 1);
+    }
   }
+  return 0;
 }
 
 void Features::removeClosestNeighbors(std::vector < bool >& removed)
@@ -412,10 +434,14 @@ void Features::removeClosestNeighbors(std::vector < bool >& removed)
 int Features::findMinimumResponse(std::vector < int > indexes)
 {
   int min = indexes[0];
+  int count = 0;
   for (auto ind : indexes)
   {
+    if (ind == 0 && count != 0)
+      break;
     if (keypoints[min].response > keypoints[ind].response)
       min = ind;
+    count ++;
   }
   return min;
 }
@@ -423,20 +449,30 @@ int Features::findMinimumResponse(std::vector < int > indexes)
 void Features::sortFeaturesKdTree()
 {
   PointsWithIndexes featurePoints;
+  cv::Mat_<float> features(0,2);
   int count = 0;
   std::cout << "size before : " << keypoints.size() << '\n';
   for (auto key:keypoints)
   {
     featurePoints.points.push_back(cv::Point2f(key.pt.x,key.pt.y));
     featurePoints.removed.push_back(false);
+
+    cv::Mat row = (cv::Mat_<float>(1, 2) << key.pt.x, key.pt.y);
+    features.push_back(row);
     count ++;
   }
-  cv::flann::KDTreeIndexParams indexParams;
+  
+  cvflann::KDTreeIndexParams indexParams;
   // cv::flann::Index kdtree(cv::Mat(featurePoints.points).reshape(1), indexParams);
   // cv::Mat hol;
-  cv::flann::GenericIndex<cvflann::L2<float> > kdtree(cv::Mat(featurePoints.points), cvflann::KDTreeIndexParams(4));
+  // cv::Mat lel(cvSize(2,keypoints.size()),CV_32S);
+  // lel = lel()
+  const cvflann::SearchParams params(32);
+  cv::flann::GenericIndex<cvflann::L2<float> >* kdtrees;
+  // cv::flann::GenericIndex<cvflann::L2<float> > kdtree(cv::Mat(featurePoints.points).reshape(1), cvflann::KDTreeIndexParams(4));
   // cv::flann::GenericIndex<cvflann::L2<float> >
-
+  // pcl::KdTreeFLANN<cv::Point2f> kdtreez;
+  // kdtreez.setInputCloud(featurePoints.points);
   // cv::flann::GenericIndex<cvflann::L2<float> >* m_flann;
   // cv::flann::GenericIndex< cvflann::L2<float> > *kdtrees;
   // cv::Mat ClusterMembers;
@@ -459,27 +495,57 @@ void Features::sortFeaturesKdTree()
   // cv::flann::GenericIndex<cvflann::L2<float> > kdtree(indexParams);
   int keySize = keypoints.size();
   count = 0;
-  while (keySize > 0)
+  bool first = true;
+  while (count < keypoints.size())
   {
-    if (!featurePoints.removed[count])
-    {
-      std::vector < float > query;
-      query.push_back(featurePoints.points[count].x);
-      query.push_back(featurePoints.points[count].y);
-      std::vector < int > indices;
-      std::vector < float > dists;
-      double radius = 100.0f;
-      int numOfPoints = 100;
-      kdtree.radiusSearch(query, indices, dists, radius, numOfPoints);
-      indices.push_back(count);
 
-      updateFeatureRemoval(indices, featurePoints.removed);
-      keySize -= (indices.size()-1);
-      std::cout << "last indices : " << indices[indices.size()-5] << '\n';
+    // std::vector < float > query;
+    // query.push_back(featurePoints.points[count].x);
+    // query.push_back(featurePoints.points[count].y);
+    // cv::Point2f query(featurePoints.points[count].x,featurePoints.points[count].y);
+    // std::vector < int > indices;
+    // std::vector < float > dists;
+//       double radius = 5.0f;
+//       int numOfPoints = 50;
+//       cv::Mat indices(cvSize(1,50), CV_32SC1);
+//       cv::Mat dists(cvSize(1,50), CV_32FC1);
+//       kdtrees = new cv::flann::GenericIndex<cvflann::L2<float> >(features, cvflann::KDTreeIndexParams {
+//  2 }, cvflann::L2<float> {});
+//       cv::Mat query = (cv::Mat_<float>(1, 2) << featurePoints.points[count].x, featurePoints.points[count].y);
+//       int lel = kdtrees->radiusSearch(query, indices, dists, radius, cvflann::SearchParams());
+    // int lel = kdtree.radiusSearch(cv::Mat(featurePoints.points).reshape(1).row(count), indices, dists, radius, numOfPoints);
+    // indices.push_back(count);
+    auto kdtree = cv::flann::GenericIndex<cvflann::L2<float> >(cv::Mat(featurePoints.points).reshape(1), cvflann::KDTreeIndexParams {10 },cvflann::L2<float> {});
+    int numOfPoints = 8;
+    std::vector < int > indices(numOfPoints);
+    std::vector < float > dists(numOfPoints);
+    double radius = 10.0f;
+    int lel = kdtree.radiusSearch({featurePoints.points[count].x, featurePoints.points[count].y }, indices, dists, radius * radius, cvflann::SearchParams {numOfPoints});
+    // std::cout << lel << "Lel\n";
+    if (indices.size()>0)
+    {
+      // for (size_t j = 0; j < indices.size(); j++)
+      // {
+      //   std::cout << indices[j]  << " ";
+      // }
+      // std::cout << '\n';
+      // for (size_t j = 0; j < dists.size(); j++)
+      // {
+      //   std::cout << dists[j]  << " ";
+      // }
+      // std::cout << '\n';
+      
+      // std::cout << "last indices : " << indices.at<int>(1) << '\n';
+      // std::cout << "count : " << cv::Mat(featurePoints.points).reshape(1).row(count) << '\n';
+      // std::cout << "size : " << indices.size() << '\n';
+      // std::cout << "rows : " << cv::Mat(featurePoints.points).reshape(1).rows << " cols : " << cv::Mat(featurePoints.points).reshape(1).cols << '\n';
+      updateFeatureRemoval(indices, featurePoints.points, count, first);
+      // std::cout << count << "Lel3\n";
+
     }
     count ++;
   }
-  removeClosestNeighbors(featurePoints.removed);
+  // removeClosestNeighbors(featurePoints.removed);
   std::cout << "size after : " << keypoints.size() << '\n';
 
 
@@ -865,11 +931,11 @@ void FeatureDrawer::ceresSolver(std::vector<cv::DMatch>& matches, const cv::Mat&
 void FeatureDrawer::again()
 {
   // Get Features of Each Image
-  leftImage.getFeatures(3,4, mImageMatches, true);
-  rightImage.getFeatures(3,4, mImageMatches, false);
+  leftImage.getFeatures(6,8, mImageMatches, true);
+  rightImage.getFeatures(6,8, mImageMatches, false);
 
-  leftImage.sortFeaturesKdTree();
-  rightImage.sortFeaturesKdTree();
+  // leftImage.sortFeaturesKdTree();
+  // rightImage.sortFeaturesKdTree();
 
   leftImage.getDescriptors(leftImage.image, leftImage.keypoints, leftImage.descriptors);
   rightImage.getDescriptors(rightImage.image, rightImage.keypoints, rightImage.descriptors);
