@@ -392,7 +392,6 @@ int Features::updateFeatureRemoval(std::vector < int > indexes, std::vector < cv
 {
   int minInd = findMinimumResponse(indexes);
   std::sort(indexes.begin(), indexes.end(),[](int a, int b) {return a > b;});
-  // std::cout << count << "Lel\n";
   for (auto ind : indexes)
   {
     if (ind == 0 && !first)
@@ -405,9 +404,6 @@ int Features::updateFeatureRemoval(std::vector < int > indexes, std::vector < cv
       points.erase(points.begin() + ind);
       if (count > ind)
       {
-
-        // std::cout << count << "Lellllllllllllllllllllllllllllllllllllllllll\n";
-
         count --;
       }
     }
@@ -424,7 +420,6 @@ void Features::removeClosestNeighbors(std::vector < bool >& removed)
 {
   for (int iii = keypoints.size()-1; iii >= 0; iii--)
   {
-    // std::cout << "size : " << removed.size() << '\n';
     if (removed[iii])
       keypoints.erase(keypoints.begin()+iii);
   }
@@ -463,89 +458,26 @@ void Features::sortFeaturesKdTree()
   }
   
   cvflann::KDTreeIndexParams indexParams;
-  // cv::flann::Index kdtree(cv::Mat(featurePoints.points).reshape(1), indexParams);
-  // cv::Mat hol;
-  // cv::Mat lel(cvSize(2,keypoints.size()),CV_32S);
-  // lel = lel()
   const cvflann::SearchParams params(32);
   cv::flann::GenericIndex<cvflann::L2<float> >* kdtrees;
-  // cv::flann::GenericIndex<cvflann::L2<float> > kdtree(cv::Mat(featurePoints.points).reshape(1), cvflann::KDTreeIndexParams(4));
-  // cv::flann::GenericIndex<cvflann::L2<float> >
-  // pcl::KdTreeFLANN<cv::Point2f> kdtreez;
-  // kdtreez.setInputCloud(featurePoints.points);
-  // cv::flann::GenericIndex<cvflann::L2<float> >* m_flann;
-  // cv::flann::GenericIndex< cvflann::L2<float> > *kdtrees;
-  // cv::Mat ClusterMembers;
-  // cv::Mat ClusterCenters;
-  // ClusterMembers.create(cvSize(2,100), CV_32S); // The set A
-  // ClusterCenters.create(cvSize(2,5000), CV_32S); // The set B
-  // randu(ClusterCenters, cv::Scalar::all(0), cv::Scalar::all(1000));
-  // randu(ClusterMembers, cv::Scalar::all(0), cv::Scalar::all(1000));
-  // kdtrees =  new cv::flann::GenericIndex< cvflann::L2<float> >(ClusterCenters, cvflann::KDTreeIndexParams(4));
-  // // ...
-  // // we have 3d features
-  // cv::Mat features( keypoints.size(), 2, CV_32FC1 );
-  // // features(featurePoints.points);
-  // // ... fill the features matrix ...
-
-  // // ... build the index ...
-  // m_flann = new cv::flann::GenericIndex<cvflann::L2<float> > (features, indexParams);
-  // cv::flann::GenericIndex::GenericIndex<cvflann::L2<int> > index(cv::Mat(featurePoints.points), indexParams);
-  // kdtree.build(cv::Mat(featurePoints.points), indexParams);
-  // cv::flann::GenericIndex<cvflann::L2<float> > kdtree(indexParams);
   int keySize = keypoints.size();
   count = 0;
   bool first = true;
   while (count < keypoints.size())
   {
-
-    // std::vector < float > query;
-    // query.push_back(featurePoints.points[count].x);
-    // query.push_back(featurePoints.points[count].y);
-    // cv::Point2f query(featurePoints.points[count].x,featurePoints.points[count].y);
-    // std::vector < int > indices;
-    // std::vector < float > dists;
-//       double radius = 5.0f;
-//       int numOfPoints = 50;
-//       cv::Mat indices(cvSize(1,50), CV_32SC1);
-//       cv::Mat dists(cvSize(1,50), CV_32FC1);
-//       kdtrees = new cv::flann::GenericIndex<cvflann::L2<float> >(features, cvflann::KDTreeIndexParams {
-//  2 }, cvflann::L2<float> {});
-//       cv::Mat query = (cv::Mat_<float>(1, 2) << featurePoints.points[count].x, featurePoints.points[count].y);
-//       int lel = kdtrees->radiusSearch(query, indices, dists, radius, cvflann::SearchParams());
-    // int lel = kdtree.radiusSearch(cv::Mat(featurePoints.points).reshape(1).row(count), indices, dists, radius, numOfPoints);
-    // indices.push_back(count);
     auto kdtree = cv::flann::GenericIndex<cvflann::L2<float> >(cv::Mat(featurePoints.points).reshape(1), cvflann::KDTreeIndexParams {10 },cvflann::L2<float> {});
     int numOfPoints = 8;
     std::vector < int > indices(numOfPoints);
     std::vector < float > dists(numOfPoints);
     double radius = 10.0f;
-    int lel = kdtree.radiusSearch({featurePoints.points[count].x, featurePoints.points[count].y }, indices, dists, radius * radius, cvflann::SearchParams {numOfPoints});
-    // std::cout << lel << "Lel\n";
+    kdtree.radiusSearch({featurePoints.points[count].x, featurePoints.points[count].y }, indices, dists, radius * radius, cvflann::SearchParams {numOfPoints});
     if (indices.size()>0)
     {
-      // for (size_t j = 0; j < indices.size(); j++)
-      // {
-      //   std::cout << indices[j]  << " ";
-      // }
-      // std::cout << '\n';
-      // for (size_t j = 0; j < dists.size(); j++)
-      // {
-      //   std::cout << dists[j]  << " ";
-      // }
-      // std::cout << '\n';
-      
-      // std::cout << "last indices : " << indices.at<int>(1) << '\n';
-      // std::cout << "count : " << cv::Mat(featurePoints.points).reshape(1).row(count) << '\n';
-      // std::cout << "size : " << indices.size() << '\n';
-      // std::cout << "rows : " << cv::Mat(featurePoints.points).reshape(1).rows << " cols : " << cv::Mat(featurePoints.points).reshape(1).cols << '\n';
       updateFeatureRemoval(indices, featurePoints.points, count, first);
-      // std::cout << count << "Lel3\n";
 
     }
     count ++;
   }
-  // removeClosestNeighbors(featurePoints.removed);
   std::cout << "size after : " << keypoints.size() << '\n';
 
 
