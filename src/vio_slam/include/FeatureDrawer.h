@@ -72,6 +72,7 @@ class Features
         std::vector< cv::KeyPoint > keypointsLR;
         std::vector< pcl::PointXYZ > pointsPosition;
         std::vector < cv::Point2f> inlierPoints;
+        std::vector < int > indicesOfGrids;
         std_msgs::Header header;
         int updateFeatureRemoval(std::vector < int > indexes, std::vector < cv::Point2f >& points, int& count, bool& first);
         int findMinimumResponse(std::vector < int > indexes);
@@ -121,6 +122,8 @@ class FeatureDrawer
         double camera[6];
         Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d previousT = Eigen::Matrix4d::Identity();
+        std::vector<cv::DMatch> matchEachGrid(Features& firstImage, Features& secondImage, int row, int col, int rows, int cols, bool LR);
+        std::vector<cv::DMatch> matchesWithGrids(Features& firstImage, Features& secondImage, int rows, int cols, bool LR);
         std::vector<cv::DMatch> matchesLR(Features& leftImage, Features& rightImage);
         std::vector<cv::DMatch> findMatches(Features& firstImage, Features& secondImage, bool LR);
         std::vector< cv::DMatch > knnMatcher(const Features& firstImage, const Features& secondImage, const bool LR);

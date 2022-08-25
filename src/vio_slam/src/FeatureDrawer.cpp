@@ -316,14 +316,14 @@ void Features::getDescriptors(const cv::Mat& image, std::vector<cv::KeyPoint>& k
  * @param iterations the number of times the fast threshold is changed
  * @return std::vector< cv::KeyPoint > returns the resulting keypoints
  */
-std::vector< cv::KeyPoint > Features::featuresAdaptiveThreshold(cv::Mat& patch, int step = 3, unsigned int iterations = 10)
+std::vector< cv::KeyPoint > Features::featuresAdaptiveThreshold(cv::Mat& patch, int step = 7, unsigned int iterations = 3)
 {
   int fastThreshold = 20;
   std::vector< cv::KeyPoint > tempkeys;
   for (size_t iii = 0; iii < iterations; iii++)
   {
-    int numbOfFeatures = 100;
-    int numbNeeded = 25;
+    int numbOfFeatures = 500;
+    int numbNeeded = 40;
     int edgeThreshold = 0;
     findORBFeatures(patch, tempkeys, numbOfFeatures, edgeThreshold, fastThreshold);
     if (tempkeys.size() >=(numbNeeded-5))
@@ -367,7 +367,7 @@ void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImage
       std::vector< cv::KeyPoint > tempkeys = featuresAdaptiveThreshold(patch);
       std::for_each(tempkeys.begin(),tempkeys.end(), [&](cv::KeyPoint &n){n.pt.x +=jjj*imgSize.width + edgeThreshold;
                                                                           n.pt.y +=iii*imgSize.height + edgeThreshold;});
-      // std::cout << tempkeys.size() << "\n";
+      indicesOfGrids.push_back(keypoints.size());
       keypoints.insert(keypoints.end(),std::begin(tempkeys),std::end(tempkeys));
     }
     
@@ -809,6 +809,79 @@ std::vector<cv::DMatch> FeatureDrawer::findMatches(Features& firstImage, Feature
 
 }
 
+std::vector<cv::DMatch> FeatureDrawer::matchEachGrid(Features& firstImage, Features& secondImage, int row, int col, int rows, int cols, bool LR)
+{
+  std::vector< std::vector < cv::DMatch > > knnmatches;
+  cv::Mat firDesc, secDesc;
+  // std::cout << " rows : " << secondImage.descriptors.rows << " cols : " << secondImage.descriptors.cols << '\n';
+  // std::cout << " row*cols + col : " << row*cols + col << " size : " << secondImage.indicesOfGrids.size() << " row " << row << " col " << col << '\n';
+  if (LR)
+  {
+    if (col < (cols - 1))
+    {
+      if (row < (rows - 1))
+      {
+        secDesc = secondImage.descriptors(cv::Range(secondImage.indicesOfGrids[row*cols + col],secondImage.indicesOfGrids[row*cols + col + 2]),cv::Range(0,secondImage.descriptors.cols));
+      }
+      else
+      {
+        secDesc = secondImage.descriptors(cv::Range(secondImage.indicesOfGrids[row*cols + col],secondImage.descriptors.rows),cv::Range(0,secondImage.descriptors.cols));
+      }
+    }
+    else
+    {
+      if (row < (rows - 1))
+      {
+        secDesc = secondImage.descriptors(cv::Range(secondImage.indicesOfGrids[row*cols + col],secondImage.indicesOfGrids[row*cols + col + 1]),cv::Range(0,secondImage.descriptors.cols));
+      }
+      else
+      {
+        secDesc = secondImage.descriptors(cv::Range(secondImage.indicesOfGrids[row*cols + col],secondImage.descriptors.rows),cv::Range(0,secondImage.descriptors.cols));
+      }
+    }
+  }
+  if (row != (rows - 1) || col != (cols - 1))
+  {
+    firDesc = firstImage.descriptors(cv::Range(firstImage.indicesOfGrids[row*cols + col],firstImage.indicesOfGrids[row*cols + col + 1]),cv::Range(0,firstImage.descriptors.cols));
+  }
+  else
+  {
+    firDesc = firstImage.descriptors(cv::Range(firstImage.indicesOfGrids[row*cols + col],firstImage.descriptors.rows),cv::Range(0,firstImage.descriptors.cols));
+  } 
+  std::cout << " secDesc    rows : " << secDesc.rows << " cols : " << secDesc.cols << '\n';
+  std::cout << " firDesc    rows : " << firDesc.rows << " cols : " << firDesc.cols << '\n';
+  std::vector< cv::DMatch > good_matches;
+  if (secDesc.rows != 0)
+  {
+    auto matcher = cv::BFMatcher::create(cv::NORM_HAMMING, false);
+    matcher->knnMatch(firDesc, secDesc, knnmatches, 2);
+    std::vector< cv::DMatch > matches = loweRatioTest(knnmatches);
+    if (LR)
+    {
+      good_matches = removeOutliersStereoMatch(matches, firstImage, secondImage);
+    }
+  }
+  return good_matches;
+}
+
+std::vector<cv::DMatch> FeatureDrawer::matchesWithGrids(Features& firstImage, Features& secondImage, int rows, int cols, bool LR)
+{
+  std::vector < cv::DMatch > allMatchesOfGrids;
+  for (size_t iii = 0; iii < rows; iii++)
+  {
+    for (size_t jjj = 0; jjj < cols; jjj++)
+    {
+      std::vector < cv::DMatch > matches = matchEachGrid(firstImage, secondImage, iii, jjj, rows, cols, LR);
+      // std::cout << "matches size : " << matches.size() << "\n";
+      allMatchesOfGrids.insert(allMatchesOfGrids.end(), matches.begin(), matches.end());
+      // std::cout << "allMatchesOfGrids size : " << allMatchesOfGrids.size() << "\n";
+    }
+  }
+  std::cout << "NEWWWW\n";
+  drawFeatureMatches(allMatchesOfGrids, firstImage, secondImage);
+  return allMatchesOfGrids;
+}
+
 void FeatureDrawer::ceresSolver(std::vector<cv::DMatch>& matches, const cv::Mat& points3D, const cv::Mat& prevpoints3D)
 {
   ceres::Problem problem;
@@ -863,16 +936,25 @@ void FeatureDrawer::ceresSolver(std::vector<cv::DMatch>& matches, const cv::Mat&
 void FeatureDrawer::again()
 {
   // Get Features of Each Image
-  leftImage.getFeatures(6,8, mImageMatches, true);
-  rightImage.getFeatures(6,8, mImageMatches, false);
+  int rows {6};
+  int cols {8};
+
+  leftImage.getFeatures(rows, cols, mImageMatches, true);
+  rightImage.getFeatures(rows, cols, mImageMatches, false);
 
   // leftImage.sortFeaturesKdTree();
   // rightImage.sortFeaturesKdTree();
 
   leftImage.getDescriptors(leftImage.image, leftImage.keypoints, leftImage.descriptors);
   rightImage.getDescriptors(rightImage.image, rightImage.keypoints, rightImage.descriptors);
-  if (!firstImage)
-    knnMatcher(leftImage,previousLeftImage, false);
+  std::vector < cv::DMatch > goodMatches = matchesWithGrids(leftImage, rightImage,rows,cols,true);
+  // for (auto lel:leftImage.indicesOfGrids)
+  // {
+  //   std::cout << lel << "  ";
+  // }
+  // std::cout << "good matches size : " << goodMatches.size() << '\n';
+  // if (!firstImage)
+  //   knnMatcher(leftImage,previousLeftImage, false);
   // knnMatcher(leftImage, rightImage, true);
   // Get Descriptors of Each Image
   // std::vector<cv::DMatch> matches = matchesLR(leftImage, rightImage);
@@ -918,6 +1000,7 @@ void FeatureDrawer::again()
 void Features::clearFeatures()
 {
   keypoints.clear();
+  indicesOfGrids.clear();
 }
 
 void FeatureDrawer::featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
