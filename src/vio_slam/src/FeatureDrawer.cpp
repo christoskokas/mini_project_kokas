@@ -842,14 +842,27 @@ std::vector<cv::DMatch> FeatureDrawer::matchEachGrid(Features& firstImage, Featu
   std::vector< cv::DMatch > matches;
   if (secDesc.rows != 0 && firDesc.rows != 0)
   {
+    cv::Mat mask = cv::Mat::ones(firDesc.rows, secDesc.rows, CV_8U);
+    if (featuresMatched.size() > 0)
+    {
+      for (int it:featuresMatched)
+      {
+        // std::cout << "it : " << it << " rows : " << mask.rows << " cols : " << mask.cols << '\n';
+        mask.col(it) = 0;
+      }
+    }
     auto matcher = cv::BFMatcher::create(cv::NORM_HAMMING, false);
     // cv::Mat mask = cv::Mat::zeros(firDesc.rows, secDesc.rows, CV_8U);
     // std::cout << " mask    rows : " << mask.rows << " cols : " << mask.cols << '\n';
 
     // mask(cv::Rect(0,0,2,firDesc.rows)) = 1;
     // matcher->knnMatch(firDesc, secDesc, knnmatches, 2, mask, true);
-    matcher->knnMatch(firDesc, secDesc, knnmatches, 2);
+    matcher->knnMatch(firDesc, secDesc, knnmatches, 2, mask, true);
     matches = loweRatioTest(knnmatches);
+    // cv::Mat trial = cv::Mat::zeros(10, 15, CV_8U);
+    // trial.col(2) = 1;
+    // trial(cv::Rect(cv::Point(1,2), cv::Point(5,7))) = 1;
+    // std::cout << "trial " << trial << '\n';
 
   }
   return matches;
@@ -859,9 +872,10 @@ std::vector<cv::DMatch> FeatureDrawer::matchWithGridsUsingMask(Features& firstIm
 {
   std::vector< cv::DMatch > matches;
   cv::Mat mask = cv::Mat::zeros(firstImage.descriptors.rows, secondImage.descriptors.rows, CV_8U);
-  // cv::Mat trial = cv::Mat::zeros(10, 15, CV_8U);
+  cv::Mat trial = cv::Mat::zeros(10, 15, CV_8U);
+  trial.col(2) = 1;
   // trial(cv::Rect(cv::Point(1,2), cv::Point(5,7))) = 1;
-  // std::cout << "trial " << trial << '\n';
+  std::cout << "trial " << trial << '\n';
   if (col > 0)
   {
     cv::Point p1(secondImage.indicesOfGrids[row*cols + col - 1], firstImage.indicesOfGrids[row*cols + col]);
@@ -904,6 +918,17 @@ std::vector<cv::DMatch> FeatureDrawer::matchesWithGrids(Features& firstImage, Fe
                                                                         n.trainIdx += secondImage.indicesOfGrids[iii*cols + jjj];});
       }
       std::vector < cv::DMatch > goodMatches = removeOutliersStereoMatch(matches, firstImage, secondImage);
+      featuresMatched.clear();
+      if (jjj < (cols - 1))
+      {
+        for (auto m:goodMatches)
+        {
+          if (m.trainIdx > secondImage.indicesOfGrids[iii*cols + jjj])
+          {
+            featuresMatched.push_back(m.trainIdx - secondImage.indicesOfGrids[iii*cols + jjj]);
+          }
+        } 
+      }
       // for (auto m:goodMatches)
       // {
       //   firstImage.keypoints.erase(firstImage.keypoints.begin() + m.queryIdx);
