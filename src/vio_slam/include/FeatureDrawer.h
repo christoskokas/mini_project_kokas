@@ -122,6 +122,7 @@ class FeatureDrawer
         double camera[6];
         Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d previousT = Eigen::Matrix4d::Identity();
+        std::vector<cv::DMatch> matchWithGridsUsingMask(Features& firstImage, Features& secondImage, int row, int col, int rows, int cols, bool LR);
         std::vector<cv::DMatch> matchEachGrid(Features& firstImage, Features& secondImage, int row, int col, int rows, int cols, bool LR);
         std::vector<cv::DMatch> matchesWithGrids(Features& firstImage, Features& secondImage, int rows, int cols, bool LR);
         std::vector<cv::DMatch> matchesLR(Features& leftImage, Features& rightImage);

@@ -837,6 +837,7 @@ std::vector<cv::DMatch> FeatureDrawer::matchEachGrid(Features& firstImage, Featu
   // secDesc = secondImage.descriptors(cv::Range(secondImage.indicesOfGrids[row*cols + col],secondImage.indicesOfGrids[row*cols + col + 1]),cv::Range::all());
   // std::cout << "  row*cols + col - 1 : " << row*cols + col - 1 << " row : " << row << " col :  " << col << '\n';
   // std::cout << " secDesc    rows : " << secDesc.rows << " cols : " << secDesc.cols << '\n';
+  // std::cout << " secDesc    rows : " << firstImage.descriptors.rows << " cols : " << firstImage.descriptors.cols << '\n';
   // std::cout << " firDesc    rows : " << firDesc.rows << " cols : " << firDesc.cols << '\n';
   std::vector< cv::DMatch > matches;
   if (secDesc.rows != 0 && firDesc.rows != 0)
@@ -854,7 +855,34 @@ std::vector<cv::DMatch> FeatureDrawer::matchEachGrid(Features& firstImage, Featu
   return matches;
 }
 
-
+std::vector<cv::DMatch> FeatureDrawer::matchWithGridsUsingMask(Features& firstImage, Features& secondImage, int row, int col, int rows, int cols, bool LR)
+{
+  std::vector< cv::DMatch > matches;
+  cv::Mat mask = cv::Mat::zeros(firstImage.descriptors.rows, secondImage.descriptors.rows, CV_8U);
+  // cv::Mat trial = cv::Mat::zeros(10, 15, CV_8U);
+  // trial(cv::Rect(cv::Point(1,2), cv::Point(5,7))) = 1;
+  // std::cout << "trial " << trial << '\n';
+  if (col > 0)
+  {
+    cv::Point p1(secondImage.indicesOfGrids[row*cols + col - 1], firstImage.indicesOfGrids[row*cols + col]);
+    cv::Point p2(secondImage.indicesOfGrids[row*cols + col + 1], firstImage.indicesOfGrids[row*cols + col + 1]);
+    // std::cout << " p1 " << p1 << " p2 " << p2 << " rows " << mask.rows << " cols " << mask.cols << '\n';
+    mask(cv::Rect(p1,p2)) = 1;
+  }
+  else
+  {
+    cv::Point p1(secondImage.indicesOfGrids[row*cols + col], firstImage.indicesOfGrids[row*cols + col]);
+    cv::Point p2(secondImage.indicesOfGrids[row*cols + col + 1], firstImage.indicesOfGrids[row*cols + col + 1]);
+    // std::cout << " p1 " << p1 << " p2 " << p2 << " rows " << mask.rows << " cols " << mask.cols << '\n';
+    mask(cv::Rect(p1,p2)) = 1;
+    
+  }
+  auto matcher = cv::BFMatcher::create(cv::NORM_HAMMING, false);
+  std::vector< std::vector < cv::DMatch > > knnmatches;
+  matcher->knnMatch(firstImage.descriptors, secondImage.descriptors, knnmatches, 2, mask, true);
+  matches = loweRatioTest(knnmatches);
+  return matches;
+}
 
 std::vector<cv::DMatch> FeatureDrawer::matchesWithGrids(Features& firstImage, Features& secondImage, int rows, int cols, bool LR)
 {
@@ -865,8 +893,16 @@ std::vector<cv::DMatch> FeatureDrawer::matchesWithGrids(Features& firstImage, Fe
     {
       std::vector < cv::DMatch > matches = matchEachGrid(firstImage, secondImage, iii, jjj, rows, cols, LR);
       // std::cout << "matches size : " << matches.size() << "\n";
-      std::for_each(matches.begin(),matches.end(), [&](cv::DMatch &n){n.queryIdx += firstImage.indicesOfGrids[iii*cols + jjj];
-                                                                      n.trainIdx += secondImage.indicesOfGrids[iii*cols + jjj];});
+      if (jjj > 0)
+      {
+        std::for_each(matches.begin(),matches.end(), [&](cv::DMatch &n){n.queryIdx += firstImage.indicesOfGrids[iii*cols + jjj];
+                                                                        n.trainIdx += secondImage.indicesOfGrids[iii*cols + jjj-1];});
+      }
+      else
+      {
+        std::for_each(matches.begin(),matches.end(), [&](cv::DMatch &n){n.queryIdx += firstImage.indicesOfGrids[iii*cols + jjj];
+                                                                        n.trainIdx += secondImage.indicesOfGrids[iii*cols + jjj];});
+      }
       std::vector < cv::DMatch > goodMatches = removeOutliersStereoMatch(matches, firstImage, secondImage);
       // for (auto m:goodMatches)
       // {
@@ -957,7 +993,7 @@ void FeatureDrawer::again()
   leftImage.getDescriptors(leftImage.image, leftImage.keypoints, leftImage.descriptors);
   rightImage.getDescriptors(rightImage.image, rightImage.keypoints, rightImage.descriptors);
   std::vector < cv::DMatch > goodMatches = matchesWithGrids(leftImage, rightImage,rows,cols,true);
-  std::cout << "matches after : " << goodMatches.size() << '\n';
+  // std::cout << "matches after : " << goodMatches.size() << '\n';
 
   // for (auto lel:leftImage.indicesOfGrids)
   // {
