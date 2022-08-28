@@ -8,6 +8,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include "ceres/ceres.h"
 #include <algorithm>
+#include <functional>
 #include "Optimizer.h"
 #include <opencv2/flann.hpp>
 
@@ -305,6 +306,13 @@ void Features::getDescriptors(const cv::Mat& image, std::vector<cv::KeyPoint>& k
 {
   cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(75,1.2f,8,30, 0, 2, cv::ORB::HARRIS_SCORE,30);
   detector->compute(image, keypoints, descriptors);
+  // 48 is rows*cols for function again()
+  for (size_t iii = 0; iii < 48; iii++)
+  {
+    cv::Mat temp = descriptors(cv::Range(indicesOfGrids[iii],indicesOfGrids[iii + 1]),cv::Range::all());
+    descriptorsGrids.push_back(temp);
+  }
+  
 }
 
 
@@ -365,9 +373,11 @@ void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImage
       cv::Size imgSize = cv::Size(croppedImage.cols/cols,croppedImage.rows/rows);
       cv::Mat patch = gridBasedFeatures(croppedImage, grid, imgSize);
       std::vector< cv::KeyPoint > tempkeys = featuresAdaptiveThreshold(patch);
+      keypointsGrids.push_back(tempkeys);
       std::for_each(tempkeys.begin(),tempkeys.end(), [&](cv::KeyPoint &n){n.pt.x +=jjj*imgSize.width + edgeThreshold;
                                                                           n.pt.y +=iii*imgSize.height + edgeThreshold;});
       indicesOfGrids.push_back(keypoints.size());
+
       keypoints.insert(keypoints.end(),tempkeys.begin(),tempkeys.end());
       // if (iii == 2 && jjj == 5)
       // {
@@ -929,19 +939,69 @@ std::vector<cv::DMatch> FeatureDrawer::matchesWithGrids(Features& firstImage, Fe
           }
         } 
       }
-      // for (auto m:goodMatches)
-      // {
-      //   firstImage.keypoints.erase(firstImage.keypoints.begin() + m.queryIdx);
-      //   secondImage.keypoints.erase(secondImage.keypoints.begin() + m.trainIdx);
-      // }
-      // for (size_t kkk = iii*cols + jjj + 1; kkk < firstImage.indicesOfGrids.size(); kkk++)
-      // {
-      //   firstImage.indicesOfGrids[kkk] -= goodMatches.size();
-      //   secondImage.indicesOfGrids[kkk] -= goodMatches.size();
-      // }
       
       allMatchesOfGrids.insert(allMatchesOfGrids.end(), goodMatches.begin(), goodMatches.end());
-      // std::cout << "allMatchesOfGrids size : " << allMatchesOfGrids.size() << "\n";
+    }
+  }
+  // std::cout << "matches before : " << allMatchesOfGrids.size() << '\n';
+  // std::vector < cv::DMatch > goodMatches = removeOutliersStereoMatch(allMatchesOfGrids, firstImage, secondImage);
+  // std::cout << "f size : " << firstImage.keypoints.size() << " s size : " << secondImage.keypoints.size()  << " matches size : " << allMatchesOfGrids.size() << '\n';
+  drawFeatureMatches(allMatchesOfGrids, firstImage, secondImage);
+  return allMatchesOfGrids;
+}
+
+void FeatureDrawer::addMatRows(std::vector < cv::Mat >& descriptorsGrids, int index, cv::Mat& descriptor)
+{
+  std::cout << "LELELEL " << " " << descriptorsGrids[index].rows << " index : " << index << '\n';
+  if (descriptorsGrids[index].rows != 0)
+    descriptor.push_back(descriptorsGrids[index]);
+}
+
+void FeatureDrawer::addIndexToMatch(int row, int col, int rows, int cols, std::vector <int>& indices, cv::DMatch& m)
+{
+  if (row == 0)
+  {
+    if (col == 0)
+    {
+
+    }
+  }
+}
+
+
+std::vector<cv::DMatch> FeatureDrawer::matchesWithGridsPrev(Features& firstImage, Features& secondImage, int rows, int cols, bool LR)
+{
+  std::vector < cv::DMatch > allMatchesOfGrids;
+  for (size_t iii = 0; iii < rows; iii++)
+  {
+    for (size_t jjj = 0; jjj < cols; jjj++)
+    {
+      std::vector < cv::DMatch > matches = matchEachGridPrev(firstImage, secondImage, iii, jjj, rows, cols, LR);
+      // std::cout << "matches size : " << matches.size() << "\n";
+      // if (jjj > 0)
+      // {
+      //   std::for_each(matches.begin(),matches.end(), [&](cv::DMatch &n){n.queryIdx += firstImage.indicesOfGrids[iii*cols + jjj];
+      //                                                                   n.trainIdx += secondImage.indicesOfGrids[iii*cols + jjj-1];});
+      // }
+      // else
+      // {
+      //   std::for_each(matches.begin(),matches.end(), [&](cv::DMatch &n){n.queryIdx += firstImage.indicesOfGrids[iii*cols + jjj];
+      //                                                                   n.trainIdx += secondImage.indicesOfGrids[iii*cols + jjj];});
+      // }
+      std::vector < cv::DMatch > goodMatches = removeOutliersStereoMatch(matches, firstImage, secondImage);
+      featuresMatched.clear();
+      if (jjj < (cols - 1))
+      {
+        for (auto m:goodMatches)
+        {
+          if (m.trainIdx > secondImage.indicesOfGrids[iii*cols + jjj])
+          {
+            featuresMatched.push_back(m.trainIdx - secondImage.indicesOfGrids[iii*cols + jjj]);
+          }
+        } 
+      }
+      
+      allMatchesOfGrids.insert(allMatchesOfGrids.end(), goodMatches.begin(), goodMatches.end());
     }
   }
   std::cout << "matches before : " << allMatchesOfGrids.size() << '\n';
@@ -949,6 +1009,214 @@ std::vector<cv::DMatch> FeatureDrawer::matchesWithGrids(Features& firstImage, Fe
   std::cout << "f size : " << firstImage.keypoints.size() << " s size : " << secondImage.keypoints.size()  << " matches size : " << allMatchesOfGrids.size() << '\n';
   drawFeatureMatches(allMatchesOfGrids, firstImage, secondImage);
   return allMatchesOfGrids;
+}
+
+std::vector<cv::DMatch> FeatureDrawer::matchEachGridPrev(Features& firstImage, Features& secondImage, int row, int col, int rows, int cols, bool LR)
+{
+  std::vector< std::vector < cv::DMatch > > knnmatches;
+  cv::Mat firDesc, secDesc;
+
+  if (LR)
+  {
+    if (row == 0)
+    {
+      if (col == 0)
+      {
+        // cv::Mat matArray[] = {secondImage.descriptorsGrids[0],
+        //                       secondImage.descriptorsGrids[1],
+        //                       secondImage.descriptorsGrids[cols],
+        //                       secondImage.descriptorsGrids[cols + 1]};
+        // cv::vconcat(matArray, 4, secDesc);
+        secDesc.push_back(secondImage.descriptorsGrids[0]);
+        secDesc.push_back(secondImage.descriptorsGrids[1]);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[cols] - secondImage.indicesOfGrids[1]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[cols]);
+        secDesc.push_back(secondImage.descriptorsGrids[cols + 1]);
+        // std::cout << " rows : " << secondImage.descriptorsGrids[0].rows << " " << secondImage.descriptorsGrids[1].rows << " " << secondImage.descriptorsGrids[cols].rows << " " << secondImage.descriptorsGrids[cols + 1].rows << " yes rows : " << secDesc.rows << "\n";
+      }
+      else if (col == (cols - 1))
+      {
+        // cv::Mat matArray[] = {secondImage.descriptorsGrids[cols - 2],
+        //                       secondImage.descriptorsGrids[cols - 1],
+        //                       secondImage.descriptorsGrids[2*cols - 2],
+        //                       secondImage.descriptorsGrids[2*cols - 1]};
+        // cv::vconcat(matArray, 4, secDesc);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[cols - 2] - secondImage.indicesOfGrids[0]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[cols - 2]);
+        secDesc.push_back(secondImage.descriptorsGrids[cols - 1]);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[2*cols - 2] - secondImage.indicesOfGrids[cols - 1]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[2*cols - 2]);
+        secDesc.push_back(secondImage.descriptorsGrids[2*cols - 1]);
+      }
+      else
+      {
+        // cv::Mat matArray[] = {secondImage.descriptorsGrids[row*cols + col - 1],
+        //                       secondImage.descriptorsGrids[row*cols + col],
+        //                       secondImage.descriptorsGrids[row*cols + col + 1],
+        //                       secondImage.descriptorsGrids[(row + 1)*cols + col - 1],
+        //                       secondImage.descriptorsGrids[(row + 1)*cols + col],
+        //                       secondImage.descriptorsGrids[(row + 1)*cols + col + 1]};
+        // cv::vconcat(matArray, 6, secDesc);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[row*cols + col - 1] - secondImage.indicesOfGrids[0]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[row*cols + col - 1]);
+        secDesc.push_back(secondImage.descriptorsGrids[row*cols + col]);
+        secDesc.push_back(secondImage.descriptorsGrids[row*cols + col + 1]);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[(row + 1)*cols + col - 1] - secondImage.indicesOfGrids[row*cols + col + 1]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[(row + 1)*cols + col - 1]);
+        secDesc.push_back(secondImage.descriptorsGrids[(row + 1)*cols + col]);
+        secDesc.push_back(secondImage.descriptorsGrids[(row + 1)*cols + col + 1]);
+      }
+    }
+    else if (row == (rows - 1))
+    {
+      if (col == 0)
+      {
+        // cv::Mat matArray[] = {secondImage.descriptorsGrids[(row - 1)*cols + col],
+        //                       secondImage.descriptorsGrids[(row - 1)*cols + col + 1],
+        //                       secondImage.descriptorsGrids[row*cols + col],
+        //                       secondImage.descriptorsGrids[row*cols + col + 1]};
+        // cv::vconcat(matArray, 4, secDesc);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[(row - 1)*cols + col] - secondImage.indicesOfGrids[0]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[(row - 1)*cols + col]);
+        secDesc.push_back(secondImage.descriptorsGrids[(row - 1)*cols + col + 1]);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[row*cols + col] - secondImage.indicesOfGrids[(row - 1)*cols + col + 1]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[row*cols + col]);
+        secDesc.push_back(secondImage.descriptorsGrids[row*cols + col + 1]);
+      }
+      else if (col == (cols - 1))
+      {
+        // cv::Mat matArray[] = {secondImage.descriptorsGrids[(row - 1)*cols + col - 1],
+        //                       secondImage.descriptorsGrids[(row - 1)*cols + col],
+        //                       secondImage.descriptorsGrids[row*cols + col - 1],
+        //                       secondImage.descriptorsGrids[row*cols + col]};
+        // cv::vconcat(matArray, 4, secDesc);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[(row - 1)*cols + col - 1] - secondImage.indicesOfGrids[0]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[(row - 1)*cols + col - 1]);
+        secDesc.push_back(secondImage.descriptorsGrids[(row - 1)*cols + col]);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[row*cols + col - 1] - secondImage.indicesOfGrids[(row - 1)*cols + col]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[row*cols + col - 1]);
+        secDesc.push_back(secondImage.descriptorsGrids[row*cols + col]);
+      }
+      else
+      {
+        // cv::Mat matArray[] = {secondImage.descriptorsGrids[(row - 1)*cols + col - 1],
+        //                       secondImage.descriptorsGrids[(row - 1)*cols + col],
+        //                       secondImage.descriptorsGrids[(row - 1)*cols + col + 1],
+        //                       secondImage.descriptorsGrids[row*cols + col - 1],
+        //                       secondImage.descriptorsGrids[row*cols + col],
+        //                       secondImage.descriptorsGrids[row*cols + col + 1]};
+        // cv::vconcat(matArray, 6, secDesc);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[(row - 1)*cols + col - 1] - secondImage.indicesOfGrids[0]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[(row - 1)*cols + col - 1]);
+        secDesc.push_back(secondImage.descriptorsGrids[(row - 1)*cols + col]);
+        secDesc.push_back(secondImage.descriptorsGrids[(row - 1)*cols + col + 1]);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[row*cols + col - 1] - secondImage.indicesOfGrids[(row - 1)*cols + col + 1]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[row*cols + col - 1]);
+        secDesc.push_back(secondImage.descriptorsGrids[row*cols + col]);
+        secDesc.push_back(secondImage.descriptorsGrids[row*cols + col + 1]);
+      }
+    }
+    else
+    {
+      if (col ==0)
+      {
+        // cv::Mat matArray[] = {secondImage.descriptorsGrids[(row - 1)*cols + col],
+        //                       secondImage.descriptorsGrids[(row - 1)*cols + col + 1],
+        //                       secondImage.descriptorsGrids[row*cols + col],
+        //                       secondImage.descriptorsGrids[row*cols + col + 1],
+        //                       secondImage.descriptorsGrids[(row + 1)*cols + col],
+        //                       secondImage.descriptorsGrids[(row + 1)*cols + col + 1]};
+        // cv::vconcat(matArray, 6, secDesc);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[(row - 1)*cols + col] - secondImage.indicesOfGrids[0]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[(row - 1)*cols + col]);
+        secDesc.push_back(secondImage.descriptorsGrids[(row - 1)*cols + col + 1]);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[row*cols + col] - secondImage.indicesOfGrids[(row - 1)*cols + col + 1]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[row*cols + col]);
+        secDesc.push_back(secondImage.descriptorsGrids[row*cols + col + 1]);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[(row + 1)*cols + col] - secondImage.indicesOfGrids[row*cols + col + 1]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[(row + 1)*cols + col]);
+        secDesc.push_back(secondImage.descriptorsGrids[(row + 1)*cols + col + 1]);
+      }
+      else if (col == (cols - 1))
+      {
+        // cv::Mat matArray[] = {secondImage.descriptorsGrids[(row - 1)*cols + col - 1],
+        //                       secondImage.descriptorsGrids[(row - 1)*cols + col],
+        //                       secondImage.descriptorsGrids[row*cols + col - 1],
+        //                       secondImage.descriptorsGrids[row*cols + col],
+        //                       secondImage.descriptorsGrids[(row + 1)*cols + col - 1],
+        //                       secondImage.descriptorsGrids[(row + 1)*cols + col]};
+        // cv::vconcat(matArray, 6, secDesc);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[(row - 1)*cols + col - 1] - secondImage.indicesOfGrids[0]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[(row - 1)*cols + col - 1]);
+        secDesc.push_back(secondImage.descriptorsGrids[(row - 1)*cols + col]);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[row*cols + col - 1] - secondImage.indicesOfGrids[(row - 1)*cols + col]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[row*cols + col - 1]);
+        secDesc.push_back(secondImage.descriptorsGrids[row*cols + col]);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[(row + 1)*cols + col - 1] - secondImage.indicesOfGrids[row*cols + col]),CV_8U));
+        secDesc.push_back(secondImage.descriptorsGrids[(row + 1)*cols + col - 1]);
+        secDesc.push_back(secondImage.descriptorsGrids[(row + 1)*cols + col]);
+      }
+      else
+      {
+        // cv::Mat matArray[] = {secondImage.descriptorsGrids[(row - 1)*cols + col - 1],
+        //                       secondImage.descriptorsGrids[(row - 1)*cols + col],
+        //                       secondImage.descriptorsGrids[(row - 1)*cols + col + 1],
+        //                       secondImage.descriptorsGrids[row*cols + col - 1],
+        //                       secondImage.descriptorsGrids[row*cols + col],
+        //                       secondImage.descriptorsGrids[row*cols + col + 1],
+        //                       secondImage.descriptorsGrids[(row + 1)*cols + col - 1],
+        //                       secondImage.descriptorsGrids[(row + 1)*cols + col],
+        //                       secondImage.descriptorsGrids[(row + 1)*cols + col + 1]};
+        // cv::vconcat(matArray, 9, secDesc);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[(row - 1)*cols + col - 1] - secondImage.indicesOfGrids[0]),CV_8U));
+        addMatRows(secondImage.descriptorsGrids, (row - 1)*cols + col - 1, secDesc);
+        addMatRows(secondImage.descriptorsGrids, (row - 1)*cols + col, secDesc);
+        addMatRows(secondImage.descriptorsGrids, (row - 1)*cols + col + 1, secDesc);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[row*cols + col - 1] - secondImage.indicesOfGrids[(row - 1)*cols + col + 1]),CV_8U));
+        addMatRows(secondImage.descriptorsGrids, row*cols + col - 1, secDesc);
+        addMatRows(secondImage.descriptorsGrids, row*cols + col, secDesc);
+        addMatRows(secondImage.descriptorsGrids, row*cols + col + 1, secDesc);
+        secDesc.push_back(cv::Mat::zeros(cv::Size(32, secondImage.indicesOfGrids[(row + 1)*cols + col - 1] - secondImage.indicesOfGrids[row*cols + col + 1]),CV_8U));
+        addMatRows(secondImage.descriptorsGrids, (row + 1)*cols + col - 1, secDesc);
+        addMatRows(secondImage.descriptorsGrids, (row + 1)*cols + col, secDesc);
+        addMatRows(secondImage.descriptorsGrids, (row + 1)*cols + col + 1, secDesc);
+        std::cout << " secDesc    rows : " << secDesc.rows << " real rows : " << secondImage.descriptors.rows << '\n';
+        
+      }
+    }
+  }
+  // std::cout << " row : " << row << " col :  " << col << '\n';
+  firDesc = firstImage.descriptorsGrids[row*cols + col].clone();
+  // secDesc = secondImage.descriptors(cv::Range(secondImage.indicesOfGrids[row*cols + col],secondImage.indicesOfGrids[row*cols + col + 1]),cv::Range::all());
+  // std::cout << " secDesc    rows : " << firstImage.descriptors.rows << " cols : " << firstImage.descriptors.cols << '\n';
+  // std::cout << " firDesc    rows : " << firDesc.rows << " cols : " << firDesc.cols << '\n';
+  std::vector< cv::DMatch > matches;
+  if (secDesc.rows != 0 && firDesc.rows != 0)
+  {
+    cv::Mat mask = cv::Mat::ones(firDesc.rows, secDesc.rows, CV_8U);
+    // if (featuresMatched.size() > 0)
+    // {
+    //   for (int it:featuresMatched)
+    //   {
+    //     // std::cout << "it : " << it << " rows : " << mask.rows << " cols : " << mask.cols << '\n';
+    //     mask.col(it) = 0;
+    //   }
+    // }
+    auto matcher = cv::BFMatcher::create(cv::NORM_HAMMING, false);
+    // cv::Mat mask = cv::Mat::zeros(firDesc.rows, secDesc.rows, CV_8U);
+    // std::cout << " mask    rows : " << mask.rows << " cols : " << mask.cols << '\n';
+
+    // mask(cv::Rect(0,0,2,firDesc.rows)) = 1;
+    // matcher->knnMatch(firDesc, secDesc, knnmatches, 2, mask, true);
+    matcher->knnMatch(firDesc, secDesc, knnmatches, 2, mask, true);
+    matches = loweRatioTest(knnmatches);
+    // cv::Mat trial = cv::Mat::zeros(10, 15, CV_8U);
+    // trial.col(2) = 1;
+    // trial(cv::Rect(cv::Point(1,2), cv::Point(5,7))) = 1;
+    // std::cout << "trial " << trial << '\n';
+
+  }
+  return matches;
 }
 
 void FeatureDrawer::ceresSolver(std::vector<cv::DMatch>& matches, const cv::Mat& points3D, const cv::Mat& prevpoints3D)
@@ -1014,10 +1282,11 @@ void FeatureDrawer::again()
 
   // leftImage.sortFeaturesKdTree();
   // rightImage.sortFeaturesKdTree();
-
   leftImage.getDescriptors(leftImage.image, leftImage.keypoints, leftImage.descriptors);
   rightImage.getDescriptors(rightImage.image, rightImage.keypoints, rightImage.descriptors);
   std::vector < cv::DMatch > goodMatches = matchesWithGrids(leftImage, rightImage,rows,cols,true);
+  if (!firstImage)
+    std::vector < cv::DMatch > goodMatchesPrev = matchesWithGridsPrev(previousLeftImage, leftImage,rows,cols,true);
   // std::cout << "matches after : " << goodMatches.size() << '\n';
 
   // for (auto lel:leftImage.indicesOfGrids)
@@ -1060,9 +1329,15 @@ void FeatureDrawer::again()
   // setPrevious(points3D);
   previousLeftImage.image = leftImage.image.clone();
   previousLeftImage.keypoints = leftImage.keypoints;
+  previousLeftImage.indicesOfGrids = leftImage.indicesOfGrids;
+  previousLeftImage.descriptorsGrids = leftImage.descriptorsGrids;
+  previousLeftImage.keypointsGrids = leftImage.keypointsGrids;
   previousLeftImage.descriptors = leftImage.descriptors.clone(); 
   previousRightImage.image = rightImage.image.clone();
   previousRightImage.keypoints = rightImage.keypoints;
+  previousRightImage.indicesOfGrids = rightImage.indicesOfGrids;
+  previousRightImage.descriptorsGrids = rightImage.descriptorsGrids;
+  previousRightImage.keypointsGrids = rightImage.keypointsGrids;
   previousRightImage.descriptors = rightImage.descriptors.clone(); 
   leftImage.clearFeatures();
   rightImage.clearFeatures();
@@ -1073,6 +1348,8 @@ void Features::clearFeatures()
 {
   keypoints.clear();
   indicesOfGrids.clear();
+  keypointsGrids.clear();
+  descriptorsGrids.clear();
 }
 
 void FeatureDrawer::featureDetectionCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)

@@ -68,6 +68,8 @@ class Features
         cv::Mat descriptors;
         std::vector<bool> close;
         std::vector<bool> statusOfKeys;
+        std::vector< cv::Mat > descriptorsGrids;
+        std::vector< std::vector < cv::KeyPoint > > keypointsGrids;
         std::vector< cv::KeyPoint > keypoints;
         std::vector< cv::KeyPoint > keypointsLR;
         std::vector< pcl::PointXYZ > pointsPosition;
@@ -123,9 +125,13 @@ class FeatureDrawer
         double camera[6];
         Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d previousT = Eigen::Matrix4d::Identity();
+        void addIndexToMatch(int row, int col, int rows, int cols, std::vector <int>& indices, cv::DMatch& m);
+        void addMatRows(std::vector < cv::Mat >& descriptorsGrids, int index, cv::Mat& descriptor);
         std::vector<cv::DMatch> matchWithGridsUsingMask(Features& firstImage, Features& secondImage, int row, int col, int rows, int cols, bool LR);
         std::vector<cv::DMatch> matchEachGrid(Features& firstImage, Features& secondImage, int row, int col, int rows, int cols, bool LR);
+        std::vector<cv::DMatch> matchEachGridPrev(Features& firstImage, Features& secondImage, int row, int col, int rows, int cols, bool LR);
         std::vector<cv::DMatch> matchesWithGrids(Features& firstImage, Features& secondImage, int rows, int cols, bool LR);
+        std::vector<cv::DMatch> matchesWithGridsPrev(Features& firstImage, Features& secondImage, int rows, int cols, bool LR);
         std::vector<cv::DMatch> matchesLR(Features& leftImage, Features& rightImage);
         std::vector<cv::DMatch> findMatches(Features& firstImage, Features& secondImage, bool LR);
         std::vector< cv::DMatch > knnMatcher(const Features& firstImage, const Features& secondImage, const bool LR);
