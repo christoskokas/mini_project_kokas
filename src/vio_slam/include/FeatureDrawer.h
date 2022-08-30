@@ -136,6 +136,7 @@ class FeatureDrawer
         std::vector<cv::DMatch> findMatches(Features& firstImage, Features& secondImage, bool LR);
         std::vector< cv::DMatch > knnMatcher(const Features& firstImage, const Features& secondImage, const bool LR);
         std::vector< cv::DMatch > removeOutliersStereoMatch(const std::vector< cv::DMatch >& matches, const Features& leftImage, const Features& rightImage);
+        std::vector< cv::DMatch > removeOutliersMatch(const std::vector< cv::DMatch >& matches, const Features& leftImage, const Features& rightImage, bool LR);
         std::vector< cv::DMatch > removeOutliersHomography(const std::vector< cv::DMatch >& matches, const Features& firstImage, const Features& secondImage);
         void positionOfMatchedFeatures(const std::vector<cv::DMatch>& matches, Features& leftImage, const Features& rightImage, const Features& previousLeftImage, const Features& previousRightImage);
         std::vector< cv::DMatch > loweRatioTest(std::vector< std::vector<cv::DMatch> >& knnmatches);
