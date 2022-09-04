@@ -324,14 +324,14 @@ void Features::getDescriptors(const cv::Mat& image, std::vector<cv::KeyPoint>& k
  * @param iterations the number of times the fast threshold is changed
  * @return std::vector< cv::KeyPoint > returns the resulting keypoints
  */
-std::vector< cv::KeyPoint > Features::featuresAdaptiveThreshold(cv::Mat& patch, int step = 5, unsigned int iterations = 3)
+std::vector< cv::KeyPoint > Features::featuresAdaptiveThreshold(cv::Mat& patch, int step = 8, unsigned int iterations = 2)
 {
   int fastThreshold = 20;
   std::vector< cv::KeyPoint > tempkeys;
   for (size_t iii = 0; iii < iterations; iii++)
   {
     int numbOfFeatures = 100;
-    int numbNeeded = 40;
+    int numbNeeded = 30;
     int edgeThreshold = 0;
     findORBFeatures(patch, tempkeys, numbOfFeatures, edgeThreshold, fastThreshold);
     if (tempkeys.size() >=(numbNeeded-5))
@@ -757,11 +757,15 @@ std::vector< cv::DMatch > FeatureDrawer::removeOutliersMatch(const std::vector< 
 {
   std::vector< cv::DMatch > good_matches;
   int yDif = 4;
+  int xDif = 20;
   if (!LR)
-    yDif = 20;
+  {
+    xDif = 40;
+    yDif = 40;
+  }
   for (auto m:matches)
   {
-    if (abs(leftImage.keypoints[m.queryIdx].pt.y - rightImage.keypoints[m.trainIdx].pt.y) < yDif && abs(leftImage.keypoints[m.queryIdx].pt.x - rightImage.keypoints[m.trainIdx].pt.x) < 20)
+    if (abs(leftImage.keypoints[m.queryIdx].pt.y - rightImage.keypoints[m.trainIdx].pt.y) < yDif && abs(leftImage.keypoints[m.queryIdx].pt.x - rightImage.keypoints[m.trainIdx].pt.x) < xDif)
       good_matches.push_back(m);
   }
   return good_matches;
@@ -1227,6 +1231,191 @@ void FeatureDrawer::ceresSolver(std::vector<cv::DMatch>& matches, const cv::Mat&
   
 }
 
+int RobustMatcher::ratioTest(std::vector<std::vector<cv::DMatch>>& matches) {
+  int removed=0;
+  // for all matches
+  for (std::vector<std::vector<cv::DMatch>>::iterator
+  matchIterator= matches.begin();
+  matchIterator!= matches.end(); ++matchIterator) 
+  {
+    // if 2 NN has been identified
+    if (matchIterator->size() > 1) {
+    // check distance ratio
+    if ((*matchIterator)[0].distance/
+    (*matchIterator)[1].distance > ratio) 
+    {
+      matchIterator->clear(); // remove match
+      removed++;
+    }
+    } 
+    else 
+    { // does not have 2 neighbours
+      matchIterator->clear(); // remove match
+      removed++;
+    }
+  }
+  return removed;
+ }
+
+void RobustMatcher::symmetryTest(const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches) 
+{
+  // for all matches image 1 -> image 2
+  for (std::vector<std::vector<cv::DMatch>>::const_iterator matchIterator1= matches1.begin();matchIterator1!= matches1.end(); ++matchIterator1) 
+  {
+    // ignore deleted matches
+    if (matchIterator1->size() < 2)
+    continue;
+    // for all matches image 2 -> image 1
+    for (std::vector<std::vector<cv::DMatch>>::const_iterator matchIterator2= matches2.begin();matchIterator2!= matches2.end(); ++matchIterator2) 
+    {
+      // ignore deleted matches
+      if (matchIterator2->size() < 2)
+      continue;
+      // Match symmetry test
+      if ((*matchIterator1)[0].queryIdx ==
+      (*matchIterator2)[0].trainIdx &&
+      (*matchIterator2)[0].queryIdx ==
+      (*matchIterator1)[0].trainIdx) 
+      {
+        // add symmetrical match
+        symMatches.push_back(
+        cv::DMatch((*matchIterator1)[0].queryIdx,
+        (*matchIterator1)[0].trainIdx,
+        (*matchIterator1)[0].distance));
+        break; // next match in image 1 -> image 2
+      }
+    }
+  }
+ }
+
+cv::Mat RobustMatcher::match(cv::Mat& image1,cv::Mat& image2, std::vector<cv::DMatch>& matches,std::vector<cv::KeyPoint>& keypoints1,std::vector<cv::KeyPoint>& keypoints2) 
+ {
+  // 1a. Detection of the SURF features
+  detector->detect(image1,keypoints1);
+  detector->detect(image2,keypoints2);
+  // 1b. Extraction of the SURF descriptors
+  cv::Mat descriptors1, descriptors2;
+  detector->compute(image1,keypoints1,descriptors1);
+  detector->compute(image2,keypoints2,descriptors2);
+  // 2. Match the two image descriptors
+  // Construction of the matcher
+  // cv::BruteForceMatcher<cv::L2<float>> matcher;
+  auto matcher = cv::BFMatcher::create(cv::NORM_HAMMING, false);
+  // from image 1 to image 2
+  // based on k nearest neighbours (with k=2)
+  std::vector<std::vector<cv::DMatch>> matches1;
+  matcher->knnMatch(descriptors1,descriptors2,matches1, 2); // return 2 nearest neighbours
+  // from image 2 to image 1
+  // based on k nearest neighbours (with k=2)
+  std::vector<std::vector<cv::DMatch>> matches2;
+  matcher->knnMatch(descriptors2,descriptors1,matches2, 2); // return 2 nearest neighbours
+
+  int removed = ratioTest(matches1);
+  removed= ratioTest(matches2);
+  // 4. Remove non-symmetrical matches
+  std::vector<cv::DMatch> symMatches;
+  symmetryTest(matches1,matches2,symMatches);
+  // 5. Validate matches using RANSAC
+  cv::Mat fundemental= ransacTest(symMatches,
+  keypoints1, keypoints2, matches);
+  // return the found fundemental matrix
+  return fundemental;
+ }
+
+cv::Mat RobustMatcher::ransacTest(const std::vector<cv::DMatch>& matches,const std::vector<cv::KeyPoint>& keypoints1,const std::vector<cv::KeyPoint>& keypoints2,std::vector<cv::DMatch>& outMatches) 
+ {
+  // Convert keypoints into Point2f
+  std::vector<cv::Point2f> points1, points2;
+  for (std::vector<cv::DMatch>::const_iterator it= matches.begin();it!= matches.end(); ++it) 
+  {
+    // Get the position of left keypoints
+    float x= keypoints1[it->queryIdx].pt.x;
+    float y= keypoints1[it->queryIdx].pt.y;
+    points1.push_back(cv::Point2f(x,y));
+    // Get the position of right keypoints
+    x= keypoints2[it->trainIdx].pt.x;
+    y= keypoints2[it->trainIdx].pt.y;
+    points2.push_back(cv::Point2f(x,y));
+  }
+  // Compute F matrix using RANSAC
+  std::vector<uchar> inliers(points1.size(),0);
+  cv::Mat fundemental= cv::findFundamentalMat(cv::Mat(points1),cv::Mat(points2), inliers, cv::FM_RANSAC,1.0, 0.98); // confidence probability
+  // extract the surviving (inliers) matches
+  std::vector<uchar>::const_iterator itIn= inliers.begin();
+  std::vector<cv::DMatch>::const_iterator itM= matches.begin();
+  // for all matches
+  for ( ;itIn!= inliers.end(); ++itIn, ++itM) 
+  {
+    if (*itIn) { // it is a valid match
+      outMatches.push_back(*itM);
+    }
+  }
+  if (true) 
+  {
+    // The F matrix will be recomputed with
+    // all accepted matches
+    // Convert keypoints into Point2f
+    // for final F computation
+    points1.clear();
+    points2.clear();
+    for (std::vector<cv::DMatch>::const_iterator it= outMatches.begin();it!= outMatches.end(); ++it) 
+    {
+      // Get the position of left keypoints
+      float x= keypoints1[it->queryIdx].pt.x;
+      float y= keypoints1[it->queryIdx].pt.y;
+      points1.push_back(cv::Point2f(x,y));
+      // Get the position of right keypoints
+      x= keypoints2[it->trainIdx].pt.x;
+      y= keypoints2[it->trainIdx].pt.y;
+      points2.push_back(cv::Point2f(x,y));
+    }
+    // Compute 8-point F from all accepted matches
+    fundemental= cv::findFundamentalMat(cv::Mat(points1),cv::Mat(points2), cv::FM_8POINT); // 8-point method
+  }
+  return fundemental;
+ }
+
+std::vector<cv::DMatch> FeatureDrawer::matchFund(Features& firstImage, Features& secondImage, bool LR)
+{
+  auto matcher = cv::BFMatcher::create(cv::NORM_HAMMING, false);
+  std::vector< std::vector < cv::DMatch > > knnmatches;
+  matcher->knnMatch(firstImage.descriptors, secondImage.descriptors, knnmatches, 2);
+  std::vector <cv::DMatch> matches = loweRatioTest(knnmatches);
+
+  // find fund funct
+  std::vector < cv::Point2f > points1, points2;
+  for (auto m:matches)
+  {
+    points1.push_back(firstImage.keypoints[m.queryIdx].pt);
+    points2.push_back(secondImage.keypoints[m.trainIdx].pt);
+  }
+  std::vector<uchar> inliers(points1.size(),0);
+  cv::Mat fund = cv::findFundamentalMat(cv::Mat(points1), cv::Mat(points2), inliers, cv::FM_RANSAC, 3, 0.99);
+  // extract the surviving (inliers) matches
+  std::vector<uchar>::const_iterator itIn= inliers.begin();
+  std::vector<cv::DMatch>::const_iterator itM= matches.begin();
+  std::vector <cv::DMatch> outMatches;
+  // for all matches
+  for ( ;itIn!= inliers.end(); ++itIn, ++itM) 
+  {
+    if (*itIn) 
+    { // it is a valid match
+     outMatches.push_back(*itM);
+    }
+ }
+  drawFeatureMatches(outMatches, firstImage, secondImage);
+  return outMatches;
+}
+
+std::vector<cv::DMatch> FeatureDrawer::matchFundTrial(Features& firstImage, Features& secondImage, bool LR)
+{
+  std::vector<cv::DMatch> matches;
+  cv::Mat fundemental = rmatcher.match(firstImage.image,secondImage.image,matches, firstImage.keypoints, secondImage.keypoints);
+  drawFeatureMatches(matches, firstImage, secondImage);
+  std::cout << "matches size : " << matches.size() << '\n';
+  return matches;
+}
+
 void FeatureDrawer::again()
 {
   // Get Features of Each Image
@@ -1244,9 +1433,19 @@ void FeatureDrawer::again()
   std::vector < cv::DMatch > goodMatches = matchesWithGrids(leftImage, rightImage,rows,cols,true);
   if (!firstImage)
   {
-    std::vector < cv::DMatch > goodMatchesPrev = matchesWithGridsPrev(previousLeftImage, leftImage,rows,cols,true);
-    featuresMatched.clear();
-    std::cout << "matches prev : " << goodMatchesPrev.size() << '\n';
+    // auto matcher = cv::BFMatcher::create(cv::NORM_HAMMING, false);
+    // std::vector< std::vector < cv::DMatch > > knnmatches;
+    // matcher->knnMatch(leftImage.descriptors, previousLeftImage.descriptors, knnmatches, 2);
+    // std::vector < cv::DMatch> matches;
+    // matches = loweRatioTest(knnmatches);
+    // // std::vector < cv::DMatch > goodMatchesPrev = matchesWithGridsPrev(previousLeftImage, leftImage,rows,cols,true);
+    // std::vector < cv::DMatch > goodMatchesPrev = removeOutliersMatch(matches, leftImage, previousLeftImage, false);
+    // drawFeatureMatches(goodMatchesPrev, leftImage, previousLeftImage);
+
+    // featuresMatched.clear();
+    // std::cout << "matches prev : " << goodMatchesPrev.size() << '\n';
+    std::vector < cv::DMatch > matchesl = matchFundTrial(leftImage, previousLeftImage, true);
+    // std::cout << "matches size : " << ma.size() << '\n';
   }
 
   // for (auto lel:leftImage.indicesOfGrids)

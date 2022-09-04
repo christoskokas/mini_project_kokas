@@ -59,6 +59,29 @@ class PointsWithIndexes
  * 
  */
 
+class RobustMatcher {
+ private:
+    // pointer to the feature point detector object
+    cv::Ptr<cv::FeatureDetector> detector;
+    // pointer to the feature descriptor extractor object
+    // cv::Ptr<cv::DescriptorExtractor> extractor;
+    float ratio; // max ratio between 1st and 2nd NN
+    bool refineF; // if true will refine the F matrix
+    double distance; // min distance to epipolar
+    double confidence; // confidence level (probability)
+ public:
+    RobustMatcher() : ratio(0.85f), refineF(false),
+    confidence(0.99), distance(3.0) 
+    {
+        detector = cv::ORB::create();
+        // extractor = cv::ORB::create();
+    }
+    cv::Mat match(cv::Mat& image1,cv::Mat& image2, std::vector<cv::DMatch>& matches,std::vector<cv::KeyPoint>& keypoints1,std::vector<cv::KeyPoint>& keypoints2);
+    cv::Mat ransacTest(const std::vector<cv::DMatch>& matches,const std::vector<cv::KeyPoint>& keypoints1,const std::vector<cv::KeyPoint>& keypoints2,std::vector<cv::DMatch>& outMatches);
+    void symmetryTest(const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches);
+    int ratioTest(std::vector<std::vector<cv::DMatch>>& matches);
+};
+
 class Features
 {
     private:
@@ -114,6 +137,7 @@ class FeatureDrawer
         bool firstImage {true};
         ros::Time prevTime;
     public:
+        RobustMatcher rmatcher;
         Features leftImage;
         int count = 0;
         Features rightImage;
@@ -127,6 +151,8 @@ class FeatureDrawer
         Eigen::Matrix4d previousT = Eigen::Matrix4d::Identity();
         void addIndexToMatch(int row, int col, int rows, int cols, std::vector <int>& indices, cv::DMatch& m);
         void addMatRows(std::vector < cv::Mat >& descriptorsGrids, int index, cv::Mat& descriptor);
+        std::vector<cv::DMatch> matchFund(Features& firstImage, Features& secondImage, bool LR);
+        std::vector<cv::DMatch> matchFundTrial(Features& firstImage, Features& secondImage, bool LR);
         std::vector<cv::DMatch> matchWithGridsUsingMask(Features& firstImage, Features& secondImage, int row, int col, int rows, int cols, bool LR);
         std::vector<cv::DMatch> matchEachGrid(Features& firstImage, Features& secondImage, int row, int col, int rows, int cols, bool LR);
         std::vector<cv::DMatch> matchEachGridPrev(Features& firstImage, Features& secondImage, int row, int col, int rows, int cols, bool LR);
