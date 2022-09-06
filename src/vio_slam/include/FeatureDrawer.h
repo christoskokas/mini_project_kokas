@@ -149,6 +149,8 @@ class FeatureDrawer
         double camera[6];
         Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d previousT = Eigen::Matrix4d::Identity();
+        void publishImage(cv::Mat& image, const std_msgs::Header& header);
+        void findDisparity(cv::Mat& lImage, cv::Mat& rImage, cv::Mat& disparity);
         void addIndexToMatch(int row, int col, int rows, int cols, std::vector <int>& indices, cv::DMatch& m);
         void addMatRows(std::vector < cv::Mat >& descriptorsGrids, int index, cv::Mat& descriptor);
         std::vector<cv::DMatch> matchFund(Features& firstImage, Features& secondImage, bool LR);

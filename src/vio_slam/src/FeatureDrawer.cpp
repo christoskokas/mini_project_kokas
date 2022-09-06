@@ -304,14 +304,14 @@ std::vector<cv::DMatch> Features::getMatches(Features& secondImage, image_transp
 
 void Features::getDescriptors(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
 {
-  cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(75,1.2f,8,30, 0, 2, cv::ORB::HARRIS_SCORE,30);
+  cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(75,1.2f,8,10, 0, 2, cv::ORB::HARRIS_SCORE,30);
   detector->compute(image, keypoints, descriptors);
   // 48 is rows*cols from function again()
-  for (size_t iii = 0; iii < 48; iii++)
-  {
-    cv::Mat temp = descriptors(cv::Range(indicesOfGrids[iii],indicesOfGrids[iii + 1]),cv::Range::all());
-    descriptorsGrids.push_back(temp);
-  }
+  // for (size_t iii = 0; iii < 48; iii++)
+  // {
+  //   cv::Mat temp = descriptors(cv::Range(indicesOfGrids[iii],indicesOfGrids[iii + 1]),cv::Range::all());
+  //   descriptorsGrids.push_back(temp);
+  // }
   
 }
 
@@ -331,10 +331,10 @@ std::vector< cv::KeyPoint > Features::featuresAdaptiveThreshold(cv::Mat& patch, 
   for (size_t iii = 0; iii < iterations; iii++)
   {
     int numbOfFeatures = 100;
-    int numbNeeded = 30;
+    int numbNeeded = 25;
     int edgeThreshold = 0;
     findORBFeatures(patch, tempkeys, numbOfFeatures, edgeThreshold, fastThreshold);
-    if (tempkeys.size() >=(numbNeeded-5))
+    if (tempkeys.size() >= numbNeeded)
     {
       cv::KeyPointsFilter::retainBest(tempkeys, numbNeeded);
       // std::cout << "fast : " << fastThreshold << " size : " << tempkeys.size() << '\n';
@@ -358,7 +358,7 @@ void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImage
   // separate image to grid for homogeneity of features
 
   // Crop image 30 pixels round to have 0 edge threshold
-  const int edgeThreshold = 30; 
+  const int edgeThreshold = 10; 
   cv::Mat croppedImage;
   {
     cv::Rect crop(edgeThreshold, edgeThreshold, image.cols - 2*edgeThreshold, image.rows - 2*edgeThreshold);
@@ -371,6 +371,8 @@ void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImage
     {
       int grid[2] {iii, jjj};
       cv::Size imgSize = cv::Size(croppedImage.cols/cols,croppedImage.rows/rows);
+      // std::cout << "height : " << imgSize.height << " width : " << imgSize.width << '\n';
+
       cv::Mat patch = gridBasedFeatures(croppedImage, grid, imgSize);
       std::vector< cv::KeyPoint > tempkeys = featuresAdaptiveThreshold(patch);
       keypointsGrids.push_back(tempkeys);
@@ -509,7 +511,6 @@ cv::Mat Features::gridBasedFeatures(cv::Mat croppedImage, const int grid[2], cv:
   cv::Mat patch =  croppedImage(crop);
   return patch;
 }
-  
 
 void Features::findORBFeatures(cv::Mat& image, std::vector< cv::KeyPoint >& keypoints, int numbOfFeatures, int edgeThreshold, int fastThreshold)
 {
@@ -1416,13 +1417,35 @@ std::vector<cv::DMatch> FeatureDrawer::matchFundTrial(Features& firstImage, Feat
   return matches;
 }
 
+void FeatureDrawer::publishImage(cv::Mat& image, const std_msgs::Header& header)
+{
+  cv_bridge::CvImage out_msg;
+  out_msg.header   = header; // Same timestamp and tf frame as input image
+  out_msg.encoding = sensor_msgs::image_encodings::MONO16; // Or whatever
+  out_msg.image    = image; // Your cv::Mat
+  mImageMatches.publish(out_msg.toImageMsg());
+}
+
+void FeatureDrawer::findDisparity(cv::Mat& lImage, cv::Mat& rImage, cv::Mat& disparity)
+{
+  int minDisparity = 0;
+  int numDisparities = 32;
+  int block = 11;
+  int P1 = block * block * 8;
+  int P2 = block * block * 32;
+  auto sgbm = cv::StereoSGBM::create(minDisparity, numDisparities, block, P1, P2);
+  sgbm->compute(lImage, rImage, disparity);
+}
+
 void FeatureDrawer::again()
 {
   // Get Features of Each Image
+  // int rows {zedcamera->mHeight/10};
+  // int cols {zedcamera->mWidth/10};
   int rows {6};
   int cols {8};
   bool LR {true};
-
+  // std::cout << "rows :W " << rows << " cols : " << cols << '\n';
   leftImage.getFeatures(rows, cols, mImageMatches, true);
   rightImage.getFeatures(rows, cols, mImageMatches, false);
 
@@ -1431,6 +1454,9 @@ void FeatureDrawer::again()
   leftImage.getDescriptors(leftImage.image, leftImage.keypoints, leftImage.descriptors);
   rightImage.getDescriptors(rightImage.image, rightImage.keypoints, rightImage.descriptors);
   std::vector < cv::DMatch > goodMatches = matchesWithGrids(leftImage, rightImage,rows,cols,true);
+  cv::Mat disparity;
+  // findDisparity(leftImage.image, rightImage.image, disparity);
+  // publishImage(disparity, leftImage.header);
   if (!firstImage)
   {
     // auto matcher = cv::BFMatcher::create(cv::NORM_HAMMING, false);
