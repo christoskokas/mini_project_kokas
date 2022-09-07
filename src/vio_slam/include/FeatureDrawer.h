@@ -92,7 +92,6 @@ class Features
         std::vector<bool> close;
         std::vector<bool> statusOfKeys;
         std::vector< cv::Mat > descriptorsGrids;
-        std::vector< std::vector < cv::KeyPoint > > keypointsGrids;
         std::vector< cv::KeyPoint > keypoints;
         std::vector< cv::KeyPoint > keypointsLR;
         std::vector< pcl::PointXYZ > pointsPosition;
@@ -123,8 +122,8 @@ class FeatureDrawer
     private:
         image_transport::ImageTransport m_it;
         image_transport::Publisher mImageMatches;
-        message_filters::Subscriber<sensor_msgs::Image> leftIm;
-        message_filters::Subscriber<sensor_msgs::Image> rightIm;
+        message_filters::Subscriber<sensor_msgs::Image> subLeftIm;
+        message_filters::Subscriber<sensor_msgs::Image> subRightIm;
         message_filters::Synchronizer<MySyncPolicy> img_sync;
         ros::Publisher pose_pub;
         float sums[3] {};
