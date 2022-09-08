@@ -46,13 +46,14 @@ add_service_files(
 )
 
 add_library(${PROJECT_NAME} SHARED
-src/VioSlam.cpp
 src/Camera.cpp
 src/FeatureDrawer.cpp
 src/Frame.cpp
+src/trial.cpp
 include/Camera.h
 include/FeatureDrawer.h
 include/Frame.h
+include/trial.h
 )
 
 ## Generate added messages and services
@@ -92,3 +93,6 @@ ${CERES_LIBRARIES}
 
 add_executable(VioSlam src/VioSlam.cpp)
 target_link_libraries(VioSlam ${PROJECT_NAME})
+
+add_executable(Trial src/trials.cpp)
+target_link_libraries(Trial ${PROJECT_NAME})

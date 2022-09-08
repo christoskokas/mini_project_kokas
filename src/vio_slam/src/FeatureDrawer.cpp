@@ -396,8 +396,10 @@ std::vector<cv::DMatch> Features::getMatches(Features& secondImage, image_transp
 
 void Features::getDescriptors(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
 {
-  cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(1250,1.2f,8,10, 0, 2, cv::ORB::HARRIS_SCORE,30);
+  cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(1250,1.2f,8,0, 0, 2, cv::ORB::HARRIS_SCORE,30);
+  // std::cout << "size : " << keypoints.size() << '\n';
   detector->compute(image, keypoints, descriptors);
+  // std::cout << "size after : " << keypoints.size() << '\n';
 }
 
 
@@ -443,8 +445,9 @@ void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImage
   // separate image to grid for homogeneity of features
 
   // Crop image 30 pixels round to have 0 edge threshold
-  const int edgeThreshold = 10; 
-  cv::Mat croppedImage = image.rowRange(edgeThreshold,image.rows - 2*edgeThreshold).colRange(edgeThreshold, image.cols - 2*edgeThreshold);
+  const int edgeThreshold = 0; 
+  cv::Mat croppedImage = image;
+  // cv::Mat croppedImage = image.rowRange(edgeThreshold,image.rows - edgeThreshold).colRange(edgeThreshold, image.cols - edgeThreshold);
   // cv::Mat croppedImage = image(cv::Rect(edgeThreshold, edgeThreshold, image.cols - 2*edgeThreshold, image.rows - 2*edgeThreshold));
   // {
   //   cv::Rect crop(edgeThreshold, edgeThreshold, image.cols - 2*edgeThreshold, image.rows - 2*edgeThreshold);
@@ -461,21 +464,25 @@ void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImage
 
       // cv::Mat patch = gridBasedFeatures(croppedImage, grid, imgSize);
       cv::Mat patch = croppedImage.rowRange(iii*imgSize.height, (iii+1)*imgSize.height).colRange(jjj*imgSize.width, (jjj+1)*imgSize.width);
+      // std::cout << "size : " << patch.rows << " cols " << patch.cols << '\n' << "iii*imgSize.height " << iii*imgSize.height << " jjj*imgSize.width " << jjj*imgSize.width << '\n';
       // cv::Mat patch = croppedImage(cv::Rect(jjj*imgSize.width, iii*imgSize.height, imgSize.width, imgSize.height));
       // std::vector< cv::KeyPoint > tempkeys = featuresAdaptiveThreshold(patch);
       std::vector< cv::KeyPoint > tempkeys;
-      cv::FAST(patch,tempkeys,15,true);
+      findORBFeatures(patch,tempkeys,10,edgeThreshold, 15);
+      // cv::FAST(patch,tempkeys,10,true);
       if(tempkeys.empty())
       {
-        cv::FAST(patch,tempkeys,10,true);
+        findORBFeatures(patch,tempkeys,10,edgeThreshold, 10);
+        // cv::FAST(patch,tempkeys,5,true);
       }
       if(!tempkeys.empty())
       {
+        // better one for loop that inserts the one by one the keypoints
         std::for_each(tempkeys.begin(),tempkeys.end(), [&](cv::KeyPoint &n){n.pt.x +=jjj*imgSize.width + edgeThreshold;
                                                                             n.pt.y +=iii*imgSize.height + edgeThreshold;});
-        indicesOfGrids.push_back(keypoints.size());
         keypoints.insert(keypoints.end(),tempkeys.begin(),tempkeys.end());
       }
+      indicesOfGrids.push_back(keypoints.size());
       // if (left)
       //   std::cout << " indices " << iii*cols + jjj << " " << indicesOfGrids[iii*cols + jjj] << '\n';
       // if (iii == 2 && jjj == 5)
@@ -959,20 +966,26 @@ std::vector<cv::DMatch> FeatureDrawer::matchEachGrid(Features& firstImage, Featu
 {
   std::vector< std::vector < cv::DMatch > > knnmatches;
   cv::Mat firDesc, secDesc;
+  // std::cout << "  row*cols + col - 1 : " << row*cols + col - 1 << " row : " << row << " col :  " << col << '\n';
+  // std::cout << "indices  : " << secondImage.indicesOfGrids[row*cols + col + 1] << " kets size : " << secondImage.keypoints.size() << '\n';
   if (LR)
   {
     if (col > 0)
     {
-      secDesc = secondImage.descriptors(cv::Range(secondImage.indicesOfGrids[row*cols + col - 1],secondImage.indicesOfGrids[row*cols + col + 1]),cv::Range::all());
+      secDesc = secondImage.descriptors.rowRange(secondImage.indicesOfGrids[row*cols + col - 1],secondImage.indicesOfGrids[row*cols + col + 1]).colRange(cv::Range::all());
+      // secDesc = secondImage.descriptors(cv::Range(secondImage.indicesOfGrids[row*cols + col - 1],secondImage.indicesOfGrids[row*cols + col + 1]),cv::Range::all());
     }
     else
     {
-      secDesc = secondImage.descriptors(cv::Range(secondImage.indicesOfGrids[row*cols + col],secondImage.indicesOfGrids[row*cols + col + 1]),cv::Range::all());
+      secDesc = secondImage.descriptors.rowRange(secondImage.indicesOfGrids[row*cols + col],secondImage.indicesOfGrids[row*cols + col + 1]).colRange(cv::Range::all());
+      // secDesc = secondImage.descriptors(cv::Range(secondImage.indicesOfGrids[row*cols + col],secondImage.indicesOfGrids[row*cols + col + 1]),cv::Range::all());
     }
   }
-  firDesc = firstImage.descriptors(cv::Range(firstImage.indicesOfGrids[row*cols + col],firstImage.indicesOfGrids[row*cols + col + 1]),cv::Range::all());
+  // std::cout << "indices size : " << firstImage.indicesOfGrids.size() << " row*cols + col + 1 : " << row*cols + col + 1 << '\n';
+  // std::cout << "indices  : " << firstImage.indicesOfGrids[row*cols + col + 1] << " kets size : " << firstImage.keypoints.size() << '\n';
+  firDesc = firstImage.descriptors.rowRange(firstImage.indicesOfGrids[row*cols + col],firstImage.indicesOfGrids[row*cols + col + 1]).colRange(cv::Range::all());
+  // firDesc = firstImage.descriptors(cv::Range(firstImage.indicesOfGrids[row*cols + col],firstImage.indicesOfGrids[row*cols + col + 1]),cv::Range::all());
   // secDesc = secondImage.descriptors(cv::Range(secondImage.indicesOfGrids[row*cols + col],secondImage.indicesOfGrids[row*cols + col + 1]),cv::Range::all());
-  // std::cout << "  row*cols + col - 1 : " << row*cols + col - 1 << " row : " << row << " col :  " << col << '\n';
   // std::cout << " secDesc    rows : " << secDesc.rows << " cols : " << secDesc.cols << '\n';
   // std::cout << " secDesc    rows : " << firstImage.descriptors.rows << " cols : " << firstImage.descriptors.cols << '\n';
   // std::cout << " firDesc    rows : " << firDesc.rows << " cols : " << firDesc.cols << '\n';
@@ -1543,6 +1556,7 @@ void FeatureDrawer::again()
   // Get Features of Each Image
   int rows {zedcamera->mHeight/40};
   int cols {zedcamera->mWidth/40};
+  std::cout << "rows : " << rows << " cols : " << cols << '\n';
   // int rows {6};
   // int cols {8};
   bool LR {true};
@@ -1588,10 +1602,11 @@ void FeatureDrawer::again()
   // }
   // detector->compute(leftImage.image, leftImage.keypoints, leftImage.descriptors);
   // detector->compute(rightImage.image, rightImage.keypoints, rightImage.descriptors);
-  // leftImage.getDescriptors(leftImage.image, leftImage.keypoints, leftImage.descriptors);
-  // rightImage.getDescriptors(rightImage.image, rightImage.keypoints, rightImage.descriptors);
-  // std::vector < cv::DMatch > goodMatches = matchesWithGrids(leftImage, rightImage,rows,cols,true);
-  std::vector < cv::DMatch > goodMatches = matchFundTrial(leftImage, rightImage, true);
+  leftImage.getDescriptors(leftImage.image, leftImage.keypoints, leftImage.descriptors);
+  rightImage.getDescriptors(rightImage.image, rightImage.keypoints, rightImage.descriptors);
+  std::cout << "passed\n";
+  std::vector < cv::DMatch > goodMatches = matchesWithGrids(leftImage, rightImage,rows,cols,true);
+  // std::vector < cv::DMatch > goodMatches = matchFundTrial(leftImage, rightImage, true);
   drawFeatureMatches(goodMatches, leftImage, rightImage);
   std::cout << "LR matches size : " << goodMatches.size() << '\n';
 
