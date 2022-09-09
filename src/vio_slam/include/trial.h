@@ -44,21 +44,23 @@ class RobustMatcher {
     {
         std::string imagePath = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/city.jpg";
         image = cv::imread(imagePath,cv::IMREAD_COLOR);
-        if(image.empty())
-        {
-            std::cout << "Could not read the image: " << imagePath << std::endl;
-        }
+        assert(!image.empty() && "Could not read the image");
         cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
-        std::vector<cv::KeyPoint> keypoints;
+        std::vector<cv::KeyPoint> keypoints, keypointsAdaptive;
         findFeatures(image, keypoints);
-        cv::Mat out_image;
-        cv::drawKeypoints(image, keypoints,out_image);
-        cv::imshow("keys", out_image);
+        cv::Mat fastImage;
+        cv::drawKeypoints(image, keypoints,fastImage);
+        cv::imshow("fast", fastImage);
+        findFeaturesAdaptive(image, keypointsAdaptive);
+        cv::Mat fastAdaptiveImage;
+        cv::drawKeypoints(image, keypoints,fastAdaptiveImage);
+        cv::imshow("fast with grids and adaptive", fastAdaptiveImage);
         cv::waitKey(0);
         // detector = cv::ORB::create();
         // extractor = cv::ORB::create();
     }
     void findFeatures(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
+    void findFeaturesAdaptive(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     cv::Mat match(cv::Mat& image1,cv::Mat& image2, std::vector<cv::DMatch>& matches,std::vector<cv::KeyPoint>& keypoints1,std::vector<cv::KeyPoint>& keypoints2);
     cv::Mat ransacTest(const std::vector<cv::DMatch>& matches,const std::vector<cv::KeyPoint>& keypoints1,const std::vector<cv::KeyPoint>& keypoints2,std::vector<cv::DMatch>& outMatches);
     void symmetryTest(const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches);

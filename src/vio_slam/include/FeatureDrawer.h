@@ -87,6 +87,7 @@ class Features
     private:
 
     public:
+        cv::Mat realImage;
         cv::Mat image;
         cv::Mat descriptors;
         std::vector<bool> close;

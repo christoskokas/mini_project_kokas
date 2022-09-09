@@ -468,12 +468,12 @@ void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImage
       // cv::Mat patch = croppedImage(cv::Rect(jjj*imgSize.width, iii*imgSize.height, imgSize.width, imgSize.height));
       // std::vector< cv::KeyPoint > tempkeys = featuresAdaptiveThreshold(patch);
       std::vector< cv::KeyPoint > tempkeys;
-      findORBFeatures(patch,tempkeys,10,edgeThreshold, 15);
-      // cv::FAST(patch,tempkeys,10,true);
+      // findORBFeatures(patch,tempkeys,10,edgeThreshold, 15);
+      cv::FAST(patch,tempkeys,15,true);
       if(tempkeys.empty())
       {
-        findORBFeatures(patch,tempkeys,10,edgeThreshold, 10);
-        // cv::FAST(patch,tempkeys,5,true);
+        // findORBFeatures(patch,tempkeys,10,edgeThreshold, 10);
+        cv::FAST(patch,tempkeys,10,true);
       }
       if(!tempkeys.empty())
       {
@@ -717,7 +717,7 @@ std::vector < cv::Point2f> Features::opticalFlow(Features& prevImage, image_tran
 
 void FeatureDrawer::drawFeatureMatches(const std::vector<cv::DMatch>& matches, const Features& firstImage, const Features& secondImage)
 {
-  cv::Mat img_matches = firstImage.image.clone();
+  cv::Mat img_matches = firstImage.realImage.clone();
   // drawMatches( firstImage.image, firstImage.keypoints, secondImage.image, secondImage.keypoints, matches, img_matches, cv::Scalar::all(-1),
             // cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
   for (auto m:matches)
@@ -2082,8 +2082,8 @@ void Features::setImage(const sensor_msgs::ImageConstPtr& imageRef)
     {
       ROS_ERROR("cv_bridge exception: %s", e.what());
     }
-    // cv::cvtColor(cv_ptr->image, image, cv::COLOR_BGR2GRAY);
-    image = cv_ptr->image.clone();
+    cv::cvtColor(cv_ptr->image, image, cv::COLOR_BGR2GRAY);
+    realImage = cv_ptr->image.clone();
     header = cv_ptr->header;
 }
 
