@@ -90,6 +90,7 @@ class Features
         cv::Mat realImage;
         cv::Mat image;
         cv::Mat descriptors;
+        cv::Ptr<cv::FeatureDetector> detector;
         std::vector<bool> close;
         std::vector<bool> statusOfKeys;
         std::vector< cv::Mat > descriptorsGrids;
@@ -113,7 +114,7 @@ class Features
         std::vector<cv::DMatch> getMatches(Features& secondImage, image_transport::Publisher& mImageMatches, std::vector<cv::KeyPoint>& previousleftKeypoints, bool LR);
         void findFeaturesTrial();
         void clearFeatures();
-        void findORBFeatures(cv::Mat& image, std::vector< cv::KeyPoint >& keypoints, int numbOfFeatures, int edgeThreshold, int fastThreshold);
+        void findORBFeatures(cv::Mat& image, std::vector< cv::KeyPoint >& keypoints, int featuresPerCell, int edgeThreshold, int fastThreshold);
         void setImage(const sensor_msgs::ImageConstPtr& imageRef);
         std::vector<cv::DMatch> findMatches(Features& secondImage, const std_msgs::Header& lIm, image_transport::Publisher& mImageMatches, bool LR);
 };

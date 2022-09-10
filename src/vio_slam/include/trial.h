@@ -38,6 +38,11 @@ class RobustMatcher {
     bool refineF; // if true will refine the F matrix
     double distance; // min distance to epipolar
     double confidence; // confidence level (probability)
+    int rows {5};
+    int cols {5};
+    int totalNumber {2000};
+    int numberPerCell {totalNumber/(rows*cols)};
+    int numberPerCellFind {2*totalNumber/(rows*cols)};
  public:
     RobustMatcher() : ratio(0.85f), refineF(false),
     confidence(0.99), distance(3.0) 
@@ -46,21 +51,56 @@ class RobustMatcher {
         image = cv::imread(imagePath,cv::IMREAD_COLOR);
         assert(!image.empty() && "Could not read the image");
         cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
-        std::vector<cv::KeyPoint> keypoints, keypointsAdaptive;
+        std::vector<cv::KeyPoint> keypoints;
+        clock_t fastStart = clock();
         findFeatures(image, keypoints);
+        clock_t fastTotalTime = double(clock() - fastStart) * 1000 / (double)CLOCKS_PER_SEC;
         cv::Mat fastImage;
-        cv::drawKeypoints(image, keypoints,fastImage);
-        cv::imshow("fast", fastImage);
-        findFeaturesAdaptive(image, keypointsAdaptive);
+        drawFeaturesWithLines(image, keypoints,fastImage);
+        std::cout << "fast size : " << keypoints.size() << '\n';
+        keypoints.clear();
+        cv::imshow("fast features", fastImage);
+        clock_t fastGridStart = clock();
+        findFeaturesAdaptive(image, keypoints);
+        clock_t fastGridTotalTime = double(clock() - fastGridStart) * 1000 / (double)CLOCKS_PER_SEC;
         cv::Mat fastAdaptiveImage;
-        cv::drawKeypoints(image, keypoints,fastAdaptiveImage);
-        cv::imshow("fast with grids and adaptive", fastAdaptiveImage);
+        drawFeaturesWithLines(image, keypoints,fastAdaptiveImage);
+        std::cout << "fast grid size : " << keypoints.size() << '\n';
+        keypoints.clear();
+        cv::imshow("fast features GRID", fastAdaptiveImage);
+        clock_t ORBStart = clock();
+        findFeaturesORB(image, keypoints);
+        clock_t ORBTotalTime = double(clock() - ORBStart) * 1000 / (double)CLOCKS_PER_SEC;
+        cv::Mat ORBImage;
+        drawFeaturesWithLines(image, keypoints,ORBImage);
+        std::cout << "ORB size : " << keypoints.size() << '\n';
+        keypoints.clear();
+        cv::imshow("ORB features", ORBImage);
+        clock_t ORBGridStart = clock();
+        findFeaturesORBAdaptive(image, keypoints);
+        clock_t ORBGridTotalTime = double(clock() - ORBGridStart) * 1000 / (double)CLOCKS_PER_SEC;
+        cv::Mat ORBAdaptiveImage;
+        drawFeaturesWithLines(image, keypoints,ORBAdaptiveImage);
+        std::cout << "ORB grid size : " << keypoints.size() << '\n';
+        keypoints.clear();
+        cv::imshow("ORB features GRID", ORBAdaptiveImage);
+        std::cout << "\nFast Features Time      : " << fastTotalTime        << " milliseconds." << '\n';
+        std::cout << "-------------------------\n";
+        std::cout << "\nFast Grid Features Time : " << fastGridTotalTime    << " milliseconds." << '\n';
+        std::cout << "-------------------------\n";
+        std::cout << "\nORB Features Time       : " << ORBTotalTime         << " milliseconds." << '\n';
+        std::cout << "-------------------------\n";
+        std::cout << "\nORB Grid Features Time  : " << ORBGridTotalTime     << " milliseconds." << '\n';
+        std::cout << "-------------------------\n";
         cv::waitKey(0);
         // detector = cv::ORB::create();
         // extractor = cv::ORB::create();
     }
+    void drawFeaturesWithLines(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& outImage);
     void findFeatures(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     void findFeaturesAdaptive(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
+    void findFeaturesORB(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
+    void findFeaturesORBAdaptive(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     cv::Mat match(cv::Mat& image1,cv::Mat& image2, std::vector<cv::DMatch>& matches,std::vector<cv::KeyPoint>& keypoints1,std::vector<cv::KeyPoint>& keypoints2);
     cv::Mat ransacTest(const std::vector<cv::DMatch>& matches,const std::vector<cv::KeyPoint>& keypoints1,const std::vector<cv::KeyPoint>& keypoints2,std::vector<cv::DMatch>& outMatches);
     void symmetryTest(const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches);
