@@ -26,12 +26,25 @@
 #include <tf/tf.h>
 #include <nav_msgs/Odometry.h>
 
+namespace vio_slam
+{
+
+
+class ImageFrame
+{
+    public:
+        cv::Mat image;
+};
 
 class RobustMatcher {
  private:
     // pointer to the feature point detector object
     cv::Ptr<cv::FeatureDetector> detector;
-    cv::Mat image;
+    cv::Mat image, P1, P2, Q, R1, R2;
+    cv::Mat rmap[2][2];
+    ImageFrame leftImage, rightImage;
+    clock_t start, total;
+    const Zed_Camera* zedcamera;
     // pointer to the feature descriptor extractor object
     // cv::Ptr<cv::DescriptorExtractor> extractor;
     float ratio; // max ratio between 1st and 2nd NN
@@ -44,67 +57,39 @@ class RobustMatcher {
     int numberPerCell {totalNumber/(rows*cols)};
     int numberPerCellFind {2*totalNumber/(rows*cols)};
  public:
-    RobustMatcher() : ratio(0.85f), refineF(false),
+    RobustMatcher(const Zed_Camera* zedptr) : ratio(0.85f), refineF(false),
     confidence(0.99), distance(3.0) 
     {
-        std::string imagePath = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/city.jpg";
-        image = cv::imread(imagePath,cv::IMREAD_COLOR);
-        assert(!image.empty() && "Could not read the image");
-        cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
-        std::vector<cv::KeyPoint> keypoints;
-        clock_t fastStart = clock();
-        findFeatures(image, keypoints);
-        clock_t fastTotalTime = double(clock() - fastStart) * 1000 / (double)CLOCKS_PER_SEC;
-        cv::Mat fastImage;
-        drawFeaturesWithLines(image, keypoints,fastImage);
-        std::cout << "fast size : " << keypoints.size() << '\n';
-        keypoints.clear();
-        cv::imshow("fast features", fastImage);
-        clock_t fastGridStart = clock();
-        findFeaturesAdaptive(image, keypoints);
-        clock_t fastGridTotalTime = double(clock() - fastGridStart) * 1000 / (double)CLOCKS_PER_SEC;
-        cv::Mat fastAdaptiveImage;
-        drawFeaturesWithLines(image, keypoints,fastAdaptiveImage);
-        std::cout << "fast grid size : " << keypoints.size() << '\n';
-        keypoints.clear();
-        cv::imshow("fast features GRID", fastAdaptiveImage);
-        clock_t ORBStart = clock();
-        findFeaturesORB(image, keypoints);
-        clock_t ORBTotalTime = double(clock() - ORBStart) * 1000 / (double)CLOCKS_PER_SEC;
-        cv::Mat ORBImage;
-        drawFeaturesWithLines(image, keypoints,ORBImage);
-        std::cout << "ORB size : " << keypoints.size() << '\n';
-        keypoints.clear();
-        cv::imshow("ORB features", ORBImage);
-        clock_t ORBGridStart = clock();
-        findFeaturesORBAdaptive(image, keypoints);
-        clock_t ORBGridTotalTime = double(clock() - ORBGridStart) * 1000 / (double)CLOCKS_PER_SEC;
-        cv::Mat ORBAdaptiveImage;
-        drawFeaturesWithLines(image, keypoints,ORBAdaptiveImage);
-        std::cout << "ORB grid size : " << keypoints.size() << '\n';
-        keypoints.clear();
-        cv::imshow("ORB features GRID", ORBAdaptiveImage);
-        std::cout << "\nFast Features Time      : " << fastTotalTime        << " milliseconds." << '\n';
-        std::cout << "-------------------------\n";
-        std::cout << "\nFast Grid Features Time : " << fastGridTotalTime    << " milliseconds." << '\n';
-        std::cout << "-------------------------\n";
-        std::cout << "\nORB Features Time       : " << ORBTotalTime         << " milliseconds." << '\n';
-        std::cout << "-------------------------\n";
-        std::cout << "\nORB Grid Features Time  : " << ORBGridTotalTime     << " milliseconds." << '\n';
-        std::cout << "-------------------------\n";
-        cv::waitKey(0);
-        // detector = cv::ORB::create();
-        // extractor = cv::ORB::create();
+        this->zedcamera = zedptr;
+        if (!zedcamera->rectified)
+        {
+            undistortMap();
+        }
+        testFeatureMatching();
+        
+        // testImageRectify();
+        // testFeatureExtraction();
     }
-    void drawFeaturesWithLines(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& outImage);
+
+    void getImage(cv::Mat& image, int frameNumber, const char* whichImage);
+
     void findFeatures(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     void findFeaturesAdaptive(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     void findFeaturesORB(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     void findFeaturesORBAdaptive(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
-    cv::Mat match(cv::Mat& image1,cv::Mat& image2, std::vector<cv::DMatch>& matches,std::vector<cv::KeyPoint>& keypoints1,std::vector<cv::KeyPoint>& keypoints2);
-    cv::Mat ransacTest(const std::vector<cv::DMatch>& matches,const std::vector<cv::KeyPoint>& keypoints1,const std::vector<cv::KeyPoint>& keypoints2,std::vector<cv::DMatch>& outMatches);
-    void symmetryTest(const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches);
-    int ratioTest(std::vector<std::vector<cv::DMatch>>& matches);
+    
+
+    void drawFeaturesWithLines(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& outImage);
+
+
+    void rectifyImage(cv::Mat& image, cv::Mat& map1, cv::Mat& map2);
+    void undistortMap();
+
+
+    void testImageRectify();
+    void testFeatureExtraction();
+    void testFeatureMatching();
 };
 
+} //namespace vio_slam
 #endif // TRIAL_H

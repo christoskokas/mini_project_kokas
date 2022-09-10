@@ -73,7 +73,7 @@ class RobustMatcher {
     RobustMatcher() : ratio(0.85f), refineF(false),
     confidence(0.99), distance(3.0) 
     {
-        detector = cv::ORB::create();
+        detector = cv::ORB::create(1500,1.2f,8,0,0,2,cv::ORB::HARRIS_SCORE,10, 10);
         // extractor = cv::ORB::create();
     }
     cv::Mat match(cv::Mat& image1,cv::Mat& image2, std::vector<cv::DMatch>& matches,std::vector<cv::KeyPoint>& keypoints1,std::vector<cv::KeyPoint>& keypoints2);
@@ -87,6 +87,9 @@ class Features
     private:
 
     public:
+        int separateRows {5};
+        int separateCols {5};
+        std::map<int,cv::KeyPoint> keyPointWithMap;
         cv::Mat realImage;
         cv::Mat image;
         cv::Mat descriptors;
@@ -95,6 +98,7 @@ class Features
         std::vector<bool> statusOfKeys;
         std::vector< cv::Mat > descriptorsGrids;
         std::vector< cv::KeyPoint > keypoints;
+        std::vector<std::vector< cv::KeyPoint > > keypointsGrids;
         std::vector< cv::KeyPoint > keypointsLR;
         std::vector< pcl::PointXYZ > pointsPosition;
         std::vector < cv::Point2f> inlierPoints;
@@ -148,8 +152,11 @@ class FeatureDrawer
         std::vector<cv::KeyPoint> previousleftKeypoints;
         std::vector < int > featuresMatched;
         double camera[6];
+        clock_t Start;
+        clock_t TotalTime;
         Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d previousT = Eigen::Matrix4d::Identity();
+        void fastMatch( Features& firstImage, Features& secondImage, std::vector<cv::DMatch>& matches, bool LR);
         void publishImage(cv::Mat& image, const std_msgs::Header& header);
         void findDisparity(cv::Mat& lImage, cv::Mat& rImage, cv::Mat& disparity);
         void addIndexToMatch(int row, int col, int rows, int cols, std::vector <int>& indices, cv::DMatch& m);

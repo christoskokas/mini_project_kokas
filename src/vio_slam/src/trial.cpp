@@ -1,5 +1,8 @@
 #include "trial.h"
 
+namespace vio_slam
+{
+
 void RobustMatcher::findFeatures(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints)
 {
     cv::FAST(image, keypoints,15,true);
@@ -89,4 +92,127 @@ void RobustMatcher::drawFeaturesWithLines(cv::Mat& image, std::vector<cv::KeyPoi
         
     }
     
+}
+
+void RobustMatcher::testFeatureExtraction()
+{
+    std::string imagePath = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/city.jpg";
+    image = cv::imread(imagePath,cv::IMREAD_COLOR);
+    assert(!image.empty() && "Could not read the image");
+    cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
+    std::vector<cv::KeyPoint> keypoints;
+    clock_t fastStart = clock();
+    findFeatures(image, keypoints);
+    clock_t fastTotalTime = double(clock() - fastStart) * 1000 / (double)CLOCKS_PER_SEC;
+    cv::Mat fastImage;
+    drawFeaturesWithLines(image, keypoints,fastImage);
+    std::cout << "fast size : " << keypoints.size() << '\n';
+    keypoints.clear();
+    cv::imshow("fast features", fastImage);
+    clock_t fastGridStart = clock();
+    findFeaturesAdaptive(image, keypoints);
+    clock_t fastGridTotalTime = double(clock() - fastGridStart) * 1000 / (double)CLOCKS_PER_SEC;
+    cv::Mat fastAdaptiveImage;
+    drawFeaturesWithLines(image, keypoints,fastAdaptiveImage);
+    std::cout << "fast grid size : " << keypoints.size() << '\n';
+    keypoints.clear();
+    cv::imshow("fast features GRID", fastAdaptiveImage);
+    clock_t ORBStart = clock();
+    findFeaturesORB(image, keypoints);
+    clock_t ORBTotalTime = double(clock() - ORBStart) * 1000 / (double)CLOCKS_PER_SEC;
+    cv::Mat ORBImage;
+    drawFeaturesWithLines(image, keypoints,ORBImage);
+    std::cout << "ORB size : " << keypoints.size() << '\n';
+    keypoints.clear();
+    cv::imshow("ORB features", ORBImage);
+    clock_t ORBGridStart = clock();
+    findFeaturesORBAdaptive(image, keypoints);
+    clock_t ORBGridTotalTime = double(clock() - ORBGridStart) * 1000 / (double)CLOCKS_PER_SEC;
+    cv::Mat ORBAdaptiveImage;
+    drawFeaturesWithLines(image, keypoints,ORBAdaptiveImage);
+    std::cout << "ORB grid size : " << keypoints.size() << '\n';
+    keypoints.clear();
+    cv::imshow("ORB features GRID", ORBAdaptiveImage);
+    std::cout << "\nFast Features Time      : " << fastTotalTime        << " milliseconds." << '\n';
+    std::cout << "-------------------------\n";
+    std::cout << "\nFast Grid Features Time : " << fastGridTotalTime    << " milliseconds." << '\n';
+    std::cout << "-------------------------\n";
+    std::cout << "\nORB Features Time       : " << ORBTotalTime         << " milliseconds." << '\n';
+    std::cout << "-------------------------\n";
+    std::cout << "\nORB Grid Features Time  : " << ORBGridTotalTime     << " milliseconds." << '\n';
+    std::cout << "-------------------------\n";
+    cv::waitKey(0);
+}
+
+void RobustMatcher::testFeatureMatching()
+{
+    std::cout << "-------------------------\n";
+    std::cout << "\n Feature Matching Trials \n";
+    std::cout << "-------------------------\n";
+    const int times = 1;
+    for (int frame = 0; frame < times; frame++)
+    {
+        start = clock();
+        getImage(leftImage.image, frame, "left");
+        getImage(rightImage.image, frame, "right");
+        rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
+        rectifyImage(rightImage.image,rmap[1][0],rmap[1][1]);
+
+
+
+
+
+
+
+
+
+        // cv::imshow("left Image Rectified", leftImage.image);
+        // cv::waitKey(0);
+        total = double(clock() - start) * 1000 / (double)CLOCKS_PER_SEC;
+        std::cout << "-------------------------\n";
+        std::cout << "\n Total Processing Time  : " << total  << " milliseconds." << '\n';
+        std::cout << "-------------------------\n";
+    }
+    
+}
+
+void RobustMatcher::getImage(cv::Mat& image, int frameNumber, const char* whichImage)
+{
+    std::string imagePath = std::string("/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/") + whichImage +std::string("/frame000") + std::to_string(frameNumber) + std::string(".jpg");
+    image = cv::imread(imagePath,cv::IMREAD_GRAYSCALE);
+}
+
+void RobustMatcher::testImageRectify()
+{
+    std::cout << "-------------------------\n";
+    std::cout << "\n Image Rectify Testing \n";
+    std::cout << "-------------------------\n";
+    std::string imagePath = std::string("/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/left/frame0000.jpg");
+    leftImage.image = cv::imread(imagePath,cv::IMREAD_GRAYSCALE);
+    cv::imshow("left Image", leftImage.image);
+    rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
+    cv::imshow("left Image Rectified", leftImage.image);
+    cv::waitKey(0);
+}
+
+void RobustMatcher::undistortMap()
+{
+    cv::Size imgSize = cv::Size(zedcamera->mWidth, zedcamera->mHeight);
+    cv::stereoRectify(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, imgSize, zedcamera->sensorsRotate, zedcamera->sensorsTranslate, R1, R2, P1, P2, Q);
+    cv::Mat leftCamera = cv::getOptimalNewCameraMatrix(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs,imgSize, 0);
+    cv::Mat rightCamera = cv::getOptimalNewCameraMatrix(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs,imgSize, 0);
+    cv::initUndistortRectifyMap(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, R1, leftCamera, imgSize, CV_32FC1, rmap[0][0], rmap[0][1]);
+    cv::initUndistortRectifyMap(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, R2, rightCamera, imgSize, CV_32FC1, rmap[1][0], rmap[1][1]);
+    std::cout << "P1 : \n";
+    std::cout << P1 << '\n';
+    std::cout << "P2 : \n";
+    std::cout << P2 << '\n';
+}
+
+void RobustMatcher::rectifyImage(cv::Mat& image, cv::Mat& map1, cv::Mat& map2)
+{
+    cv::remap(image, image, map1, map2, cv::INTER_LINEAR);
+}
+
+
 }

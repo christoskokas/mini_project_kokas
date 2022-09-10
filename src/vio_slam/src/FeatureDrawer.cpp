@@ -383,10 +383,14 @@ std::vector<cv::DMatch> Features::getMatches(Features& secondImage, image_transp
 
 void Features::getDescriptors(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
 {
-  detector = cv::ORB::create(1500,1.2f,8,10, 0, 2, cv::ORB::HARRIS_SCORE,10);
-  // std::cout << "size : " << keypoints.size() << '\n';
-  detector->compute(image, keypoints, descriptors);
-  // std::cout << "size after : " << keypoints.size() << '\n';
+  // detector = cv::ORB::create(1500,1.2f,8,0, 0, 2, cv::ORB::HARRIS_SCORE,30);
+  cv::Ptr<cv::FeatureDetector> comput = cv::ORB::create(1500,1.2f,8,0, 0, 2, cv::ORB::HARRIS_SCORE,10);
+  
+  // std::cout << "  " << keypoints[178].pt << '\n';
+  // std::cout << "keypoints size : " << keypoints.size() << '\n';
+  comput->compute(image, keypoints, descriptors);
+  // std::cout << "keypoints after : " << keypoints[178].pt << '\n';
+  // std::cout << "keypoints size after : " << keypoints.size() << '\n';
 }
 
 
@@ -430,7 +434,7 @@ std::vector< cv::KeyPoint > Features::featuresAdaptiveThreshold(cv::Mat& patch, 
 void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImageMatches, bool left)
 {
   // separate image to grid for homogeneity of features
-  const int totalFeatures = 1500;
+  const int totalFeatures = 7000;
   const int edgeThreshold = 10;
   const int featuresPerCell = totalFeatures/(rows*cols);
   const int featuresPerCellFind = 2*totalFeatures/(rows*cols);
@@ -458,6 +462,7 @@ void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImage
       }
       indicesOfGrids.push_back(keypoints.size());
       cv::KeyPointsFilter::retainBest(tempkeys,featuresPerCell);
+      // std::cout << "temp size : " << tempkeys.size() << " keys.size " << keypoints.size() << '\n';
       if(!tempkeys.empty())
       {
           for (auto key:tempkeys)
@@ -471,6 +476,7 @@ void Features::getFeatures(int rows, int cols,image_transport::Publisher& mImage
     
   }
   indicesOfGrids.push_back(keypoints.size());
+  cv::KeyPointsFilter::retainBest(keypoints,700);
   
   
 }
@@ -823,13 +829,19 @@ std::vector< cv::DMatch > FeatureDrawer::removeOutliersMatch(const std::vector< 
 {
   std::vector< cv::DMatch > good_matches;
   int yDif = 4;
-
+  int xDif = 80;
+  if (!LR)
+  {
+    xDif = 120;
+    yDif = 40;
+  }
   for (auto m:matches)
   {
-    if (abs(leftImage.keypoints[m.queryIdx].pt.y - rightImage.keypoints[m.trainIdx].pt.y) < yDif)
+    if (abs(leftImage.keypoints[m.queryIdx].pt.y - rightImage.keypoints[m.trainIdx].pt.y) < yDif && abs(leftImage.keypoints[m.queryIdx].pt.x - rightImage.keypoints[m.trainIdx].pt.x) < xDif)
       good_matches.push_back(m);
   }
   return good_matches;
+	
 }
 
 std::vector<cv::DMatch> FeatureDrawer::findMatches(Features& firstImage, Features& secondImage, bool LR)
@@ -928,13 +940,15 @@ std::vector<cv::DMatch> FeatureDrawer::matchEachGrid(Features& firstImage, Featu
   {
     if (col > 0)
     {
-      secDesc = secondImage.descriptors.rowRange(secondImage.indicesOfGrids[row*cols + col - 1],secondImage.indicesOfGrids[row*cols + col + 1]).colRange(cv::Range::all());
-      // secDesc = secondImage.descriptors(cv::Range(secondImage.indicesOfGrids[row*cols + col - 1],secondImage.indicesOfGrids[row*cols + col + 1]),cv::Range::all());
+      // secDesc = secondImage.descriptors.rowRange(secondImage.indicesOfGrids[row*cols + col - 1],secondImage.indicesOfGrids[row*cols + col + 1]).colRange(cv::Range::all());
+      secDesc = secondImage.descriptors(cv::Range(secondImage.indicesOfGrids[row*cols + col - 1],secondImage.indicesOfGrids[row*cols + col + 1]),cv::Range::all());
+      // std::cout << "Matching first Grid " << row*cols + col << " with " << row*cols + col - 1 << " and " << row*cols + col << " second Grid" << '\n';
     }
     else
     {
-      secDesc = secondImage.descriptors.rowRange(secondImage.indicesOfGrids[row*cols + col],secondImage.indicesOfGrids[row*cols + col + 1]).colRange(cv::Range::all());
-      // secDesc = secondImage.descriptors(cv::Range(secondImage.indicesOfGrids[row*cols + col],secondImage.indicesOfGrids[row*cols + col + 1]),cv::Range::all());
+      // secDesc = secondImage.descriptors.rowRange(secondImage.indicesOfGrids[row*cols + col],secondImage.indicesOfGrids[row*cols + col + 1]).colRange(cv::Range::all());
+      secDesc = secondImage.descriptors(cv::Range(secondImage.indicesOfGrids[row*cols + col],secondImage.indicesOfGrids[row*cols + col + 1]),cv::Range::all());
+      // std::cout << "Matching first Grid " << row*cols + col << " with " << row*cols + col << " second Grid" << '\n';
     }
   }
   // std::cout << "indices size : " << firstImage.indicesOfGrids.size() << " row*cols + col + 1 : " << row*cols + col + 1 << '\n';
@@ -942,21 +956,21 @@ std::vector<cv::DMatch> FeatureDrawer::matchEachGrid(Features& firstImage, Featu
   firDesc = firstImage.descriptors.rowRange(firstImage.indicesOfGrids[row*cols + col],firstImage.indicesOfGrids[row*cols + col + 1]).colRange(cv::Range::all());
   // firDesc = firstImage.descriptors(cv::Range(firstImage.indicesOfGrids[row*cols + col],firstImage.indicesOfGrids[row*cols + col + 1]),cv::Range::all());
   // secDesc = secondImage.descriptors(cv::Range(secondImage.indicesOfGrids[row*cols + col],secondImage.indicesOfGrids[row*cols + col + 1]),cv::Range::all());
-  // std::cout << " secDesc    rows : " << secDesc.rows << " cols : " << secDesc.cols << '\n';
+  // std::cout << row << " col " << col << " secDesc    rows : " << secDesc.rows << " cols : " << secDesc.cols << '\n';
   // std::cout << " secDesc    rows : " << firstImage.descriptors.rows << " cols : " << firstImage.descriptors.cols << '\n';
   // std::cout << " firDesc    rows : " << firDesc.rows << " cols : " << firDesc.cols << '\n';
   std::vector< cv::DMatch > matches;
   if (secDesc.rows != 0 && firDesc.rows != 0)
   {
     cv::Mat mask = cv::Mat::ones(firDesc.rows, secDesc.rows, CV_8U);
-    if (featuresMatched.size() > 0)
-    {
-      for (int it:featuresMatched)
-      {
-        // std::cout << "it : " << it << " rows : " << mask.rows << " cols : " << mask.cols << '\n';
-        mask.col(it) = 0;
-      }
-    }
+    // if (featuresMatched.size() > 0)
+    // {
+    //   for (int it:featuresMatched)
+    //   {
+    //     // std::cout << "it : " << it << " rows : " << mask.rows << " cols : " << mask.cols << '\n';
+    //     mask.col(it) = 0;
+    //   }
+    // }
     auto matcher = cv::BFMatcher::create(cv::NORM_HAMMING, false);
     // cv::Mat mask = cv::Mat::zeros(firDesc.rows, secDesc.rows, CV_8U);
     // std::cout << " mask    rows : " << mask.rows << " cols : " << mask.cols << '\n';
@@ -1023,7 +1037,8 @@ std::vector<cv::DMatch> FeatureDrawer::matchesWithGrids(Features& firstImage, Fe
         std::for_each(matches.begin(),matches.end(), [&](cv::DMatch &n){n.queryIdx += firstImage.indicesOfGrids[iii*cols + jjj];
                                                                         n.trainIdx += secondImage.indicesOfGrids[iii*cols + jjj];});
       }
-      std::vector < cv::DMatch > goodMatches = removeOutliersMatch(matches, firstImage, secondImage, true);
+      // std::vector < cv::DMatch > goodMatches = removeOutliersMatch(matches, firstImage, secondImage, true);
+      std::vector < cv::DMatch > goodMatches = matches;
       featuresMatched.clear();
       if (jjj < (cols - 1))
       {
@@ -1364,6 +1379,8 @@ cv::Mat RobustMatcher::match(cv::Mat& image1,cv::Mat& image2, std::vector<cv::DM
   cv::Mat descriptors1, descriptors2;
   detector->compute(image1,keypoints1,descriptors1);
   detector->compute(image2,keypoints2,descriptors2);
+
+  
   // 2. Match the two image descriptors
   // Construction of the matcher
   // cv::BruteForceMatcher<cv::L2<float>> matcher;
@@ -1374,32 +1391,16 @@ cv::Mat RobustMatcher::match(cv::Mat& image1,cv::Mat& image2, std::vector<cv::DM
   matcher.knnMatch(descriptors1,descriptors2,matches1, 2); // return 2 nearest neighbours
   // from image 2 to image 1
   // based on k nearest neighbours (with k=2)
-  // std::vector<std::vector<cv::DMatch>> matches2;
-  // matcher.knnMatch(descriptors2,descriptors1,matches2, 2); // return 2 nearest neighbours
+  std::vector<std::vector<cv::DMatch>> matches2;
+  matcher.knnMatch(descriptors2,descriptors1,matches2, 2); // return 2 nearest neighbours
 
   int removed = ratioTest(matches1);
-  // removed= ratioTest(matches2);
+  removed= ratioTest(matches2);
   // 4. Remove non-symmetrical matches
-  // std::vector<cv::DMatch> symMatches;
-  // symmetryTest(matches1,matches2,symMatches);
+  std::vector<cv::DMatch> symMatches;
+  symmetryTest(matches1,matches2,symMatches);
   // 5. Validate matches using RANSAC
-  std::vector< cv::DMatch > matches2;
-  for(size_t i = 0; i < matches1.size(); i++) 
-  {
-    if(matches1[i].size() >= 2)
-    {
-      cv::DMatch first = matches1[i][0];
-      float dist1 = matches1[i][0].distance;
-      float dist2 = matches1[i][1].distance;
-
-      if(dist1 < 0.8f * dist2) 
-      {
-        matches2.push_back(matches1[i][0]);
-      }
-    }
-
-  }
-  cv::Mat fundemental= ransacTest(matches2,
+  cv::Mat fundemental= ransacTest(symMatches,
   keypoints1, keypoints2, matches);
   // return the found fundemental matrix
   return fundemental;
@@ -1519,14 +1520,29 @@ void FeatureDrawer::findDisparity(cv::Mat& lImage, cv::Mat& rImage, cv::Mat& dis
   int block = 11;
   int P1 = block * block * 8;
   int P2 = block * block * 32;
-  auto sgbm = cv::StereoSGBM::create(minDisparity, numDisparities, block, P1, P2);
-  sgbm->compute(lImage, rImage, disparity);
+  auto bm = cv::StereoBM::create(160,7);
+  // auto sgbm = cv::StereoBM::create(minDisparity, numDisparities, block, P1, P2);
+  bm->compute(lImage, rImage, disparity);
+}
+
+void FeatureDrawer::fastMatch( Features& firstImage, Features& secondImage, std::vector<cv::DMatch>& matches, bool LR)
+{
+  // Start = clock();
+  cv::Mat desc1,desc2;
+  firstImage.getDescriptors(firstImage.image,firstImage.keypoints,desc1);
+  secondImage.getDescriptors(secondImage.image,secondImage.keypoints,desc2);
+  std::vector< std::vector<cv::DMatch> > knnmatches;
+  cv::FlannBasedMatcher matcher = cv::FlannBasedMatcher(cv::makePtr<cv::flann::LshIndexParams>(12, 20, 2));
+  matcher.knnMatch(desc1,desc2,knnmatches,2);
+  std::vector<cv::DMatch> matches2 = loweRatioTest(knnmatches);
+  matches = removeOutliersMatch(matches2,firstImage,secondImage,LR);
+  // TotalTime = double(clock() - Start) * 1000 / (double)CLOCKS_PER_SEC;
 }
 
 void FeatureDrawer::again()
 {
   // Get Features of Each Image
-  clock_t fastStart = clock();
+  Start = clock();
   int rows {5};
   int cols {5};
   // std::cout << "rows : " << rows << " cols : " << cols << '\n';
@@ -1542,6 +1558,15 @@ void FeatureDrawer::again()
   // cv::KeyPointsFilter::retainBest(leftImage.keypoints,1200);
   // cv::KeyPointsFilter::retainBest(rightImage.keypoints,1200);
   // clock_t fastTotalTime = double(clock() - fastStart) * 1000 / (double)CLOCKS_PER_SEC;
+  // for (auto ind:leftImage.indicesOfGrids)
+  // {
+  //   std::cout << ind << "  ";
+  // }
+  // std::cout << "\n";tors(leftImage.image, leftImage.keypoints, leftImage.descriptors);
+  // rightImage.getDescrip
+  // {
+  //   std::cout << ind << "  ";
+  // }
   std::cout << "lkeys : " << leftImage.keypoints.size() << " rkeys : " << rightImage.keypoints.size() << '\n'; 
   // cv::Mat outImage;
   // cv::drawKeypoints(leftImage.image, leftImage.keypoints,outImage);
@@ -1587,8 +1612,8 @@ void FeatureDrawer::again()
   // std::cout << "passed\n";
   // clock_t fastStart = clock();
   // std::vector < cv::DMatch > goodMatches = matchFundTrial(leftImage, rightImage, true);
-  leftImage.getDescriptors(leftImage.image, leftImage.keypoints, leftImage.descriptors);
-  rightImage.getDescriptors(rightImage.image, rightImage.keypoints, rightImage.descriptors);
+  // leftImage.getDescriptors(leftImage.image, leftImage.keypoints, leftImage.descriptors);
+  // rightImage.getDescriptors(rightImage.image, rightImage.keypoints, rightImage.descriptors);
   // std::cout << "cols : " << leftImage.descriptors.cols << '\n';
   // std::cout << "lkeys : " << leftImage.descriptors.rows << " rkeys : " << rightImage.descriptors.rows << '\n'; 
   // for (int ind:leftImage.indicesOfGrids)
@@ -1600,27 +1625,33 @@ void FeatureDrawer::again()
   // {
   //   std::cout << " " << ind << " ";
   // }
-  std::vector < cv::DMatch > goodMatches = matchesWithGrids(leftImage, rightImage,rows,cols,true);
   // clock_t fastTotalTime = double(clock() - fastStart) * 1000 / (double)CLOCKS_PER_SEC;
-  drawFeatureMatches(goodMatches, leftImage, rightImage);
-  std::vector < cv::KeyPoint> first,second;
-  std::vector < cv::DMatch > matchesLR;
-  int count = 0;
-  for (auto m:goodMatches)
-  {
-    first.push_back(leftImage.keypoints[m.queryIdx]);
-    second.push_back(rightImage.keypoints[m.trainIdx]);
-    matchesLR.push_back(cv::DMatch(count,count,0));
-    count ++;
-  }
-  leftImage.keypoints = first;
-  rightImage.keypoints = second;
-  std::cout << "LR matches size : " << goodMatches.size() << '\n';
+  // Start = clock();
+  // std::vector < cv::DMatch > goodMatches;
+  // std::vector < cv::DMatch > goodMatches = matchesWithGrids(leftImage, rightImage,rows,cols,true);
+  // fastMatch(leftImage,rightImage,goodMatches,true);
+  // TotalTime = double(clock() - Start) * 1000 / (double)CLOCKS_PER_SEC;
 
-  // cv::Mat disparity;
-  // findDisparity(leftImage.image, rightImage.image, disparity);
-  // publishImage(disparity, leftImage.header);
-  // std::vector < cv::DMatch > matcheslr = matchFundTrial(leftImage, rightImage, true);
+
+  // std::vector < cv::DMatch > goodMatches = matchFundTrial(leftImage, rightImage, true);
+  // drawFeatureMatches(goodMatches, leftImage, rightImage);
+  // std::vector < cv::KeyPoint> first,second;
+  // std::vector < cv::DMatch > matchesLR;
+  // int count = 0;
+  // for (auto m:goodMatches)
+  // {
+  //   first.push_back(leftImage.keypoints[m.queryIdx]);
+  //   second.push_back(rightImage.keypoints[m.trainIdx]);
+  //   matchesLR.push_back(cv::DMatch(count,count,m.distance));
+  //   count ++;
+  // }
+  // leftImage.keypoints = first;
+  // rightImage.keypoints = second;
+  // std::cout << "LR matches size : " << goodMatches.size() << '\n';
+
+  cv::Mat disparity;
+  findDisparity(leftImage.image, rightImage.image, disparity);
+  publishImage(disparity, leftImage.header);
 
   // std::cout << "LR matches size : " << matcheslr.size() << '\n';
   // drawFeatureMatches(matcheslr, leftImage, rightImage);
@@ -1638,6 +1669,9 @@ void FeatureDrawer::again()
     // featuresMatched.clear();
     // std::cout << "matches prev : " << goodMatchesPrev.size() << '\n';
     // std::cout << "lkey size : " << lkey.size() << '\n';
+    // std::vector < cv::DMatch > matchesl;
+    // fastMatch(leftImage,previousLeftImage,matchesl,false);
+    // std::cout << "LpL matches size : " << matchesl.size() << '\n';
     if (previousLeftImage.keypoints.size() > 5 && leftImage.keypoints.size() > 5)
     {
       std::vector < cv::DMatch > matchesl = matchFundTrial(leftImage, previousLeftImage, false);
@@ -1695,9 +1729,10 @@ void FeatureDrawer::again()
   leftImage.clearFeatures();
   rightImage.clearFeatures();
   firstImage = false;
-  clock_t fastTotalTime = double(clock() - fastStart) * 1000 / (double)CLOCKS_PER_SEC;
+  TotalTime = double(clock() - Start) * 1000 / (double)CLOCKS_PER_SEC;
+  // clock_t fastTotalTime = double(clock() - fastStart) * 1000 / (double)CLOCKS_PER_SEC;
   std::cout << "-------------------------\n";
-  std::cout << "\nTotal Time      : " << fastTotalTime        << " milliseconds." << '\n';
+  std::cout << "\nTotal Time      : " << TotalTime        << " milliseconds." << '\n';
   std::cout << "-------------------------\n";
 }
 
