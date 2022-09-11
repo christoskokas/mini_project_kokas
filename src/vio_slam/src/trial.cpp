@@ -38,6 +38,7 @@ void RobustMatcher::findFeaturesAdaptive(cv::Mat& image, std::vector<cv::KeyPoin
                 {
                     key.pt.x +=col*imgSize.width;
                     key.pt.y +=row*imgSize.height;
+                    key.class_id = row*cols + col;
                     keypoints.push_back(key);
                 }
             }
@@ -72,6 +73,7 @@ void RobustMatcher::findFeaturesORBAdaptive(cv::Mat& image, std::vector<cv::KeyP
                 {
                     key.pt.x +=col*imgSize.width;
                     key.pt.y +=row*imgSize.height;
+                    key.class_id = row*cols + col;
                     keypoints.push_back(key);
                 }
             }
@@ -94,12 +96,12 @@ void RobustMatcher::drawFeaturesWithLines(cv::Mat& image, std::vector<cv::KeyPoi
     
 }
 
-void RobustMatcher::testFeatureExtraction()
+void RobustMatcher::testFeatureExtraction(cv::Mat& image)
 {
-    std::string imagePath = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/city.jpg";
-    image = cv::imread(imagePath,cv::IMREAD_COLOR);
+    // std::string imagePath = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/city.jpg";
+    // image = cv::imread(imagePath,cv::IMREAD_COLOR);
     assert(!image.empty() && "Could not read the image");
-    cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
+    // cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
     std::vector<cv::KeyPoint> keypoints;
     clock_t fastStart = clock();
     findFeatures(image, keypoints);
@@ -147,7 +149,7 @@ void RobustMatcher::testFeatureExtraction()
 void RobustMatcher::testFeatureMatching()
 {
     std::cout << "-------------------------\n";
-    std::cout << "\n Feature Matching Trials \n";
+    std::cout << "Feature Matching Trials \n";
     std::cout << "-------------------------\n";
     const int times = 1;
     for (int frame = 0; frame < times; frame++)
@@ -157,17 +159,21 @@ void RobustMatcher::testFeatureMatching()
         getImage(rightImage.image, frame, "right");
         rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
         rectifyImage(rightImage.image,rmap[1][0],rmap[1][1]);
-
-
-
-
-
-
-
+        std::vector<cv::KeyPoint> leftKeys,rightKeys;
+        findFeaturesORBAdaptive(leftImage.image, leftKeys);
+        findFeaturesORBAdaptive(rightImage.image, rightKeys);
+        cv::Mat lImage,rImage;
+        drawFeaturesWithLines(leftImage.image, leftKeys,lImage);
+        drawFeaturesWithLines(rightImage.image, rightKeys,rImage);
+        // cv::imshow("left Image",lImage);
+        // cv::imshow("right Image",rImage);
+        cv::Mat leftDesc,rightDesc;
+        detector->compute(leftImage.image, leftKeys,leftDesc);
+        detector->compute(rightImage.image, rightKeys,rightDesc);
 
 
         // cv::imshow("left Image Rectified", leftImage.image);
-        // cv::waitKey(0);
+        cv::waitKey(0);
         total = double(clock() - start) * 1000 / (double)CLOCKS_PER_SEC;
         std::cout << "-------------------------\n";
         std::cout << "\n Total Processing Time  : " << total  << " milliseconds." << '\n';

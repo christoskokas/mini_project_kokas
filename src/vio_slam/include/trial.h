@@ -87,7 +87,7 @@ class RobustMatcher {
 
 
     void testImageRectify();
-    void testFeatureExtraction();
+    void testFeatureExtraction(cv::Mat& image);
     void testFeatureMatching();
 };
 
