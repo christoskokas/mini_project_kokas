@@ -34,15 +34,26 @@ class ImageFrame
 {
     public:
         cv::Mat image, desc, realImage;
-        std::vector < cv::KeyPoint > keys;
+        std::vector < cv::KeyPoint > keypoints;
+        int rows {5};
+        int cols {5};
+        float averageDistance {0.0f};
+        int totalNumber {1000};
+        int numberPerCell {totalNumber/(rows*cols)};
+        int numberPerCellFind {2*totalNumber/(rows*cols)};
+
         void getImage(int frameNumber, const char* whichImage);
+        void rectifyImage(cv::Mat& map1, cv::Mat& map2);
+
 
         void findFeaturesOnImage(int frameNumber, const char* whichImage, cv::Mat& map1, cv::Mat& map2);
 
-        void findFeatures();
-        void findFeaturesAdaptive();
+        void findFeaturesFAST();
+        void findFeaturesFASTAdaptive();
         void findFeaturesORB();
         void findFeaturesORBAdaptive();
+
+        void drawFeaturesWithLines(cv::Mat& outImage);
         
 };
 
@@ -84,14 +95,14 @@ class RobustMatcher2 {
 
     void beginTest();
 
-    void getImage(cv::Mat& image, cv::Mat& realImage, int frameNumber, const char* whichImage);
+    // void getImage(cv::Mat& image, cv::Mat& realImage, int frameNumber, const char* whichImage);
 
-    void findFeaturesOnImage(ImageFrame& camera, int frameNumber, const char* whichImage, cv::Mat& map1, cv::Mat& map2);
+    // void findFeaturesOnImage(ImageFrame& camera, int frameNumber, const char* whichImage, cv::Mat& map1, cv::Mat& map2);
 
-    void findFeatures(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
-    void findFeaturesAdaptive(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
-    void findFeaturesORB(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
-    void findFeaturesORBAdaptive(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
+    // void findFeatures(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
+    // void findFeaturesAdaptive(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
+    // void findFeaturesORB(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
+    // void findFeaturesORBAdaptive(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     
 
 
@@ -100,15 +111,14 @@ class RobustMatcher2 {
     void ratioTest(std::vector<std::vector<cv::DMatch>>& matches);
     void classIdCheck(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matchesSym, std::vector < cv::DMatch >& matches);
 
-    void drawFeaturesWithLines(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& outImage);
+    
     void drawFeatureMatches(const std::vector<cv::DMatch>& matches, const ImageFrame& firstImage, const ImageFrame& secondImage, cv::Mat& outImage);
 
-    void rectifyImage(cv::Mat& image, cv::Mat& map1, cv::Mat& map2);
     void undistortMap();
 
 
     void testImageRectify();
-    void testFeatureExtraction(cv::Mat& image);
+    void testFeatureExtraction();
     void testFeatureMatching();
 };
 
