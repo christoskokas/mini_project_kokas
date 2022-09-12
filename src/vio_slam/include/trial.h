@@ -33,10 +33,12 @@ namespace vio_slam
 class ImageFrame
 {
     public:
-        cv::Mat image;
+        cv::Mat image, desc, realImage;
+        std::vector < cv::KeyPoint > keys;
+        
 };
 
-class RobustMatcher {
+class RobustMatcher2 {
  private:
     // pointer to the feature point detector object
     cv::Ptr<cv::FeatureDetector> detector;
@@ -57,7 +59,7 @@ class RobustMatcher {
     int numberPerCell {totalNumber/(rows*cols)};
     int numberPerCellFind {2*totalNumber/(rows*cols)};
  public:
-    RobustMatcher(const Zed_Camera* zedptr) : ratio(0.85f), refineF(false),
+    RobustMatcher2(const Zed_Camera* zedptr) : ratio(0.85f), refineF(false),
     confidence(0.99), distance(3.0) 
     {
         this->zedcamera = zedptr;
@@ -71,16 +73,20 @@ class RobustMatcher {
         // testFeatureExtraction();
     }
 
-    void getImage(cv::Mat& image, int frameNumber, const char* whichImage);
+    void getImage(cv::Mat& image, cv::Mat& realImage, int frameNumber, const char* whichImage);
 
     void findFeatures(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     void findFeaturesAdaptive(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     void findFeaturesORB(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     void findFeaturesORBAdaptive(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     
+    void match(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matches);
+    void symmetryTest(const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches);
+    void ratioTest(std::vector<std::vector<cv::DMatch>>& matches);
+    void classIdCheck(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matchesSym, std::vector < cv::DMatch >& matches);
 
     void drawFeaturesWithLines(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& outImage);
-
+    void drawFeatureMatches(const std::vector<cv::DMatch>& matches, const ImageFrame& firstImage, const ImageFrame& secondImage, cv::Mat& outImage);
 
     void rectifyImage(cv::Mat& image, cv::Mat& map1, cv::Mat& map2);
     void undistortMap();

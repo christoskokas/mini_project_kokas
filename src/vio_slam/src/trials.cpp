@@ -36,7 +36,7 @@ int main (int argc, char **argv)
     vio_slam::Frame frame;
     std::cout << "\nFeature Extraction Trials\n" << '\n';
     std::cout << "-------------------------\n";
-    vio_slam::RobustMatcher rb(zedptr);
+    vio_slam::RobustMatcher2 rb(zedptr);
     // std::thread worker(&vio_slam::Frame::pangoQuit, frame, &nh, &fv.leftImage.pointsPosition);
     // Zed_Camera::Camera_2 camera_right = Zed_Camera::Camera_2(&nh);
     // Zed_Camera::Camera_2 camera_rightfx = Zed_Camera::Camera2::getFx();
