@@ -25,7 +25,7 @@
 #include <boost/foreach.hpp>
 #include <tf/tf.h>
 #include <nav_msgs/Odometry.h>
-
+#include <thread>
 namespace vio_slam
 {
 
@@ -35,6 +35,14 @@ class ImageFrame
     public:
         cv::Mat image, desc, realImage;
         std::vector < cv::KeyPoint > keys;
+        void getImage(int frameNumber, const char* whichImage);
+
+        void findFeaturesOnImage(int frameNumber, const char* whichImage, cv::Mat& map1, cv::Mat& map2);
+
+        void findFeatures();
+        void findFeaturesAdaptive();
+        void findFeaturesORB();
+        void findFeaturesORBAdaptive();
         
 };
 
@@ -55,7 +63,8 @@ class RobustMatcher2 {
     double confidence; // confidence level (probability)
     int rows {5};
     int cols {5};
-    int totalNumber {2000};
+    float averageDistance {0.0f};
+    int totalNumber {1000};
     int numberPerCell {totalNumber/(rows*cols)};
     int numberPerCellFind {2*totalNumber/(rows*cols)};
  public:
@@ -67,20 +76,26 @@ class RobustMatcher2 {
         {
             undistortMap();
         }
-        testFeatureMatching();
+        // testFeatureMatching();
         
         // testImageRectify();
         // testFeatureExtraction();
     }
 
+    void beginTest();
+
     void getImage(cv::Mat& image, cv::Mat& realImage, int frameNumber, const char* whichImage);
+
+    void findFeaturesOnImage(ImageFrame& camera, int frameNumber, const char* whichImage, cv::Mat& map1, cv::Mat& map2);
 
     void findFeatures(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     void findFeaturesAdaptive(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     void findFeaturesORB(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     void findFeaturesORBAdaptive(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     
-    void match(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matches);
+
+
+    void matchCrossRatio(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matches);
     void symmetryTest(const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches);
     void ratioTest(std::vector<std::vector<cv::DMatch>>& matches);
     void classIdCheck(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matchesSym, std::vector < cv::DMatch >& matches);

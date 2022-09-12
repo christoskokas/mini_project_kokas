@@ -69,7 +69,7 @@ void RobustMatcher2::findFeaturesORBAdaptive(cv::Mat& image, std::vector<cv::Key
             if(!tempkeys.empty())
             {
                 cv::KeyPointsFilter::retainBest(tempkeys,numberPerCell);
-                for (auto key:tempkeys)
+                for (auto& key:tempkeys)
                 {
                     key.pt.x +=col*imgSize.width;
                     key.pt.y +=row*imgSize.height;
@@ -151,45 +151,59 @@ void RobustMatcher2::testFeatureMatching()
     std::cout << "-------------------------\n";
     std::cout << "Feature Matching Trials \n";
     std::cout << "-------------------------\n";
-    const int times = 3;
+    const int times = 328;
+    int averageTime = 0;
     for (int frame = 0; frame < times; frame++)
     {
+        bool withThread = true;
         start = clock();
-        getImage(leftImage.image, leftImage.realImage, frame, "left");
-        getImage(rightImage.image, rightImage.realImage, frame, "right");
-        rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
-        rectifyImage(rightImage.image,rmap[1][0],rmap[1][1]);
-        std::vector<cv::KeyPoint> leftKeys,rightKeys;
-        findFeaturesORBAdaptive(leftImage.image, leftImage.keys);
-        findFeaturesORBAdaptive(rightImage.image, rightImage.keys);
-        cv::Mat lImage,rImage;
-        drawFeaturesWithLines(leftImage.image, leftImage.keys,leftImage.desc);
-        drawFeaturesWithLines(rightImage.image, rightImage.keys,rightImage.desc);
-        // cv::imshow("left Image",lImage);
-        // cv::imshow("right Image",rImage);
-        cv::Mat leftDesc,rightDesc;
+        std::cout << "frame : " << frame << std::endl;
+        if (withThread)
+        {
+            std::thread rightImageThread(&vio_slam::RobustMatcher2::findFeaturesOnImage, std::ref(rightImage), std::ref(frame), std::ref("right"), std::ref(rmap[1][0]), std::ref(rmap[1][1]));
+            findFeaturesOnImage(leftImage, frame, "left", rmap[0][0], rmap[0][1]);
+            rightImageThread.join();
+        }
+        else 
+        {
+            findFeaturesOnImage(leftImage, frame, "left", rmap[0][0], rmap[0][1]);
+            findFeaturesOnImage(rightImage, frame, "right", rmap[1][0], rmap[1][1]);
+        }
         detector->compute(leftImage.image, leftImage.keys,leftImage.desc);
+
+        
+        
+        // getImage(leftImage.image, leftImage.realImage, frame, "left");
+        // rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
+        // findFeaturesORBAdaptive(leftImage.image, leftImage.keys);
         detector->compute(rightImage.image, rightImage.keys,rightImage.desc);
         std::vector < cv::DMatch > matches;
-        match(leftImage, rightImage, matches);
+        matchCrossRatio(leftImage, rightImage, matches);
         cv::Mat matchesImage;
         drawFeatureMatches(matches,leftImage, rightImage,matchesImage);
         cv::imshow("Matches", matchesImage);
-        std::cout << "Matches size : " << matches.size() << '\n';
-
-        // cv::imshow("left Image Rectified", leftImage.image);
+        std::cout << "Matches size : " << matches.size() << std::endl;
+        matches.clear();
+        leftImage.keys.clear();
+        rightImage.keys.clear();
         total = double(clock() - start) * 1000 / (double)CLOCKS_PER_SEC;
+        averageTime += total;
         std::cout << "-------------------------\n";
-        std::cout << "\n Total Processing Time  : " << total  << " milliseconds." << '\n';
+        std::cout << "\n Frame Processing Time  : " << total  << " milliseconds." << std::endl;
         std::cout << "-------------------------\n";
-        cv::waitKey(0);
+        cv::waitKey(1);
     }
+    std::cout << "-------------------------\n";
+    std::cout << "\n Average Processing Time should be : 66 milliseconds. (15fps so 1/15 = 66ms)" << std::endl;
+    std::cout << "-------------------------\n";
+    std::cout << "\n Average Processing Time  of " << times << " frames : " << averageTime/times  << " milliseconds." << std::endl;
+    std::cout << "-------------------------\n";
     
 }
 
-void RobustMatcher2::match(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matches)
+void RobustMatcher2::matchCrossRatio(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matches)
 {
-    cv::FlannBasedMatcher matcher(cv::makePtr<cv::flann::LshIndexParams>(12, 20, 2));
+    cv::FlannBasedMatcher matcher(cv::makePtr<cv::flann::LshIndexParams>(6, 12, 1));
     std::vector < std::vector < cv::DMatch > > knnmatches1, knnmatches2;
     matcher.knnMatch(first.desc, second.desc,knnmatches1,2);
     matcher.knnMatch(second.desc, first.desc,knnmatches2,2);
@@ -197,6 +211,7 @@ void RobustMatcher2::match(ImageFrame& first, ImageFrame& second, std::vector < 
     ratioTest(knnmatches2);
     std::vector < cv::DMatch > matchesSym;
     symmetryTest(knnmatches1, knnmatches2,matchesSym);
+    // matches = matchesSym;
     classIdCheck(first, second, matchesSym, matches);
 }
 
@@ -204,9 +219,22 @@ void RobustMatcher2::classIdCheck(ImageFrame& first, ImageFrame& second, std::ve
 {
     for (std::vector<cv::DMatch>::iterator matchIterator= matchesSym.begin(); matchIterator!= matchesSym.end(); ++matchIterator)
     {
-        if ((abs(first.keys[(*matchIterator).queryIdx].class_id - second.keys[(*matchIterator).trainIdx].class_id) < 2) && second.keys[(*matchIterator).trainIdx].class_id <=first.keys[(*matchIterator).queryIdx].class_id)
+        if ((*matchIterator).distance < 2*averageDistance)
         {
-            matches.push_back(*matchIterator);
+            if (first.keys[(*matchIterator).queryIdx].class_id % cols == 0)
+            {
+                if (first.keys[(*matchIterator).queryIdx].class_id == second.keys[(*matchIterator).trainIdx].class_id)
+                {
+                    matches.push_back(*matchIterator);
+                }
+            }
+            else
+            {
+                if ((first.keys[(*matchIterator).queryIdx].class_id - second.keys[(*matchIterator).trainIdx].class_id < 2) && (first.keys[(*matchIterator).queryIdx].class_id >= second.keys[(*matchIterator).trainIdx].class_id))
+                {
+                    matches.push_back(*matchIterator);
+                }
+            }
         }
     }
 }
@@ -214,32 +242,37 @@ void RobustMatcher2::classIdCheck(ImageFrame& first, ImageFrame& second, std::ve
 void RobustMatcher2::symmetryTest(const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches) 
 {
   // for all matches image 1 -> image 2
-  for (std::vector<std::vector<cv::DMatch>>::const_iterator matchIterator1= matches1.begin();matchIterator1!= matches1.end(); ++matchIterator1) 
-  {
-    // ignore deleted matches
-    if (matchIterator1->size() < 2)
-    continue;
-    // for all matches image 2 -> image 1
-    for (std::vector<std::vector<cv::DMatch>>::const_iterator matchIterator2= matches2.begin();matchIterator2!= matches2.end(); ++matchIterator2) 
+    int count = 0;
+    float dist = 0.0f;
+    for (std::vector<std::vector<cv::DMatch>>::const_iterator matchIterator1= matches1.begin();matchIterator1!= matches1.end(); ++matchIterator1) 
     {
-      // ignore deleted matches
-      if (matchIterator2->size() < 2)
-      continue;
-      // Match symmetry test
-      if ((*matchIterator1)[0].queryIdx ==
-      (*matchIterator2)[0].trainIdx &&
-      (*matchIterator2)[0].queryIdx ==
-      (*matchIterator1)[0].trainIdx) 
-      {
-        // add symmetrical match
-        symMatches.push_back(
-        cv::DMatch((*matchIterator1)[0].queryIdx,
-        (*matchIterator1)[0].trainIdx,
-        (*matchIterator1)[0].distance));
-        break; // next match in image 1 -> image 2
-      }
+        // ignore deleted matches
+        if (matchIterator1->size() < 2)
+        continue;
+        // for all matches image 2 -> image 1
+        for (std::vector<std::vector<cv::DMatch>>::const_iterator matchIterator2= matches2.begin();matchIterator2!= matches2.end(); ++matchIterator2) 
+        {
+        // ignore deleted matches
+        if (matchIterator2->size() < 2)
+        continue;
+        // Match symmetry test
+        if ((*matchIterator1)[0].queryIdx ==
+        (*matchIterator2)[0].trainIdx &&
+        (*matchIterator2)[0].queryIdx ==
+        (*matchIterator1)[0].trainIdx) 
+        {
+            // add symmetrical match
+            symMatches.push_back(
+            cv::DMatch((*matchIterator1)[0].queryIdx,
+            (*matchIterator1)[0].trainIdx,
+            (*matchIterator1)[0].distance));
+            dist += (*matchIterator1)[0].distance;
+            count ++;
+            break; // next match in image 1 -> image 2
+        }
+        }
     }
-  }
+    averageDistance = dist/count;
  }
 
 void RobustMatcher2::ratioTest(std::vector<std::vector<cv::DMatch>>& matches) 
@@ -267,7 +300,19 @@ void RobustMatcher2::ratioTest(std::vector<std::vector<cv::DMatch>>& matches)
 
 void RobustMatcher2::getImage(cv::Mat& image, cv::Mat& realImage, int frameNumber, const char* whichImage)
 {
-    std::string imagePath = std::string("/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/") + whichImage +std::string("/frame000") + std::to_string(frameNumber) + std::string(".jpg");
+    std::string imagePath;
+    if (frameNumber > 99)
+    {
+        imagePath = std::string("/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/") + whichImage +std::string("/frame0") + std::to_string(frameNumber/100) + std::to_string((frameNumber%100 - frameNumber%10)/10) + std::to_string(frameNumber%10) + std::string(".jpg");
+    }
+    else if (frameNumber > 9)
+    {
+        imagePath = std::string("/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/") + whichImage +std::string("/frame00") + std::to_string(frameNumber/10) + std::to_string(frameNumber%10) + std::string(".jpg");
+    }
+    else
+    {
+        imagePath = std::string("/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/") + whichImage +std::string("/frame000") + std::to_string(frameNumber) + std::string(".jpg");
+    }
     image = cv::imread(imagePath,cv::IMREAD_GRAYSCALE);
     realImage = cv::imread(imagePath,cv::IMREAD_COLOR);
 }
@@ -316,6 +361,24 @@ void RobustMatcher2::drawFeatureMatches(const std::vector<cv::DMatch>& matches, 
         cv::circle(outImage, secondImage.keys[m.trainIdx].pt,2,cv::Scalar(255,0,0));
     }
 
+}
+
+void RobustMatcher2::beginTest()
+{
+    testFeatureMatching();
+}
+
+void RobustMatcher2::findFeaturesOnImage(ImageFrame& camera, int frameNumber, const char* whichImage, cv::Mat& map1, cv::Mat& map2)
+{
+    getImage(camera.image, camera.realImage, frameNumber, whichImage);
+    rectifyImage(camera.image,map1, map2);
+    findFeaturesORBAdaptive(camera.image, camera.keys);
+}
+void ImageFrame::findFeaturesOnImage(int frameNumber, const char* whichImage, cv::Mat& map1, cv::Mat& map2)
+{
+    getImage(image, realImage, frameNumber, whichImage);
+    rectifyImage(image,map1, map2);
+    findFeaturesORBAdaptive(image, keys);
 }
 
 }
