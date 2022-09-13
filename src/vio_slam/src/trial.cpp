@@ -46,6 +46,8 @@ void ImageFrame::findFeaturesFASTAdaptive()
         
     }
     cv::KeyPointsFilter::retainBest(keypoints, totalNumber);
+    cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(numberPerCellFind,1.2f,8,0,0,2,cv::ORB::HARRIS_SCORE,10,15);
+    detector->compute(image, keypoints,desc);
     
 }
 
@@ -81,6 +83,7 @@ void ImageFrame::findFeaturesORBAdaptive()
         
     }
     cv::KeyPointsFilter::retainBest(keypoints, totalNumber);
+    detector->compute(image, keypoints,desc);
     
 }
 
@@ -99,9 +102,9 @@ void ImageFrame::drawFeaturesWithLines(cv::Mat& outImage)
 void RobustMatcher2::testFeatureExtraction()
 {
     std::string imagePath = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/city.jpg";
-    image = cv::imread(imagePath,cv::IMREAD_COLOR);
-    assert(!image.empty() && "Could not read the image");
-    cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
+    leftImage.image = cv::imread(imagePath,cv::IMREAD_GRAYSCALE);
+    assert(!leftImage.image.empty() && "Could not read the image");
+    // cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
     std::vector<cv::KeyPoint> keypoints;
     clock_t fastStart = clock();
     leftImage.findFeaturesFAST();
@@ -151,13 +154,12 @@ void RobustMatcher2::testFeatureMatching()
     std::cout << "-------------------------\n";
     std::cout << "Feature Matching Trials \n";
     std::cout << "-------------------------\n";
-    const int times = 328;
+    const int times = 656;
     int averageTime = 0;
     for (int frame = 0; frame < times; frame++)
     {
         bool withThread = true;
         start = clock();
-        std::cout << "frame : " << frame << std::endl;
         if (withThread)
         {
             std::thread rightImageThread(&vio_slam::ImageFrame::findFeaturesOnImage, std::ref(rightImage), frame, "right", std::ref(rmap[1][0]), std::ref(rmap[1][1]));
@@ -168,26 +170,38 @@ void RobustMatcher2::testFeatureMatching()
         {
             leftImage.findFeaturesOnImage(frame, "left", rmap[0][0], rmap[0][1]);
             rightImage.findFeaturesOnImage(frame, "right", rmap[1][0], rmap[1][1]);
+            // detector->compute(leftImage.image, leftImage.keypoints,leftImage.desc);
+            // detector->compute(rightImage.image, rightImage.keypoints,rightImage.desc);
         }
-        detector->compute(leftImage.image, leftImage.keypoints,leftImage.desc);
 
+        // TODO reduce vectors
         
         
         // getImage(leftImage.image, leftImage.realImage, frame, "left");
         // rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
         // findFeaturesORBAdaptive(leftImage.image, leftImage.keypoints);
-        detector->compute(rightImage.image, rightImage.keypoints,rightImage.desc);
+
         std::vector < cv::DMatch > matches;
         matchCrossRatio(leftImage, rightImage, matches);
-        cv::Mat matchesImage;
-        drawFeatureMatches(matches,leftImage, rightImage,matchesImage);
-        cv::imshow("Matches", matchesImage);
-        std::cout << "Matches size : " << matches.size() << std::endl;
+        std::cout << "LR Matches size : " << matches.size() << std::endl;
         matches.clear();
+        if (!firstImage)
+        {
+            matchCrossRatio(leftImage, prevLeftImage, matches);
+            cv::Mat matchesImage;
+            drawFeatureMatches(matches,leftImage, prevLeftImage,matchesImage);
+            std::cout << "LpL Matches size : " << matches.size() << std::endl;
+
+            cv::imshow("Matches", matchesImage);
+        }
+        matches.clear();
+        prevLeftImage.clone(leftImage);
+        firstImage = false;
         leftImage.keypoints.clear();
         rightImage.keypoints.clear();
         total = double(clock() - start) * 1000 / (double)CLOCKS_PER_SEC;
         averageTime += total;
+
         std::cout << "-------------------------\n";
         std::cout << "\n Frame Processing Time  : " << total  << " milliseconds." << std::endl;
         std::cout << "-------------------------\n";
@@ -196,7 +210,7 @@ void RobustMatcher2::testFeatureMatching()
     std::cout << "-------------------------\n";
     std::cout << "\n Average Processing Time should be : 66 milliseconds. (15fps so 1/15 = 66ms)" << std::endl;
     std::cout << "-------------------------\n";
-    std::cout << "\n Average Processing Time  of " << times << " frames : " << averageTime/times  << " milliseconds." << std::endl;
+    std::cout << "\n Average Processing Time  of " << times + 1 << " frames : " << averageTime/(times + 1)  << " milliseconds." << std::endl;
     std::cout << "-------------------------\n";
     
 }
@@ -210,7 +224,7 @@ void RobustMatcher2::matchCrossRatio(ImageFrame& first, ImageFrame& second, std:
     ratioTest(knnmatches1);
     ratioTest(knnmatches2);
     std::vector < cv::DMatch > matchesSym;
-    symmetryTest(knnmatches1, knnmatches2,matchesSym);
+    symmetryTest(first, second, knnmatches1, knnmatches2,matchesSym);
     // matches = matchesSym;
     classIdCheck(first, second, matchesSym, matches);
 }
@@ -219,7 +233,7 @@ void RobustMatcher2::classIdCheck(ImageFrame& first, ImageFrame& second, std::ve
 {
     for (std::vector<cv::DMatch>::iterator matchIterator= matchesSym.begin(); matchIterator!= matchesSym.end(); ++matchIterator)
     {
-        if ((*matchIterator).distance < 2*averageDistance)
+        if (getDistanceOfPoints(first, second, (*matchIterator)) < 1.5*averageDistance)
         {
             if (first.keypoints[(*matchIterator).queryIdx].class_id % cols == 0)
             {
@@ -239,7 +253,7 @@ void RobustMatcher2::classIdCheck(ImageFrame& first, ImageFrame& second, std::ve
     }
 }
 
-void RobustMatcher2::symmetryTest(const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches) 
+void RobustMatcher2::symmetryTest(ImageFrame& first, ImageFrame& second, const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches) 
 {
   // for all matches image 1 -> image 2
     int count = 0;
@@ -266,7 +280,7 @@ void RobustMatcher2::symmetryTest(const std::vector<std::vector<cv::DMatch>>& ma
             cv::DMatch((*matchIterator1)[0].queryIdx,
             (*matchIterator1)[0].trainIdx,
             (*matchIterator1)[0].distance));
-            dist += (*matchIterator1)[0].distance;
+            dist += getDistanceOfPoints(first, second,(*matchIterator1)[0]);
             count ++;
             break; // next match in image 1 -> image 2
         }
@@ -349,6 +363,12 @@ void ImageFrame::rectifyImage(cv::Mat& map1, cv::Mat& map2)
     cv::remap(image, image, map1, map2, cv::INTER_LINEAR);
 }
 
+void ImageFrame::clone(const ImageFrame& second)
+{
+    keypoints = second.keypoints;
+    desc = second.desc.clone();
+}
+
 void RobustMatcher2::drawFeatureMatches(const std::vector<cv::DMatch>& matches, const ImageFrame& firstImage, const ImageFrame& secondImage, cv::Mat& outImage)
 {
     outImage = firstImage.realImage.clone();
@@ -363,16 +383,25 @@ void RobustMatcher2::drawFeatureMatches(const std::vector<cv::DMatch>& matches, 
 
 }
 
+float RobustMatcher2::getDistanceOfPoints(ImageFrame& first, ImageFrame& second, const cv::DMatch& match)
+{
+    float x1 = first.keypoints[match.queryIdx].pt.x;
+    float y1 = first.keypoints[match.queryIdx].pt.y;
+    float x2 = second.keypoints[match.trainIdx].pt.x;
+    float y2 = second.keypoints[match.trainIdx].pt.y;
+    return sqrt(pow(y2-y1,2) + pow(x2-x1,2));
+}
+
 void RobustMatcher2::beginTest()
 {
-    testFeatureExtraction();
+    testFeatureMatching();
 }
 
 void ImageFrame::findFeaturesOnImage(int frameNumber, const char* whichImage, cv::Mat& map1, cv::Mat& map2)
 {
     getImage(frameNumber, whichImage);
     rectifyImage(map1, map2);
-    findFeaturesORBAdaptive();
+    findFeaturesFASTAdaptive();
 }
 
 }

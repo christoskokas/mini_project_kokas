@@ -54,6 +54,8 @@ class ImageFrame
         void findFeaturesORBAdaptive();
 
         void drawFeaturesWithLines(cv::Mat& outImage);
+
+        void clone(const ImageFrame& second);
         
 };
 
@@ -63,13 +65,14 @@ class RobustMatcher2 {
     cv::Ptr<cv::FeatureDetector> detector;
     cv::Mat image, P1, P2, Q, R1, R2;
     cv::Mat rmap[2][2];
-    ImageFrame leftImage, rightImage;
+    ImageFrame leftImage, rightImage, prevLeftImage;
     clock_t start, total;
     const Zed_Camera* zedcamera;
     // pointer to the feature descriptor extractor object
     // cv::Ptr<cv::DescriptorExtractor> extractor;
     float ratio; // max ratio between 1st and 2nd NN
     bool refineF; // if true will refine the F matrix
+    bool firstImage{true};
     double distance; // min distance to epipolar
     double confidence; // confidence level (probability)
     int rows {5};
@@ -88,7 +91,7 @@ class RobustMatcher2 {
             undistortMap();
         }
         // testFeatureMatching();
-        
+        detector = cv::ORB::create(numberPerCellFind,1.2f,8,0,0,2,cv::ORB::HARRIS_SCORE,10,15);
         // testImageRectify();
         // testFeatureExtraction();
     }
@@ -107,7 +110,7 @@ class RobustMatcher2 {
 
 
     void matchCrossRatio(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matches);
-    void symmetryTest(const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches);
+    void symmetryTest(ImageFrame& first, ImageFrame& second, const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches);
     void ratioTest(std::vector<std::vector<cv::DMatch>>& matches);
     void classIdCheck(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matchesSym, std::vector < cv::DMatch >& matches);
 
@@ -116,6 +119,7 @@ class RobustMatcher2 {
 
     void undistortMap();
 
+    float getDistanceOfPoints(ImageFrame& first, ImageFrame& second, const cv::DMatch& match);
 
     void testImageRectify();
     void testFeatureExtraction();
