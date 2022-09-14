@@ -30,7 +30,7 @@ void ImageFrame::findFeaturesFASTAdaptive()
             cv::FAST(patch,tempkeys,15,true);
             if(tempkeys.empty())
             {
-                cv::FAST(patch,tempkeys,10,true);
+                cv::FAST(patch,tempkeys,5,true);
             }
             if(!tempkeys.empty())
             {
@@ -54,7 +54,7 @@ void ImageFrame::findFeaturesFASTAdaptive()
 void ImageFrame::findFeaturesORBAdaptive()
 {
     cv::Size imgSize(image.cols/cols,image.rows/rows);
-    cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(numberPerCellFind,1.2f,8,0,0,2,cv::ORB::HARRIS_SCORE,10,15);
+    cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create(numberPerCellFind,1.2f,8,0,0,2,cv::ORB::FAST_SCORE,10,15);
     for (size_t row = 0; row < rows; row++)
     {
         for (size_t col = 0; col < cols; col++)
@@ -64,9 +64,9 @@ void ImageFrame::findFeaturesORBAdaptive()
             detector->detect(patch,tempkeys); 
             if(tempkeys.size() < numberPerCell)
             {
-                detector = cv::ORB::create(numberPerCellFind,1.2f,8,0,0,2,cv::ORB::HARRIS_SCORE,10,10);
+                detector = cv::ORB::create(numberPerCellFind,1.2f,8,0,0,2,cv::ORB::FAST_SCORE,10,10);
                 detector->detect(patch,tempkeys); 
-                detector = cv::ORB::create(numberPerCellFind,1.2f,8,0,0,2,cv::ORB::HARRIS_SCORE,10,15);
+                detector = cv::ORB::create(numberPerCellFind,1.2f,8,0,0,2,cv::ORB::FAST_SCORE,10,15);
             }
             if(!tempkeys.empty())
             {
@@ -85,6 +85,25 @@ void ImageFrame::findFeaturesORBAdaptive()
     cv::KeyPointsFilter::retainBest(keypoints, totalNumber);
     detector->compute(image, keypoints,desc);
     
+}
+
+void ImageFrame::findFeaturesGoodFeatures()
+{
+    double qualityLevel = 0.01;
+    double minDistance = 10;
+    int blockSize = 3;
+    bool useHarrisDetector = false;
+    double k = 0.04;
+    std::vector<cv::Point2f> corners;
+    cv::goodFeaturesToTrack(image,corners,200,qualityLevel,minDistance, cv::Mat(),blockSize,useHarrisDetector,k);
+    std::cout<<"** Number of corners detected: "<<corners.size()<<std::endl;
+    int r = 4;
+    cv::Mat outImage = image.clone();
+    for( size_t i = 0; i < corners.size(); i++ )
+        { cv::circle( outImage, corners[i], r, cv::Scalar(255,0,0,255), -1, 8, 0 ); }
+    cv::namedWindow( "good Features To Track", cv::WINDOW_AUTOSIZE );
+    cv::imshow( "good Features To Track", outImage );
+
 }
 
 void ImageFrame::drawFeaturesWithLines(cv::Mat& outImage)
@@ -138,6 +157,9 @@ void RobustMatcher2::testFeatureExtraction()
     std::cout << "ORB grid size : " << keypoints.size() << '\n';
     leftImage.keypoints.clear();
     cv::imshow("ORB features GRID", ORBAdaptiveImage);
+    clock_t GoodFeaturesStart = clock();
+    leftImage.findFeaturesGoodFeatures();
+    clock_t GoodFeaturesTotalTime = double(clock() - GoodFeaturesStart) * 1000 / (double)CLOCKS_PER_SEC;
     std::cout << "\nFast Features Time      : " << fastTotalTime        << " milliseconds." << '\n';
     std::cout << "-------------------------\n";
     std::cout << "\nFast Grid Features Time : " << fastGridTotalTime    << " milliseconds." << '\n';
@@ -146,15 +168,18 @@ void RobustMatcher2::testFeatureExtraction()
     std::cout << "-------------------------\n";
     std::cout << "\nORB Grid Features Time  : " << ORBGridTotalTime     << " milliseconds." << '\n';
     std::cout << "-------------------------\n";
+    std::cout << "\nGood Features Features Time  : " << GoodFeaturesTotalTime     << " milliseconds." << '\n';
+    std::cout << "-------------------------\n";
     cv::waitKey(0);
 }
 
-void RobustMatcher2::testFeatureMatching()
+void RobustMatcher2::testFeatureMatchingLRLpL()
 {
     std::cout << "-------------------------\n";
     std::cout << "Feature Matching Trials \n";
     std::cout << "-------------------------\n";
     const int times = 656;
+    // const int times = 100;
     int averageTime = 0;
     for (int frame = 0; frame < times; frame++)
     {
@@ -175,19 +200,14 @@ void RobustMatcher2::testFeatureMatching()
         }
 
         // TODO reduce vectors
-        
-        
-        // getImage(leftImage.image, leftImage.realImage, frame, "left");
-        // rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
-        // findFeaturesORBAdaptive(leftImage.image, leftImage.keypoints);
 
         std::vector < cv::DMatch > matches;
-        matchCrossRatio(leftImage, rightImage, matches);
+        matchCrossRatio(leftImage, rightImage, matches, true);
         std::cout << "LR Matches size : " << matches.size() << std::endl;
         matches.clear();
         if (!firstImage)
         {
-            matchCrossRatio(leftImage, prevLeftImage, matches);
+            matchCrossRatio(leftImage, prevLeftImage, matches, false);
             cv::Mat matchesImage;
             drawFeatureMatches(matches,leftImage, prevLeftImage,matchesImage);
             std::cout << "LpL Matches size : " << matches.size() << std::endl;
@@ -215,7 +235,7 @@ void RobustMatcher2::testFeatureMatching()
     
 }
 
-void RobustMatcher2::matchCrossRatio(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matches)
+void RobustMatcher2::matchCrossRatio(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matches, bool LR)
 {
     cv::FlannBasedMatcher matcher(cv::makePtr<cv::flann::LshIndexParams>(6, 12, 1));
     std::vector < std::vector < cv::DMatch > > knnmatches1, knnmatches2;
@@ -223,70 +243,99 @@ void RobustMatcher2::matchCrossRatio(ImageFrame& first, ImageFrame& second, std:
     matcher.knnMatch(second.desc, first.desc,knnmatches2,2);
     ratioTest(knnmatches1);
     ratioTest(knnmatches2);
-    std::vector < cv::DMatch > matchesSym;
+    std::vector < cv::DMatch > matchesSym, matchesId;
     symmetryTest(first, second, knnmatches1, knnmatches2,matchesSym);
     // matches = matchesSym;
-    classIdCheck(first, second, matchesSym, matches);
+    classIdCheck(first, second, matchesSym, matchesId, LR);
+    removeMatchesDistance(first, second,matchesId, matches);
 }
 
-void RobustMatcher2::classIdCheck(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matchesSym, std::vector < cv::DMatch >& matches)
+void RobustMatcher2::removeMatchesDistance(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matchesId, std::vector < cv::DMatch >& matches)
 {
+    for (std::vector<cv::DMatch>::iterator matchIterator= matchesId.begin(); matchIterator!= matchesId.end(); ++matchIterator)
+    {
+        if (getDistanceOfPoints(first, second,(*matchIterator)) < 1.3*averageDistance)
+        {
+            matches.push_back(*matchIterator);
+        }
+    }
+}
+
+void RobustMatcher2::classIdCheck(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matchesSym, std::vector < cv::DMatch >& matches, bool LR)
+{
+    int count = 0;
+    float dist = 0.0f;
     for (std::vector<cv::DMatch>::iterator matchIterator= matchesSym.begin(); matchIterator!= matchesSym.end(); ++matchIterator)
     {
-        if (getDistanceOfPoints(first, second, (*matchIterator)) < 1.5*averageDistance)
+        // std::cout << "averageDistance " << averageDistance << " get dist " << (*matchIterator).distance;
+        bool matchadded = false;
+        int firstClassId = first.keypoints[(*matchIterator).queryIdx].class_id;
+        int secondClassId = second.keypoints[(*matchIterator).trainIdx].class_id;
+        if (LR)
         {
-            if (first.keypoints[(*matchIterator).queryIdx].class_id % cols == 0)
+            if (firstClassId % cols == 0)
             {
-                if (first.keypoints[(*matchIterator).queryIdx].class_id == second.keypoints[(*matchIterator).trainIdx].class_id)
+                if (firstClassId == secondClassId)
                 {
                     matches.push_back(*matchIterator);
+                    matchadded = true;
                 }
             }
             else
             {
-                if ((first.keypoints[(*matchIterator).queryIdx].class_id - second.keypoints[(*matchIterator).trainIdx].class_id < 2) && (first.keypoints[(*matchIterator).queryIdx].class_id >= second.keypoints[(*matchIterator).trainIdx].class_id))
+                if ((firstClassId - secondClassId < 2) && (firstClassId >= secondClassId))
                 {
                     matches.push_back(*matchIterator);
+                    matchadded = true;
                 }
             }
         }
+        else
+        {
+            if (abs(firstClassId%cols - secondClassId%cols) < 2 && abs(firstClassId/cols - secondClassId/cols) < 2)
+            {
+                matches.push_back(*matchIterator);
+                matchadded = true;
+            }
+        }
+        if (matchadded)
+        {
+            dist += getDistanceOfPoints(first, second,(*matchIterator));
+            count ++;
+        }
     }
+    averageDistance = dist/count;
 }
 
 void RobustMatcher2::symmetryTest(ImageFrame& first, ImageFrame& second, const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches) 
 {
   // for all matches image 1 -> image 2
-    int count = 0;
-    float dist = 0.0f;
     for (std::vector<std::vector<cv::DMatch>>::const_iterator matchIterator1= matches1.begin();matchIterator1!= matches1.end(); ++matchIterator1) 
     {
         // ignore deleted matches
         if (matchIterator1->size() < 2)
-        continue;
+            continue;
         // for all matches image 2 -> image 1
         for (std::vector<std::vector<cv::DMatch>>::const_iterator matchIterator2= matches2.begin();matchIterator2!= matches2.end(); ++matchIterator2) 
         {
-        // ignore deleted matches
-        if (matchIterator2->size() < 2)
-        continue;
-        // Match symmetry test
-        if ((*matchIterator1)[0].queryIdx ==
-        (*matchIterator2)[0].trainIdx &&
-        (*matchIterator2)[0].queryIdx ==
-        (*matchIterator1)[0].trainIdx) 
-        {
-            // add symmetrical match
-            symMatches.push_back(
-            cv::DMatch((*matchIterator1)[0].queryIdx,
-            (*matchIterator1)[0].trainIdx,
-            (*matchIterator1)[0].distance));
-            dist += getDistanceOfPoints(first, second,(*matchIterator1)[0]);
-            count ++;
-            break; // next match in image 1 -> image 2
-        }
+            // ignore deleted matches
+            if (matchIterator2->size() < 2)
+                continue;
+            // Match symmetry test
+            if ((*matchIterator1)[0].queryIdx ==
+            (*matchIterator2)[0].trainIdx &&
+            (*matchIterator2)[0].queryIdx ==
+            (*matchIterator1)[0].trainIdx) 
+            {
+                // add symmetrical match
+                symMatches.push_back(
+                cv::DMatch((*matchIterator1)[0].queryIdx,
+                (*matchIterator1)[0].trainIdx,
+                (*matchIterator1)[0].distance));
+                break; // next match in image 1 -> image 2
+            }
         }
     }
-    averageDistance = dist/count;
  }
 
 void RobustMatcher2::ratioTest(std::vector<std::vector<cv::DMatch>>& matches) 
@@ -394,7 +443,8 @@ float RobustMatcher2::getDistanceOfPoints(ImageFrame& first, ImageFrame& second,
 
 void RobustMatcher2::beginTest()
 {
-    testFeatureMatching();
+    // testFeatureMatchingLRLpL();
+    testFeatureExtraction();
 }
 
 void ImageFrame::findFeaturesOnImage(int frameNumber, const char* whichImage, cv::Mat& map1, cv::Mat& map2)

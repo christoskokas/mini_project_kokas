@@ -52,6 +52,7 @@ class ImageFrame
         void findFeaturesFASTAdaptive();
         void findFeaturesORB();
         void findFeaturesORBAdaptive();
+        void findFeaturesGoodFeatures();
 
         void drawFeaturesWithLines(cv::Mat& outImage);
 
@@ -109,10 +110,11 @@ class RobustMatcher2 {
     
 
 
-    void matchCrossRatio(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matches);
+    void matchCrossRatio(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matches, bool LR);
     void symmetryTest(ImageFrame& first, ImageFrame& second, const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches);
     void ratioTest(std::vector<std::vector<cv::DMatch>>& matches);
-    void classIdCheck(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matchesSym, std::vector < cv::DMatch >& matches);
+    void classIdCheck(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matchesSym, std::vector < cv::DMatch >& matches, bool LR);
+    void removeMatchesDistance(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matchesId, std::vector < cv::DMatch >& matches);
 
     
     void drawFeatureMatches(const std::vector<cv::DMatch>& matches, const ImageFrame& firstImage, const ImageFrame& secondImage, cv::Mat& outImage);
@@ -123,7 +125,8 @@ class RobustMatcher2 {
 
     void testImageRectify();
     void testFeatureExtraction();
-    void testFeatureMatching();
+    void testFeatureMatchingLRLpL();
+    
 };
 
 } //namespace vio_slam
