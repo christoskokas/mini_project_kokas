@@ -38,7 +38,6 @@ int main (int argc, char **argv)
     std::cout << "-------------------------\n";
     vio_slam::RobustMatcher2 rb(zedptr);
     std::thread worker(&vio_slam::RobustMatcher2::beginTest, rb);
-    std::cout << "LYYYYYYYYYYYYYYYYYYYYYYYYYL\n";
     // std::thread worker(&vio_slam::Frame::pangoQuit, frame, &nh, &fv.leftImage.pointsPosition);
     // Zed_Camera::Camera_2 camera_right = Zed_Camera::Camera_2(&nh);
     // Zed_Camera::Camera_2 camera_rightfx = Zed_Camera::Camera2::getFx();

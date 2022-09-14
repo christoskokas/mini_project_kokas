@@ -35,6 +35,7 @@ class ImageFrame
     public:
         cv::Mat image, desc, realImage;
         std::vector < cv::KeyPoint > keypoints;
+        std::vector<cv::Point2f> optPoints;
         int rows {5};
         int cols {5};
         float averageDistance {0.0f};
@@ -45,6 +46,10 @@ class ImageFrame
         void getImage(int frameNumber, const char* whichImage);
         void rectifyImage(cv::Mat& map1, cv::Mat& map2);
 
+        void opticalFlow(ImageFrame& prevImage);
+        void opticalFlowRemoveOutliers(std::vector < cv::Point2f>& pointL, std::vector < cv::Point2f>& pointpL, cv::Mat& status);
+
+        void findDisparity(cv::Mat& otherImage, cv::Mat& disparity);
 
         void findFeaturesOnImage(int frameNumber, const char* whichImage, cv::Mat& map1, cv::Mat& map2);
 
@@ -109,6 +114,8 @@ class RobustMatcher2 {
     // void findFeaturesORBAdaptive(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     
 
+    
+
 
     void matchCrossRatio(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matches, bool LR);
     void symmetryTest(ImageFrame& first, ImageFrame& second, const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches);
@@ -125,7 +132,8 @@ class RobustMatcher2 {
 
     void testImageRectify();
     void testFeatureExtraction();
-    void testFeatureMatchingLRLpL();
+    void testFeatureMatching();
+    void testDisparityWithOpticalFlow();
     
 };
 
