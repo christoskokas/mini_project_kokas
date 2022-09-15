@@ -92,9 +92,10 @@ void ImageFrame::findFeaturesGoodFeatures()
     double qualityLevel = 0.01;
     double minDistance = 10;
     int blockSize = 3;
+    int numberOfPoints = 100;
     bool useHarrisDetector = false;
     double k = 0.04;
-    cv::goodFeaturesToTrack(image,optPoints,200,qualityLevel,minDistance, cv::Mat(),blockSize,useHarrisDetector,k);
+    cv::goodFeaturesToTrack(image,optPoints,numberOfPoints,qualityLevel,minDistance, cv::Mat(),blockSize,useHarrisDetector,k);
 }
 
 void ImageFrame::findDisparity(cv::Mat& otherImage, cv::Mat& disparity)
@@ -104,9 +105,10 @@ void ImageFrame::findDisparity(cv::Mat& otherImage, cv::Mat& disparity)
   int block = 11;
   int P1 = block * block * 8;
   int P2 = block * block * 32;
-  auto bm = cv::StereoBM::create(160,7);
-  // auto sgbm = cv::StereoBM::create(minDisparity, numDisparities, block, P1, P2);
-  bm->compute(image, otherImage, disparity);
+//   auto bm = cv::StereoBM::create(32,11);
+//   bm->compute(image, otherImage, disparity);
+  auto sgbm = cv::StereoSGBM::create(minDisparity, numDisparities, block, P1, P2);
+  sgbm->compute(image,otherImage,disparity);
 }
 
 void ImageFrame::opticalFlowRemoveOutliers(std::vector < cv::Point2f>& optPoints, std::vector < cv::Point2f>& prevOptPoints, cv::Mat& status)
@@ -212,13 +214,13 @@ void RobustMatcher2::testFeatureExtraction()
 
 void RobustMatcher2::testDisparityWithOpticalFlow()
 {
-        std::cout << "-------------------------\n";
+    std::cout << "-------------------------\n";
     std::cout << "Disparity With Optical Flow \n";
     std::cout << "-------------------------\n";
-    const int times = 100;
+    // const int times = 100;
+    const int times = 656;
     bool firstImage = true;
     bool withThread = true;
-    // const int times = 100;
     int averageTime = 0;
     for (int frame = 0; frame < times; frame++)
     {
@@ -243,7 +245,9 @@ void RobustMatcher2::testDisparityWithOpticalFlow()
             leftImage.opticalFlow(prevLeftImage);
             disp.join();
             std::cout << "number of tracked points : " << leftImage.optPoints.size() << std::endl;
-            // cv::imshow("disparity",disparity);
+            cv::Mat dispNorm;
+            cv::normalize(disparity, dispNorm,0,1,cv::NORM_MINMAX, CV_32F);
+            // cv::imshow("disparity",dispNorm);
 
         }
         else
@@ -263,13 +267,15 @@ void RobustMatcher2::testDisparityWithOpticalFlow()
         
         //Calculate feature position
         prevLeftImage.optPoints = leftImage.optPoints;
+        prevLeftImage.image = leftImage.image.clone();
+        leftImage.optPoints.clear();
         total = double(clock() - start) * 1000 / (double)CLOCKS_PER_SEC;
         averageTime += total;
 
         std::cout << "-------------------------\n";
         std::cout << "\n Frame Processing Time  : " << total  << " milliseconds." << std::endl;
         std::cout << "-------------------------\n";
-        cv::waitKey(0);
+        cv::waitKey(1);
     }
     std::cout << "-------------------------\n";
     std::cout << "\n Average Processing Time should be : 66 milliseconds. (15fps so 1/15 = 66ms)" << std::endl;
