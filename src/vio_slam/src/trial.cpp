@@ -151,17 +151,27 @@ void ImageFrame::opticalFlowRemoveOutliers(std::vector < cv::Point2f>& optPoints
     prevOptPoints = inlierspL;
 }
 
-void ImageFrame::opticalFlow(ImageFrame& prevImage,cv::Mat& optFlow)
+void ImageFrame::opticalFlow(ImageFrame& prevImage,cv::Mat& status, cv::Mat& optFlow)
 {
-    cv::Mat status, err;
+    cv::Mat err;
     cv::calcOpticalFlowPyrLK(prevImage.image, image, prevImage.optPoints, optPoints, status, err);
-    optFlow = image.clone();
-    opticalFlowRemoveOutliers(optPoints,prevImage.optPoints,status);
+    // optFlow = image.clone();
+    // opticalFlowRemoveOutliers(optPoints,prevImage.optPoints,status);
+    // for(int j=0; j<prevImage.optPoints.size(); j++)
+    // {
+    //     cv::line(optFlow,prevImage.optPoints[j],optPoints[j],cv::Scalar(255,0,0,255));
+    // }
+
+    // cv::imshow("Optical Flow", optFlow);
+}
+
+void RobustMatcher2::drawOpticalFlow(ImageFrame& prevImage, ImageFrame& curImage, cv::Mat& outImage)
+{
+    outImage = curImage.image.clone();
     for(int j=0; j<prevImage.optPoints.size(); j++)
     {
-        cv::line(optFlow,prevImage.optPoints[j],optPoints[j],cv::Scalar(255,0,0,255));
+        cv::line(outImage,prevImage.optPoints[j],curImage.optPoints[j],cv::Scalar(255,0,0,255));
     }
-    // cv::imshow("Optical Flow", optFlow);
 }
 
 void ImageFrame::drawFeaturesWithLines(cv::Mat& outImage)
@@ -260,7 +270,7 @@ void RobustMatcher2::testDisparityWithOpticalFlow()
             firstImage = false;
             continue;
         }
-        cv::Mat disparity;
+        cv::Mat disparity, status;
         if (withThread)
         {
             std::thread disp(&vio_slam::ImageFrame::findDisparity,std::ref(leftImage),std::ref(rightImage.image),std::ref(disparity));
@@ -270,7 +280,7 @@ void RobustMatcher2::testDisparityWithOpticalFlow()
                 prevLeftImage.findFeaturesGoodFeatures();
             }
             cv::Mat optFlow;
-            leftImage.opticalFlow(prevLeftImage,optFlow);
+            leftImage.opticalFlow(prevLeftImage,status,optFlow);
             disp.join();
             std::cout << "number of tracked points : " << leftImage.optPoints.size() << std::endl;
             cv::Mat dispNorm;
@@ -290,7 +300,7 @@ void RobustMatcher2::testDisparityWithOpticalFlow()
                 prevLeftImage.findFeaturesGoodFeatures();
             }
             cv::Mat optFlow;
-            leftImage.opticalFlow(prevLeftImage, optFlow);
+            leftImage.opticalFlow(prevLeftImage,status, optFlow);
         }
 
         // TODO REVERSE OPTICAL FLOW (Cross Check)
@@ -321,14 +331,16 @@ void RobustMatcher2::testDisparityWithOpticalFlow()
 
 void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
 {
-        std::cout << "-------------------------\n";
+    std::cout << "-------------------------\n";
     std::cout << "Feature Matching With Optical Flow \n";
     std::cout << "-------------------------\n";
-    const int times = 200;
-    // const int times = 658;
+    // const int times = 10;
+    const int times = 658;
     bool firstImage = true;
     bool withThread = true;
     int averageTime = 0;
+    clock_t maxTime = 0;
+    clock_t minTime = 100;
     for (int frame = 0; frame < times; frame++)
     {
         start = clock();
@@ -347,19 +359,70 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
         }
         if (withThread)
         {
-            if (prevLeftImage.optPoints.size()<10)
+            if (prevLeftImage.optPoints.size()<20)
             {
                 // New Keyframe
                 prevLeftImage.findFeaturesGoodFeatures();
+                cv::Mat optFlowLR, statusPrev;
+                prevRightImage.opticalFlow(prevLeftImage, statusPrev, optFlowLR);
+                std::cout << " prev left size : " << prevLeftImage.optPoints.size() << std::endl;
+                std::cout << " prev right size : " << prevRightImage.optPoints.size() << std::endl;
+                
+                
+                reduceVector(prevLeftImage.optPoints,statusPrev);
+                reduceVector(prevRightImage.optPoints,statusPrev);
+
+
+                cv::Mat inliers;
+                cv::Mat fund = cv::findFundamentalMat(cv::Mat(prevLeftImage.optPoints), cv::Mat(prevRightImage.optPoints), inliers, cv::FM_RANSAC, 3, 0.99);
+                reduceVector(prevLeftImage.optPoints,inliers);
+                reduceVector(prevRightImage.optPoints,inliers);
+                drawOpticalFlow(prevLeftImage,prevRightImage,optFlowLR);
+                cv::imshow("LR optical", optFlowLR);
+                std::cout << " prev left size : " << prevLeftImage.optPoints.size() << std::endl;
+                std::cout << " prev right size : " << prevRightImage.optPoints.size() << std::endl;
             }
-            cv::Mat optFlowLR;
-            std::thread opt(&vio_slam::ImageFrame::opticalFlow,std::ref(prevRightImage),std::ref(prevLeftImage),std::ref(optFlowLR));
-            // prevRightImage.opticalFlow(prevLeftImage, optFlowLR);
-            cv::Mat optFlow;
-            leftImage.opticalFlow(prevLeftImage, optFlow);
+            cv::Mat statusL, statusR;
+            cv::Mat optFlow,optFlowR;
+            leftImage.opticalFlow(prevLeftImage,statusL, optFlow);
+
+            rightImage.opticalFlow(prevRightImage,statusR, optFlowR);
+
+            cv::Mat status = statusL & statusR;
+            std::cout << " left size : " << leftImage.optPoints.size() << std::endl;
+            std::cout << " prev left size : " << prevLeftImage.optPoints.size() << std::endl;
+            std::cout << " right size : " << rightImage.optPoints.size() << std::endl;
+            std::cout << " prev right size : " << prevRightImage.optPoints.size() << std::endl;
+
+            reduceVector(leftImage.optPoints,status);
+            reduceVector(prevLeftImage.optPoints,status);
+            reduceVector(rightImage.optPoints,status);
+            reduceVector(prevRightImage.optPoints,status);
+
+            std::cout << " left size : " << leftImage.optPoints.size() << std::endl;
+            std::cout << " prev left size : " << prevLeftImage.optPoints.size() << std::endl;
+            std::cout << " right size : " << rightImage.optPoints.size() << std::endl;
+            std::cout << " prev right size : " << prevRightImage.optPoints.size() << std::endl;
+
+            // Find Fund Matrix only from Left Image Points because the Right Camera Frame moves the same way as the Left Camera
+            cv::Mat inliers;
+            cv::Mat fund = cv::findFundamentalMat(cv::Mat(leftImage.optPoints), cv::Mat(prevLeftImage.optPoints), inliers, cv::FM_RANSAC, 3, 0.99);
+            
+            
+            reduceVector(leftImage.optPoints,inliers);
+            reduceVector(prevLeftImage.optPoints,inliers);
+            reduceVector(rightImage.optPoints,inliers);
+            reduceVector(prevRightImage.optPoints,inliers);
+
+
+
+            drawOpticalFlow(prevLeftImage,leftImage,optFlow);
             cv::imshow("LpL optical", optFlow);
-            opt.join();
-            cv::imshow("LR optical", optFlowLR);
+
+            drawOpticalFlow(prevRightImage,rightImage,optFlowR);
+            cv::imshow("RpR optical", optFlowR);
+            // std::thread opt(&vio_slam::ImageFrame::opticalFlow,std::ref(prevRightImage),std::ref(prevLeftImage),std::ref(optFlowLR));
+            // opt.join();
         }
         else
         {
@@ -384,20 +447,25 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
                 // prevRightImage.keypoints.clear();
 
             }
-            cv::Mat optFlow;
-            leftImage.opticalFlow(prevLeftImage, optFlow);
+            cv::Mat optFlow, status;
+            leftImage.opticalFlow(prevLeftImage,status, optFlow);
             cv::imshow("LpL Optical", optFlow);
 
         }
 
         // TODO REVERSE OPTICAL FLOW (Cross Check)
 
-        // TODO Rejct Outliers With Fundamental Matrix
+        // TODO Rejct Outliers With Fundamental Matrix (left to prevleft has the same Fund Matrix with right to prevright)
 
         // Because Images are rectified we can use directly the disparities
 
 
-
+        // for (size_t i = 0; i < leftImage.optPoints.size(); i++)
+        // {
+        //     std::cout << "left : " << leftImage.optPoints[i] << std::endl;
+        //     std::cout << "right : " << rightImage.optPoints[i] << std::endl;
+        // }
+        
         
         //Calculate feature position
         prevLeftImage.optPoints = leftImage.optPoints;
@@ -410,17 +478,24 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
         rightImage.optPoints.clear();
         total = double(clock() - start) * 1000 / (double)CLOCKS_PER_SEC;
         averageTime += total;
-
+        if (total > maxTime)
+            maxTime = total;
+        if (total < minTime)
+            minTime = total;
         std::cout << "-------------------------\n";
         std::cout << "\n Frame Processing Time  : " << total  << " milliseconds." << std::endl;
         std::cout << "-------------------------\n";
-        cv::waitKey(0);
+        cv::waitKey(1);
     }
     cv::destroyAllWindows();
     std::cout << "-------------------------\n";
     std::cout << "\n Average Processing Time should be : 66 milliseconds. (15fps so 1/15 = 66ms)" << std::endl;
     std::cout << "-------------------------\n";
     std::cout << "\n Average Processing Time  of " << times << " frames : " << averageTime/times  << " milliseconds." << std::endl;
+    std::cout << "-------------------------\n";
+    std::cout << "\n Max Processing Time of Single Frame  : " << maxTime  << " milliseconds." << std::endl;
+    std::cout << "-------------------------\n";
+    std::cout << "\n Min Processing Time of Single Frame  : " << minTime  << " milliseconds." << std::endl;
     std::cout << "-------------------------\n";
 }
 
@@ -682,6 +757,15 @@ void ImageFrame::pointsToKeyPoints()
     {
         keypoints.push_back(cv::KeyPoint(cv::Point2f((*point).x,(*point).y),1));
     }
+}
+
+void RobustMatcher2::reduceVector(std::vector<cv::Point2f> &v, cv::Mat& status)
+{
+    int j = 0;
+    for (int i = 0; i < int(v.size()); i++)
+        if (status.at<bool>(i))
+            v[j++] = v[i];
+    v.resize(j);
 }
 
 void RobustMatcher2::drawFeatureMatches(const std::vector<cv::DMatch>& matches, const ImageFrame& firstImage, const ImageFrame& secondImage, cv::Mat& outImage)

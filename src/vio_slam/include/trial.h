@@ -50,12 +50,13 @@ class ImageFrame
         void getImage(int frameNumber, const char* whichImage);
         void rectifyImage(cv::Mat& map1, cv::Mat& map2);
 
-        void opticalFlow(ImageFrame& prevImage,cv::Mat& optFlow);
+        void opticalFlow(ImageFrame& prevImage,cv::Mat& status, cv::Mat& optFlow);
         void opticalFlowRemoveOutliers(std::vector < cv::Point2f>& pointL, std::vector < cv::Point2f>& pointpL, cv::Mat& status);
 
         void findDisparity(cv::Mat& otherImage, cv::Mat& disparity);
 
         void pointsToKeyPoints();
+        
 
         void findFeaturesOnImage(int frameNumber, const char* whichImage, cv::Mat& map1, cv::Mat& map2);
 
@@ -122,7 +123,7 @@ class RobustMatcher2 {
 
     
 
-
+    void reduceVector(std::vector<cv::Point2f> &v, cv::Mat& status);
     void matchCrossRatio(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matches, bool LR);
     void symmetryTest(ImageFrame& first, ImageFrame& second, const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches);
     void ratioTest(std::vector<std::vector<cv::DMatch>>& matches);
@@ -131,6 +132,7 @@ class RobustMatcher2 {
 
     
     void drawFeatureMatches(const std::vector<cv::DMatch>& matches, const ImageFrame& firstImage, const ImageFrame& secondImage, cv::Mat& outImage);
+    void drawOpticalFlow(ImageFrame& prevImage, ImageFrame& curImage, cv::Mat& outImage);
 
     void undistortMap();
 
