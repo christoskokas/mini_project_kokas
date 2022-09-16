@@ -26,6 +26,10 @@
 #include <tf/tf.h>
 #include <nav_msgs/Odometry.h>
 #include <thread>
+#include <opencv2/ximgproc/edge_filter.hpp>
+#include <opencv2/ximgproc/disparity_filter.hpp>
+
+
 namespace vio_slam
 {
 

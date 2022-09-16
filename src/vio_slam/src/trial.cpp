@@ -92,7 +92,7 @@ void ImageFrame::findFeaturesGoodFeatures()
     double qualityLevel = 0.01;
     double minDistance = 10;
     int blockSize = 3;
-    int numberOfPoints = 100;
+    int numberOfPoints = 200;
     bool useHarrisDetector = false;
     double k = 0.04;
     cv::goodFeaturesToTrack(image,optPoints,numberOfPoints,qualityLevel,minDistance, cv::Mat(),blockSize,useHarrisDetector,k);
@@ -100,15 +100,40 @@ void ImageFrame::findFeaturesGoodFeatures()
 
 void ImageFrame::findDisparity(cv::Mat& otherImage, cv::Mat& disparity)
 {
-  int minDisparity = 0;
-  int numDisparities = 32;
-  int block = 11;
-  int P1 = block * block * 8;
-  int P2 = block * block * 32;
-//   auto bm = cv::StereoBM::create(32,11);
-//   bm->compute(image, otherImage, disparity);
-  auto sgbm = cv::StereoSGBM::create(minDisparity, numDisparities, block, P1, P2);
-  sgbm->compute(image,otherImage,disparity);
+    int minDisparity = 0;
+    int numDisparities = 32;
+    int block = 11;
+    int P1 = block * block * 8;
+    int P2 = block * block * 32;
+    float wlsLamda = 8000.0;
+    float wlsSigma = 1.5;
+    cv::Mat rightDisp, leftDisp, realDisp;
+    cv::Mat leftRes,rightRes;
+    cv::resize(image ,leftRes ,cv::Size(),0.5,0.5, cv::INTER_LINEAR_EXACT);
+    cv::resize(otherImage,rightRes,cv::Size(),0.5,0.5, cv::INTER_LINEAR_EXACT);
+    auto bm = cv::StereoBM::create(numDisparities,block);
+    bm->compute(leftRes, rightRes, disparity);
+
+    
+    // bm->compute(leftRes, rightRes, leftDisp);
+    // cv::Ptr<cv::ximgproc::DisparityWLSFilter> wls_filter = cv::ximgproc::createDisparityWLSFilter(bm);
+    // cv::Ptr<cv::StereoMatcher> right = cv::ximgproc::createRightMatcher(bm);
+    // right->compute(rightRes, leftRes,rightDisp);
+    // wls_filter->setLambda(wlsLamda);
+    // wls_filter->setSigmaColor(wlsSigma);
+    // wls_filter->filter(leftDisp,image,disparity,rightDisp);
+
+
+
+    // cv::ximgproc::getDisparityVis(realDisp,disparity);
+    //   bm->setMinDisparity(0);
+    //   bm->setPreFilterCap(25);
+    //   bm->setPreFilterSize(5);
+    //   bm->setTextureThreshold(10);
+    //   bm->setUniquenessRatio(69);
+    //   bm->setSpeckleRange(2);
+    //   auto sgbm = cv::StereoSGBM::create(minDisparity, numDisparities, block, P1, P2);
+    //   sgbm->compute(image,otherImage,disparity);
 }
 
 void ImageFrame::opticalFlowRemoveOutliers(std::vector < cv::Point2f>& optPoints, std::vector < cv::Point2f>& prevOptPoints, cv::Mat& status)
@@ -217,8 +242,8 @@ void RobustMatcher2::testDisparityWithOpticalFlow()
     std::cout << "-------------------------\n";
     std::cout << "Disparity With Optical Flow \n";
     std::cout << "-------------------------\n";
-    // const int times = 100;
-    const int times = 656;
+    // const int times = 4;
+    const int times = 658;
     bool firstImage = true;
     bool withThread = true;
     int averageTime = 0;
@@ -246,9 +271,11 @@ void RobustMatcher2::testDisparityWithOpticalFlow()
             disp.join();
             std::cout << "number of tracked points : " << leftImage.optPoints.size() << std::endl;
             cv::Mat dispNorm;
-            cv::normalize(disparity, dispNorm,0,1,cv::NORM_MINMAX, CV_32F);
-            // cv::imshow("disparity",dispNorm);
-
+            cv::Mat depthImage;
+            // cv::normalize(disparity, dispNorm,0,1,cv::NORM_MINMAX, CV_32F);
+            // cv::imshow("disparity",disparity);
+            cv::reprojectImageTo3D(disparity,depthImage,Q);
+            cv::imshow("disparity",depthImage);
         }
         else
         {
@@ -262,6 +289,9 @@ void RobustMatcher2::testDisparityWithOpticalFlow()
             leftImage.opticalFlow(prevLeftImage);
         }
 
+        // TODO REVERSE OPTICAL FLOW (Cross Check)
+
+        // Because Images are rectified we can use directly the disparities
 
 
         
@@ -277,10 +307,11 @@ void RobustMatcher2::testDisparityWithOpticalFlow()
         std::cout << "-------------------------\n";
         cv::waitKey(1);
     }
+    cv::destroyAllWindows();
     std::cout << "-------------------------\n";
     std::cout << "\n Average Processing Time should be : 66 milliseconds. (15fps so 1/15 = 66ms)" << std::endl;
     std::cout << "-------------------------\n";
-    std::cout << "\n Average Processing Time  of " << times + 1 << " frames : " << averageTime/(times + 1)  << " milliseconds." << std::endl;
+    std::cout << "\n Average Processing Time  of " << times << " frames : " << averageTime/times  << " milliseconds." << std::endl;
     std::cout << "-------------------------\n";
 }
 
