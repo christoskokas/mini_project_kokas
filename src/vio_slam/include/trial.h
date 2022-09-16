@@ -50,10 +50,12 @@ class ImageFrame
         void getImage(int frameNumber, const char* whichImage);
         void rectifyImage(cv::Mat& map1, cv::Mat& map2);
 
-        void opticalFlow(ImageFrame& prevImage);
+        void opticalFlow(ImageFrame& prevImage,cv::Mat& optFlow);
         void opticalFlowRemoveOutliers(std::vector < cv::Point2f>& pointL, std::vector < cv::Point2f>& pointpL, cv::Mat& status);
 
         void findDisparity(cv::Mat& otherImage, cv::Mat& disparity);
+
+        void pointsToKeyPoints();
 
         void findFeaturesOnImage(int frameNumber, const char* whichImage, cv::Mat& map1, cv::Mat& map2);
 
@@ -75,7 +77,7 @@ class RobustMatcher2 {
     cv::Ptr<cv::FeatureDetector> detector;
     cv::Mat image, P1, P2, Q, R1, R2;
     cv::Mat rmap[2][2];
-    ImageFrame leftImage, rightImage, prevLeftImage;
+    ImageFrame leftImage, rightImage, prevLeftImage, prevRightImage;
     clock_t start, total;
     const Zed_Camera* zedcamera;
     // pointer to the feature descriptor extractor object
@@ -138,6 +140,7 @@ class RobustMatcher2 {
     void testFeatureExtraction();
     void testFeatureMatching();
     void testDisparityWithOpticalFlow();
+    void testFeatureMatchingWithOpticalFlow();
     
 };
 
