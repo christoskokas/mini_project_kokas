@@ -44,7 +44,7 @@ class Frame
     public:
         Frame();
         std::list< KeyFrameVars > keyFrames;
-        void pangoQuit(ros::NodeHandle *nh, const std::vector<pcl::PointXYZ>* pointsFromImage);                    
+        void pangoQuit(ros::NodeHandle *nh);                    
         void printList(std::list< KeyFrameVars >& keyFrames);
 
 

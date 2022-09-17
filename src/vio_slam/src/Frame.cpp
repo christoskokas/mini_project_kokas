@@ -49,7 +49,7 @@ void Frame::printList(std::list< KeyFrameVars >& keyFrames)
     }
 }
 
-void Frame::pangoQuit(ros::NodeHandle *nh, const std::vector<pcl::PointXYZ>* pointsFromImage)
+void Frame::pangoQuit(ros::NodeHandle *nh)
 {
     const int UI_WIDTH = 180;
     
@@ -96,7 +96,6 @@ void Frame::pangoQuit(ros::NodeHandle *nh, const std::vector<pcl::PointXYZ>* poi
         lines->getValues(temp.mT,camera->T_pc.m);
         if (pangolin::Pushed(a_button))
         {
-            auto points = std::make_shared<Points>(pointsFromImage);
             ROS_INFO("Keyframe Added \n");
             {
                 auto keyframe = std::make_shared<CameraFrame>();

@@ -33,7 +33,7 @@ int main (int argc, char **argv)
     const vio_slam::Zed_Camera* zedptr = &zedcamera;
     vio_slam::FeatureDrawer fv(&nh, zedptr);
     vio_slam::Frame frame;
-    std::thread worker(&vio_slam::Frame::pangoQuit, frame, &nh, &fv.leftImage.pointsPosition);
+    std::thread worker(&vio_slam::Frame::pangoQuit, frame, &nh);
     // Zed_Camera::Camera_2 camera_right = Zed_Camera::Camera_2(&nh);
     // Zed_Camera::Camera_2 camera_rightfx = Zed_Camera::Camera2::getFx();
     ros::spin();

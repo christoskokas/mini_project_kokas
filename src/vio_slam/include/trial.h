@@ -22,12 +22,17 @@
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl/kdtree/kdtree_flann.h>
+#include <boost/assign.hpp>
 #include <boost/foreach.hpp>
 #include <tf/tf.h>
 #include <nav_msgs/Odometry.h>
 #include <thread>
 #include <opencv2/ximgproc/edge_filter.hpp>
 #include <opencv2/ximgproc/disparity_filter.hpp>
+#include "Optimizer.h"
+#include "ceres/ceres.h"
+
+typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
 
 
 namespace vio_slam
@@ -40,6 +45,7 @@ class ImageFrame
         cv::Mat image, desc, realImage;
         std::vector < cv::KeyPoint > keypoints;
         std::vector<cv::Point2f> optPoints;
+        std_msgs::Header header;
         int rows {5};
         int cols {5};
         float averageDistance {0.0f};
@@ -47,6 +53,7 @@ class ImageFrame
         int numberPerCell {totalNumber/(rows*cols)};
         int numberPerCellFind {2*totalNumber/(rows*cols)};
 
+        void setImage(const sensor_msgs::ImageConstPtr& imageRef);
         void getImage(int frameNumber, const char* whichImage);
         void rectifyImage(cv::Mat& map1, cv::Mat& map2);
 
@@ -77,6 +84,7 @@ class RobustMatcher2 {
     // pointer to the feature point detector object
     cv::Ptr<cv::FeatureDetector> detector;
     cv::Mat image, P1, P2, Q, R1, R2;
+    ImageFrame trial;
     cv::Mat rmap[2][2];
     ImageFrame leftImage, rightImage, prevLeftImage, prevRightImage;
     clock_t start, total;
@@ -88,14 +96,26 @@ class RobustMatcher2 {
     bool firstImage{true};
     double distance; // min distance to epipolar
     double confidence; // confidence level (probability)
+    double camera[6];
     int rows {5};
     int cols {5};
     float averageDistance {0.0f};
     int totalNumber {1000};
     int numberPerCell {totalNumber/(rows*cols)};
     int numberPerCellFind {2*totalNumber/(rows*cols)};
+    Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
+    Eigen::Matrix4d previousT = Eigen::Matrix4d::Identity();
+
+
+    image_transport::ImageTransport m_it;
+    message_filters::Subscriber<sensor_msgs::Image> subLeftIm;
+    message_filters::Subscriber<sensor_msgs::Image> subRightIm;
+    message_filters::Synchronizer<MySyncPolicy> img_sync;
+
+
+    ros::Publisher posePublisher;
  public:
-    RobustMatcher2(const Zed_Camera* zedptr) : ratio(0.85f), refineF(false),
+    RobustMatcher2(ros::NodeHandle *nh, const Zed_Camera* zedptr) : m_it(*nh), img_sync(MySyncPolicy(10), subLeftIm, subRightIm), ratio(0.85f), refineF(false),
     confidence(0.99), distance(3.0) 
     {
         this->zedcamera = zedptr;
@@ -103,13 +123,33 @@ class RobustMatcher2 {
         {
             undistortMap();
         }
+        cv::Mat rod;
+        cv::Rodrigues(R1, rod);
+        camera[0] = rod.at<double>(0);
+        camera[1] = rod.at<double>(1);
+        camera[2] = rod.at<double>(2);
+        camera[3] = 0;
+        camera[4] = 0;
+        camera[5] = 0;
+
         // testFeatureMatching();
         detector = cv::ORB::create(numberPerCellFind,1.2f,8,0,0,2,cv::ORB::HARRIS_SCORE,10,15);
         // testImageRectify();
         // testFeatureExtraction();
+        subLeftIm.subscribe(*nh, zedcamera->cameraLeft.path, 3);
+        subRightIm.subscribe(*nh, zedcamera->cameraRight.path, 3);
+        img_sync.registerCallback(boost::bind(&RobustMatcher2::ImagesCallback, this, _1, _2));
+        std::string position_path;
+        nh->getParam("ground_truth_path", position_path);
+        posePublisher = nh->advertise<nav_msgs::Odometry>(position_path,1);
+
     }
 
     void beginTest();
+
+    void ImagesCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
+
+    void publishPose();
 
     // void getImage(cv::Mat& image, cv::Mat& realImage, int frameNumber, const char* whichImage);
 
@@ -121,7 +161,8 @@ class RobustMatcher2 {
     // void findFeaturesORBAdaptive(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
     
 
-    
+    void triangulatePointsOpt(ImageFrame& first, ImageFrame& second, cv::Mat& points3D);
+    void ceresSolver(cv::Mat& points3D, cv::Mat& prevPoints3D);
 
     void reduceVector(std::vector<cv::Point2f> &v, cv::Mat& status);
     void matchCrossRatio(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matches, bool LR);

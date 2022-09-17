@@ -186,6 +186,22 @@ void ImageFrame::drawFeaturesWithLines(cv::Mat& outImage)
     
 }
 
+void ImageFrame::setImage(const sensor_msgs::ImageConstPtr& imageRef)
+{
+    cv_bridge::CvImagePtr cv_ptr;
+    try
+    {
+      cv_ptr = cv_bridge::toCvCopy(imageRef, sensor_msgs::image_encodings::RGB8);
+    }
+    catch (cv_bridge::Exception& e)
+    {
+      ROS_ERROR("cv_bridge exception: %s", e.what());
+    }
+    cv::cvtColor(cv_ptr->image, image, cv::COLOR_BGR2GRAY);
+    realImage = cv_ptr->image.clone();
+    header = cv_ptr->header;
+}
+
 void RobustMatcher2::testFeatureExtraction()
 {
     std::string imagePath = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/city.jpg";
@@ -329,12 +345,60 @@ void RobustMatcher2::testDisparityWithOpticalFlow()
     std::cout << "-------------------------\n";
 }
 
+void RobustMatcher2::triangulatePointsOpt(ImageFrame& first, ImageFrame& second, cv::Mat& points3D)
+{
+    cv::Mat Points4D(4,1,CV_32F);
+
+    cv::triangulatePoints(P1, P2, first.optPoints,second.optPoints,Points4D);
+    
+    cv::convertPointsFromHomogeneous(Points4D.t(),points3D);
+}
+
+void RobustMatcher2::ceresSolver(cv::Mat& points3D, cv::Mat& prevPoints3D)
+{
+    ceres::Problem problem;
+    ceres::LossFunction* lossfunction = NULL;
+    for (size_t i = 0; i < points3D.rows; i++)
+    {
+        double x = points3D.at<float>(i,0);
+        double y = points3D.at<float>(i,1);
+        double z = points3D.at<float>(i,2);
+        double xp = prevPoints3D.at<float>(i,0);
+        double yp = prevPoints3D.at<float>(i,1);
+        double zp = prevPoints3D.at<float>(i,2);
+        // std::cout << "PREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
+        // std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
+        // std::cout << "x : " << x << " p3d : " << p3d.x() << '\n';
+        Eigen::Vector3d p3d(x, y, z);
+        Eigen::Vector3d pp3d(xp, yp, zp);
+        ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
+        problem.AddResidualBlock(costfunction, lossfunction, camera);
+    }
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    options.max_num_iterations = 100;
+    options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
+    options.minimizer_progress_to_stdout = false;
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+    // std::cout << summary.BriefReport() << std::endl;
+    // std::cout << "After Optimizing: "  << std::endl;
+
+    double quat[4];
+    ceres::AngleAxisToQuaternion(camera, quat);
+    Eigen::Quaterniond q(quat[0], quat[1], quat[2], quat[3]);
+    Eigen::Isometry3d Transform(q.matrix());
+    Transform.pretranslate(Eigen::Vector3d(camera[3], camera[4], camera[5]));
+    T = Transform.matrix();
+    
+}
+
 void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
 {
     std::cout << "-------------------------\n";
     std::cout << "Feature Matching With Optical Flow \n";
     std::cout << "-------------------------\n";
-    // const int times = 10;
+    // const int times = 100;
     const int times = 658;
     bool firstImage = true;
     bool withThread = true;
@@ -421,6 +485,21 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
 
             drawOpticalFlow(prevRightImage,rightImage,optFlowR);
             cv::imshow("RpR optical", optFlowR);
+            cv::Mat PrevPoints3D, Points3D;
+            triangulatePointsOpt(prevLeftImage,prevRightImage,PrevPoints3D);
+            triangulatePointsOpt(leftImage,rightImage,Points3D);
+
+            ceresSolver(Points3D,PrevPoints3D);
+            publishPose();
+
+
+            // std::cout << "points" << Points3D << std::endl;
+            // for (size_t i = 0; i < Points3D.rows; i++)
+            // {
+            //     std::cout << "prev x : " << PrevPoints3D.at<float>(i,0) << " y : " << PrevPoints3D.at<float>(i,1) << " z : " << PrevPoints3D.at<float>(i,2) << std::endl;
+            //     std::cout << "after x : " << Points3D.at<float>(i,0) << " y : " << Points3D.at<float>(i,1) << " z : " << Points3D.at<float>(i,2) << std::endl;
+            // }
+            
             // std::thread opt(&vio_slam::ImageFrame::opticalFlow,std::ref(prevRightImage),std::ref(prevLeftImage),std::ref(optFlowLR));
             // opt.join();
         }
@@ -766,6 +845,42 @@ void RobustMatcher2::reduceVector(std::vector<cv::Point2f> &v, cv::Mat& status)
         if (status.at<bool>(i))
             v[j++] = v[i];
     v.resize(j);
+}
+
+void RobustMatcher2::ImagesCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
+{
+    trial.setImage(rIm);
+    std::cout << "LOOOOOOOOOOOOOOOOOL\n";
+}
+
+void RobustMatcher2::publishPose()
+{
+nav_msgs::Odometry position;
+Eigen::Matrix3d Rot;
+previousT = previousT * T;
+Eigen::Quaterniond quat(previousT.topLeftCorner<3,3>());
+tf::poseTFToMsg(tf::Pose(tf::Quaternion(quat.x(),quat.y(),quat.z(),quat.w()),  tf::Vector3(previousT(0,3), previousT(1,3), previousT(2,3))), position.pose.pose); //Aria returns pose in mm.
+std::cout << "T : " << previousT << '\n';
+position.pose.covariance =  boost::assign::list_of(1e-3) (0) (0)  (0)  (0)  (0)
+                                                    (0) (1e-3)  (0)  (0)  (0)  (0)
+                                                    (0)   (0)  (1e6) (0)  (0)  (0)
+                                                    (0)   (0)   (0) (1e6) (0)  (0)
+                                                    (0)   (0)   (0)  (0) (1e6) (0)
+                                                    (0)   (0)   (0)  (0)  (0)  (1e3) ;
+
+position.twist.twist.linear.x = 0.0;                  //(sumsMovement[0]-previoussumsMovement[0])*15 //15 fps
+position.twist.twist.angular.z = 0.0;
+position.twist.covariance =  boost::assign::list_of(1e-3) (0)   (0)  (0)  (0)  (0)
+                                                    (0) (1e-3)  (0)  (0)  (0)  (0)
+                                                    (0)   (0)  (1e6) (0)  (0)  (0)
+                                                    (0)   (0)   (0) (1e6) (0)  (0)
+                                                    (0)   (0)   (0)  (0) (1e6) (0)
+                                                    (0)   (0)   (0)  (0)  (0)  (1e3) ; 
+
+position.header.frame_id = "whatever";
+position.header.stamp = ros::Time::now();
+posePublisher.publish(position);
+std::cout << "pose Published \n";
 }
 
 void RobustMatcher2::drawFeatureMatches(const std::vector<cv::DMatch>& matches, const ImageFrame& firstImage, const ImageFrame& secondImage, cv::Mat& outImage)
