@@ -359,25 +359,28 @@ void RobustMatcher2::ceresSolver(cv::Mat& points3D, cv::Mat& prevPoints3D)
     ceres::Problem problem;
     ceres::LossFunction* lossfunction = NULL;
     for (size_t i = 0; i < points3D.rows; i++)
-    {
-        double x = points3D.at<float>(i,0);
-        double y = points3D.at<float>(i,1);
-        double z = points3D.at<float>(i,2);
-        double xp = prevPoints3D.at<float>(i,0);
-        double yp = prevPoints3D.at<float>(i,1);
-        double zp = prevPoints3D.at<float>(i,2);
-        // std::cout << "PREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
-        // std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
-        // std::cout << "x : " << x << " p3d : " << p3d.x() << '\n';
-        Eigen::Vector3d p3d(x, y, z);
-        Eigen::Vector3d pp3d(xp, yp, zp);
-        ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
-        problem.AddResidualBlock(costfunction, lossfunction, camera);
+    {   
+        if ((points3D.at<float>(i,2) < 40*zedcamera->mBaseline) && (prevPoints3D.at<float>(i,2) < 40*zedcamera->mBaseline))
+        {
+            float x = points3D.at<float>(i,0);
+            float y = points3D.at<float>(i,1);
+            float z = points3D.at<float>(i,2);
+            float xp = prevPoints3D.at<float>(i,0);
+            float yp = prevPoints3D.at<float>(i,1);
+            float zp = prevPoints3D.at<float>(i,2);
+            // std::cout << "PREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
+            // std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
+            // std::cout << "x : " << x << " p3d : " << p3d.x() << '\n';
+            Eigen::Vector3d p3d(x, y, z);
+            Eigen::Vector3d pp3d(xp, yp, zp);
+            ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
+            problem.AddResidualBlock(costfunction, lossfunction, camera);
+        }
     }
     ceres::Solver::Options options;
-    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    options.linear_solver_type = ceres::DENSE_SCHUR;
     options.max_num_iterations = 100;
-    options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
+    options.trust_region_strategy_type = ceres::DOGLEG;
     options.minimizer_progress_to_stdout = false;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
@@ -398,6 +401,7 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
     std::cout << "-------------------------\n";
     std::cout << "Feature Matching With Optical Flow \n";
     std::cout << "-------------------------\n";
+    const int waitKey = 1;
     // const int times = 100;
     const int times = 658;
     bool firstImage = true;
@@ -438,11 +442,11 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
 
 
                 cv::Mat inliers;
-                cv::Mat fund = cv::findFundamentalMat(cv::Mat(prevLeftImage.optPoints), cv::Mat(prevRightImage.optPoints), inliers, cv::FM_RANSAC, 3, 0.99);
+                cv::Mat fund = cv::findFundamentalMat(cv::Mat(prevLeftImage.optPoints), cv::Mat(prevRightImage.optPoints), inliers, cv::FM_RANSAC, 1, 0.99);
                 reduceVector(prevLeftImage.optPoints,inliers);
                 reduceVector(prevRightImage.optPoints,inliers);
                 drawOpticalFlow(prevLeftImage,prevRightImage,optFlowLR);
-                cv::imshow("LR optical", optFlowLR);
+                // cv::imshow("LR optical", optFlowLR);
                 std::cout << " prev left size : " << prevLeftImage.optPoints.size() << std::endl;
                 std::cout << " prev right size : " << prevRightImage.optPoints.size() << std::endl;
             }
@@ -470,7 +474,7 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
 
             // Find Fund Matrix only from Left Image Points because the Right Camera Frame moves the same way as the Left Camera
             cv::Mat inliers;
-            cv::Mat fund = cv::findFundamentalMat(cv::Mat(leftImage.optPoints), cv::Mat(prevLeftImage.optPoints), inliers, cv::FM_RANSAC, 3, 0.99);
+            cv::Mat fund = cv::findFundamentalMat(cv::Mat(leftImage.optPoints), cv::Mat(prevLeftImage.optPoints), inliers, cv::FM_RANSAC, 1, 0.99);
             
             
             reduceVector(leftImage.optPoints,inliers);
@@ -478,13 +482,16 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
             reduceVector(rightImage.optPoints,inliers);
             reduceVector(prevRightImage.optPoints,inliers);
 
-
+            std::cout << " AFTER RANSACCCCC left size : " << leftImage.optPoints.size() << std::endl;
+            std::cout << " prev left size : " << prevLeftImage.optPoints.size() << std::endl;
+            std::cout << " right size : " << rightImage.optPoints.size() << std::endl;
+            std::cout << " prev right size : " << prevRightImage.optPoints.size() << std::endl;
 
             drawOpticalFlow(prevLeftImage,leftImage,optFlow);
-            cv::imshow("LpL optical", optFlow);
+            // cv::imshow("LpL optical", optFlow);
 
             drawOpticalFlow(prevRightImage,rightImage,optFlowR);
-            cv::imshow("RpR optical", optFlowR);
+            // cv::imshow("RpR optical", optFlowR);
             cv::Mat PrevPoints3D, Points3D;
             triangulatePointsOpt(prevLeftImage,prevRightImage,PrevPoints3D);
             triangulatePointsOpt(leftImage,rightImage,Points3D);
@@ -564,7 +571,7 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
         std::cout << "-------------------------\n";
         std::cout << "\n Frame Processing Time  : " << total  << " milliseconds." << std::endl;
         std::cout << "-------------------------\n";
-        cv::waitKey(1);
+        cv::waitKey(waitKey);
     }
     cv::destroyAllWindows();
     std::cout << "-------------------------\n";
