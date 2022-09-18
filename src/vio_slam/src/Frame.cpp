@@ -85,6 +85,10 @@ void Frame::pangoQuit(ros::NodeHandle *nh)
         view.Activate(s_cam);
         renders.Render();
     });
+    pangolin::OpenGlMatrix Twc, Twr;
+    Twc.SetIdentity();
+    pangolin::OpenGlMatrix Ow; // Oriented with g in the z axis
+    Ow.SetIdentity();
     pangolin::CreatePanel("ui").SetBounds(0.0, 1.0, 0.0, pangolin::Attach::Pix(UI_WIDTH));
     pangolin::Var<bool> a_button("ui.Button", false, false);
     while( ros::ok() && !pangolin::ShouldQuit() )
@@ -113,16 +117,22 @@ void Frame::pangoQuit(ros::NodeHandle *nh)
             // temp.pointCloud.push_back(keyframe->mPointCloud);
             keyFrames.push_back(temp);
             
-            
+            d_cam.Activate(s_cam);
             d_cam.SetDrawFunction([&](pangolin::View& view){
                 view.Activate(s_cam);
                 renders.Render();
                 camera->lineFromKeyFrameToCamera(temp.mT);
             });
+
             // printList(keyFrames);
             
         }
-        
+        d_cam.Activate(s_cam);
+        camera->getOpenGLMatrix(Twc, Ow);
+        camera->drawCamera(Twc);
+        s_cam.Follow(Ow);
+
+
         // Swap frames and Process Events
         pangolin::FinishFrame();
     }
@@ -142,20 +152,27 @@ void CameraFrame::groundCallback(const nav_msgs::Odometry& msg)
     // T_pc.m is column major
     tf::Quaternion quatRot;
     quatRot.setW(msg.pose.pose.orientation.w);
-    quatRot.setX(msg.pose.pose.orientation.y);              // Y on Gazebo is X on Pangolin
-    quatRot.setY(msg.pose.pose.orientation.z);              // Z on Gazebo is Y on Pangolin
-    quatRot.setZ(msg.pose.pose.orientation.x);              // X on Gazebo is Z on Pangolin
+    quatRot.setX(msg.pose.pose.orientation.x);              // Y on Gazebo is X on Pangolin
+    quatRot.setY(msg.pose.pose.orientation.y);              // Z on Gazebo is Y on Pangolin
+    quatRot.setZ(msg.pose.pose.orientation.z);              // X on Gazebo is Z on Pangolin
     tf::Matrix3x3 rotMat(quatRot);
+    // rotMat = rotMat.transpose();
     for (size_t i = 0; i < 3; i++)
     {
-        this->T_pc.m[4*i] = rotMat[0][i];
-        this->T_pc.m[4*i+1] = rotMat[1][i];
-        this->T_pc.m[4*i+2] = rotMat[2][i];
+        this->T_pc.m[4*i] = rotMat[i][0];
+        this->T_pc.m[4*i+1] = rotMat[i][1];
+        this->T_pc.m[4*i+2] = rotMat[i][2];
     }
     
-    this->T_pc.m[12] = msg.pose.pose.position.y;            // Y on Gazebo is X on Pangolin
-    this->T_pc.m[13] = msg.pose.pose.position.z;            // Z on Gazebo is Y on Pangolin
-    this->T_pc.m[14] = msg.pose.pose.position.x;            // X on Gazebo is Z on Pangolin
+    this->T_pc.m[12] = msg.pose.pose.position.x;            // Y on Gazebo is X on Pangolin
+    this->T_pc.m[13] = msg.pose.pose.position.y;            // Z on Gazebo is Y on Pangolin
+    this->T_pc.m[14] = msg.pose.pose.position.z;            // X on Gazebo is Z on Pangolin
+    // for (int i = 0; i<4; i++) {
+    //     Trial(0,i) = this->T_pc.m[4*i];
+    //     Trial(1,i) = this->T_pc.m[4*i+1];
+    //     Trial(2,i) = this->T_pc.m[4*i+2];
+    //     Trial(3,i) = this->T_pc.m[4*i+3];
+    // }
 }
 
 // void CameraFrame::pointCallback(const PointCloud::ConstPtr& msg)
@@ -170,7 +187,7 @@ void CameraFrame::groundCallback(const nav_msgs::Odometry& msg)
 void CameraFrame::Render(const pangolin::RenderParams&)
 {
 
-    const float w = 1;
+    const float w = 0.1;
     const float h = w*0.75;
     const float z = w*0.3;
 
@@ -183,6 +200,76 @@ void CameraFrame::Render(const pangolin::RenderParams&)
     {
         glColor3f(0.0f,0.0f,1.0f);
     }
+    glLineWidth(1);
+    glBegin(GL_LINES);
+    glVertex3f(w/2,h/2,0);
+    glVertex3f(w,h,z);
+    glVertex3f(w/2,-h/2,0);
+    glVertex3f(w,-h,z);
+    glVertex3f(-w/2,-h/2,0);
+    glVertex3f(-w,-h,z);
+    glVertex3f(-w/2,h/2,0);
+    glVertex3f(-w,h,z);
+
+    glVertex3f(w/2,h/2,0);
+    glVertex3f(w/2,-h/2,0);
+
+    glVertex3f(-w/2,h/2,0);
+    glVertex3f(-w/2,-h/2,0);
+
+    glVertex3f(-w/2,h/2,0);
+    glVertex3f(w/2,h/2,0);
+
+    glVertex3f(-w/2,-h/2,0);
+    glVertex3f(w/2,-h/2,0);
+
+    glVertex3f(w,h,z);
+    glVertex3f(w,-h,z);
+
+    glVertex3f(-w,h,z);
+    glVertex3f(-w,-h,z);
+
+    glVertex3f(-w,h,z);
+    glVertex3f(w,h,z);
+
+    glVertex3f(-w,-h,z);
+    glVertex3f(w,-h,z);
+    glEnd();
+
+    glPopMatrix();
+}
+
+void CameraFrame::getOpenGLMatrix(pangolin::OpenGlMatrix &Twc, pangolin::OpenGlMatrix &MOw)
+{
+    for (int i = 0; i<4; i++) {
+        Twc.m[4*i] = T_pc.m[4*i];
+        Twc.m[4*i+1] = T_pc.m[4*i+1];
+        Twc.m[4*i+2] = T_pc.m[4*i+2];
+        Twc.m[4*i+3] = T_pc.m[4*i+3];
+    }
+    MOw.SetIdentity();
+    MOw.m[12] = Twc(0,3);
+    MOw.m[13] = Twc(1,3);
+    MOw.m[14] = Twc(2,3);
+}
+
+void CameraFrame::drawCamera(pangolin::OpenGlMatrix& Twc)
+{
+
+    const float w = 0.4;
+    const float h = w*0.75;
+    const float z = w*0.3;
+
+    glPushMatrix();
+    if (color == "G")
+    {
+        glColor3f(0.0f,1.0f,0.0f);
+    }
+    if (color == "B")
+    {
+        glColor3f(0.0f,0.0f,1.0f);
+    }
+    glMultMatrixd(Twc.m);
     glLineWidth(1);
     glBegin(GL_LINES);
     glVertex3f(w/2,h/2,0);

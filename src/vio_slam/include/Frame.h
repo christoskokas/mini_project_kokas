@@ -70,13 +70,15 @@ struct CameraFrame : public pangolin::Renderable
     const char *color;
     std::vector < pcl::PointXYZ > mPointCloud;
     ros::Subscriber groundSub;
+    Eigen::Matrix4f Trial = Eigen::Matrix4f::Identity();
     // ros::Subscriber pointSub;
     void Subscribers(ros::NodeHandle *nh);
     void groundCallback(const nav_msgs::Odometry& msg);
     // void pointCallback(const PointCloud::ConstPtr& msg);
     void lineFromKeyFrameToCamera(std::vector < pangolin::GLprecision >& mT);
     void Render(const pangolin::RenderParams&) override;
-
+    void drawCamera(pangolin::OpenGlMatrix& Twc);
+    void getOpenGLMatrix(pangolin::OpenGlMatrix &Twc, pangolin::OpenGlMatrix &MOw);
 };
 
 

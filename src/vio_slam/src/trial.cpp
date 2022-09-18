@@ -401,10 +401,10 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
     std::cout << "-------------------------\n";
     std::cout << "Feature Matching With Optical Flow \n";
     std::cout << "-------------------------\n";
-    // const int waitKey = 0;
-    // const int times = 100;
-    const int waitKey = 1;
-    const int times = 658;
+    const int waitKey = 0;
+    const int times = 100;
+    // const int waitKey = 1;
+    // const int times = 658;
     bool firstImage = true;
     bool withThread = true;
     int averageTime = 0;
@@ -905,10 +905,12 @@ void RobustMatcher2::publishPose()
 {
 nav_msgs::Odometry position;
 Eigen::Matrix3d Rot;
+std::cout << "T : " << T << '\n';
 previousT = previousT * T;
+// Eigen::Matrix4d trial = previousT.transpose();
 Eigen::Quaterniond quat(previousT.topLeftCorner<3,3>());
 tf::poseTFToMsg(tf::Pose(tf::Quaternion(quat.x(),quat.y(),quat.z(),quat.w()),  tf::Vector3(previousT(0,3), previousT(1,3), previousT(2,3))), position.pose.pose); //Aria returns pose in mm.
-std::cout << "T : " << previousT << '\n';
+std::cout << "previousT : " << previousT << '\n';
 position.pose.covariance =  boost::assign::list_of(1e-3) (0) (0)  (0)  (0)  (0)
                                                     (0) (1e-3)  (0)  (0)  (0)  (0)
                                                     (0)   (0)  (1e6) (0)  (0)  (0)

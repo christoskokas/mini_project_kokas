@@ -131,7 +131,8 @@ class RobustMatcher2 {
         camera[3] = 0;
         camera[4] = 0;
         camera[5] = 0;
-
+        // previousT(1,1) = -1;
+        // previousT(2,2) = -1;
         // testFeatureMatching();
         detector = cv::ORB::create(numberPerCellFind,1.2f,8,0,0,2,cv::ORB::HARRIS_SCORE,10,15);
         // testImageRectify();
