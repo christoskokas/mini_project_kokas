@@ -49,7 +49,7 @@ class ImageFrame
         int rows {5};
         int cols {5};
         float averageDistance {0.0f};
-        int totalNumber {1000};
+        int totalNumber {300};
         int numberPerCell {totalNumber/(rows*cols)};
         int numberPerCellFind {2*totalNumber/(rows*cols)};
 
@@ -58,7 +58,7 @@ class ImageFrame
         void rectifyImage(cv::Mat& map1, cv::Mat& map2);
 
         void opticalFlow(ImageFrame& prevImage,cv::Mat& status, cv::Mat& optFlow);
-        void opticalFlowRemoveOutliers(std::vector < cv::Point2f>& pointL, std::vector < cv::Point2f>& pointpL, cv::Mat& status);
+
 
         void findDisparity(cv::Mat& otherImage, cv::Mat& disparity);
 
@@ -151,6 +151,10 @@ class RobustMatcher2 {
 
     void publishPose();
 
+    void predictRightImagePoints(ImageFrame& left, ImageFrame& right);
+    void removeLeftRightOutliers(ImageFrame& left, ImageFrame& right, cv::Mat& status);
+    void opticalFlowRemoveOutliers(ImageFrame& first, ImageFrame& second, cv::Mat& status);
+
     // void getImage(cv::Mat& image, cv::Mat& realImage, int frameNumber, const char* whichImage);
 
     // void findFeaturesOnImage(ImageFrame& camera, int frameNumber, const char* whichImage, cv::Mat& map1, cv::Mat& map2);
@@ -178,6 +182,8 @@ class RobustMatcher2 {
     void undistortMap();
 
     float getDistanceOfPoints(ImageFrame& first, ImageFrame& second, const cv::DMatch& match);
+    float getDistanceOfPointsOptical(cv::Point2f& first, cv::Point2f& second);
+    void findAverageDistanceOfPoints(ImageFrame& first, ImageFrame& second);
 
     void testImageRectify();
     void testFeatureExtraction();
