@@ -31,6 +31,7 @@
 #include <opencv2/ximgproc/disparity_filter.hpp>
 #include "Optimizer.h"
 #include "ceres/ceres.h"
+#include <opencv2/core/eigen.hpp>
 
 typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
 
@@ -49,7 +50,7 @@ class ImageFrame
         int rows {5};
         int cols {5};
         float averageDistance {0.0f};
-        int totalNumber {300};
+        int totalNumber {500};
         int numberPerCell {totalNumber/(rows*cols)};
         int numberPerCellFind {2*totalNumber/(rows*cols)};
 
@@ -72,6 +73,7 @@ class ImageFrame
         void findFeaturesORB();
         void findFeaturesORBAdaptive();
         void findFeaturesGoodFeatures();
+        void findFeaturesGoodFeaturesWithPast();
 
         void drawFeaturesWithLines(cv::Mat& outImage);
 
@@ -83,6 +85,7 @@ class RobustMatcher2 {
  private:
     // pointer to the feature point detector object
     cv::Ptr<cv::FeatureDetector> detector;
+    std::vector<int> pointsTimes;
     cv::Mat image, P1, P2, Q, R1, R2;
     ImageFrame trial;
     cv::Mat rmap[2][2];
@@ -100,7 +103,7 @@ class RobustMatcher2 {
     int rows {5};
     int cols {5};
     float averageDistance {0.0f};
-    int totalNumber {1000};
+    int totalNumber {700};
     int numberPerCell {totalNumber/(rows*cols)};
     int numberPerCellFind {2*totalNumber/(rows*cols)};
     Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
@@ -128,9 +131,9 @@ class RobustMatcher2 {
         camera[0] = rod.at<double>(0);
         camera[1] = rod.at<double>(1);
         camera[2] = rod.at<double>(2);
-        camera[3] = 0;
-        camera[4] = 0;
-        camera[5] = 0;
+        camera[3] = 0.0;
+        camera[4] = 0.0;
+        camera[5] = 0.0;
         // previousT(1,1) = -1;
         // previousT(2,2) = -1;
         // testFeatureMatching();
@@ -154,7 +157,7 @@ class RobustMatcher2 {
 
     void predictRightImagePoints(ImageFrame& left, ImageFrame& right);
     void removeLeftRightOutliers(ImageFrame& left, ImageFrame& right, cv::Mat& status);
-    void opticalFlowRemoveOutliers(ImageFrame& first, ImageFrame& second, cv::Mat& status);
+    void opticalFlowRemoveOutliers(ImageFrame& first, ImageFrame& second, cv::Mat& status, bool LR);
 
     // void getImage(cv::Mat& image, cv::Mat& realImage, int frameNumber, const char* whichImage);
 
@@ -167,9 +170,12 @@ class RobustMatcher2 {
     
 
     void triangulatePointsOpt(ImageFrame& first, ImageFrame& second, cv::Mat& points3D);
+    void triangulatePointsOptWithProjection(ImageFrame& first, ImageFrame& second, cv::Mat& points3D);
     void ceresSolver(cv::Mat& points3D, cv::Mat& prevPoints3D);
+    void ceresSolverPnp(cv::Mat& points3D, cv::Mat& prevPoints3D);
 
     void reduceVector(std::vector<cv::Point2f> &v, cv::Mat& status);
+    void reduceVectorInt(std::vector<int> &v, cv::Mat& status);
     void matchCrossRatio(ImageFrame& first, ImageFrame& second, std::vector < cv::DMatch >& matches, bool LR);
     void symmetryTest(ImageFrame& first, ImageFrame& second, const std::vector<std::vector<cv::DMatch>>& matches1,const std::vector<std::vector<cv::DMatch>>& matches2,std::vector<cv::DMatch>& symMatches);
     void ratioTest(std::vector<std::vector<cv::DMatch>>& matches);
@@ -191,6 +197,7 @@ class RobustMatcher2 {
     void testFeatureMatching();
     void testDisparityWithOpticalFlow();
     void testFeatureMatchingWithOpticalFlow();
+    void testOpticalFlowWithPairs();
     
 };
 

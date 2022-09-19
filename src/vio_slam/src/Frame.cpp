@@ -53,13 +53,13 @@ void Frame::pangoQuit(ros::NodeHandle *nh)
 {
     const int UI_WIDTH = 180;
     
-    pangolin::CreateWindowAndBind("Main", 640, 480);
+    pangolin::CreateWindowAndBind("Main", 1024,768);
     glEnable(GL_DEPTH_TEST);
 
     // Define Projection and initial ModelView matrix
     pangolin::OpenGlRenderState s_cam(
-        pangolin::ProjectionMatrix(640,480,420,420,320,240,0.2,100),
-        pangolin::ModelViewLookAt(-2,2,-2, 0,0,0, pangolin::AxisY)
+        pangolin::ProjectionMatrix(1024,768,500.0,500.0,512,389,0.1,1000),
+        pangolin::ModelViewLookAt(0,-1,-2, 0,0,0, pangolin::AxisNegY)
     );
 
     pangolin::Renderable renders;
@@ -159,9 +159,9 @@ void CameraFrame::groundCallback(const nav_msgs::Odometry& msg)
     // rotMat = rotMat.transpose();
     for (size_t i = 0; i < 3; i++)
     {
-        this->T_pc.m[4*i] = rotMat[i][0];
-        this->T_pc.m[4*i+1] = rotMat[i][1];
-        this->T_pc.m[4*i+2] = rotMat[i][2];
+        this->T_pc.m[4*i] = rotMat[0][i];
+        this->T_pc.m[4*i+1] = rotMat[1][i];
+        this->T_pc.m[4*i+2] = rotMat[2][i];
     }
     
     this->T_pc.m[12] = msg.pose.pose.position.x;            // Y on Gazebo is X on Pangolin
@@ -272,26 +272,14 @@ void CameraFrame::drawCamera(pangolin::OpenGlMatrix& Twc)
     glMultMatrixd(Twc.m);
     glLineWidth(1);
     glBegin(GL_LINES);
-    glVertex3f(w/2,h/2,0);
+    glVertex3f(0,0,0);
     glVertex3f(w,h,z);
-    glVertex3f(w/2,-h/2,0);
+    glVertex3f(0,0,0);
     glVertex3f(w,-h,z);
-    glVertex3f(-w/2,-h/2,0);
+    glVertex3f(0,0,0);
     glVertex3f(-w,-h,z);
-    glVertex3f(-w/2,h/2,0);
+    glVertex3f(0,0,0);
     glVertex3f(-w,h,z);
-
-    glVertex3f(w/2,h/2,0);
-    glVertex3f(w/2,-h/2,0);
-
-    glVertex3f(-w/2,h/2,0);
-    glVertex3f(-w/2,-h/2,0);
-
-    glVertex3f(-w/2,h/2,0);
-    glVertex3f(w/2,h/2,0);
-
-    glVertex3f(-w/2,-h/2,0);
-    glVertex3f(w/2,-h/2,0);
 
     glVertex3f(w,h,z);
     glVertex3f(w,-h,z);
