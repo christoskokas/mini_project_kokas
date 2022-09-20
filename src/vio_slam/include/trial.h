@@ -99,7 +99,7 @@ class RobustMatcher2 {
     bool firstImage{true};
     double distance; // min distance to epipolar
     double confidence; // confidence level (probability)
-    double camera[6];
+    double camera[6] = {0, 1, 2, 0, 0, 0};
     int rows {5};
     int cols {5};
     float averageDistance {0.0f};
@@ -128,12 +128,12 @@ class RobustMatcher2 {
         }
         cv::Mat rod;
         cv::Rodrigues(R1, rod);
-        camera[0] = rod.at<double>(0);
-        camera[1] = rod.at<double>(1);
-        camera[2] = rod.at<double>(2);
-        camera[3] = 0.0;
-        camera[4] = 0.0;
-        camera[5] = 0.0;
+        // camera[0] = rod.at<double>(0);
+        // camera[1] = rod.at<double>(1);
+        // camera[2] = rod.at<double>(2);
+        // camera[3] = 0.0;
+        // camera[4] = 0.0;
+        // camera[5] = 0.0;
         // previousT(1,1) = -1;
         // previousT(2,2) = -1;
         // testFeatureMatching();
