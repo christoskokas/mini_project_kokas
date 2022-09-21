@@ -98,6 +98,39 @@ void ImageFrame::findFeaturesGoodFeatures()
     cv::goodFeaturesToTrack(image,optPoints,numberOfPoints,qualityLevel,minDistance, cv::Mat(),blockSize,useHarrisDetector,k);
 }
 
+void ImageFrame::findFeaturesGoodFeaturesGrid()
+{
+    double qualityLevel = 0.01;
+    double minDistance = 10;
+    int blockSize = 3;
+    int totalNumberOfPoints = 400;
+    bool useHarrisDetector = false;
+    double k = 0.04;
+    int numberOfPoints = totalNumberOfPoints/(rows*cols);
+    cv::Size imgSize(image.cols/cols,image.rows/rows);
+    for (size_t row = 0; row < rows; row++)
+    {
+        for (size_t col = 0; col < cols; col++)
+        {
+            cv::Mat patch = image.rowRange(row*imgSize.height, (row+1)*imgSize.height).colRange(col*imgSize.width, (col+1)*imgSize.width);
+            std::vector< cv::Point2f > tempkeys;
+            cv::goodFeaturesToTrack(image,optPoints,numberOfPoints,qualityLevel,minDistance, cv::Mat(),blockSize,useHarrisDetector,k);
+            if(!tempkeys.empty())
+            {
+                for (auto& key:tempkeys)
+                {
+                    key.x +=col*imgSize.width;
+                    key.y +=row*imgSize.height;
+                    class_id.push_back(row*cols + col);
+                    optPoints.push_back(key);
+                }
+            }
+        }
+        
+    }
+
+}
+
 void ImageFrame::findFeaturesGoodFeaturesWithPast()
 {
     cv::Mat mask = cv::Mat::ones(image.rows, image.cols, CV_8UC1);
@@ -161,6 +194,7 @@ void ImageFrame::findDisparity(cv::Mat& otherImage, cv::Mat& disparity)
 void RobustMatcher2::opticalFlowRemoveOutliers(ImageFrame& first, ImageFrame& second, cv::Mat& status, bool LR)
 {
     findAverageDistanceOfPoints(first,second);
+
     for (size_t i = 0; i < first.optPoints.size(); i++)
     {
         if (LR)
@@ -172,7 +206,7 @@ void RobustMatcher2::opticalFlowRemoveOutliers(ImageFrame& first, ImageFrame& se
         }
         else
         {
-            if (getDistanceOfPointsOptical(first.optPoints[i],second.optPoints[i])> 1.2*averageDistance)
+            if (getDistanceOfPointsOptical(first.optPoints[i],second.optPoints[i])> 1.2*averageDistance && abs(getAngleOfPoints(first.optPoints[i],second.optPoints[i]) - averageAngle) > 0.1f)
             {
                 status.at<bool>(i) = 0;
             }
@@ -764,7 +798,7 @@ void RobustMatcher2::testOpticalFlowWithPairs()
         }
         if (withThread)
         {
-            if (prevLeftImage.optPoints.size()<100)
+            if (prevLeftImage.optPoints.size()<50)
             {
                 // New Keyframe
                 
@@ -1310,6 +1344,11 @@ void RobustMatcher2::drawFeatureMatches(const std::vector<cv::DMatch>& matches, 
 
 }
 
+float RobustMatcher2::getAngleOfPoints(cv::Point2f& first, cv::Point2f& second)
+{
+    return atan2(second.y - first.y,second.x - first.x);
+}
+
 float RobustMatcher2::getDistanceOfPointsOptical(cv::Point2f& first, cv::Point2f& second)
 {
     float x1 = first.x;
@@ -1322,11 +1361,14 @@ float RobustMatcher2::getDistanceOfPointsOptical(cv::Point2f& first, cv::Point2f
 void RobustMatcher2::findAverageDistanceOfPoints(ImageFrame& first, ImageFrame& second)
 {
     float dist = 0.0f;
+    float angle = 0.0f;
     for (size_t i = 0; i < first.optPoints.size(); i++)
     {
         dist += getDistanceOfPointsOptical(first.optPoints[i],second.optPoints[i]);
+        angle += getAngleOfPoints(first.optPoints[i],second.optPoints[i]);
     }
     averageDistance = dist/first.optPoints.size();
+    averageAngle = angle/first.optPoints.size();
     
 }
 

@@ -32,6 +32,8 @@
 #include "Optimizer.h"
 #include "ceres/ceres.h"
 #include <opencv2/core/eigen.hpp>
+#include <cmath>
+#include <math.h> 
 
 typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
 
@@ -39,6 +41,11 @@ typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sens
 namespace vio_slam
 {
 
+struct GoodFeatures
+{
+    std::vector<cv::Point2f> shiPoints;
+    std::vector<int> class_id;
+};
 
 class ImageFrame
 {
@@ -46,10 +53,13 @@ class ImageFrame
         cv::Mat image, desc, realImage;
         std::vector < cv::KeyPoint > keypoints;
         std::vector<cv::Point2f> optPoints;
+        std::vector<int> class_id;
+
         std_msgs::Header header;
-        int rows {5};
-        int cols {5};
+        int rows {2};
+        int cols {2};
         float averageDistance {0.0f};
+        float averageAngle {0.0f};
         int totalNumber {500};
         int numberPerCell {totalNumber/(rows*cols)};
         int numberPerCellFind {2*totalNumber/(rows*cols)};
@@ -73,6 +83,7 @@ class ImageFrame
         void findFeaturesORB();
         void findFeaturesORBAdaptive();
         void findFeaturesGoodFeatures();
+        void findFeaturesGoodFeaturesGrid();
         void findFeaturesGoodFeaturesWithPast();
 
         void drawFeaturesWithLines(cv::Mat& outImage);
@@ -103,6 +114,7 @@ class RobustMatcher2 {
     int rows {5};
     int cols {5};
     float averageDistance {0.0f};
+    float averageAngle {0.0f};
     int totalNumber {700};
     int numberPerCell {totalNumber/(rows*cols)};
     int numberPerCellFind {2*totalNumber/(rows*cols)};
@@ -171,6 +183,7 @@ class RobustMatcher2 {
 
     void triangulatePointsOpt(ImageFrame& first, ImageFrame& second, cv::Mat& points3D);
     void triangulatePointsOptWithProjection(ImageFrame& first, ImageFrame& second, cv::Mat& points3D);
+    
     void ceresSolver(cv::Mat& points3D, cv::Mat& prevPoints3D);
     void ceresSolverPnp(cv::Mat& points3D, cv::Mat& prevPoints3D);
 
@@ -188,9 +201,11 @@ class RobustMatcher2 {
 
     void undistortMap();
 
+    float getAngleOfPoints(cv::Point2f& first, cv::Point2f& second);
     float getDistanceOfPoints(ImageFrame& first, ImageFrame& second, const cv::DMatch& match);
     float getDistanceOfPointsOptical(cv::Point2f& first, cv::Point2f& second);
     void findAverageDistanceOfPoints(ImageFrame& first, ImageFrame& second);
+
 
     void testImageRectify();
     void testFeatureExtraction();
