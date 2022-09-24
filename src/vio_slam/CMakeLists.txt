@@ -50,10 +50,14 @@ src/Camera.cpp
 src/FeatureDrawer.cpp
 src/Frame.cpp
 src/trial.cpp
+src/Settings.cpp
+src/FeatureExtractor.cpp
 include/Camera.h
 include/FeatureDrawer.h
 include/Frame.h
 include/trial.h
+include/Settings.h
+include/FeatureExtractor.h
 )
 
 ## Generate added messages and services

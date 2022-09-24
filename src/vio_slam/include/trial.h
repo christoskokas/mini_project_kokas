@@ -4,7 +4,8 @@
 #define TRIAL_H
 
 #include <Camera.h>
-
+#include "FeatureExtractor.h"
+#include "Settings.h"
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
@@ -37,9 +38,11 @@
 
 typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
 
-
 namespace vio_slam
 {
+
+bool kitti = false;
+
 
 struct GoodFeatures
 {
@@ -50,17 +53,18 @@ struct GoodFeatures
 class ImageFrame
 {
     public:
+        // bool kitti = true;
         cv::Mat image, desc, realImage;
         std::vector < cv::KeyPoint > keypoints;
         std::vector<cv::Point2f> optPoints;
         std::vector<int> class_id;
 
         std_msgs::Header header;
-        int rows {2};
-        int cols {2};
+        int rows {20};
+        int cols {20};
         float averageDistance {0.0f};
         float averageAngle {0.0f};
-        int totalNumber {500};
+        int totalNumber {1000};
         int numberPerCell {totalNumber/(rows*cols)};
         int numberPerCellFind {2*totalNumber/(rows*cols)};
 
@@ -94,10 +98,20 @@ class ImageFrame
 
 class RobustMatcher2 {
  private:
+    // bool kitti = true;
     // pointer to the feature point detector object
     cv::Ptr<cv::FeatureDetector> detector;
     std::vector<int> pointsTimes;
     cv::Mat image, P1, P2, Q, R1, R2;
+    // cv::Mat R1 = cv::Mat::zeros(cv::Size(3,3),CV_32F);
+    // cv::Mat R2 = cv::Mat::zeros(cv::Size(3,3),CV_32F);
+    // cv::Mat P1 = cv::Mat::zeros(cv::Size(4,3),CV_32F);
+    // cv::Mat P2 = cv::Mat::zeros(cv::Size(4,3),CV_32F);
+    // cv::Mat Q = cv::Mat::zeros(cv::Size(4,4),CV_32F);
+    // cv::Mat R2(3, 3, CV_32F);
+    // cv::Mat P1(3, 4, CV_32F);
+    // cv::Mat P2(3, 4, CV_32F);
+    // cv::Mat Q(4, 4, CV_32F);
     ImageFrame trial;
     cv::Mat rmap[2][2];
     ImageFrame leftImage, rightImage, prevLeftImage, prevRightImage;
@@ -111,10 +125,10 @@ class RobustMatcher2 {
     double distance; // min distance to epipolar
     double confidence; // confidence level (probability)
     double camera[6] = {0, 1, 2, 0, 0, 0};
-    int rows {5};
-    int cols {5};
+    int rows {10};
+    int cols {10};
     float averageDistance {0.0f};
-    float averageAngle {0.0f};
+    float averageAngle[4] {0.0f};
     int totalNumber {700};
     int numberPerCell {totalNumber/(rows*cols)};
     int numberPerCellFind {2*totalNumber/(rows*cols)};
@@ -138,8 +152,12 @@ class RobustMatcher2 {
         {
             undistortMap();
         }
-        cv::Mat rod;
-        cv::Rodrigues(R1, rod);
+        else
+        {
+            calcP1P2();
+        }
+        // cv::Mat rod;
+        // cv::Rodrigues(R1, rod);
         // camera[0] = rod.at<double>(0);
         // camera[1] = rod.at<double>(1);
         // camera[2] = rod.at<double>(2);
@@ -200,6 +218,7 @@ class RobustMatcher2 {
     void drawOpticalFlow(ImageFrame& prevImage, ImageFrame& curImage, cv::Mat& outImage);
 
     void undistortMap();
+    void calcP1P2();
 
     float getAngleOfPoints(cv::Point2f& first, cv::Point2f& second);
     float getDistanceOfPoints(ImageFrame& first, ImageFrame& second, const cv::DMatch& match);
@@ -213,6 +232,7 @@ class RobustMatcher2 {
     void testDisparityWithOpticalFlow();
     void testFeatureMatchingWithOpticalFlow();
     void testOpticalFlowWithPairs();
+    void testFeatureExtractorClass();
     
 };
 
