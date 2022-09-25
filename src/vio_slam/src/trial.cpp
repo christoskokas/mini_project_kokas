@@ -1453,6 +1453,26 @@ void RobustMatcher2::beginTest()
 void RobustMatcher2::testFeatureExtractorClass()
 {
     FeatureExtractor trial;
+    leftImage.getImage(0, "left");
+    leftImage.rectifyImage(rmap[0][0],rmap[0][1]);
+    ProcessTime mine;
+    std::vector <cv::KeyPoint> fastKeys;
+    ProcessTime their("their");
+    cv::FAST(leftImage.image,fastKeys,20,true);
+    their.totalTime();
+    cv::Mat outImage2;
+    cv::drawKeypoints(leftImage.image, fastKeys,outImage2);
+    cv::imshow("fast",outImage2);
+    fastKeys.clear();
+    trial.findFeatures(leftImage.image, fastKeys);
+    mine.totalTime();
+    cv::Mat outImage;
+    cv::drawKeypoints(leftImage.image, fastKeys,outImage);
+    cv::imshow("my impl",outImage);
+    
+
+    cv::waitKey(0);
+    
 }
 
 void RobustMatcher2::calcP1P2()

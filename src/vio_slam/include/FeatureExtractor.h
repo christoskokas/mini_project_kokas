@@ -6,6 +6,10 @@
 #include "Settings.h"
 #include <ros/ros.h>
 #include <iostream>
+#include <opencv2/calib3d.hpp>
+#include "opencv2/highgui.hpp"
+#include "opencv2/features2d.hpp"
+#include "opencv2/core.hpp"
 
 namespace vio_slam
 {
@@ -18,15 +22,24 @@ class FeatureExtractor
         ORB,
         FAST
     };
-
-    class FindFeatures
-    {
-        const int nFeatures;
-        FindFeatures(const int _nfeatures = 1000);
-    };
     
+
+    
+    const int nFeatures;
+    const int edgeThreshold;
+    const int maxFastThreshold;
+    const int minFastThreshold;
+    const bool nonMaxSuppression;
+
+    FeatureChoice choice;
+
+
     public:
-        FeatureExtractor();
+        FeatureExtractor(FeatureChoice _choice = FAST, const int _nfeatures = 1000, const int _edgeThreshold = 4, const int _maxFastThreshold = 20, const int _minFastThreshold = 6, const bool _nonMaxSuppression = true);
+        
+        void findFeatures(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
+        void findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
+
     // FindFeatures orbs;
 
 
