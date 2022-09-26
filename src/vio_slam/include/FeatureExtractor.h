@@ -40,6 +40,9 @@ class FeatureExtractor
         void findFeatures(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
 
+        void highSpeedTest(const uchar* rowPtr, int pixels[25], const int fastThresh);
+        void getPixelOffset(int pixels[25], int rowStride);
+
     // FindFeatures orbs;
 
 
