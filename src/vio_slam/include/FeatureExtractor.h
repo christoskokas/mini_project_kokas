@@ -24,7 +24,6 @@ class FeatureExtractor
     };
     
 
-    
     const int nFeatures;
     const int edgeThreshold;
     const int maxFastThreshold;
@@ -35,10 +34,13 @@ class FeatureExtractor
 
 
     public:
-        FeatureExtractor(FeatureChoice _choice = FAST, const int _nfeatures = 1000, const int _edgeThreshold = 4, const int _maxFastThreshold = 20, const int _minFastThreshold = 6, const bool _nonMaxSuppression = true);
+        FeatureExtractor(FeatureChoice _choice = FAST, const int _nfeatures = 1000, const int _edgeThreshold = 10, const int _maxFastThreshold = 20, const int _minFastThreshold = 6, const bool _nonMaxSuppression = true);
         
         void findFeatures(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
+        void findORB(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
+
+        void separateImage(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, const int rows, const int cols);
 
         void highSpeedTest(const uchar* rowPtr, int pixels[25], const int fastThresh);
         void getPixelOffset(int pixels[25], int rowStride);

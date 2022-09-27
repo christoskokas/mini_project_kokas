@@ -5,7 +5,58 @@ namespace vio_slam
 
 void FeatureExtractor::findFeatures(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
 {
-    findFast(image, fastKeys);
+}
+
+void FeatureExtractor::findORB(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
+{
+    const int rows{20},cols{20};
+    separateImage(image, fastKeys, rows, cols);
+}
+
+void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, const int rows, const int cols)
+{
+    // fastEdge is the Edge Threshold of FAST Keypoints, it does not search for keypoints for a border of 3 pixels around image.
+    const int numberPerCell = 2*nFeatures*rows*cols/(image.cols*image.rows);
+    const int fastEdge = 3;
+    // cv::Mat1b edgedImage = image.colRange(cv::Range(edgeThreshold - fastEdge,image.cols - edgeThreshold + fastEdge)).rowRange(cv::Range(edgeThreshold - fastEdge,image.rows - edgeThreshold + fastEdge));
+    ProcessTime loop("lloop");
+    const int colEnd = image.cols - edgeThreshold - fastEdge;
+    const int rowEnd = image.rows - edgeThreshold - fastEdge;
+    for (int32_t row = edgeThreshold - fastEdge; row < rowEnd;row += rows)
+    {
+        for (int32_t col = edgeThreshold - fastEdge; col < colEnd; col += cols)
+        {
+            // cv::Mat1b patch = image.colRange(cv::Range(col, col + cols + 2 * fastEdge)).rowRange(cv::Range(row, row + rows + 2*fastEdge));
+            // std::cout << "row : " << row << " row + 1 : " << row + rows + 2*fastEdge << " col : " << col << " col + 1 : " << col + cols + 2*fastEdge <<std::endl;
+            const int imColStart = col;
+            const int imRowStart = row;
+            const int imColEnd = col + cols + 2 * fastEdge;
+            const int imRowEnd = row + rows + 2*fastEdge;
+
+
+            std::vector < cv::KeyPoint > temp;
+
+            cv::FAST(image.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,maxFastThreshold,true);
+
+            if (temp.empty())
+                cv::FAST(image.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,minFastThreshold,true);
+            if (!temp.empty())
+            {
+                cv::KeyPointsFilter::retainBest(temp,numberPerCell);
+                for ( std::vector < cv::KeyPoint>::iterator it=temp.begin(); it !=temp.end(); it++)
+                {
+                    (*it).pt.x += col;
+                    (*it).pt.y += row;
+                    fastKeys.push_back(*it);
+                }
+            }
+            // if (fastKeys.size() > 959)
+            //     break;
+        }
+        // if (fastKeys.size() > 959)
+        //     break;
+    }
+    loop.totalTime();
 }
 
 void FeatureExtractor::findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
@@ -34,7 +85,9 @@ void FeatureExtractor::findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fast
     for (int32_t iRows = edgeThreshold; iRows < image.rows - edgeThreshold; iRows++)
     {
         const uchar* rowPtr = image.ptr<uchar>(iRows);
-        for (int32_t jCols = edgeThreshold; jCols < image.cols - edgeThreshold; jCols++, rowPtr++)
+        uchar* trialPtr = trial.ptr<uchar>(iRows);
+
+        for (int32_t jCols = edgeThreshold; jCols < image.cols - edgeThreshold; jCols++, rowPtr++, trialPtr++)
         {
             // highSpeedTest(rowPtr, pixels, fastThresh);
             
@@ -43,91 +96,32 @@ void FeatureExtractor::findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fast
             
             if ( score != 0 )
             {
-                numbOfFeatures ++;
-                // std::cout << "score : " << score << std::endl;
+                int lel = (score/9);
+                if (nonMaxSuppression)
+                {
+                    if ( trialPtr[jCols - 1] == 0 && trialPtr[jCols - (int)trial.step] ==0)
+                    {
+                        numbOfFeatures++;
+                        continue;
+                    }
+                    if (trialPtr[jCols] < trialPtr[jCols - 1])
+                        trialPtr[jCols] = 0;
+                    else
+                        trialPtr[jCols - 1] = 0;
+                    if (iRows == 3)
+                        continue;
+                    if (trialPtr[jCols] < trialPtr[jCols - (int)trial.step])
+                        trialPtr[jCols] = 0;
+                    else
+                        trialPtr[jCols - (int)trial.step] = 0;
+                }
+                else
+                    numbOfFeatures ++;
+                if (!nonMaxSuppression || (lel > trialPtr[jCols - 1] && lel > trialPtr[jCols - 2]))
+                {
+                }
             }
-            // const int cPInt = rowPtr[0];
-            // if ((cPInt < 10 || (cPInt > 250)))
-            //     continue;
-            // // pointer to start of mask and add 255 (to get to the middle) and remove the candidate's pixel intensity.
-            // // that way the pixels to be checked that are either darker of brighter is easily accessible
-            // const uchar* tab = &threshold_mask[0] - cPInt + 255;
 
-            // // &= bitwise AND, | bitwise OR
-            // int d = tab[rowPtr[pixels[0]]] | tab[rowPtr[pixels[8]]];
-
-            // if( d == 0 )
-            //     continue;
-
-            // d &= tab[rowPtr[pixels[2]]] | tab[rowPtr[pixels[10]]];
-            // d &= tab[rowPtr[pixels[4]]] | tab[rowPtr[pixels[12]]];
-            // d &= tab[rowPtr[pixels[6]]] | tab[rowPtr[pixels[14]]];
-
-            // if( d == 0 )
-            //     continue;
-
-            // d &= tab[rowPtr[pixels[1]]] | tab[rowPtr[pixels[9]]];
-            // d &= tab[rowPtr[pixels[3]]] | tab[rowPtr[pixels[11]]];
-            // d &= tab[rowPtr[pixels[5]]] | tab[rowPtr[pixels[13]]];
-            // d &= tab[rowPtr[pixels[7]]] | tab[rowPtr[pixels[15]]];
-
-            // // bool add = false;
-
-            // if (d & 1)
-            // {
-            //     int thr = cPInt - fastThresh, count = 0;
-            //     for (int k=0;k < N;k ++)
-            //     {
-            //         const int x = rowPtr[pixels[k]];
-            //         if (x < thr)
-            //         {
-            //             if (++count > contingousPixels)
-            //             {
-            //                 // add =true;
-            //                 break;
-            //             }
-            //         }
-            //         else 
-            //             count = 0;
-            //     }
-
-            // }
-            // if (d & 2)
-            // {
-            //     int thr = cPInt + fastThresh, count = 0;
-            //     for (int k=0;k < N;k ++)
-            //     {
-            //         const int x = rowPtr[pixels[k]];
-            //         if (x > thr)
-            //         {
-            //             if (++count > contingousPixels)
-            //             {
-            //                 // add =true;
-            //                 break;
-            //             }
-            //         }
-            //         else
-            //             count = 0;
-            //     }
-
-            // }
-
-            // if (add)
-            // {
-            //     if (nonMaxSuppression)
-            //     {
-            //         if (!trial(iRows,jCols))
-            //         {
-            //             fastKeys.push_back(cv::KeyPoint(cv::Point2f(jCols, iRows),3.0f));
-            //             trial.rowRange(cv::Range(iRows - edgeThreshold + 1,iRows + edgeThreshold -1)).colRange(cv::Range(jCols - edgeThreshold + 1,jCols + edgeThreshold -1)) = 1;
-            //         }
-            //     }
-            //     else
-            //     {
-            //         fastKeys.push_back(cv::KeyPoint(cv::Point2f(jCols, iRows),3.0f));
-
-            //     }
-            // }
             if (numbOfFeatures > nFeatures)
                 break;
 
@@ -225,7 +219,7 @@ int FeatureExtractor::checkIntensities(const uchar* rowPtr, uchar threshold_mask
             {
                 if (++count > 8)
                 {
-                    for (size_t i = 0; i < 16; i++)
+                    for (size_t i = k - 9; i < k; i++)
                         score += rowPtr[pixels[i]] - cPInt;
                     return score;
                 }
