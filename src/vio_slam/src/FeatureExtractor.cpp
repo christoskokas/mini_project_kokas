@@ -14,9 +14,8 @@ void FeatureExtractor::findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fast
     const int contingousPixels = 9;
     const int patternSize = 16;
     const int N = patternSize + contingousPixels;
-    const int fastThresh = maxFastThreshold;
+    int fastThresh = maxFastThreshold;
     int numbOfFeatures = 0;
-    cv::Mat1d im1d = image;
     cv::Mat1b trial = cv::Mat1b::zeros(image.rows,image.cols);
     
     // create threshold mask
@@ -27,108 +26,117 @@ void FeatureExtractor::findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fast
     for(int i = -255; i <= 255; i++ )
         threshold_mask[i+255] = (uchar)(i < -fastThresh ? 1 : i > fastThresh ? 2 : 0);
 
-
     // although we need 12 contingous we get memory for 25 pixels (repeating the first 9) to account for a corner that starts at pixel 15 the 12 contingous pixels.
     int pixels[N];
     getPixelOffset(pixels, (int)trial.step);
+    int score {0};
+    ProcessTime loop("loop");
     for (int32_t iRows = edgeThreshold; iRows < image.rows - edgeThreshold; iRows++)
     {
-        const uchar* rowPtr = image.ptr(iRows);
+        const uchar* rowPtr = image.ptr<uchar>(iRows);
         for (int32_t jCols = edgeThreshold; jCols < image.cols - edgeThreshold; jCols++, rowPtr++)
         {
             // highSpeedTest(rowPtr, pixels, fastThresh);
             
             // candidate pixel Intensity
-            const int cPInt = rowPtr[0];
-            if ((cPInt < 10 || (cPInt > 250)))
-                continue;
-            // pointer to start of mask and add 255 (to get to the middle) and remove the candidate's pixel intensity.
-            // that way the pixels to be checked that are either darker of brighter is easily accessible
-            const uchar* tab = &threshold_mask[0] - cPInt + 255;
-
-            // &= bitwise AND, | bitwise OR
-            int d = tab[rowPtr[pixels[0]]] | tab[rowPtr[pixels[8]]];
-
-            if( d == 0 )
-                continue;
-
-            d &= tab[rowPtr[pixels[2]]] | tab[rowPtr[pixels[10]]];
-            d &= tab[rowPtr[pixels[4]]] | tab[rowPtr[pixels[12]]];
-            d &= tab[rowPtr[pixels[6]]] | tab[rowPtr[pixels[14]]];
-
-            if( d == 0 )
-                continue;
-
-            d &= tab[rowPtr[pixels[1]]] | tab[rowPtr[pixels[9]]];
-            d &= tab[rowPtr[pixels[3]]] | tab[rowPtr[pixels[11]]];
-            d &= tab[rowPtr[pixels[5]]] | tab[rowPtr[pixels[13]]];
-            d &= tab[rowPtr[pixels[7]]] | tab[rowPtr[pixels[15]]];
-
-            bool add = false;
-
-            if (d & 1)
+            score = checkIntensities(rowPtr,threshold_mask,pixels, fastThresh);
+            
+            if ( score != 0 )
             {
-                int thr = cPInt - fastThresh, count = 0;
-                for (int k=0;k < N;k ++)
-                {
-                    const int x = rowPtr[pixels[k]];
-                    if (x < thr)
-                    {
-                        if (++count > contingousPixels)
-                        {
-                            add =true;
-                            break;
-                        }
-                    }
-                    else 
-                        count = 0;
-                }
-
+                numbOfFeatures ++;
+                // std::cout << "score : " << score << std::endl;
             }
-            if (d & 2)
-            {
-                int thr = cPInt + fastThresh, count = 0;
-                for (int k=0;k < N;k ++)
-                {
-                    const int x = rowPtr[pixels[k]];
-                    if (x > thr)
-                    {
-                        if (++count > contingousPixels)
-                        {
-                            add =true;
-                            break;
-                        }
-                    }
-                    else
-                        count = 0;
-                }
+            // const int cPInt = rowPtr[0];
+            // if ((cPInt < 10 || (cPInt > 250)))
+            //     continue;
+            // // pointer to start of mask and add 255 (to get to the middle) and remove the candidate's pixel intensity.
+            // // that way the pixels to be checked that are either darker of brighter is easily accessible
+            // const uchar* tab = &threshold_mask[0] - cPInt + 255;
 
-            }
+            // // &= bitwise AND, | bitwise OR
+            // int d = tab[rowPtr[pixels[0]]] | tab[rowPtr[pixels[8]]];
 
-            if (add)
-            {
-                if (nonMaxSuppression)
-                {
-                    if (!trial(iRows,jCols))
-                    {
-                        fastKeys.push_back(cv::KeyPoint(cv::Point2f(jCols, iRows),3.0f));
-                        trial.rowRange(cv::Range(iRows - edgeThreshold + 1,iRows + edgeThreshold -1)).colRange(cv::Range(jCols - edgeThreshold + 1,jCols + edgeThreshold -1)) = 1;
-                    }
-                }
-                else
-                {
-                    fastKeys.push_back(cv::KeyPoint(cv::Point2f(jCols, iRows),3.0f));
+            // if( d == 0 )
+            //     continue;
 
-                }
-            }
-            // if (fastKeys.size() > nFeatures)
-            //     break;
+            // d &= tab[rowPtr[pixels[2]]] | tab[rowPtr[pixels[10]]];
+            // d &= tab[rowPtr[pixels[4]]] | tab[rowPtr[pixels[12]]];
+            // d &= tab[rowPtr[pixels[6]]] | tab[rowPtr[pixels[14]]];
+
+            // if( d == 0 )
+            //     continue;
+
+            // d &= tab[rowPtr[pixels[1]]] | tab[rowPtr[pixels[9]]];
+            // d &= tab[rowPtr[pixels[3]]] | tab[rowPtr[pixels[11]]];
+            // d &= tab[rowPtr[pixels[5]]] | tab[rowPtr[pixels[13]]];
+            // d &= tab[rowPtr[pixels[7]]] | tab[rowPtr[pixels[15]]];
+
+            // // bool add = false;
+
+            // if (d & 1)
+            // {
+            //     int thr = cPInt - fastThresh, count = 0;
+            //     for (int k=0;k < N;k ++)
+            //     {
+            //         const int x = rowPtr[pixels[k]];
+            //         if (x < thr)
+            //         {
+            //             if (++count > contingousPixels)
+            //             {
+            //                 // add =true;
+            //                 break;
+            //             }
+            //         }
+            //         else 
+            //             count = 0;
+            //     }
+
+            // }
+            // if (d & 2)
+            // {
+            //     int thr = cPInt + fastThresh, count = 0;
+            //     for (int k=0;k < N;k ++)
+            //     {
+            //         const int x = rowPtr[pixels[k]];
+            //         if (x > thr)
+            //         {
+            //             if (++count > contingousPixels)
+            //             {
+            //                 // add =true;
+            //                 break;
+            //             }
+            //         }
+            //         else
+            //             count = 0;
+            //     }
+
+            // }
+
+            // if (add)
+            // {
+            //     if (nonMaxSuppression)
+            //     {
+            //         if (!trial(iRows,jCols))
+            //         {
+            //             fastKeys.push_back(cv::KeyPoint(cv::Point2f(jCols, iRows),3.0f));
+            //             trial.rowRange(cv::Range(iRows - edgeThreshold + 1,iRows + edgeThreshold -1)).colRange(cv::Range(jCols - edgeThreshold + 1,jCols + edgeThreshold -1)) = 1;
+            //         }
+            //     }
+            //     else
+            //     {
+            //         fastKeys.push_back(cv::KeyPoint(cv::Point2f(jCols, iRows),3.0f));
+
+            //     }
+            // }
+            if (numbOfFeatures > nFeatures)
+                break;
 
         }
-        // if (fastKeys.size() > nFeatures)
-        //     break;
+        if (numbOfFeatures > nFeatures)
+            break;
     }
-    std::cout << "size " << fastKeys.size() << std::endl;
+    loop.totalTime();
+    std::cout << "size " << numbOfFeatures << std::endl;
 }
 
 void FeatureExtractor::highSpeedTest(const uchar* rowPtr, int pixels[25], const int fastThresh)
@@ -155,6 +163,78 @@ void FeatureExtractor::getPixelOffset(int pixels[25], int rowStride)
     for( ; k < 25; k++ )
         pixels[k] = pixels[k - 16];
 
+}
+
+int FeatureExtractor::checkIntensities(const uchar* rowPtr, uchar threshold_mask[512], int pixels[25], int thresh)
+{
+    int fastThresh = thresh;
+    const int cPInt = rowPtr[0];
+    if ((cPInt < 10 || (cPInt > 250)))
+        return 0;
+    // pointer to start of mask and add 255 (to get to the middle) and remove the candidate's pixel intensity.
+    // that way the pixels to be checked that are either darker of brighter is easily accessible
+    const uchar* tab = &threshold_mask[0] - cPInt + 255;
+
+    // &= bitwise AND, | bitwise OR
+    int d = tab[rowPtr[pixels[0]]] | tab[rowPtr[pixels[8]]];
+
+    if( d == 0 )
+        return 0;
+
+    d &= tab[rowPtr[pixels[2]]] | tab[rowPtr[pixels[10]]];
+    d &= tab[rowPtr[pixels[4]]] | tab[rowPtr[pixels[12]]];
+    d &= tab[rowPtr[pixels[6]]] | tab[rowPtr[pixels[14]]];
+
+    if( d == 0 )
+        return 0;
+
+    d &= tab[rowPtr[pixels[1]]] | tab[rowPtr[pixels[9]]];
+    d &= tab[rowPtr[pixels[3]]] | tab[rowPtr[pixels[11]]];
+    d &= tab[rowPtr[pixels[5]]] | tab[rowPtr[pixels[13]]];
+    d &= tab[rowPtr[pixels[7]]] | tab[rowPtr[pixels[15]]];
+
+    int score {0};
+
+    if (d & 1)
+    {
+        int thr = cPInt - fastThresh, count = 0;
+        for (int k=0;k < 25;k ++)
+        {
+            const int x = rowPtr[pixels[k]];
+            if (x < thr)
+            {
+                if (++count > 8)
+                {
+                    for (size_t i = k - 9; i < k; i++)
+                        score += cPInt - rowPtr[pixels[i]];
+                    return score;
+                }
+            }
+            else 
+                count = 0;
+        }
+
+    }
+    if (d & 2)
+    {
+        int thr = cPInt + fastThresh, count = 0;
+        for (int k=0;k < 25;k ++)
+        {
+            const int x = rowPtr[pixels[k]];
+            if (x > thr)
+            {
+                if (++count > 8)
+                {
+                    for (size_t i = 0; i < 16; i++)
+                        score += rowPtr[pixels[i]] - cPInt;
+                    return score;
+                }
+            }
+            else
+                count = 0;
+        }
+    }
+    return score;
 }
 
 FeatureExtractor::FeatureExtractor(FeatureChoice _choice, const int _nfeatures, const int _edgeThreshold, const int _maxFastThreshold, const int _minFastThreshold, const bool _nonMaxSuppression) : choice(_choice), nFeatures(_nfeatures), edgeThreshold(_edgeThreshold), maxFastThreshold(_maxFastThreshold), minFastThreshold(_minFastThreshold), nonMaxSuppression(_nonMaxSuppression)

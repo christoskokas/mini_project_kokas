@@ -42,7 +42,8 @@ class FeatureExtractor
 
         void highSpeedTest(const uchar* rowPtr, int pixels[25], const int fastThresh);
         void getPixelOffset(int pixels[25], int rowStride);
-
+        int checkIntensities(const uchar* rowPtr, uchar threshold_mask[512], int pixels[25], int thresh);
+        float computeScore(const uchar* rowPtr, uchar threshold_mask[512], int pixels[25], int fastThresh);
     // FindFeatures orbs;
 
 
