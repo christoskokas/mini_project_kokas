@@ -23,6 +23,7 @@
 
 int main (int argc, char **argv)
 {
+    // system("rosparam load ../../../../config/config.yaml ");
     ros::init(argc, argv, "trial");
     ros::NodeHandle nh;
     bool rectified {};

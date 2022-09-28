@@ -10,6 +10,7 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/features2d.hpp"
 #include "opencv2/core.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
 
 namespace vio_slam
 {
@@ -17,28 +18,43 @@ namespace vio_slam
 class FeatureExtractor
 {
 
-    enum FeatureChoice
-    {
-        ORB,
-        FAST
-    };
     
 
     const int nFeatures;
+    const int nLevels;
+    const float imScale;
     const int edgeThreshold;
     const int maxFastThreshold;
     const int minFastThreshold;
     const bool nonMaxSuppression;
 
-    FeatureChoice choice;
+    const int gridsNumber {100};
+    const int gridRows {10};
+    const int gridCols {10};
+    const int numberPerCell = 2*nFeatures/(gridRows * gridCols);
+
+    std::vector <cv::Mat> imagePyramid;
+    std::vector < float > scalePyramid;
+
 
 
     public:
-        FeatureExtractor(FeatureChoice _choice = FAST, const int _nfeatures = 1000, const int _edgeThreshold = 10, const int _maxFastThreshold = 20, const int _minFastThreshold = 6, const bool _nonMaxSuppression = true);
+        
+        enum FeatureChoice
+        {
+            ORB,
+            FAST
+        };
+
+        FeatureChoice choice;
+        
+        FeatureExtractor(FeatureChoice _choice = FAST, const int _nfeatures = 1000, const int _nLevels = 8, const float _imScale = 1.2f, const int _edgeThreshold = 10, const int _maxFastThreshold = 20, const int _minFastThreshold = 6, const bool _nonMaxSuppression = true);
         
         void findFeatures(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findORB(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
+
+        void computePyramid(cv::Mat& image);
 
         void separateImage(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, const int rows, const int cols);
 
