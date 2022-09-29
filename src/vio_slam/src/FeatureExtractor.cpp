@@ -9,73 +9,89 @@ void FeatureExtractor::findFeatures(cv::Mat& image, std::vector <cv::KeyPoint>& 
 
 void FeatureExtractor::findORB(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
 {
-    const int rows{20},cols{20};
     computePyramid(image);
-    separateImage(image, fastKeys, rows, cols);
+    separateImage(image, fastKeys);
 }
 
 void FeatureExtractor::computePyramid(cv::Mat& image)
 {
-
-    for (int32_t i = 0; i < nLevels; i++)
+    imagePyramid[0] = image;
+    for (int32_t i = 0; i < nLevels - 1; i++)
     {
-        cv::Size cz(cvRound((float)image.cols*scalePyramid[i]), cvRound((float)image.rows*scalePyramid[i]));
-        cv::resize(image,imagePyramid[i],cz, 0, 0, cv::INTER_LINEAR);
-        std::cout << "size : " << imagePyramid[i].cols << " " << imagePyramid[i].rows << std::endl;
+        const int mult = 10;
+        const int width = (((int)(imagePyramid[i].cols / imScale) + mult/2) / mult) * mult;
+        const int height = (((int)(imagePyramid[i].rows / imScale) + mult/2) / mult) * mult;
+
+        cv::Size cz(width,height);
+
+        cv::resize(imagePyramid[i],imagePyramid[i + 1],cz, 0, 0, cv::INTER_LINEAR);
+        // std::cout << "size : " << imagePyramid[i].cols << " " << imagePyramid[i].rows << std::endl;
+        // std::cout << "cvsize : " << width << " " << height << std::endl;
     }
 }
 
-void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, const int rows, const int cols)
+void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
 {
-    // fastEdge is the Edge Threshold of FAST Keypoints, it does not search for keypoints for a border of 3 pixels around image.
-    // const int numberPerCell = 2*nFeatures*rows*cols/(image.cols*image.rows);
-    const int fastEdge = 3;
-    const int rowJump = (image.rows - 2 * edgeThreshold) / gridRows;
-    const int colJump = (image.cols - 2 * edgeThreshold) / gridCols;
-    // cv::Mat1b edgedImage = image.colRange(cv::Range(edgeThreshold - fastEdge,image.cols - edgeThreshold + fastEdge)).rowRange(cv::Range(edgeThreshold - fastEdge,image.rows - edgeThreshold + fastEdge));
     ProcessTime loop("lloop");
-    const int colEnd = image.cols - edgeThreshold - fastEdge;
-    const int rowEnd = image.rows - edgeThreshold - fastEdge;
     fastKeys.reserve(2000);
-    int count {0};
-    for (int32_t row = edgeThreshold - fastEdge; row < rowEnd;row += rowJump)
+    for (size_t i = 0; i < nLevels; i++)
     {
-        for (int32_t col = edgeThreshold - fastEdge; col < colEnd; col += colJump)
+        // fastEdge is the Edge Threshold of FAST Keypoints, it does not search for keypoints for a border of 3 pixels around image.
+        // const int numberPerCell = 2*nFeatures*rows*cols/(image.cols*image.rows);
+        const int fastEdge = 3;
+        const int rowJump = (imagePyramid[i].rows - 2 * edgeThreshold) / gridRows;
+        const int colJump = (imagePyramid[i].cols - 2 * edgeThreshold) / gridCols;
+        // cv::Mat1b edgedImage = image.colRange(cv::Range(edgeThreshold - fastEdge,image.cols - edgeThreshold + fastEdge)).rowRange(cv::Range(edgeThreshold - fastEdge,image.rows - edgeThreshold + fastEdge));
+        const int colEnd = imagePyramid[i].cols - edgeThreshold - fastEdge;
+        const int rowEnd = imagePyramid[i].rows - edgeThreshold - fastEdge;
+        int count {0};
+        for (int32_t row = edgeThreshold - fastEdge; row < rowEnd;row += rowJump)
         {
-            // cv::Mat1b patch = image.colRange(cv::Range(col, col + cols + 2 * fastEdge)).rowRange(cv::Range(row, row + rows + 2*fastEdge));
-            // std::cout << "row : " << row << " row + 1 : " << row + rows + 2*fastEdge << " col : " << col << " col + 1 : " << col + cols + 2*fastEdge <<std::endl;
-            const int imColStart = col;
+            
             const int imRowStart = row;
-            const int imColEnd = col + colJump + 2 * fastEdge;
             const int imRowEnd = row + rowJump + 2 * fastEdge;
 
-
-            std::vector < cv::KeyPoint > temp;
-
-            cv::FAST(image.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,maxFastThreshold,true);
-
-            if (temp.empty())
-                cv::FAST(image.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,minFastThreshold,true);
-            if (!temp.empty())
+            for (int32_t col = edgeThreshold - fastEdge; col < colEnd; col += colJump)
             {
-                for ( std::vector < cv::KeyPoint>::iterator it=temp.begin(); it !=temp.end(); it++)
+                // cv::Mat1b patch = image.colRange(cv::Range(col, col + cols + 2 * fastEdge)).rowRange(cv::Range(row, row + rows + 2*fastEdge));
+                // std::cout << "row : " << row << " row + 1 : " << rowJump << " col : " << col << " col + 1 : " << col + colJump <<std::endl;
+                const int imColStart = col;
+                const int imColEnd = col + colJump + 2 * fastEdge;
+                // if (imColEnd > imagePyramid[i].cols)
+                //     continue;
+                // // imcolend = imagePyramid[i].cols
+                // if (imRowEnd > imagePyramid[i].rows)
+                //     continue;
+
+                std::vector < cv::KeyPoint > temp;
+
+                cv::FAST(imagePyramid[i].colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,maxFastThreshold,true);
+
+                if (temp.empty())
+                    cv::FAST(imagePyramid[i].colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,minFastThreshold,true);
+                if (!temp.empty())
                 {
-                    (*it).pt.x += col;
-                    (*it).pt.y += row;
-                    (*it).class_id += count;
-                    fastKeys.push_back(*it);
-                    // fastKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y),(*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
+                    cv::KeyPointsFilter::retainBest(temp,numberPerCell);
+                    for ( std::vector < cv::KeyPoint>::iterator it=temp.begin(); it !=temp.end(); it++)
+                    {
+                        (*it).pt.x += (float)imColStart * (float)image.cols/imagePyramid[i].cols;
+                        (*it).pt.y += (float)imRowStart * (float)image.rows/imagePyramid[i].rows;
+                        (*it).class_id += count;
+                        (*it).octave = i;
+                        // fastKeys.push_back(*it);
+                        fastKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y),(*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
+                    }
                 }
+                count++;
+                // if (fastKeys.size() > 959)
+                //     break;
             }
-            count ++;
             // if (fastKeys.size() > 959)
             //     break;
         }
-        // if (fastKeys.size() > 959)
-        //     break;
     }
     loop.totalTime();
-    std::cout << "count : " << count << " size : " << fastKeys.size() << std::endl;
+    std::cout << " size : " << fastKeys.size() << std::endl;
     cv::KeyPointsFilter::retainBest(fastKeys,nFeatures);
     std::cout << "after size : " << fastKeys.size() << " nfeat : " << nFeatures << std::endl;
 }
@@ -258,10 +274,16 @@ FeatureExtractor::FeatureExtractor(FeatureChoice _choice, const int _nfeatures, 
     // because this project consists of 2 cameras 1 facing backwards and 1 facing forwards, the pyramid will contain both upsampled and downsampled images.
     // 5 scale downsampled 2 scales upsampled
     imagePyramid.resize(nLevels);
-    scalePyramid.reserve(nLevels);
-    for (int32_t i = - nLevels / 2 - 1; i < nLevels / 2 - 1; i++)
-        scalePyramid.emplace_back((float)pow(imScale,i));
-    
+    scalePyramid.resize(nLevels);
+    scaleInvPyramid.resize(nLevels);
+    scalePyramid[0] = 1.0f;
+    scaleInvPyramid[0] = 1.0f;
+    for (int32_t i = 0; i < nLevels - 1; i++)
+    {
+        scalePyramid[i + 1] = scalePyramid[i] * imScale;
+        scaleInvPyramid[i + 1] = scaleInvPyramid[i] / imScale;
+
+    }
     
     
 }

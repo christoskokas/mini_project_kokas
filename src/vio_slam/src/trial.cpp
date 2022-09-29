@@ -1452,10 +1452,13 @@ void RobustMatcher2::beginTest()
 
 void RobustMatcher2::testFeatureExtractorClass()
 {
-    FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
+    FeatureExtractor trial;
+    // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
     leftImage.getImage(0, "left");
     leftImage.rectifyImage(rmap[0][0],rmap[0][1]);
-    std::vector <cv::KeyPoint> fastKeys;
+    rightImage.getImage(0, "right");
+    rightImage.rectifyImage(rmap[1][0],rmap[1][1]);
+    std::vector <cv::KeyPoint> fastKeys, rightKeys;
     ProcessTime their("their");
     for (int i =0;i < 14;i++)
     {
@@ -1473,14 +1476,13 @@ void RobustMatcher2::testFeatureExtractorClass()
     // {
     fastKeys.clear();
     trial.findORB(leftImage.image, fastKeys);
+    trial.findORB(rightImage.image, rightKeys);
     // }
     mine.totalTime();
     cv::Mat outImage;
     cv::drawKeypoints(leftImage.image, fastKeys,outImage);
     cv::imshow("my impl",outImage);
     std::cout << "my size " << fastKeys.size() << std::endl;
-
-
     cv::waitKey(1000);
     
 }
