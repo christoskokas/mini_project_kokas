@@ -34,29 +34,29 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
 {
     ProcessTime loop("lloop");
     fastKeys.reserve(2000);
+    const int fastEdge = 3;
     for (size_t i = 0; i < nLevels; i++)
     {
         // fastEdge is the Edge Threshold of FAST Keypoints, it does not search for keypoints for a border of 3 pixels around image.
         // const int numberPerCell = 2*nFeatures*rows*cols/(image.cols*image.rows);
-        const int fastEdge = 3;
-        const int rowJump = (imagePyramid[i].rows - 2 * edgeThreshold) / gridRows;
-        const int colJump = (imagePyramid[i].cols - 2 * edgeThreshold) / gridCols;
+        const int rowJump = (imagePyramid[i].rows) / gridRows;
+        const int colJump = (imagePyramid[i].cols) / gridCols;
         // cv::Mat1b edgedImage = image.colRange(cv::Range(edgeThreshold - fastEdge,image.cols - edgeThreshold + fastEdge)).rowRange(cv::Range(edgeThreshold - fastEdge,image.rows - edgeThreshold + fastEdge));
-        const int colEnd = imagePyramid[i].cols - edgeThreshold - fastEdge;
-        const int rowEnd = imagePyramid[i].rows - edgeThreshold - fastEdge;
+        // const int colEnd = imagePyramid[i].cols - edgeThreshold - fastEdge;
+        // const int rowEnd = imagePyramid[i].rows - edgeThreshold - fastEdge;
         int count {0};
-        for (int32_t row = edgeThreshold - fastEdge; row < rowEnd;row += rowJump)
+        for (int32_t row = 0; row < gridRows; row++)
         {
             
-            const int imRowStart = row;
-            const int imRowEnd = row + rowJump + 2 * fastEdge;
+            const int imRowStart = row * rowJump;
+            const int imRowEnd = (row + 1) * rowJump;
 
-            for (int32_t col = edgeThreshold - fastEdge; col < colEnd; col += colJump)
+            for (int32_t col = 0; col < gridCols; col++)
             {
                 // cv::Mat1b patch = image.colRange(cv::Range(col, col + cols + 2 * fastEdge)).rowRange(cv::Range(row, row + rows + 2*fastEdge));
-                // std::cout << "row : " << row << " row + 1 : " << rowJump << " col : " << col << " col + 1 : " << col + colJump <<std::endl;
-                const int imColStart = col;
-                const int imColEnd = col + colJump + 2 * fastEdge;
+                const int imColStart = col * colJump;
+                const int imColEnd = (col + 1) * colJump;
+                // std::cout << "row : " << imRowStart << " row + 1 : " << imRowEnd << " col : " << imColStart << " col + 1 : " << imColEnd << " rowJump " << rowJump << " colJump " << colJump <<std::endl;
                 // if (imColEnd > imagePyramid[i].cols)
                 //     continue;
                 // // imcolend = imagePyramid[i].cols
