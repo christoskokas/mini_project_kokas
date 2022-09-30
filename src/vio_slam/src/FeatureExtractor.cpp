@@ -15,12 +15,13 @@ void FeatureExtractor::findORB(cv::Mat& image, std::vector <cv::KeyPoint>& fastK
 
 void FeatureExtractor::computePyramid(cv::Mat& image)
 {
-    imagePyramid[0] = image;
+    const int fastEdge = 3;
+    imagePyramid[0] = image.colRange(edgeThreshold - fastEdge,image.cols - edgeThreshold + fastEdge).rowRange(edgeThreshold - fastEdge, image.rows - edgeThreshold + fastEdge);
     for (int32_t i = 0; i < nLevels - 1; i++)
     {
         const int mult = 10;
-        const int width = (((int)(imagePyramid[i].cols / imScale) + mult/2) / mult) * mult;
-        const int height = (((int)(imagePyramid[i].rows / imScale) + mult/2) / mult) * mult;
+        const int width = (((int)(imagePyramid[i].cols / imScale) + mult/2) / mult) * mult + 2 * fastEdge;
+        const int height = (((int)(imagePyramid[i].rows / imScale) + mult/2) / mult) * mult + 2 * fastEdge;
 
         cv::Size cz(width,height);
 
@@ -39,8 +40,8 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
     {
         // fastEdge is the Edge Threshold of FAST Keypoints, it does not search for keypoints for a border of 3 pixels around image.
         // const int numberPerCell = 2*nFeatures*rows*cols/(image.cols*image.rows);
-        const int rowJump = (imagePyramid[i].rows) / gridRows;
-        const int colJump = (imagePyramid[i].cols) / gridCols;
+        const int rowJump = (imagePyramid[i].rows - 2 * fastEdge) / gridRows;
+        const int colJump = (imagePyramid[i].cols - 2 * fastEdge) / gridCols;
         // cv::Mat1b edgedImage = image.colRange(cv::Range(edgeThreshold - fastEdge,image.cols - edgeThreshold + fastEdge)).rowRange(cv::Range(edgeThreshold - fastEdge,image.rows - edgeThreshold + fastEdge));
         // const int colEnd = imagePyramid[i].cols - edgeThreshold - fastEdge;
         // const int rowEnd = imagePyramid[i].rows - edgeThreshold - fastEdge;
@@ -49,13 +50,13 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
         {
             
             const int imRowStart = row * rowJump;
-            const int imRowEnd = (row + 1) * rowJump;
+            const int imRowEnd = (row + 1) * rowJump + 2 * fastEdge;
 
             for (int32_t col = 0; col < gridCols; col++)
             {
                 // cv::Mat1b patch = image.colRange(cv::Range(col, col + cols + 2 * fastEdge)).rowRange(cv::Range(row, row + rows + 2*fastEdge));
                 const int imColStart = col * colJump;
-                const int imColEnd = (col + 1) * colJump;
+                const int imColEnd = (col + 1) * colJump + 2 * fastEdge;
                 // std::cout << "row : " << imRowStart << " row + 1 : " << imRowEnd << " col : " << imColStart << " col + 1 : " << imColEnd << " rowJump " << rowJump << " colJump " << colJump <<std::endl;
                 // if (imColEnd > imagePyramid[i].cols)
                 //     continue;
@@ -66,17 +67,25 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
                 std::vector < cv::KeyPoint > temp;
 
                 cv::FAST(imagePyramid[i].colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,maxFastThreshold,true);
-
+                // cv::imshow("yes", imagePyramid[i].colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)));
+                // cv::waitKey(0);
                 if (temp.empty())
                     cv::FAST(imagePyramid[i].colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,minFastThreshold,true);
                 if (!temp.empty())
                 {
+                    const float rowOffset = imRowStart * (imagePyramid[0].rows/(float)imagePyramid[i].rows) + edgeThreshold - fastEdge;
+                    const float colOffset = imColStart * (imagePyramid[0].cols/(float)imagePyramid[i].cols) + edgeThreshold - fastEdge;
+                    const float lel = imagePyramid[0].rows/(float)imagePyramid[i].rows * (1 + imRowStart)  ;
+
+                    // std::cout << "col off " << colOffset << " row off " << rowOffset << std::endl;
+                    // std::cout << "col " << imColStart << " row " << imRowStart << std::endl;
+                    // std::cout << "divide cols " << imagePyramid[0].cols/(float)imagePyramid[i].cols << " divide rows " << imagePyramid[0].rows/(float)imagePyramid[i].rows << std::endl;
                     cv::KeyPointsFilter::retainBest(temp,numberPerCell);
                     for ( std::vector < cv::KeyPoint>::iterator it=temp.begin(); it !=temp.end(); it++)
                     {
-                        (*it).pt.x += (float)imColStart * (float)image.cols/imagePyramid[i].cols;
-                        (*it).pt.y += (float)imRowStart * (float)image.rows/imagePyramid[i].rows;
-                        (*it).class_id += count;
+                        (*it).pt.x = ((*it).pt.x + imColStart) * imagePyramid[0].cols/(float)imagePyramid[i].cols;
+                        (*it).pt.y = ((*it).pt.y + imRowStart) * imagePyramid[0].rows/(float)imagePyramid[i].rows;
+                        (*it).class_id = count;
                         (*it).octave = i;
                         // fastKeys.push_back(*it);
                         fastKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y),(*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
@@ -90,9 +99,14 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
             //     break;
         }
     }
-    loop.totalTime();
     std::cout << " size : " << fastKeys.size() << std::endl;
     cv::KeyPointsFilter::retainBest(fastKeys,nFeatures);
+    for ( std::vector < cv::KeyPoint>::iterator it=fastKeys.begin(); it !=fastKeys.end(); it++)
+    {
+        (*it).pt.x += + edgeThreshold - fastEdge;
+        (*it).pt.y += + edgeThreshold - fastEdge;
+    }
+    loop.totalTime();
     std::cout << "after size : " << fastKeys.size() << " nfeat : " << nFeatures << std::endl;
 }
 
