@@ -28,9 +28,9 @@ class FeatureExtractor
     const int minFastThreshold;
     const bool nonMaxSuppression;
 
-    const int gridsNumber {100};
     const int gridRows {5};
     const int gridCols {5};
+    const int gridsNumber {gridCols * gridRows};
     const int numberPerCell = 2*nFeatures/(gridRows * gridCols * nLevels);
 
     std::vector <cv::Mat> imagePyramid;

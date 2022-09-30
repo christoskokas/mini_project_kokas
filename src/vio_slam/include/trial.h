@@ -112,7 +112,7 @@ class RobustMatcher2 {
     // cv::Mat P1(3, 4, CV_32F);
     // cv::Mat P2(3, 4, CV_32F);
     // cv::Mat Q(4, 4, CV_32F);
-    ImageFrame trial;
+    ImageFrame trialL, trialR;
     cv::Mat rmap[2][2];
     ImageFrame leftImage, rightImage, prevLeftImage, prevRightImage;
     clock_t start, total;
@@ -232,6 +232,7 @@ class RobustMatcher2 {
     void testDisparityWithOpticalFlow();
     void testFeatureMatchingWithOpticalFlow();
     void testOpticalFlowWithPairs();
+    void testFeatureExtractorClassWithCallback();
     void testFeatureExtractorClass();
     
 };

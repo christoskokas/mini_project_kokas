@@ -1343,8 +1343,8 @@ void RobustMatcher2::reduceVectorInt(std::vector<int> &v, cv::Mat& status)
 
 void RobustMatcher2::ImagesCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
 {
-    trial.setImage(rIm);
-    std::cout << "LOOOOOOOOOOOOOOOOOL\n";
+    trialL.setImage(lIm);
+    trialR.setImage(rIm);
 }
 
 void RobustMatcher2::publishPose()
@@ -1446,44 +1446,100 @@ void RobustMatcher2::beginTest()
     // testFeatureMatching();
     // testFeatureMatchingWithOpticalFlow();
     // testOpticalFlowWithPairs();
+    // testFeatureExtractorClassWithCallback();
     testFeatureExtractorClass();
 
+}
+
+void RobustMatcher2::testFeatureExtractorClassWithCallback()
+{
+    FeatureExtractor trial;
+    // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
+    int i {0};
+    ros::Time prevStamp;
+    while(i < 10)
+    {
+        if (trialL.header.stamp != prevStamp)
+        {
+            ProcessTime all("all");
+            prevStamp = trialL.header.stamp;
+            // leftImage.getImage(i, "left");
+            // rightImage.getImage(i, "right");
+            trialL.rectifyImage(rmap[0][0],rmap[0][1]);
+            trialR.rectifyImage(rmap[1][0],rmap[1][1]);
+            std::vector <cv::KeyPoint> fastKeys, rightKeys;
+            // ProcessTime their("their");
+            // for (int i =0;i < 8;i++)
+            // {
+            //     fastKeys.clear();
+            //     cv::FAST(leftImage.image,fastKeys,20,true);
+            // }
+            // their.totalTime();
+            // cv::Mat outImage2;
+            // cv::drawKeypoints(leftImage.image, fastKeys,outImage2);
+            // cv::imshow("fast",outImage2);
+            // std::cout << "their size " << fastKeys.size() << std::endl;
+
+            ProcessTime mine("mine");
+            // for (int i =0;i < 14;i++)
+            // {
+            // fastKeys.clear();
+            // rightKeys.clear();
+            trial.findORB(trialL.image, fastKeys);
+            trial.findORB(trialR.image, rightKeys);
+            // }
+            mine.totalTime();
+            i++;
+            all.totalTime();
+            cv::Mat outImage, outImageR;
+            cv::drawKeypoints(trialL.image, fastKeys,outImage);
+            cv::imshow("left",outImage);
+            cv::drawKeypoints(trialR.image, rightKeys,outImageR);
+            cv::imshow("right",outImageR);
+            cv::waitKey(1);
+        }
+    }
+    // std::cout << "my size " << fastKeys.size() << std::endl;
+    
 }
 
 void RobustMatcher2::testFeatureExtractorClass()
 {
     FeatureExtractor trial;
     // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
-    leftImage.getImage(0, "left");
-    leftImage.rectifyImage(rmap[0][0],rmap[0][1]);
-    rightImage.getImage(0, "right");
-    rightImage.rectifyImage(rmap[1][0],rmap[1][1]);
-    std::vector <cv::KeyPoint> fastKeys, rightKeys;
-    ProcessTime their("their");
-    for (int i =0;i < 14;i++)
-    {
-        fastKeys.clear();
-        cv::FAST(leftImage.image,fastKeys,20,true);
-    }
-    their.totalTime();
-    cv::Mat outImage2;
-    cv::drawKeypoints(leftImage.image, fastKeys,outImage2);
-    cv::imshow("fast",outImage2);
-    std::cout << "their size " << fastKeys.size() << std::endl;
+    int i {0};
 
-    ProcessTime mine("mine");
-    // for (int i =0;i < 14;i++)
+    const int times {500};
+    // ProcessTime all("all");
+    // while(i < times)
     // {
-    fastKeys.clear();
-    trial.findORB(leftImage.image, fastKeys);
-    trial.findORB(rightImage.image, rightKeys);
+
+        leftImage.getImage(i, "left");
+        rightImage.getImage(i, "right");
+        leftImage.rectifyImage(rmap[0][0],rmap[0][1]);
+        rightImage.rectifyImage(rmap[1][0],rmap[1][1]);
+        std::vector <cv::KeyPoint> fastKeys, rightKeys;
+
+        ProcessTime mine("mine");
+        trial.findORB(leftImage.image, fastKeys);
+        trial.findORB(rightImage.image, rightKeys);
+        
+        mine.totalTime();
+
+        i++;
+
+        cv::Mat outImage, outImageR;
+        cv::drawKeypoints(leftImage.image, fastKeys,outImage);
+        cv::imshow("left",outImage);
+        cv::drawKeypoints(rightImage.image, rightKeys,outImageR);
+        cv::imshow("right",outImageR);
+        cv::waitKey(1000);
+
     // }
-    mine.totalTime();
-    cv::Mat outImage;
-    cv::drawKeypoints(leftImage.image, fastKeys,outImage);
-    cv::imshow("my impl",outImage);
-    std::cout << "my size " << fastKeys.size() << std::endl;
-    cv::waitKey(1000);
+    // all.averageTime(times);
+    
+
+    // std::cout << "my size " << fastKeys.size() << std::endl;
     
 }
 

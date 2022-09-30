@@ -18,6 +18,7 @@ class ProcessTime
     public:
         ProcessTime(const char* what = "whatever");
         void totalTime();
+        void averageTime(const int times);
 
 };
 

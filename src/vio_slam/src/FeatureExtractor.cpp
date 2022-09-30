@@ -33,7 +33,7 @@ void FeatureExtractor::computePyramid(cv::Mat& image)
 
 void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
 {
-    ProcessTime loop("lloop");
+    // ProcessTime loop("lloop");
     fastKeys.reserve(2000);
     const int fastEdge = 3;
     for (size_t i = 0; i < nLevels; i++)
@@ -42,6 +42,9 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
         // const int numberPerCell = 2*nFeatures*rows*cols/(image.cols*image.rows);
         const int rowJump = (imagePyramid[i].rows - 2 * fastEdge) / gridRows;
         const int colJump = (imagePyramid[i].cols - 2 * fastEdge) / gridCols;
+
+        const float pyramidDifRow = imagePyramid[0].rows/(float)imagePyramid[i].rows;
+        const float pyramidDifCol = imagePyramid[0].cols/(float)imagePyramid[i].cols;
         // cv::Mat1b edgedImage = image.colRange(cv::Range(edgeThreshold - fastEdge,image.cols - edgeThreshold + fastEdge)).rowRange(cv::Range(edgeThreshold - fastEdge,image.rows - edgeThreshold + fastEdge));
         // const int colEnd = imagePyramid[i].cols - edgeThreshold - fastEdge;
         // const int rowEnd = imagePyramid[i].rows - edgeThreshold - fastEdge;
@@ -52,9 +55,16 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
             const int imRowStart = row * rowJump;
             const int imRowEnd = (row + 1) * rowJump + 2 * fastEdge;
 
+            const uchar* rowPtr = imagePyramid[i].ptr<uchar>(row);
+
             for (int32_t col = 0; col < gridCols; col++)
             {
                 // cv::Mat1b patch = image.colRange(cv::Range(col, col + cols + 2 * fastEdge)).rowRange(cv::Range(row, row + rows + 2*fastEdge));
+                {
+                    const int cPInt = rowPtr[col];
+                    if (cPInt < 10 || cPInt > 250)
+                        continue;
+                }
                 const int imColStart = col * colJump;
                 const int imColEnd = (col + 1) * colJump + 2 * fastEdge;
                 // std::cout << "row : " << imRowStart << " row + 1 : " << imRowEnd << " col : " << imColStart << " col + 1 : " << imColEnd << " rowJump " << rowJump << " colJump " << colJump <<std::endl;
@@ -73,9 +83,8 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
                     cv::FAST(imagePyramid[i].colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,minFastThreshold,true);
                 if (!temp.empty())
                 {
-                    const float rowOffset = imRowStart * (imagePyramid[0].rows/(float)imagePyramid[i].rows) + edgeThreshold - fastEdge;
-                    const float colOffset = imColStart * (imagePyramid[0].cols/(float)imagePyramid[i].cols) + edgeThreshold - fastEdge;
-                    const float lel = imagePyramid[0].rows/(float)imagePyramid[i].rows * (1 + imRowStart)  ;
+                    // const float rowOffset = imRowStart * (imagePyramid[0].rows/(float)imagePyramid[i].rows) + edgeThreshold - fastEdge;
+                    // const float colOffset = imColStart * (imagePyramid[0].cols/(float)imagePyramid[i].cols) + edgeThreshold - fastEdge;
 
                     // std::cout << "col off " << colOffset << " row off " << rowOffset << std::endl;
                     // std::cout << "col " << imColStart << " row " << imRowStart << std::endl;
@@ -83,31 +92,28 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
                     cv::KeyPointsFilter::retainBest(temp,numberPerCell);
                     for ( std::vector < cv::KeyPoint>::iterator it=temp.begin(); it !=temp.end(); it++)
                     {
-                        (*it).pt.x = ((*it).pt.x + imColStart) * imagePyramid[0].cols/(float)imagePyramid[i].cols;
-                        (*it).pt.y = ((*it).pt.y + imRowStart) * imagePyramid[0].rows/(float)imagePyramid[i].rows;
-                        (*it).class_id = count;
+                        (*it).pt.x = ((*it).pt.x + imColStart) * pyramidDifCol;
+                        (*it).pt.y = ((*it).pt.y + imRowStart) * pyramidDifRow;
                         (*it).octave = i;
+                        (*it).class_id = count;
                         // fastKeys.push_back(*it);
                         fastKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y),(*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
                     }
                 }
                 count++;
-                // if (fastKeys.size() > 959)
-                //     break;
             }
-            // if (fastKeys.size() > 959)
-            //     break;
         }
     }
-    std::cout << " size : " << fastKeys.size() << std::endl;
+    // std::cout << " size : " << fastKeys.size() << std::endl;
     cv::KeyPointsFilter::retainBest(fastKeys,nFeatures);
+    const int edgeWFast = edgeThreshold - fastEdge;
     for ( std::vector < cv::KeyPoint>::iterator it=fastKeys.begin(); it !=fastKeys.end(); it++)
     {
-        (*it).pt.x += + edgeThreshold - fastEdge;
-        (*it).pt.y += + edgeThreshold - fastEdge;
+        (*it).pt.x += edgeWFast;
+        (*it).pt.y += edgeWFast;
     }
-    loop.totalTime();
-    std::cout << "after size : " << fastKeys.size() << " nfeat : " << nFeatures << std::endl;
+    // loop.totalTime();
+    // std::cout << "after size : " << fastKeys.size() << " nfeat : " << nFeatures << std::endl;
 }
 
 void FeatureExtractor::findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
