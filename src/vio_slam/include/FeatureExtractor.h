@@ -31,7 +31,7 @@ class FeatureExtractor
     const int gridRows {5};
     const int gridCols {5};
     const int gridsNumber {gridCols * gridRows};
-    const int numberPerCell = 2*nFeatures/(gridRows * gridCols * nLevels);
+    const int numberPerCell = 2*nFeatures/(gridRows * gridCols);
 
     std::vector <cv::Mat> imagePyramid;
     std::vector < float > scalePyramid;
@@ -49,7 +49,7 @@ class FeatureExtractor
 
         FeatureChoice choice;
         
-        FeatureExtractor(FeatureChoice _choice = ORB, const int _nfeatures = 1000, const int _nLevels = 8, const float _imScale = 1.2f, const int _edgeThreshold = 10, const int _maxFastThreshold = 20, const int _minFastThreshold = 6, const bool _nonMaxSuppression = true);
+        FeatureExtractor(FeatureChoice _choice = ORB, const int _nfeatures = 1000, const int _nLevels = 6, const float _imScale = 1.2f, const int _edgeThreshold = 15, const int _maxFastThreshold = 20, const int _minFastThreshold = 6, const bool _nonMaxSuppression = true);
         
         void findFeatures(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
@@ -58,6 +58,8 @@ class FeatureExtractor
         void computePyramid(cv::Mat& image);
 
         void separateImage(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
+        void getNonMaxSuppression(std::vector < cv::KeyPoint >& prevImageKeys, cv::KeyPoint& it);
+        bool checkDistance(cv::KeyPoint& first, cv::KeyPoint& second, int distance);
 
         void highSpeedTest(const uchar* rowPtr, int pixels[25], const int fastThresh);
         void getPixelOffset(int pixels[25], int rowStride);
