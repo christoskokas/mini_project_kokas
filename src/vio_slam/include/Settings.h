@@ -12,13 +12,15 @@ namespace vio_slam
 class ProcessTime
 {
     private:
-        clock_t start;
-        clock_t total;
         const char* wFunc;
     public:
+        clock_t total;
+        clock_t totalOverTimes {0};
+        clock_t start;
         ProcessTime(const char* what = "whatever");
         void totalTime();
         void averageTime(const int times);
+        void averageTimeOverTimes(const int times);
 
 };
 

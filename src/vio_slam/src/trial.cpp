@@ -1446,8 +1446,8 @@ void RobustMatcher2::beginTest()
     // testFeatureMatching();
     // testFeatureMatchingWithOpticalFlow();
     // testOpticalFlowWithPairs();
-    // testFeatureExtractorClassWithCallback();
-    testFeatureExtractorClass();
+    testFeatureExtractorClassWithCallback();
+    // testFeatureExtractorClass();
 
 }
 
@@ -1457,11 +1457,12 @@ void RobustMatcher2::testFeatureExtractorClassWithCallback()
     // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
     int i {0};
     ros::Time prevStamp;
-    while(i < 10)
+    const int times {600};
+    ProcessTime orb("orb");
+    while(i < times)
     {
         if (trialL.header.stamp != prevStamp)
         {
-            ProcessTime all("all");
             prevStamp = trialL.header.stamp;
             // leftImage.getImage(i, "left");
             // rightImage.getImage(i, "right");
@@ -1480,17 +1481,18 @@ void RobustMatcher2::testFeatureExtractorClassWithCallback()
             // cv::imshow("fast",outImage2);
             // std::cout << "their size " << fastKeys.size() << std::endl;
 
-            ProcessTime mine("mine");
+            // ProcessTime mine("mine");
             // for (int i =0;i < 14;i++)
             // {
             // fastKeys.clear();
             // rightKeys.clear();
+            orb.start = clock();
             trial.findORB(trialL.image, fastKeys);
             trial.findORB(trialR.image, rightKeys);
+            orb.totalTime();
             // }
-            mine.totalTime();
+            // mine.totalTime();
             i++;
-            all.totalTime();
             cv::Mat outImage, outImageR;
             cv::drawKeypoints(trialL.image, fastKeys,outImage);
             cv::imshow("left",outImage);
@@ -1499,6 +1501,7 @@ void RobustMatcher2::testFeatureExtractorClassWithCallback()
             cv::waitKey(1);
         }
     }
+    orb.averageTimeOverTimes(times);
     // std::cout << "my size " << fastKeys.size() << std::endl;
     
 }
@@ -1509,10 +1512,10 @@ void RobustMatcher2::testFeatureExtractorClass()
     // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
     int i {0};
 
-    const int times {500};
-    ProcessTime all("all");
-    while(i < times)
-    {
+    // const int times {600};
+    // ProcessTime all("all");
+    // while(i < times)
+    // {
 
         leftImage.getImage(i, "left");
         rightImage.getImage(i, "right");
@@ -1520,23 +1523,23 @@ void RobustMatcher2::testFeatureExtractorClass()
         rightImage.rectifyImage(rmap[1][0],rmap[1][1]);
         std::vector <cv::KeyPoint> fastKeys, rightKeys;
 
-        // ProcessTime mine("mine");
+        ProcessTime mine("mine");
         trial.findORB(leftImage.image, fastKeys);
         trial.findORB(rightImage.image, rightKeys);
         
-        // mine.totalTime();
+        mine.totalTime();
 
         i++;
 
-        // cv::Mat outImage, outImageR;
-        // cv::drawKeypoints(leftImage.image, fastKeys,outImage);
-        // cv::imshow("left",outImage);
-        // cv::drawKeypoints(rightImage.image, rightKeys,outImageR);
-        // cv::imshow("right",outImageR);
-        // cv::waitKey(1000);
+        cv::Mat outImage, outImageR;
+        cv::drawKeypoints(leftImage.image, fastKeys,outImage);
+        cv::imshow("left",outImage);
+        cv::drawKeypoints(rightImage.image, rightKeys,outImageR);
+        cv::imshow("right",outImageR);
+        cv::waitKey(1);
 
-    }
-    all.averageTime(times);
+    // }
+    // all.averageTime(times);
     
 
     // std::cout << "my size " << fastKeys.size() << std::endl;
