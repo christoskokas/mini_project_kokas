@@ -1440,13 +1440,13 @@ float RobustMatcher2::getDistanceOfPoints(ImageFrame& first, ImageFrame& second,
 
 void RobustMatcher2::beginTest()
 {
-    // testImageRectify();
+    testImageRectify();
     // testFeatureExtraction();
     // testDisparityWithOpticalFlow();
     // testFeatureMatching();
     // testFeatureMatchingWithOpticalFlow();
     // testOpticalFlowWithPairs();
-    testFeatureExtractorClassWithCallback();
+    // testFeatureExtractorClassWithCallback();
     // testFeatureExtractorClass();
 
 }
@@ -1580,4 +1580,4 @@ void ImageFrame::findFeaturesOnImage(int frameNumber, const char* whichImage, cv
     findFeaturesORBAdaptive();
 }
 
-}
+} // namespace vio_slam

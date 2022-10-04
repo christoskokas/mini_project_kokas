@@ -33,6 +33,7 @@ find_package(PCL REQUIRED)
 find_package(Pangolin REQUIRED)
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Ceres REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 ## Declare ROS messages and services
 add_message_files(
@@ -76,6 +77,7 @@ include_directories(
   ${Pangolin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
   ${CERES_INCLUDE_DIRS}
+  ${YAML_CPP_INCLUDE_DIR}
   )
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
@@ -93,6 +95,7 @@ ${PCL_LIBRARIES}
 ${Pangolin_LIBRARIES}
 ${EIGEN3_LIBS}
 ${CERES_LIBRARIES}
+${YAML_CPP_LIBRARIES}
 )
 
 add_executable(VioSlam src/VioSlam.cpp)

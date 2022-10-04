@@ -15,6 +15,8 @@
 #include <pcl/point_types.h>
 #include <boost/foreach.hpp>
 #include <thread>
+#include <yaml-cpp/yaml.h>
+// #include <fstream> 
 
 // TODO MUTEX THREAD FOR FEATURE MATCHING AND LOOP 
 // CLOSING SO THAT THE PROGRAM CONTINUES WHILE SEARCHING FOR LOOP CLOSING
@@ -24,6 +26,8 @@
 int main (int argc, char **argv)
 {
     // system("rosparam load ../../../../config/config.yaml ");
+    YAML::Node config = YAML::LoadFile("./config/config.yaml");
+    std::cout << " YAML FILE \n " << config["Camera_l/fx"].as<float>() << '\n';
     ros::init(argc, argv, "trial");
     ros::NodeHandle nh;
     bool rectified {};
