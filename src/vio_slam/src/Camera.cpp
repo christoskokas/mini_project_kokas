@@ -5,18 +5,22 @@
 namespace vio_slam
 {
 
-Zed_Camera::Zed_Camera(ros::NodeHandle *nh, bool rectified)
+Zed_Camera::Zed_Camera(ConfigFile& yamlFile)
 {
-    this->rectified = rectified;
-    setCameraValues(nh);
-    setCameraMatrices(nh);
+    confFile = &yamlFile;
+    this->rectified = confFile->getValue<bool>("rectified");
+    setCameraValues();
+    setCameraMatrices();
 
 }
 
-void Zed_Camera::setCameraMatrices(ros::NodeHandle* nh)
+void Zed_Camera::setCameraMatrices()
 {
-    std::vector< double > transf;
-    nh->getParam("Stereo/T_c1_c2/data", transf);
+
+    std::vector < double > transf {confFile->getValue<std::vector<double>>("Stereo","T_c1_c2","data")};
+
+    // std::vector< double > transf;
+    // nh->getParam("Stereo/T_c1_c2/data", transf);
     cameraLeft.cameraMatrix = (cv::Mat_<double>(3,3) << cameraLeft.fx, 0.0f, cameraLeft.cx, 0.0f, cameraLeft.fy, cameraLeft.cy, 0.0f, 0.0f, 1);
     cameraLeft.distCoeffs = (cv::Mat_<double>(1,5) << cameraLeft.k1, cameraLeft.k2, cameraLeft.p1, cameraLeft.p2, cameraLeft.k3);
     cameraRight.cameraMatrix = (cv::Mat_<double>(3,3) << cameraRight.fx, 0.0f, cameraRight.cx, 0.0f, cameraRight.fy, cameraRight.cy, 0.0f, 0.0f, 1);
@@ -27,14 +31,18 @@ void Zed_Camera::setCameraMatrices(ros::NodeHandle* nh)
     sensorsRotate = (cv::Mat_<double>(3,3) << transf[0], transf[1], transf[2], transf[4], transf[5], transf[6], transf[8], transf[9], transf[10]);
 }
 
-void Zed_Camera::setCameraValues(ros::NodeHandle* nh)
+void Zed_Camera::setCameraValues()
 {
-    nh->getParam("/Camera/width",mWidth);
-    nh->getParam("/Camera/height",mHeight);
-    nh->getParam("/Camera/fps",mFps);
-    nh->getParam("/Camera/bl",mBaseline);
-    cameraLeft.setIntrinsicValues(nh, "Camera_l");
-    cameraRight.setIntrinsicValues(nh, "Camera_r");
+    // nh->getParam("/Camera/width",mWidth);
+    // nh->getParam("/Camera/height",mHeight);
+    // nh->getParam("/Camera/fps",mFps);
+    // nh->getParam("/Camera/bl",mBaseline);
+    mWidth = confFile->getValue<int>("Camera","width");
+    mHeight = confFile->getValue<int>("Camera","height");
+    mFps = confFile->getValue<float>("Camera","fps");
+    mBaseline = confFile->getValue<float>("Camera","bl");
+    cameraLeft.setIntrinsicValues("Camera_l",confFile);
+    cameraRight.setIntrinsicValues("Camera_r",confFile);
 }
 
 Zed_Camera::~Zed_Camera()
@@ -63,18 +71,28 @@ float Camera::GetFx()
     return fx;
 }
 
-void Camera::setIntrinsicValues(ros::NodeHandle* nh, const std::string& cameraPath)
+void Camera::setIntrinsicValues(const std::string& cameraPath, ConfigFile* confFile)
 {
-    nh->getParam(cameraPath + "/fx",fx);
-    nh->getParam(cameraPath + "/fy",fy);
-    nh->getParam(cameraPath + "/cx",cx);
-    nh->getParam(cameraPath + "/cy",cy);
-    nh->getParam(cameraPath + "/k1",k1);
-    nh->getParam(cameraPath + "/k2",k2);
-    nh->getParam(cameraPath + "/p1",p1);
-    nh->getParam(cameraPath + "/p2",p2);
-    nh->getParam(cameraPath + "/k3",k3);
-    nh->getParam(cameraPath + "_path", path);
+    fx = confFile->getValue<double>(cameraPath,"fx");
+    fy = confFile->getValue<double>(cameraPath,"fy");
+    cx = confFile->getValue<double>(cameraPath,"cx");
+    cy = confFile->getValue<double>(cameraPath,"cy");
+    k1 = confFile->getValue<double>(cameraPath,"k1");
+    k2 = confFile->getValue<double>(cameraPath,"k2");
+    p1 = confFile->getValue<double>(cameraPath,"p1");
+    p2 = confFile->getValue<double>(cameraPath,"p2");
+    k3 = confFile->getValue<double>(cameraPath,"k3");
+    path = confFile->getValue<std::string>(cameraPath + "_path");
+    // nh->getParam(cameraPath + "/fx",fx);
+    // nh->getParam(cameraPath + "/fy",fy);
+    // nh->getParam(cameraPath + "/cx",cx);
+    // nh->getParam(cameraPath + "/cy",cy);
+    // nh->getParam(cameraPath + "/k1",k1);
+    // nh->getParam(cameraPath + "/k2",k2);
+    // nh->getParam(cameraPath + "/p1",p1);
+    // nh->getParam(cameraPath + "/p2",p2);
+    // nh->getParam(cameraPath + "/k3",k3);
+    // nh->getParam(cameraPath + "_path", path);
 }
 
 } //namespace vio_slam

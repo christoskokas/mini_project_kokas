@@ -1,3 +1,4 @@
+#include "Settings.h"
 #include "Camera.h"
 // #include "FeatureDrawer.h"
 #include "trial.h"
@@ -16,7 +17,6 @@
 #include <boost/foreach.hpp>
 #include <thread>
 #include <yaml-cpp/yaml.h>
-// #include <fstream> 
 
 // TODO MUTEX THREAD FOR FEATURE MATCHING AND LOOP 
 // CLOSING SO THAT THE PROGRAM CONTINUES WHILE SEARCHING FOR LOOP CLOSING
@@ -25,18 +25,19 @@
 
 int main (int argc, char **argv)
 {
-    // system("rosparam load ../../../../config/config.yaml ");
-    YAML::Node config = YAML::LoadFile("./config/config.yaml");
-    std::cout << " YAML FILE \n " << config["Camera_l/fx"].as<float>() << '\n';
+    vio_slam::ConfigFile yamlFile("config.yaml");
+    std::cout << " YAML FILE \n " << yamlFile.configNode["Camera_l"]["fx"].as<float>() << '\n';
+
+    std::cout << " YAML FILE TEMPLATE \n " << yamlFile.getValue<std::string>("Camera_l_path") << '\n';
     ros::init(argc, argv, "trial");
     ros::NodeHandle nh;
-    bool rectified {};
+    bool rectified {yamlFile.getValue<bool>("rectified")};
     nh.getParam("rectified",rectified);
     // vio_slam::FeatureStrategy featureMatchingStrat = vio_slam::FeatureStrategy::orb;
-    vio_slam::Zed_Camera zedcamera(&nh, rectified);
+    vio_slam::Zed_Camera zedcamera(yamlFile);
     std::cout << "xd      " << zedcamera.cameraLeft.GetFx() << std::endl;
     zedcamera.GetResolution();
-    const vio_slam::Zed_Camera* zedptr = &zedcamera;
+    vio_slam::Zed_Camera* zedptr = &zedcamera;
     // vio_slam::FeatureDrawer fv(&nh, zedptr);
     vio_slam::Frame frame;
     std::cout << "\nFeature Extraction Trials\n" << '\n';

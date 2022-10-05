@@ -3,9 +3,10 @@
 #ifndef TRIAL_H
 #define TRIAL_H
 
-#include <Camera.h>
+#include "Camera.h"
 #include "FeatureExtractor.h"
 #include "Settings.h"
+#include "Optimizer.h"
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
@@ -30,7 +31,6 @@
 #include <thread>
 #include <opencv2/ximgproc/edge_filter.hpp>
 #include <opencv2/ximgproc/disparity_filter.hpp>
-#include "Optimizer.h"
 #include "ceres/ceres.h"
 #include <opencv2/core/eigen.hpp>
 #include <cmath>
@@ -60,8 +60,8 @@ class ImageFrame
         std::vector<int> class_id;
 
         std_msgs::Header header;
-        int rows {20};
-        int cols {20};
+        int rows {10};
+        int cols {10};
         float averageDistance {0.0f};
         float averageAngle {0.0f};
         int totalNumber {1000};
@@ -116,7 +116,7 @@ class RobustMatcher2 {
     cv::Mat rmap[2][2];
     ImageFrame leftImage, rightImage, prevLeftImage, prevRightImage;
     clock_t start, total;
-    const Zed_Camera* zedcamera;
+    Zed_Camera* zedcamera;
     // pointer to the feature descriptor extractor object
     // cv::Ptr<cv::DescriptorExtractor> extractor;
     float ratio; // max ratio between 1st and 2nd NN
@@ -125,8 +125,8 @@ class RobustMatcher2 {
     double distance; // min distance to epipolar
     double confidence; // confidence level (probability)
     double camera[6] = {0, 1, 2, 0, 0, 0};
-    int rows {10};
-    int cols {10};
+    int rows {2};
+    int cols {2};
     float averageDistance {0.0f};
     float averageAngle[4] {0.0f};
     int totalNumber {700};
@@ -144,7 +144,7 @@ class RobustMatcher2 {
 
     ros::Publisher posePublisher;
  public:
-    RobustMatcher2(ros::NodeHandle *nh, const Zed_Camera* zedptr) : m_it(*nh), img_sync(MySyncPolicy(10), subLeftIm, subRightIm), ratio(0.85f), refineF(false),
+    RobustMatcher2(ros::NodeHandle *nh, Zed_Camera* zedptr) : m_it(*nh), img_sync(MySyncPolicy(10), subLeftIm, subRightIm), ratio(0.85f), refineF(false),
     confidence(0.99), distance(3.0) 
     {
         this->zedcamera = zedptr;

@@ -468,8 +468,8 @@ void RobustMatcher2::ceresSolver(cv::Mat& points3D, cv::Mat& prevPoints3D)
             double xp = static_cast<double>(prevPoints3D.at<float>(i,0));
             double yp = static_cast<double>(prevPoints3D.at<float>(i,1));
             double zp = static_cast<double>(prevPoints3D.at<float>(i,2));
-            std::cout << "PPPPPPPPREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
-            std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
+            // std::cout << "PPPPPPPPREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
+            // std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
             // std::cout << "x : " << x << " p3d : " << p3d.x() << '\n';
             Eigen::Vector3d p3d(x, y, z);
             Eigen::Vector3d pp3d(xp, yp, zp);
@@ -511,8 +511,8 @@ void RobustMatcher2::ceresSolverPnp(cv::Mat& points3D, cv::Mat& prevPoints3D)
             double xp = prevPoints3D.at<float>(i,0);
             double yp = prevPoints3D.at<float>(i,1);
             double zp = prevPoints3D.at<float>(i,2);
-            std::cout << "PREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
-            std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
+            // std::cout << "PREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
+            // std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
             // std::cout << "x : " << x << " p3d : " << p3d.x() << '\n';
             Eigen::Vector3d p3d(x, y, z);
             Eigen::Vector3d pp3d(xp, yp, zp);
@@ -554,6 +554,14 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
     clock_t maxTime = 0;
     clock_t minTime = 100;
     int count = 0;
+    leftImage.rows = 2;
+    leftImage.cols = 2;
+    rightImage.rows = 2;
+    rightImage.cols = 2;
+    prevLeftImage.rows = 2;
+    prevLeftImage.cols = 2;
+    prevRightImage.rows = 2;
+    prevRightImage.cols = 2;
     for (int frame = 0; frame < times; frame++)
     {
         start = clock();
@@ -782,6 +790,14 @@ void RobustMatcher2::testOpticalFlowWithPairs()
     int averageTime = 0;
     clock_t maxTime = 0;
     clock_t minTime = 100;
+    leftImage.rows = 2;
+    leftImage.cols = 2;
+    rightImage.rows = 2;
+    rightImage.cols = 2;
+    prevLeftImage.rows = 2;
+    prevLeftImage.cols = 2;
+    prevRightImage.rows = 2;
+    prevRightImage.cols = 2;
     for (int frame = 0; frame < times; frame++)
     {
         start = clock();
@@ -1353,6 +1369,9 @@ nav_msgs::Odometry position;
 Eigen::Matrix3d Rot;
 std::cout << "T : " << T << '\n';
 previousT = previousT * T;
+zedcamera->cameraPose.pose = previousT;
+zedcamera->cameraPose.timestamp = std::chrono::high_resolution_clock::now();
+std::cout << "ZED CAMERA POSE " << zedcamera->cameraPose.pose << " TIMESTAMP " << std::chrono::high_resolution_clock::to_time_t(zedcamera->cameraPose.timestamp) << std::endl;
 // Eigen::Matrix4d trial = previousT.transpose();
 Eigen::Quaterniond quat(previousT.topLeftCorner<3,3>());
 tf::poseTFToMsg(tf::Pose(tf::Quaternion(quat.x(),quat.y(),quat.z(),quat.w()),  tf::Vector3(previousT(0,3), previousT(1,3), previousT(2,3))), position.pose.pose); //Aria returns pose in mm.
@@ -1440,14 +1459,14 @@ float RobustMatcher2::getDistanceOfPoints(ImageFrame& first, ImageFrame& second,
 
 void RobustMatcher2::beginTest()
 {
-    testImageRectify();
+    // testImageRectify();
     // testFeatureExtraction();
     // testDisparityWithOpticalFlow();
     // testFeatureMatching();
     // testFeatureMatchingWithOpticalFlow();
     // testOpticalFlowWithPairs();
     // testFeatureExtractorClassWithCallback();
-    // testFeatureExtractorClass();
+    testFeatureExtractorClass();
 
 }
 
@@ -1536,7 +1555,7 @@ void RobustMatcher2::testFeatureExtractorClass()
         cv::imshow("left",outImage);
         cv::drawKeypoints(rightImage.image, rightKeys,outImageR);
         cv::imshow("right",outImageR);
-        cv::waitKey(1);
+        cv::waitKey(1000);
 
     // }
     // all.averageTime(times);

@@ -3,6 +3,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
+#include <Settings.h>
 #include <ros/ros.h>
 #include <unistd.h>
 #include <iostream>
@@ -18,9 +19,23 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/features2d.hpp"
 #include "opencv2/core.hpp"
+#include <yaml-cpp/yaml.h>
+#include <Eigen/Core>
+#include <chrono>
+
 
 namespace vio_slam
 {
+
+class CameraPose
+{
+    private:
+
+    public:
+        Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
+        std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;
+        //  = std::chrono::high_resolution_clock::now();
+};
 
 /**
  * @brief Camera class that contains intrinsic values
@@ -46,7 +61,7 @@ class Camera
         Camera() = default;
         ~Camera();
         float GetFx();
-        void setIntrinsicValues(ros::NodeHandle* nh, const std::string& cameraPath);
+        void setIntrinsicValues(const std::string& cameraPath, ConfigFile* confFile);
 };
 
 /**
@@ -62,15 +77,21 @@ class Zed_Camera
         bool rectified {};
         float mBaseline, mFps;
         int mWidth, mHeight;
+
         Camera cameraLeft;
         Camera cameraRight;
+
+        CameraPose cameraPose;
+
+        ConfigFile* confFile;
+        
         cv::Mat sensorsTranslate {};
         cv::Mat sensorsRotate {};
-        Zed_Camera(ros::NodeHandle *nh, bool rectified);
+        Zed_Camera(ConfigFile& yamlFile);
         ~Zed_Camera();
         void GetResolution();
-        void setCameraMatrices(ros::NodeHandle* nh);
-        void setCameraValues(ros::NodeHandle* nh);
+        void setCameraMatrices();
+        void setCameraValues();
 
 };
 

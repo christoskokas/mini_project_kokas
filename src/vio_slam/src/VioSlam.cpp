@@ -1,4 +1,5 @@
 #include "Camera.h"
+#include "Settings.h"
 #include "FeatureDrawer.h"
 #include "Frame.h"
 #include <ros/ros.h>
@@ -22,12 +23,13 @@
 
 int main (int argc, char **argv)
 {
+    vio_slam::ConfigFile yamlFile("config.yaml");
     ros::init(argc, argv, "VioSlam");
     ros::NodeHandle nh;
     bool rectified {};
     nh.getParam("rectified",rectified);
     vio_slam::FeatureStrategy featureMatchingStrat = vio_slam::FeatureStrategy::orb;
-    vio_slam::Zed_Camera zedcamera(&nh, rectified);
+    vio_slam::Zed_Camera zedcamera(yamlFile);
     std::cout << "xd      " << zedcamera.cameraLeft.GetFx() << std::endl;
     zedcamera.GetResolution();
     const vio_slam::Zed_Camera* zedptr = &zedcamera;
