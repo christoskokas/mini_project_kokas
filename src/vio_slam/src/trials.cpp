@@ -35,7 +35,7 @@ int main (int argc, char **argv)
     
     // vio_slam::FeatureStrategy featureMatchingStrat = vio_slam::FeatureStrategy::orb;
     vio_slam::Zed_Camera zedcamera(yamlFile);
-
+    vio_slam::Logging lel("now",2);
     vio_slam::Zed_Camera* zedptr = &zedcamera;
     // vio_slam::FeatureDrawer fv(&nh, zedptr);
     vio_slam::Frame frame;

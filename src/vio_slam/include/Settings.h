@@ -11,6 +11,29 @@
 namespace vio_slam
 {
     
+class Logging
+{
+    enum Level
+    {
+        DEBUG,
+        INFO,
+        WARN,
+        ERROR,
+        NOCOUT
+    };
+
+    Level curLevel {NOCOUT};
+
+    public:
+        template <typename T>
+        Logging(T toPrint, int level)
+        {
+            if ((curLevel <= level) && (level < 4))
+                std::cout << toPrint << '\n';
+        }
+
+};
+
 class ProcessTime
 {
     private:
