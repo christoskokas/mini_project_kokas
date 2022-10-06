@@ -36,7 +36,7 @@
 #include <cmath>
 #include <math.h> 
 
-typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
+// typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
 
 namespace vio_slam
 {
@@ -136,15 +136,15 @@ class RobustMatcher2 {
     Eigen::Matrix4d previousT = Eigen::Matrix4d::Identity();
 
 
-    image_transport::ImageTransport m_it;
-    message_filters::Subscriber<sensor_msgs::Image> subLeftIm;
-    message_filters::Subscriber<sensor_msgs::Image> subRightIm;
-    message_filters::Synchronizer<MySyncPolicy> img_sync;
+    // image_transport::ImageTransport m_it;
+    // message_filters::Subscriber<sensor_msgs::Image> subLeftIm;
+    // message_filters::Subscriber<sensor_msgs::Image> subRightIm;
+    // message_filters::Synchronizer<MySyncPolicy> img_sync;
 
 
-    ros::Publisher posePublisher;
+    // ros::Publisher posePublisher;
  public:
-    RobustMatcher2(ros::NodeHandle *nh, Zed_Camera* zedptr) : m_it(*nh), img_sync(MySyncPolicy(10), subLeftIm, subRightIm), ratio(0.85f), refineF(false),
+    RobustMatcher2(Zed_Camera* zedptr) : ratio(0.85f), refineF(false),
     confidence(0.99), distance(3.0) 
     {
         this->zedcamera = zedptr;
@@ -170,12 +170,14 @@ class RobustMatcher2 {
         detector = cv::ORB::create(numberPerCellFind,1.2f,8,0,0,2,cv::ORB::HARRIS_SCORE,10,15);
         // testImageRectify();
         // testFeatureExtraction();
-        subLeftIm.subscribe(*nh, zedcamera->cameraLeft.path, 3);
-        subRightIm.subscribe(*nh, zedcamera->cameraRight.path, 3);
-        img_sync.registerCallback(boost::bind(&RobustMatcher2::ImagesCallback, this, _1, _2));
-        std::string position_path;
-        nh->getParam("ground_truth_path", position_path);
-        posePublisher = nh->advertise<nav_msgs::Odometry>(position_path,1);
+
+        // subLeftIm.subscribe(*nh, zedcamera->cameraLeft.path, 3);
+        // subRightIm.subscribe(*nh, zedcamera->cameraRight.path, 3);
+        // img_sync.registerCallback(boost::bind(&RobustMatcher2::ImagesCallback, this, _1, _2));
+
+        // std::string position_path;
+        // nh->getParam("ground_truth_path", position_path);
+        // posePublisher = nh->advertise<nav_msgs::Odometry>(position_path,1);
 
     }
 

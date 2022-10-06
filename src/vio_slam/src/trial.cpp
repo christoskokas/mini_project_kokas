@@ -1357,45 +1357,47 @@ void RobustMatcher2::reduceVectorInt(std::vector<int> &v, cv::Mat& status)
     v.resize(j);
 }
 
-void RobustMatcher2::ImagesCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
-{
-    trialL.setImage(lIm);
-    trialR.setImage(rIm);
-}
+// void RobustMatcher2::ImagesCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm)
+// {
+//     trialL.setImage(lIm);
+//     trialR.setImage(rIm);
+// }
 
 void RobustMatcher2::publishPose()
 {
 nav_msgs::Odometry position;
 Eigen::Matrix3d Rot;
-std::cout << "T : " << T << '\n';
 previousT = previousT * T;
 zedcamera->cameraPose.pose = previousT;
+zedcamera->cameraPose.poseTranspose = previousT.transpose();
 zedcamera->cameraPose.timestamp = std::chrono::high_resolution_clock::now();
 std::cout << "ZED CAMERA POSE " << zedcamera->cameraPose.pose << " TIMESTAMP " << std::chrono::high_resolution_clock::to_time_t(zedcamera->cameraPose.timestamp) << std::endl;
 // Eigen::Matrix4d trial = previousT.transpose();
-Eigen::Quaterniond quat(previousT.topLeftCorner<3,3>());
-tf::poseTFToMsg(tf::Pose(tf::Quaternion(quat.x(),quat.y(),quat.z(),quat.w()),  tf::Vector3(previousT(0,3), previousT(1,3), previousT(2,3))), position.pose.pose); //Aria returns pose in mm.
-std::cout << "previousT : " << previousT << '\n';
-position.pose.covariance =  boost::assign::list_of(1e-3) (0) (0)  (0)  (0)  (0)
-                                                    (0) (1e-3)  (0)  (0)  (0)  (0)
-                                                    (0)   (0)  (1e6) (0)  (0)  (0)
-                                                    (0)   (0)   (0) (1e6) (0)  (0)
-                                                    (0)   (0)   (0)  (0) (1e6) (0)
-                                                    (0)   (0)   (0)  (0)  (0)  (1e3) ;
 
-position.twist.twist.linear.x = 0.0;                  //(sumsMovement[0]-previoussumsMovement[0])*15 //15 fps
-position.twist.twist.angular.z = 0.0;
-position.twist.covariance =  boost::assign::list_of(1e-3) (0)   (0)  (0)  (0)  (0)
-                                                    (0) (1e-3)  (0)  (0)  (0)  (0)
-                                                    (0)   (0)  (1e6) (0)  (0)  (0)
-                                                    (0)   (0)   (0) (1e6) (0)  (0)
-                                                    (0)   (0)   (0)  (0) (1e6) (0)
-                                                    (0)   (0)   (0)  (0)  (0)  (1e3) ; 
 
-position.header.frame_id = "whatever";
-position.header.stamp = ros::Time::now();
-posePublisher.publish(position);
-std::cout << "pose Published \n";
+// Eigen::Quaterniond quat(previousT.topLeftCorner<3,3>());
+// tf::poseTFToMsg(tf::Pose(tf::Quaternion(quat.x(),quat.y(),quat.z(),quat.w()),  tf::Vector3(previousT(0,3), previousT(1,3), previousT(2,3))), position.pose.pose); //Aria returns pose in mm.
+// std::cout << "previousT : " << previousT << '\n';
+// position.pose.covariance =  boost::assign::list_of(1e-3) (0) (0)  (0)  (0)  (0)
+//                                                     (0) (1e-3)  (0)  (0)  (0)  (0)
+//                                                     (0)   (0)  (1e6) (0)  (0)  (0)
+//                                                     (0)   (0)   (0) (1e6) (0)  (0)
+//                                                     (0)   (0)   (0)  (0) (1e6) (0)
+//                                                     (0)   (0)   (0)  (0)  (0)  (1e3) ;
+
+// position.twist.twist.linear.x = 0.0;                  //(sumsMovement[0]-previoussumsMovement[0])*15 //15 fps
+// position.twist.twist.angular.z = 0.0;
+// position.twist.covariance =  boost::assign::list_of(1e-3) (0)   (0)  (0)  (0)  (0)
+//                                                     (0) (1e-3)  (0)  (0)  (0)  (0)
+//                                                     (0)   (0)  (1e6) (0)  (0)  (0)
+//                                                     (0)   (0)   (0) (1e6) (0)  (0)
+//                                                     (0)   (0)   (0)  (0) (1e6) (0)
+//                                                     (0)   (0)   (0)  (0)  (0)  (1e3) ; 
+
+// position.header.frame_id = "whatever";
+// position.header.stamp = ros::Time::now();
+// posePublisher.publish(position);
+// std::cout << "pose Published \n";
 }
 
 void RobustMatcher2::drawFeatureMatches(const std::vector<cv::DMatch>& matches, const ImageFrame& firstImage, const ImageFrame& secondImage, cv::Mat& outImage)
@@ -1464,9 +1466,9 @@ void RobustMatcher2::beginTest()
     // testDisparityWithOpticalFlow();
     // testFeatureMatching();
     // testFeatureMatchingWithOpticalFlow();
-    // testOpticalFlowWithPairs();
+    testOpticalFlowWithPairs();
     // testFeatureExtractorClassWithCallback();
-    testFeatureExtractorClass();
+    // testFeatureExtractorClass();
 
 }
 

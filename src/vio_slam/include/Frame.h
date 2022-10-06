@@ -3,6 +3,7 @@
 #ifndef FRAME_H
 #define FRAME_H
 
+#include "Camera.h"
 #include "pangolin/pangolin.h"
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
@@ -16,6 +17,7 @@
 #include <pcl/point_cloud.h>
 #include <boost/foreach.hpp>
 #include <tf/tf.h>
+#include <Eigen/Core>
 
 // typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
@@ -44,7 +46,7 @@ class Frame
     public:
         Frame();
         std::list< KeyFrameVars > keyFrames;
-        void pangoQuit(ros::NodeHandle *nh);                    
+        void pangoQuit(const Zed_Camera* zedPtr);                    
         void printList(std::list< KeyFrameVars >& keyFrames);
 
 
@@ -68,17 +70,22 @@ struct CameraFrame : public pangolin::Renderable
 {
     std::string mGroundTruthPath, mPointCloudPath;
     const char *color;
+
+    const float cameraWidth = 0.1f;
+
+    const Zed_Camera* zedCamera;
+
     std::vector < pcl::PointXYZ > mPointCloud;
     ros::Subscriber groundSub;
     Eigen::Matrix4f Trial = Eigen::Matrix4f::Identity();
     // ros::Subscriber pointSub;
-    void Subscribers(ros::NodeHandle *nh);
-    void groundCallback(const nav_msgs::Odometry& msg);
+    // void Subscribers(ros::NodeHandle *nh);
+    // void groundCallback(const nav_msgs::Odometry& msg);
     // void pointCallback(const PointCloud::ConstPtr& msg);
     void lineFromKeyFrameToCamera(std::vector < pangolin::GLprecision >& mT);
     void Render(const pangolin::RenderParams&) override;
-    void drawCamera(pangolin::OpenGlMatrix& Twc);
-    void getOpenGLMatrix(pangolin::OpenGlMatrix &Twc, pangolin::OpenGlMatrix &MOw);
+    void drawCamera();
+    void getOpenGLMatrix(pangolin::OpenGlMatrix &MOw);
 };
 
 

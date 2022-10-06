@@ -33,6 +33,7 @@ class CameraPose
 
     public:
         Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d poseTranspose = Eigen::Matrix4d::Identity();
         std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;
         //  = std::chrono::high_resolution_clock::now();
 };
