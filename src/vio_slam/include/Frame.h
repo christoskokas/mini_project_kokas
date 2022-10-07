@@ -3,6 +3,7 @@
 #ifndef FRAME_H
 #define FRAME_H
 
+#include "Settings.h"
 #include "Camera.h"
 #include "pangolin/pangolin.h"
 #include <ros/ros.h>
@@ -47,7 +48,6 @@ class Frame
         Frame();
         std::list< KeyFrameVars > keyFrames;
         void pangoQuit(const Zed_Camera* zedPtr);                    
-        void printList(std::list< KeyFrameVars >& keyFrames);
 
 
 };

@@ -3,7 +3,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include <Settings.h>
+#include "Settings.h"
 #include <ros/ros.h>
 #include <unistd.h>
 #include <iostream>
@@ -90,7 +90,6 @@ class Zed_Camera
         cv::Mat sensorsRotate {};
         Zed_Camera(ConfigFile& yamlFile);
         ~Zed_Camera();
-        void GetResolution();
         void setCameraMatrices();
         void setCameraValues();
 

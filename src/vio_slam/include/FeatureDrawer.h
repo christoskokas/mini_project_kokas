@@ -3,7 +3,8 @@
 #ifndef VIEWER_H
 #define VIEWER_H
 
-#include <Camera.h>
+#include "Settings.h"
+#include "Camera.h"
 
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>

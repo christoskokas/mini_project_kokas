@@ -50,11 +50,6 @@ Zed_Camera::~Zed_Camera()
 
 }
 
-void Zed_Camera::GetResolution()
-{
-    ROS_INFO("Height : [%d], Width : [%d]", mHeight, mWidth);
-}
-
 Camera::Camera(ros::NodeHandle *nh)
 {
 

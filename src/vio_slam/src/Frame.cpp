@@ -9,47 +9,6 @@ Frame::Frame()
     
 }
 
-void Frame::printList(std::list< KeyFrameVars >& keyFrames)
-{
-    
-
-
-    for (auto vect : keyFrames)
-    {
-        {
-        std::cout << "OpenGLMatrix : [ ";
-        std::vector < pangolin::GLprecision > curvect = vect.mT;
-
-        for (auto element : curvect)
-        {
-            std::cout << element << ' ';
-        }
-        std::cout << ']';
-        std::cout << '\n';
-        }
-
-        // THIS IS FOR THE FEATURES NOT POINTCLOUDS
-
-        // std::cout << " All Pointclouds : [ ";
-        // std::vector <std::vector < pcl::PointXYZ> > curvect = vect.pointCloud;
-
-        // for (auto element : curvect)
-        // {
-        //     std::vector < pcl::PointXYZ> curvect2 = element;
-        //     std::cout << " each Pointclouds : [ ";
-        //     for (auto elementxyz : curvect2)
-        //     {
-        //         std::cout << "( "  <<elementxyz.x << ' ' << elementxyz.y << ' ' << elementxyz.z << ")";
-        //     }
-        //     std::cout << "]";
-        //     std::cout << '\n';
-
-        // }
-        // std::cout << ']';
-        // std::cout << '\n';
-    }
-}
-
 void Frame::pangoQuit(const Zed_Camera* zedPtr)
 {
     const int UI_WIDTH = 180;
@@ -127,7 +86,6 @@ void Frame::pangoQuit(const Zed_Camera* zedPtr)
                 camera->lineFromKeyFrameToCamera(temp.mT);
             });
 
-            // printList(keyFrames);
             
         }
         d_cam.Activate(s_cam);
@@ -344,7 +302,6 @@ Points::Points(const std::vector<pcl::PointXYZ>* point)
     if(!point->empty())
     {
         points = point;
-        std::cout << "LLLLLLOOOOOOOOOOOOOOOOOOLLLL \n" << points->at(0).x;
     }
 }
 

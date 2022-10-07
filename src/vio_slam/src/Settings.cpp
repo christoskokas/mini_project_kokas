@@ -3,6 +3,20 @@
 namespace vio_slam
 {
 
+Timer::Timer(const char* _message /* "Timer took" */) : message(_message)
+{
+    start = std::chrono::high_resolution_clock::now();
+}
+
+Timer::~Timer()
+{
+    end = std::chrono::high_resolution_clock::now();
+    duration = end - start;
+
+    float ms = duration.count() * 1000.0f;
+    Logging(message,ms,2,"ms");
+}
+
 ProcessTime::ProcessTime(const char* what /*"whatever"*/) : wFunc(what), start(clock()){}
 
 void ProcessTime::totalTime()

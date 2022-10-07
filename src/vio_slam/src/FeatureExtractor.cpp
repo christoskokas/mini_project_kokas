@@ -9,6 +9,7 @@ void FeatureExtractor::findFeatures(cv::Mat& image, std::vector <cv::KeyPoint>& 
 
 void FeatureExtractor::findORB(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
 {
+    Timer orb;
     computePyramid(image);
     separateImage(image, fastKeys);
 }
@@ -35,7 +36,6 @@ void FeatureExtractor::computePyramid(cv::Mat& image)
 
 void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
 {
-    // ProcessTime loop("lloop");
     fastKeys.reserve(2000);
     const int fastEdge = 3;
     const int edgeWFast = edgeThreshold - fastEdge;
@@ -64,7 +64,6 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
 
                 const int imColStart = col * colJump;
                 const int imColEnd = (col + 1) * colJump + 2 * fastEdge;
-                // std::cout << "row : " << imRowStart << " row + 1 : " << imRowEnd << " col : " << imColStart << " col + 1 : " << imColEnd << " rowJump " << rowJump << " colJump " << colJump <<std::endl;
 
                 std::vector < cv::KeyPoint > temp;
 
@@ -122,7 +121,7 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
         }
     }
     cv::KeyPointsFilter::retainBest(fastKeys,nFeatures);
-    std::cout << "after size : " << fastKeys.size() << " nfeat : " << nFeatures << std::endl;
+    Logging("Keypoint Size After removal", fastKeys.size(),1);
 }
 
 void FeatureExtractor::getNonMaxSuppression(std::vector < cv::KeyPoint >& prevImageKeys, cv::KeyPoint& it)
@@ -177,7 +176,6 @@ void FeatureExtractor::findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fast
     int pixels[N];
     getPixelOffset(pixels, (int)trial.step);
     int score {0};
-    ProcessTime loop("loop");
     for (int32_t iRows = edgeThreshold; iRows < image.rows - edgeThreshold; iRows++)
     {
         const uchar* rowPtr = image.ptr<uchar>(iRows);
@@ -225,8 +223,6 @@ void FeatureExtractor::findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fast
         if (numbOfFeatures > nFeatures)
             break;
     }
-    loop.totalTime();
-    std::cout << "size " << numbOfFeatures << std::endl;
 }
 
 void FeatureExtractor::highSpeedTest(const uchar* rowPtr, int pixels[25], const int fastThresh)

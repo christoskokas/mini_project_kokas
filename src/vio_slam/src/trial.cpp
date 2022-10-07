@@ -280,7 +280,7 @@ void RobustMatcher2::testFeatureExtraction()
     clock_t fastTotalTime = double(clock() - fastStart) * 1000 / (double)CLOCKS_PER_SEC;
     cv::Mat fastImage;
     leftImage.drawFeaturesWithLines(fastImage);
-    std::cout << "fast size : " << keypoints.size() << '\n';
+    Logging("fast size", keypoints.size(),1);
     leftImage.keypoints.clear();
     cv::imshow("fast features", fastImage);
     clock_t fastGridStart = clock();
@@ -288,7 +288,7 @@ void RobustMatcher2::testFeatureExtraction()
     clock_t fastGridTotalTime = double(clock() - fastGridStart) * 1000 / (double)CLOCKS_PER_SEC;
     cv::Mat fastAdaptiveImage;
     leftImage.drawFeaturesWithLines(fastAdaptiveImage);
-    std::cout << "fast grid size : " << keypoints.size() << '\n';
+    Logging("fast grid size", keypoints.size(),1);
     leftImage.keypoints.clear();
     cv::imshow("fast features GRID", fastAdaptiveImage);
     clock_t ORBStart = clock();
@@ -296,7 +296,7 @@ void RobustMatcher2::testFeatureExtraction()
     clock_t ORBTotalTime = double(clock() - ORBStart) * 1000 / (double)CLOCKS_PER_SEC;
     cv::Mat ORBImage;
     leftImage.drawFeaturesWithLines(ORBImage);
-    std::cout << "ORB size : " << keypoints.size() << '\n';
+    Logging("ORB size", keypoints.size(),1);
     leftImage.keypoints.clear();
     cv::imshow("ORB features", ORBImage);
     clock_t ORBGridStart = clock();
@@ -304,7 +304,7 @@ void RobustMatcher2::testFeatureExtraction()
     clock_t ORBGridTotalTime = double(clock() - ORBGridStart) * 1000 / (double)CLOCKS_PER_SEC;
     cv::Mat ORBAdaptiveImage;
     leftImage.drawFeaturesWithLines(ORBAdaptiveImage);
-    std::cout << "ORB grid size : " << keypoints.size() << '\n';
+    Logging("ORB grid size", keypoints.size(),1);
     leftImage.keypoints.clear();
     cv::imshow("ORB features GRID", ORBAdaptiveImage);
     std::vector<cv::Point2f> corners;
@@ -316,24 +316,17 @@ void RobustMatcher2::testFeatureExtraction()
     for( size_t i = 0; i < leftImage.optPoints.size(); i++ )
         { cv::circle( outImage, leftImage.optPoints[i], r, cv::Scalar(255,0,0,255), -1, 8, 0 ); }
     cv::imshow( "good Features To Track", outImage );
-    std::cout << "\nFast Features Time      : " << fastTotalTime        << " milliseconds." << '\n';
-    std::cout << "-------------------------\n";
-    std::cout << "\nFast Grid Features Time : " << fastGridTotalTime    << " milliseconds." << '\n';
-    std::cout << "-------------------------\n";
-    std::cout << "\nORB Features Time       : " << ORBTotalTime         << " milliseconds." << '\n';
-    std::cout << "-------------------------\n";
-    std::cout << "\nORB Grid Features Time  : " << ORBGridTotalTime     << " milliseconds." << '\n';
-    std::cout << "-------------------------\n";
-    std::cout << "\nGood Features Features Time  : " << GoodFeaturesTotalTime     << " milliseconds." << '\n';
-    std::cout << "-------------------------\n";
+    Logging("FAST time ----",fastTotalTime,1);
+    Logging("FAST Grid time ----",fastTotalTime,1);
+    Logging("ORB time ----",fastTotalTime,1);
+    Logging("ORB Grid time ----",fastTotalTime,1);
+    Logging("Good features time ----",fastTotalTime,1);
     cv::waitKey(0);
 }
 
 void RobustMatcher2::testDisparityWithOpticalFlow()
 {
-    std::cout << "-------------------------\n";
-    std::cout << "Disparity With Optical Flow \n";
-    std::cout << "-------------------------\n";
+    Logging("Disparity With Optical Flow","-------------------------",1);
     const int times = 200;
     // const int times = 658;
     bool firstImage = true;
@@ -364,7 +357,6 @@ void RobustMatcher2::testDisparityWithOpticalFlow()
             cv::Mat optFlow;
             leftImage.opticalFlow(prevLeftImage,status,optFlow);
             disp.join();
-            std::cout << "number of tracked points : " << leftImage.optPoints.size() << std::endl;
             cv::Mat dispNorm;
             cv::Mat depthImage;
             cv::reprojectImageTo3D(disparity,depthImage,Q);
@@ -395,20 +387,9 @@ void RobustMatcher2::testDisparityWithOpticalFlow()
         prevLeftImage.optPoints = leftImage.optPoints;
         prevLeftImage.image = leftImage.image.clone();
         leftImage.optPoints.clear();
-        total = double(clock() - start) * 1000 / (double)CLOCKS_PER_SEC;
-        averageTime += total;
-
-        std::cout << "-------------------------\n";
-        std::cout << "\n Frame Processing Time  : " << total  << " milliseconds." << std::endl;
-        std::cout << "-------------------------\n";
         cv::waitKey(10);
     }
     cv::destroyAllWindows();
-    std::cout << "-------------------------\n";
-    std::cout << "\n Average Processing Time should be : 66 milliseconds. (15fps so 1/15 = 66ms)" << std::endl;
-    std::cout << "-------------------------\n";
-    std::cout << "\n Average Processing Time  of " << times << " frames : " << averageTime/times  << " milliseconds." << std::endl;
-    std::cout << "-------------------------\n";
 }
 
 void RobustMatcher2::triangulatePointsOpt(ImageFrame& first, ImageFrame& second, cv::Mat& points3D)
@@ -432,7 +413,6 @@ void RobustMatcher2::triangulatePointsOptWithProjection(ImageFrame& first, Image
     cv::Mat Points4D(4,first.optPoints.size(),CV_32F);
 
     cv::triangulatePoints(P1, P2, first.optPoints,second.optPoints,Points4D);
-    std::cout << "LOOOOOOOOOOL" << Points4D.col(0) << std::endl;
     for (size_t i = 0; i < Points4D.cols; i++)
     {
         Points4D.at<float>(0,i) = Points4D.at<float>(0,i)/Points4D.at<float>(3,i);
@@ -440,16 +420,12 @@ void RobustMatcher2::triangulatePointsOptWithProjection(ImageFrame& first, Image
         Points4D.at<float>(2,i) = Points4D.at<float>(2,i)/Points4D.at<float>(3,i);
         Points4D.at<float>(3,i) = Points4D.at<float>(3,i)/Points4D.at<float>(3,i);
     }
-    std::cout << "LOOOOOOOOOOL" << Points4D.col(0) << std::endl;
     cv::Mat cameraTransform(4,4,CV_32FC1);
     Eigen::Matrix4f tr = previousT.cast <float> ();
     cv::eigen2cv(tr,cameraTransform);
-    std::cout << "LEEEEEEEEEEEL" << cameraTransform.row(0) << std::endl;
     cv::Mat pointsProj = cameraTransform * Points4D;
-    std::cout << "pointsProj" << pointsProj.col(0) << " orws " << pointsProj.rows << " cols " << pointsProj.cols << std::endl;
     points3D = pointsProj.colRange(cv::Range::all()).rowRange(cv::Range(0,3)).clone();
     points3D = points3D.t();
-    std::cout << "points3D" << points3D.col(0) << std::endl;
     
 }
 
@@ -468,9 +444,8 @@ void RobustMatcher2::ceresSolver(cv::Mat& points3D, cv::Mat& prevPoints3D)
             double xp = static_cast<double>(prevPoints3D.at<float>(i,0));
             double yp = static_cast<double>(prevPoints3D.at<float>(i,1));
             double zp = static_cast<double>(prevPoints3D.at<float>(i,2));
-            // std::cout << "PPPPPPPPREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
-            // std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
-            // std::cout << "x : " << x << " p3d : " << p3d.x() << '\n';
+            // Logging("Previous",cv::Point3d(xp,yp,zp),0);
+            // Logging("Observed",cv::Point3d(x,y,z),0);
             Eigen::Vector3d p3d(x, y, z);
             Eigen::Vector3d pp3d(xp, yp, zp);
             ceres::CostFunction* costfunction = Reprojection3dError::Create(p3d, pp3d);
@@ -484,8 +459,6 @@ void RobustMatcher2::ceresSolver(cv::Mat& points3D, cv::Mat& prevPoints3D)
     options.minimizer_progress_to_stdout = false;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
-    // std::cout << summary.BriefReport() << std::endl;
-    // std::cout << "After Optimizing: "  << std::endl;
 
     double quat[4];
     ceres::AngleAxisToQuaternion(camera, quat);
@@ -511,9 +484,8 @@ void RobustMatcher2::ceresSolverPnp(cv::Mat& points3D, cv::Mat& prevPoints3D)
             double xp = prevPoints3D.at<float>(i,0);
             double yp = prevPoints3D.at<float>(i,1);
             double zp = prevPoints3D.at<float>(i,2);
-            // std::cout << "PREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
-            // std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
-            // std::cout << "x : " << x << " p3d : " << p3d.x() << '\n';
+            // Logging("Previous",cv::Point3d(xp,yp,zp),0);
+            // Logging("Observed",cv::Point3d(x,y,z),0);
             Eigen::Vector3d p3d(x, y, z);
             Eigen::Vector3d pp3d(xp, yp, zp);
             ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
@@ -527,8 +499,6 @@ void RobustMatcher2::ceresSolverPnp(cv::Mat& points3D, cv::Mat& prevPoints3D)
     options.minimizer_progress_to_stdout = false;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
-    // std::cout << summary.BriefReport() << std::endl;
-    // std::cout << "After Optimizing: "  << std::endl;
 
     double quat[4];
     ceres::AngleAxisToQuaternion(camera, quat);
@@ -541,9 +511,7 @@ void RobustMatcher2::ceresSolverPnp(cv::Mat& points3D, cv::Mat& prevPoints3D)
 
 void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
 {
-    std::cout << "-------------------------\n";
-    std::cout << "Feature Matching With Optical Flow \n";
-    std::cout << "-------------------------\n";
+    Logging("Feature Matching With Optical Flow","-------------------------",1);
     // const int waitKey = 0;
     // const int times = 100;
     const int waitKey = 1;
@@ -564,7 +532,6 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
     prevRightImage.cols = 2;
     for (int frame = 0; frame < times; frame++)
     {
-        start = clock();
         leftImage.getImage(frame, "left");
         leftImage.rectifyImage(rmap[0][0], rmap[0][1]);
         rightImage.getImage(frame, "right");
@@ -608,8 +575,6 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
                 predictRightImagePoints(prevLeftImage, prevRightImage);
                 prevRightImage.opticalFlow(prevLeftImage, statusPrev, optFlowLR);
                 opticalFlowRemoveOutliers(prevLeftImage,prevRightImage,statusPrev, true);
-                // std::cout << " prev left size : " << prevLeftImage.optPoints.size() << std::endl;
-                // std::cout << " prev right size : " << prevRightImage.optPoints.size() << std::endl;
                 
                 
                 reduceVector(prevLeftImage.optPoints,statusPrev);
@@ -622,8 +587,6 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
                 reduceVector(prevRightImage.optPoints,inliers);
                 drawOpticalFlow(prevLeftImage,prevRightImage,optFlowLR);
                 cv::imshow("LR optical", optFlowLR);
-                // std::cout << " prev left size : " << prevLeftImage.optPoints.size() << std::endl;
-                // std::cout << " prev right size : " << prevRightImage.optPoints.size() << std::endl;
             }
             cv::Mat statusL, statusR;
             cv::Mat optFlow,optFlowR;
@@ -638,20 +601,12 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
             opticalFlowRemoveOutliers(rightImage,prevRightImage,statusR, false);
 
             cv::Mat status = statusL & statusR;
-            // std::cout << " left size : " << leftImage.optPoints.size() << std::endl;
-            // std::cout << " prev left size : " << prevLeftImage.optPoints.size() << std::endl;
-            // std::cout << " right size : " << rightImage.optPoints.size() << std::endl;
-            // std::cout << " prev right size : " << prevRightImage.optPoints.size() << std::endl;
 
             reduceVector(leftImage.optPoints,status);
             reduceVector(prevLeftImage.optPoints,status);
             reduceVector(rightImage.optPoints,status);
             reduceVector(prevRightImage.optPoints,status);
 
-            // std::cout << " left size : " << leftImage.optPoints.size() << std::endl;
-            // std::cout << " prev left size : " << prevLeftImage.optPoints.size() << std::endl;
-            // std::cout << " right size : " << rightImage.optPoints.size() << std::endl;
-            // std::cout << " prev right size : " << prevRightImage.optPoints.size() << std::endl;
 
             // Find Fund Matrix only from Left Image Points because the Right Camera Frame moves the same way as the Left Camera
             cv::Mat inliers, inliersR;
@@ -666,10 +621,6 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
             reduceVector(rightImage.optPoints,inliers);
             reduceVector(prevRightImage.optPoints,inliers);
 
-            // std::cout << " AFTER RANSACCCCC left size : " << leftImage.optPoints.size() << std::endl;
-            // std::cout << " prev left size : " << prevLeftImage.optPoints.size() << std::endl;
-            // std::cout << " right size : " << rightImage.optPoints.size() << std::endl;
-            // std::cout << " prev right size : " << prevRightImage.optPoints.size() << std::endl;
 
             drawOpticalFlow(prevLeftImage,leftImage,optFlow);
             cv::imshow("LpL optical", optFlow);
@@ -691,13 +642,6 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
             // publishPose();
 
 
-            // std::cout << "points" << Points3D << std::endl;
-            // for (size_t i = 0; i < Points3D.rows; i++)
-            // {
-            //     std::cout << "prev x : " << PrevPoints3D.at<float>(i,0) << " y : " << PrevPoints3D.at<float>(i,1) << " z : " << PrevPoints3D.at<float>(i,2) << std::endl;
-            //     std::cout << "after x : " << Points3D.at<float>(i,0) << " y : " << Points3D.at<float>(i,1) << " z : " << Points3D.at<float>(i,2) << std::endl;
-            // }
-            
             // std::thread opt(&vio_slam::ImageFrame::opticalFlow,std::ref(prevRightImage),std::ref(prevLeftImage),std::ref(optFlowLR));
             // opt.join();
         }
@@ -716,7 +660,6 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
                 // detector->compute(prevRightImage.image,prevRightImage.keypoints,prevRightImage.desc);
                 // std::vector< cv::DMatch > matches;
                 // matchCrossRatio(prevLeftImage,prevRightImage,matches,true);
-                // std::cout << "Matches size : " << matches.size() << std::endl;
                 // cv::Mat matchesImage;
                 // drawFeatureMatches(matches,prevLeftImage, prevRightImage,matchesImage);
                 // cv::imshow("Matches", matchesImage);
@@ -739,8 +682,6 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
 
         // for (size_t i = 0; i < leftImage.optPoints.size(); i++)
         // {
-        //     std::cout << "left : " << leftImage.optPoints[i] << std::endl;
-        //     std::cout << "right : " << rightImage.optPoints[i] << std::endl;
         // }
         
         
@@ -753,34 +694,14 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
         prevRightImage.realImage = rightImage.realImage.clone();
         leftImage.optPoints.clear();
         rightImage.optPoints.clear();
-        total = double(clock() - start) * 1000 / (double)CLOCKS_PER_SEC;
-        averageTime += total;
-        if (total > maxTime)
-            maxTime = total;
-        if (total < minTime)
-            minTime = total;
-        std::cout << "-------------------------\n";
-        std::cout << "\n Frame Processing Time  : " << total  << " milliseconds." << std::endl;
-        std::cout << "-------------------------\n";
         cv::waitKey(waitKey);
     }
     cv::destroyAllWindows();
-    std::cout << "-------------------------\n";
-    std::cout << "\n Average Processing Time should be : 66 milliseconds. (15fps so 1/15 = 66ms)" << std::endl;
-    std::cout << "-------------------------\n";
-    std::cout << "\n Average Processing Time  of " << times << " frames : " << averageTime/times  << " milliseconds." << std::endl;
-    std::cout << "-------------------------\n";
-    std::cout << "\n Max Processing Time of Single Frame  : " << maxTime  << " milliseconds." << std::endl;
-    std::cout << "-------------------------\n";
-    std::cout << "\n Min Processing Time of Single Frame  : " << minTime  << " milliseconds." << std::endl;
-    std::cout << "-------------------------\n";
 }
 
 void RobustMatcher2::testOpticalFlowWithPairs()
 {
-    std::cout << "-------------------------\n";
-    std::cout << "Feature Matching With Optical Flow \n";
-    std::cout << "-------------------------\n";
+    Logging("Feature Matching With Optical Flow Pairs","-------------------------",1);
     // const int waitKey = 0;
     // const int times = 200;
     const int waitKey = 1;
@@ -841,14 +762,11 @@ void RobustMatcher2::testOpticalFlowWithPairs()
                 
                 // cv::cornerSubPix(prevLeftImage.image,prevLeftImage.optPoints,cv::Size(11,11),cv::Size(-1,-1),cv::TermCriteria( CV_TERMCRIT_EPS | CV_TERMCRIT_ITER, 30, 0.1 ));
                 
-                std::cout << prevLeftImage.optPoints.size() << '\n';
                 cv::Mat optFlowLR, statusPrev,statusPrevc;
                 predictRightImagePoints(prevLeftImage, prevRightImage);
                 prevRightImage.class_id = prevLeftImage.class_id;
                 prevRightImage.opticalFlow(prevLeftImage, statusPrev, optFlowLR);
                 opticalFlowRemoveOutliers(prevLeftImage,prevRightImage,statusPrev, true);
-                // std::cout << " prev left size : " << prevLeftImage.optPoints.size() << std::endl;
-                // std::cout << " prev right size : " << prevRightImage.optPoints.size() << std::endl;
                 
                 
                 reduceVector(prevLeftImage.optPoints,statusPrev);
@@ -868,8 +786,6 @@ void RobustMatcher2::testOpticalFlowWithPairs()
                 reduceVectorInt(prevRightImage.class_id,inliers);
                 drawOpticalFlow(prevLeftImage,prevRightImage,optFlowLR);
                 cv::imshow("LR optical", optFlowLR);
-                // std::cout << " prev left size : " << prevLeftImage.optPoints.size() << std::endl;
-                // std::cout << " prev right size : " << prevRightImage.optPoints.size() << std::endl;
             }
             cv::Mat statusL, statusR;
             cv::Mat optFlow,optFlowR;
@@ -886,10 +802,6 @@ void RobustMatcher2::testOpticalFlowWithPairs()
             opticalFlowRemoveOutliers(rightImage,prevRightImage,statusR, false);
 
             cv::Mat status = statusL & statusR;
-            // std::cout << " left size : " << leftImage.optPoints.size() << std::endl;
-            // std::cout << " prev left size : " << prevLeftImage.optPoints.size() << std::endl;
-            // std::cout << " right size : " << rightImage.optPoints.size() << std::endl;
-            // std::cout << " prev right size : " << prevRightImage.optPoints.size() << std::endl;
 
             reduceVector(leftImage.optPoints,status);
             reduceVector(prevLeftImage.optPoints,status);
@@ -901,10 +813,6 @@ void RobustMatcher2::testOpticalFlowWithPairs()
             reduceVectorInt(rightImage.class_id,status);
             reduceVectorInt(prevRightImage.class_id,status);
 
-            // std::cout << " left size : " << leftImage.optPoints.size() << std::endl;
-            // std::cout << " prev left size : " << prevLeftImage.optPoints.size() << std::endl;
-            // std::cout << " right size : " << rightImage.optPoints.size() << std::endl;
-            // std::cout << " prev right size : " << prevRightImage.optPoints.size() << std::endl;
 
             // Find Fund Matrix only from Left Image Points because the Right Camera Frame moves the same way as the Left Camera
             cv::Mat inliers, inliersR;
@@ -927,14 +835,9 @@ void RobustMatcher2::testOpticalFlowWithPairs()
             for (size_t i = 0; i < pointsTimes.size(); i++)
             {
                 pointsTimes[i] ++;
-                std::cout << " " << pointsTimes[i] << '\n';
             }
             
 
-            // std::cout << " AFTER RANSACCCCC left size : " << leftImage.optPoints.size() << std::endl;
-            // std::cout << " prev left size : " << prevLeftImage.optPoints.size() << std::endl;
-            // std::cout << " right size : " << rightImage.optPoints.size() << std::endl;
-            // std::cout << " prev right size : " << prevRightImage.optPoints.size() << std::endl;
 
             drawOpticalFlow(prevLeftImage,leftImage,optFlow);
             cv::imshow("LpL optical", optFlow);
@@ -986,12 +889,6 @@ void RobustMatcher2::testOpticalFlowWithPairs()
             // publishPose();
 
 
-            // std::cout << "points" << Points3D << std::endl;
-            // for (size_t i = 0; i < Points3D.rows; i++)
-            // {
-            //     std::cout << "prev x : " << PrevPoints3D.at<float>(i,0) << " y : " << PrevPoints3D.at<float>(i,1) << " z : " << PrevPoints3D.at<float>(i,2) << std::endl;
-            //     std::cout << "after x : " << Points3D.at<float>(i,0) << " y : " << Points3D.at<float>(i,1) << " z : " << Points3D.at<float>(i,2) << std::endl;
-            // }
             
             // std::thread opt(&vio_slam::ImageFrame::opticalFlow,std::ref(prevRightImage),std::ref(prevLeftImage),std::ref(optFlowLR));
             // opt.join();
@@ -1006,34 +903,14 @@ void RobustMatcher2::testOpticalFlowWithPairs()
 
         // for (size_t i = 0; i < leftImage.optPoints.size(); i++)
         // {
-        //     std::cout << "left : " << leftImage.optPoints[i] << std::endl;
-        //     std::cout << "right : " << rightImage.optPoints[i] << std::endl;
         // }
         
         
         //Calculate feature position
         
-        total = double(clock() - start) * 1000 / (double)CLOCKS_PER_SEC;
-        averageTime += total;
-        if (total > maxTime)
-            maxTime = total;
-        if (total < minTime)
-            minTime = total;
-        std::cout << "-------------------------\n";
-        std::cout << "\n Frame Processing Time  : " << total  << " milliseconds." << std::endl;
-        std::cout << "-------------------------\n";
         cv::waitKey(waitKey);
     }
     cv::destroyAllWindows();
-    std::cout << "-------------------------\n";
-    std::cout << "\n Average Processing Time should be : 66 milliseconds. (15fps so 1/15 = 66ms)" << std::endl;
-    std::cout << "-------------------------\n";
-    std::cout << "\n Average Processing Time  of " << times << " frames : " << averageTime/times  << " milliseconds." << std::endl;
-    std::cout << "-------------------------\n";
-    std::cout << "\n Max Processing Time of Single Frame  : " << maxTime  << " milliseconds." << std::endl;
-    std::cout << "-------------------------\n";
-    std::cout << "\n Min Processing Time of Single Frame  : " << minTime  << " milliseconds." << std::endl;
-    std::cout << "-------------------------\n";
 }
 
 void RobustMatcher2::removeLeftRightOutliers(ImageFrame& left, ImageFrame& right, cv::Mat& status)
@@ -1057,16 +934,13 @@ void RobustMatcher2::predictRightImagePoints(ImageFrame& left, ImageFrame& right
 
 void RobustMatcher2::testFeatureMatching()
 {
-    std::cout << "-------------------------\n";
-    std::cout << "Feature Matching Trials \n";
-    std::cout << "-------------------------\n";
+    Logging("Feature Matching Trials \n","-------------------------",1);
     const int times = 200;
     // const int times = 100;
     int averageTime = 0;
     for (int frame = 0; frame < times; frame++)
     {
         bool withThread = false;
-        start = clock();
         if (withThread)
         {
             std::thread rightImageThread(&vio_slam::ImageFrame::findFeaturesOnImage, std::ref(rightImage), frame, "right", std::ref(rmap[1][0]), std::ref(rmap[1][1]));
@@ -1086,7 +960,7 @@ void RobustMatcher2::testFeatureMatching()
 
         std::vector < cv::DMatch > matches;
         matchCrossRatio(leftImage, rightImage, matches, true);
-        std::cout << "LR Matches size : " << matches.size() << std::endl;
+        Logging("LR Matches size", matches.size(),1);
         cv::Mat matchesImage;
         drawFeatureMatches(matches,leftImage, rightImage,matchesImage);
         cv::imshow("Matches", matchesImage);
@@ -1096,7 +970,6 @@ void RobustMatcher2::testFeatureMatching()
         // {
         //     matchCrossRatio(leftImage, prevLeftImage, matches, false);
             
-        //     std::cout << "LpL Matches size : " << matches.size() << std::endl;
 
         // }
         // matches.clear();
@@ -1104,19 +977,9 @@ void RobustMatcher2::testFeatureMatching()
         firstImage = false;
         leftImage.keypoints.clear();
         rightImage.keypoints.clear();
-        total = double(clock() - start) * 1000 / (double)CLOCKS_PER_SEC;
-        averageTime += total;
 
-        std::cout << "-------------------------\n";
-        std::cout << "\n Frame Processing Time  : " << total  << " milliseconds." << std::endl;
-        std::cout << "-------------------------\n";
         cv::waitKey(1);
     }
-    std::cout << "-------------------------\n";
-    std::cout << "\n Average Processing Time should be : 66 milliseconds. (15fps so 1/15 = 66ms)" << std::endl;
-    std::cout << "-------------------------\n";
-    std::cout << "\n Average Processing Time  of " << times + 1 << " frames : " << averageTime/(times + 1)  << " milliseconds." << std::endl;
-    std::cout << "-------------------------\n";
     
 }
 
@@ -1152,7 +1015,6 @@ void RobustMatcher2::classIdCheck(ImageFrame& first, ImageFrame& second, std::ve
     float dist = 0.0f;
     for (std::vector<cv::DMatch>::iterator matchIterator= matchesSym.begin(); matchIterator!= matchesSym.end(); ++matchIterator)
     {
-        // std::cout << "averageDistance " << averageDistance << " get dist " << (*matchIterator).distance;
         bool matchadded = false;
         int firstClassId = first.keypoints[(*matchIterator).queryIdx].class_id;
         int secondClassId = second.keypoints[(*matchIterator).trainIdx].class_id;
@@ -1290,9 +1152,7 @@ void ImageFrame::getImage(int frameNumber, const char* whichImage)
 void RobustMatcher2::testImageRectify()
 {
     ProcessTime first("Rectify");
-    std::cout << "-------------------------\n";
-    std::cout << "\n Image Rectify Testing \n";
-    std::cout << "-------------------------\n";
+    Logging("Image Rectify Testing \n","-------------------------",1);
     std::string imagePath = std::string("/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/left/frame0000.jpg");
     leftImage.image = cv::imread(imagePath,cv::IMREAD_GRAYSCALE);
     cv::imshow("left Image", leftImage.image);
@@ -1305,18 +1165,13 @@ void RobustMatcher2::testImageRectify()
 void RobustMatcher2::undistortMap()
 {
     cv::Size imgSize = cv::Size(zedcamera->mWidth, zedcamera->mHeight);
-    std::cout << "LOOOL\n";
     cv::stereoRectify(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, imgSize, zedcamera->sensorsRotate, zedcamera->sensorsTranslate, R1, R2, P1, P2, Q);
-    std::cout << "LOOOL\n";
     cv::Mat leftCamera = cv::getOptimalNewCameraMatrix(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs,imgSize, 0);
-    std::cout << "LOOOL\n";
     cv::Mat rightCamera = cv::getOptimalNewCameraMatrix(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs,imgSize, 0);
     cv::initUndistortRectifyMap(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, R1, leftCamera, imgSize, CV_32FC1, rmap[0][0], rmap[0][1]);
     cv::initUndistortRectifyMap(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, R2, rightCamera, imgSize, CV_32FC1, rmap[1][0], rmap[1][1]);
-    std::cout << "P1 : \n";
-    std::cout << P1 << '\n';
-    std::cout << "P2 : \n";
-    std::cout << P2 << '\n';
+    Logging("P1",P1,1);
+    Logging("P2",P2,1);
 }
 
 void ImageFrame::rectifyImage(cv::Mat& map1, cv::Mat& map2)
@@ -1370,34 +1225,7 @@ Eigen::Matrix3d Rot;
 previousT = previousT * T;
 zedcamera->cameraPose.pose = previousT;
 zedcamera->cameraPose.poseTranspose = previousT.transpose();
-zedcamera->cameraPose.timestamp = std::chrono::high_resolution_clock::now();
-std::cout << "ZED CAMERA POSE " << zedcamera->cameraPose.pose << " TIMESTAMP " << std::chrono::high_resolution_clock::to_time_t(zedcamera->cameraPose.timestamp) << std::endl;
-// Eigen::Matrix4d trial = previousT.transpose();
-
-
-// Eigen::Quaterniond quat(previousT.topLeftCorner<3,3>());
-// tf::poseTFToMsg(tf::Pose(tf::Quaternion(quat.x(),quat.y(),quat.z(),quat.w()),  tf::Vector3(previousT(0,3), previousT(1,3), previousT(2,3))), position.pose.pose); //Aria returns pose in mm.
-// std::cout << "previousT : " << previousT << '\n';
-// position.pose.covariance =  boost::assign::list_of(1e-3) (0) (0)  (0)  (0)  (0)
-//                                                     (0) (1e-3)  (0)  (0)  (0)  (0)
-//                                                     (0)   (0)  (1e6) (0)  (0)  (0)
-//                                                     (0)   (0)   (0) (1e6) (0)  (0)
-//                                                     (0)   (0)   (0)  (0) (1e6) (0)
-//                                                     (0)   (0)   (0)  (0)  (0)  (1e3) ;
-
-// position.twist.twist.linear.x = 0.0;                  //(sumsMovement[0]-previoussumsMovement[0])*15 //15 fps
-// position.twist.twist.angular.z = 0.0;
-// position.twist.covariance =  boost::assign::list_of(1e-3) (0)   (0)  (0)  (0)  (0)
-//                                                     (0) (1e-3)  (0)  (0)  (0)  (0)
-//                                                     (0)   (0)  (1e6) (0)  (0)  (0)
-//                                                     (0)   (0)   (0) (1e6) (0)  (0)
-//                                                     (0)   (0)   (0)  (0) (1e6) (0)
-//                                                     (0)   (0)   (0)  (0)  (0)  (1e3) ; 
-
-// position.header.frame_id = "whatever";
-// position.header.stamp = ros::Time::now();
-// posePublisher.publish(position);
-// std::cout << "pose Published \n";
+Logging zed("Zed Camera Pose", zedcamera->cameraPose.pose,0);
 }
 
 void RobustMatcher2::drawFeatureMatches(const std::vector<cv::DMatch>& matches, const ImageFrame& firstImage, const ImageFrame& secondImage, cv::Mat& outImage)
@@ -1466,9 +1294,9 @@ void RobustMatcher2::beginTest()
     // testDisparityWithOpticalFlow();
     // testFeatureMatching();
     // testFeatureMatchingWithOpticalFlow();
-    testOpticalFlowWithPairs();
+    // testOpticalFlowWithPairs();
     // testFeatureExtractorClassWithCallback();
-    // testFeatureExtractorClass();
+    testFeatureExtractorClass();
 
 }
 
@@ -1500,7 +1328,6 @@ void RobustMatcher2::testFeatureExtractorClassWithCallback()
             // cv::Mat outImage2;
             // cv::drawKeypoints(leftImage.image, fastKeys,outImage2);
             // cv::imshow("fast",outImage2);
-            // std::cout << "their size " << fastKeys.size() << std::endl;
 
             // ProcessTime mine("mine");
             // for (int i =0;i < 14;i++)
@@ -1523,7 +1350,6 @@ void RobustMatcher2::testFeatureExtractorClassWithCallback()
         }
     }
     orb.averageTimeOverTimes(times);
-    // std::cout << "my size " << fastKeys.size() << std::endl;
     
 }
 
@@ -1544,14 +1370,10 @@ void RobustMatcher2::testFeatureExtractorClass()
         rightImage.rectifyImage(rmap[1][0],rmap[1][1]);
         std::vector <cv::KeyPoint> fastKeys, rightKeys;
 
-        ProcessTime mine("mine");
         trial.findORB(leftImage.image, fastKeys);
         trial.findORB(rightImage.image, rightKeys);
-        
-        mine.totalTime();
 
         i++;
-
         cv::Mat outImage, outImageR;
         cv::drawKeypoints(leftImage.image, fastKeys,outImage);
         cv::imshow("left",outImage);
@@ -1563,7 +1385,6 @@ void RobustMatcher2::testFeatureExtractorClass()
     // all.averageTime(times);
     
 
-    // std::cout << "my size " << fastKeys.size() << std::endl;
     
 }
 
@@ -1578,19 +1399,15 @@ void RobustMatcher2::calcP1P2()
         P1 = zedcamera->cameraLeft.cameraMatrix * a1;
         P2 = zedcamera->cameraRight.cameraMatrix * a2;
 
-        std::cout << "P1 : \n";
-        std::cout << P1 << '\n';
-        std::cout << "P2 : \n";
-        std::cout << P2 << '\n';
+        Logging("P1",P1,1);
+        Logging("P2",P2,1);
     }
     else
     {
         P1 = (cv::Mat_<double>(3,4) << 7.188560000000e+02, 0.000000000000e+00, 6.071928000000e+02, 0.000000000000e+00, 0.000000000000e+00, 7.188560000000e+02, 1.852157000000e+02, 0.000000000000e+00, 0.000000000000e+00, 0.000000000000e+00, 1.000000000000e+00, 0.000000000000e+00);
         P2 = (cv::Mat_<double>(3,4) << 7.188560000000e+02, 0.000000000000e+00, 6.071928000000e+02, -3.861448000000e+02, 0.000000000000e+00, 7.188560000000e+02, 1.852157000000e+02, 0.000000000000e+00, 0.000000000000e+00, 0.000000000000e+00, 1.000000000000e+00, 0.000000000000e+00);
-        std::cout << "P1 : \n";
-        std::cout << P1 << '\n';
-        std::cout << "P2 : \n";
-        std::cout << P2 << '\n';
+        Logging("P1",P1,1);
+        Logging("P2",P2,1);
     }
 }
 

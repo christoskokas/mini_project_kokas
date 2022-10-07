@@ -31,7 +31,6 @@ int main (int argc, char **argv)
     vio_slam::FeatureStrategy featureMatchingStrat = vio_slam::FeatureStrategy::orb;
     vio_slam::Zed_Camera zedcamera(yamlFile);
     std::cout << "xd      " << zedcamera.cameraLeft.GetFx() << std::endl;
-    zedcamera.GetResolution();
     const vio_slam::Zed_Camera* zedptr = &zedcamera;
     vio_slam::FeatureDrawer fv(&nh, zedptr);
     vio_slam::Frame frame;

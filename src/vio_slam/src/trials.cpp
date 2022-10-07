@@ -26,21 +26,17 @@
 int main (int argc, char **argv)
 {
     vio_slam::ConfigFile yamlFile("config.yaml");
-    std::cout << " YAML FILE \n " << yamlFile.configNode["Camera_l"]["fx"].as<float>() << '\n';
 
-    std::cout << " YAML FILE TEMPLATE \n " << yamlFile.getValue<std::string>("Camera_l_path") << '\n';
 
     // ros::init(argc, argv, "trial");
     // ros::NodeHandle nh;
     
     // vio_slam::FeatureStrategy featureMatchingStrat = vio_slam::FeatureStrategy::orb;
     vio_slam::Zed_Camera zedcamera(yamlFile);
-    vio_slam::Logging lel("now",2);
+
     vio_slam::Zed_Camera* zedptr = &zedcamera;
     // vio_slam::FeatureDrawer fv(&nh, zedptr);
     vio_slam::Frame frame;
-    std::cout << "\nFeature Extraction Trials\n" << '\n';
-    std::cout << "-------------------------\n";
     vio_slam::RobustMatcher2 rb(zedptr);
     std::thread worker(&vio_slam::Frame::pangoQuit, frame, zedptr);
     std::thread tester(&vio_slam::RobustMatcher2::beginTest, &rb);
