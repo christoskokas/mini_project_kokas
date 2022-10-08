@@ -7,11 +7,101 @@ void FeatureExtractor::findFeatures(cv::Mat& image, std::vector <cv::KeyPoint>& 
 {
 }
 
-void FeatureExtractor::findORB(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
+void FeatureExtractor::findORBWithCV(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
 {
-    Timer orb;
+    Timer orb("ORB CV");
+    cv::Ptr<cv::ORB> detector;
+    const int fastEdge = 3;
+    const int edgeWFast = edgeThreshold - fastEdge;
+    cv::Mat croppedImage = image.colRange(edgeWFast,image.cols - edgeWFast).rowRange(edgeWFast, image.rows - edgeWFast);
+    fastKeys.reserve(2000);
+    std::vector<std::vector < cv::KeyPoint >> prevImageKeys;
+    prevImageKeys.resize(gridCols * gridRows);
+    // fastEdge is the Edge Threshold of FAST Keypoints, it does not search for keypoints for a border of 3 pixels around image.
+
+    const int rowJump = (croppedImage.rows - 2 * fastEdge) / gridRows;
+    const int colJump = (croppedImage.cols - 2 * fastEdge) / gridCols;
+
+
+    int count {0};
+    
+    for (int32_t row = 0; row < gridRows; row++)
+    {
+        
+        const int imRowStart = row * rowJump;
+        const int imRowEnd = (row + 1) * rowJump + 2 * fastEdge;
+
+        for (int32_t col = 0; col < gridCols; col++)
+        {
+
+            const int imColStart = col * colJump;
+            const int imColEnd = (col + 1) * colJump + 2 * fastEdge;
+
+            std::vector < cv::KeyPoint > temp;
+
+            detector = cv::ORB::create(numberPerCell,1.3f,5,0,0,2,cv::ORB::HARRIS_SCORE,31,maxFastThreshold);
+            detector->detect(croppedImage.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,cv::Mat());
+
+            if (temp.size() < numberPerCell)
+            {
+                detector = cv::ORB::create(numberPerCell,1.3f,5,0,0,2,cv::ORB::HARRIS_SCORE,31,minFastThreshold);
+                detector->detect(croppedImage.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,cv::Mat());
+            }
+            if (!temp.empty())
+            {
+                cv::KeyPointsFilter::retainBest(temp,numberPerCell);
+                for ( std::vector < cv::KeyPoint>::iterator it=temp.begin(); it !=temp.end(); it++)
+                {
+                    
+                    (*it).pt.x += imColStart + edgeWFast;
+                    (*it).pt.y += imRowStart + edgeWFast;
+                    (*it).class_id = count;
+                    fastKeys.push_back(*it);
+                    // getNonMaxSuppression(prevImageKeys[row*gridCols + col],*it);
+
+                }
+                // cv::KeyPointsFilter::removeDuplicated(prevImageKeys[row*gridCols + col]);
+
+            }
+            count++;
+        }
+    }
+    Logging("keypoint angle",fastKeys[100].angle,1);
+    Logging("Keypoint Size Before removal", fastKeys.size(),1);
+    cv::KeyPointsFilter::retainBest(fastKeys,nFeatures);
+    Logging("Keypoint Size After removal", fastKeys.size(),1);
+
+}
+
+void FeatureExtractor::findORB(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc)
+{
+    // Timer orb;
     computePyramid(image);
     separateImage(image, fastKeys);
+    cv::Ptr<cv::ORB> detector {cv::ORB::create(2000,imScale,nLevels,edgeThreshold,0,2,cv::ORB::HARRIS_SCORE,patchSize,maxFastThreshold)};
+    detector->compute(image,fastKeys,Desc);
+}
+
+float FeatureExtractor::computeOrientation(const cv::Mat& image, const cv::Point2f& point)
+{
+    int m10 {0}, m01{0};
+    const int step {(int)image.step};
+    const uchar* center = &image.at<uchar> (cvRound(point.y), cvRound(point.x));
+
+    for (int32_t row = 0; row < halfPatchSize; row++)
+    {
+        int sumIntensities {0};
+        for (int32_t col = -halfPatchSize; col < halfPatchSize; col++)
+        {
+            const int centerP {center[col + row*step]}, centerM {center[col - row*step]};
+            sumIntensities += centerP - centerM;
+            m10 += col * (centerP + centerM);
+        }
+        m01 += row * sumIntensities;
+    }
+
+    return cv::fastAtan2((float)m01, (float)m10);
+
 }
 
 void FeatureExtractor::computePyramid(cv::Mat& image)
@@ -37,6 +127,9 @@ void FeatureExtractor::computePyramid(cv::Mat& image)
 void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
 {
     fastKeys.reserve(2000);
+    std::vector <float> pyrDifRow, pyrDifCol;
+    pyrDifRow.resize(nLevels);
+    pyrDifCol.resize(nLevels);
     const int fastEdge = 3;
     const int edgeWFast = edgeThreshold - fastEdge;
     std::vector<std::vector < cv::KeyPoint >> prevImageKeys;
@@ -48,10 +141,10 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
         const int rowJump = (imagePyramid[level].rows - 2 * fastEdge) / gridRows;
         const int colJump = (imagePyramid[level].cols - 2 * fastEdge) / gridCols;
 
-        const float pyramidDifRow = imagePyramid[0].rows/(float)imagePyramid[level].rows;
-        const float pyramidDifCol = imagePyramid[0].cols/(float)imagePyramid[level].cols;
+        pyrDifRow[level] = imagePyramid[0].rows/(float)imagePyramid[level].rows;
+        pyrDifCol[level] = imagePyramid[0].cols/(float)imagePyramid[level].cols;
 
-        int count {0};
+        int count {-1};
         
         for (int32_t row = 0; row < gridRows; row++)
         {
@@ -61,6 +154,7 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
 
             for (int32_t col = 0; col < gridCols; col++)
             {
+                count++;
 
                 const int imColStart = col * colJump;
                 const int imColEnd = (col + 1) * colJump + 2 * fastEdge;
@@ -69,7 +163,7 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
 
                 cv::FAST(imagePyramid[level].colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,maxFastThreshold,true);
 
-                if (temp.empty())
+                if (temp.size() < numberPerCell/nLevels)
                 {
                     cv::FAST(imagePyramid[level].colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,minFastThreshold,true);
                 }
@@ -78,17 +172,12 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
                     cv::KeyPointsFilter::retainBest(temp,numberPerCell);
                     for ( std::vector < cv::KeyPoint>::iterator it=temp.begin(); it !=temp.end(); it++)
                     {
-                        // {
-                        //     // remove keypoints that are too bright or too dark
-                        //     const int cPInt = imagePyramid[i].at<uchar>((*it).pt.x,(*it).pt.y);
-                        //     if ( cPInt < 10 || cPInt > 250 )
-                        //         continue;
-                        // }
-
-                        (*it).pt.x = ((*it).pt.x + imColStart) * pyramidDifCol + edgeWFast;
-                        (*it).pt.y = ((*it).pt.y + imRowStart) * pyramidDifRow + edgeWFast;
+                        
+                        (*it).pt.x = ((*it).pt.x + imColStart) * pyrDifCol[level] + edgeWFast;
+                        (*it).pt.y = ((*it).pt.y + imRowStart) * pyrDifRow[level] + edgeWFast;
                         (*it).octave = level;
-                        (*it).class_id = count;
+
+                        // (*it).class_id = count;
 
                         if (level == 0)
                             continue;
@@ -105,21 +194,25 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
                     cv::KeyPointsFilter::removeDuplicated(prevImageKeys[row*gridCols + col]);
 
                 }
-                count++;
             }
         }
     }
+    // Timer angle("angle timer");
     for (size_t level = 0; level < gridCols * gridRows; level++)
     {
         // cv::KeyPointsFilter::retainBest(prevImageKeys[i],numberPerCell);
-        const int patchSizeScaled = patchSize * scalePyramid[level];
         for ( std::vector < cv::KeyPoint>::iterator it=prevImageKeys[level].begin(); it !=prevImageKeys[level].end(); it++)
         {
-            // compute angle
+            // if ((*it).class_id < 0)
+            //     continue;
+            const int oct {(*it).octave};
+            (*it).angle = {computeOrientation(imagePyramid[oct], cv::Point2f(((*it).pt.x - edgeWFast)/pyrDifCol[oct],((*it).pt.y - edgeWFast)/pyrDifCol[oct]))};
 
-            fastKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y),patchSizeScaled,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
+            const float size {patchSize * scalePyramid[(*it).octave]};
+            fastKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y), size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
         }
     }
+    Logging("keypoint angle",fastKeys[100].angle,1);
     cv::KeyPointsFilter::retainBest(fastKeys,nFeatures);
     Logging("Keypoint Size After removal", fastKeys.size(),1);
 }
@@ -129,18 +222,20 @@ void FeatureExtractor::getNonMaxSuppression(std::vector < cv::KeyPoint >& prevIm
     bool found = false;
     for ( std::vector < cv::KeyPoint>::iterator it2=prevImageKeys.begin(); it2 !=prevImageKeys.end(); it2++)
     {
-        if ( checkDistance(*it2, it, 3) )
+        if ( checkDistance(*it2, it, 5) )
         {
+            found = true;
             if ((it).response > (*it2).response)
             {
                 (*it2).pt.x = (it).pt.x;
                 (*it2).pt.y = (it).pt.y;
                 (*it2).response = (it).response;
                 (*it2).octave = (it).octave;
+                (*it2).class_id += 1;
+                
             }
             else
             {
-                found = true;
                 break;
             }
         }

@@ -35,6 +35,7 @@
 #include <opencv2/core/eigen.hpp>
 #include <cmath>
 #include <math.h> 
+#include <future>
 
 // typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> MySyncPolicy;
 

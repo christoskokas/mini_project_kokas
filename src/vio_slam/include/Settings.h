@@ -14,7 +14,7 @@ namespace vio_slam
 
 /**
  * @brief Logging Function
- * @param com Comment on the value to be printer
+ * @param com Comment on the value to be printed
  * @param toPrint Value to be printed
  * @param level Level of Importance.
  * DEBUG = 0,

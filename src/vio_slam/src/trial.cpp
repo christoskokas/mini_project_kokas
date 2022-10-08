@@ -1318,6 +1318,7 @@ void RobustMatcher2::testFeatureExtractorClassWithCallback()
             trialL.rectifyImage(rmap[0][0],rmap[0][1]);
             trialR.rectifyImage(rmap[1][0],rmap[1][1]);
             std::vector <cv::KeyPoint> fastKeys, rightKeys;
+            cv::Mat lDesc, rDesc;
             // ProcessTime their("their");
             // for (int i =0;i < 8;i++)
             // {
@@ -1335,8 +1336,8 @@ void RobustMatcher2::testFeatureExtractorClassWithCallback()
             // fastKeys.clear();
             // rightKeys.clear();
             orb.start = clock();
-            trial.findORB(trialL.image, fastKeys);
-            trial.findORB(trialR.image, rightKeys);
+            trial.findORB(trialL.image, fastKeys, lDesc);
+            trial.findORB(trialR.image, rightKeys, rDesc);
             orb.totalTime();
             // }
             // mine.totalTime();
@@ -1359,19 +1360,35 @@ void RobustMatcher2::testFeatureExtractorClass()
     // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
     int i {0};
 
-    // const int times {600};
-    // ProcessTime all("all");
-    // while(i < times)
-    // {
-
+    const int times {600};
+    Timer all("all");
+    while(i < times)
+    {
+        
         leftImage.getImage(i, "left");
         rightImage.getImage(i, "right");
         leftImage.rectifyImage(rmap[0][0],rmap[0][1]);
         rightImage.rectifyImage(rmap[1][0],rmap[1][1]);
         std::vector <cv::KeyPoint> fastKeys, rightKeys;
+        cv::Mat lDesc, rDesc;
 
-        trial.findORB(leftImage.image, fastKeys);
-        trial.findORB(rightImage.image, rightKeys);
+        Timer extr("Feature Extraction Took");
+        trial.findORB(rightImage.image, rightKeys, rDesc);
+        trial.findORB(leftImage.image, fastKeys, lDesc);
+
+        // trial.findORBWithCV(rightImage.image, rightKeys);
+        // trial.findORBWithCV(leftImage.image, fastKeys);
+
+        // std::thread left(&vio_slam::FeatureExtractor::findORB, std::ref(trial),std::ref(rightImage.image),std::ref(rightKeys), std::ref(rDesc));
+        // trial.findORB(leftImage.image, fastKeys, lDesc);
+        // left.join();
+
+        // auto d = std::async(std::launch::async, &vio_slam::FeatureExtractor::findORB,std::ref(trial), std::ref(rightImage.image),std::ref(rightKeys), std::ref(rDesc));
+        // d.wait();
+        // auto s = std::async(std::launch::async, &vio_slam::FeatureExtractor::findORB,std::ref(trial), std::ref(leftImage.image),std::ref(fastKeys), std::ref(lDesc));
+        // s.wait();
+
+
 
         i++;
         cv::Mat outImage, outImageR;
@@ -1379,10 +1396,9 @@ void RobustMatcher2::testFeatureExtractorClass()
         cv::imshow("left",outImage);
         cv::drawKeypoints(rightImage.image, rightKeys,outImageR);
         cv::imshow("right",outImageR);
-        cv::waitKey(1000);
+        cv::waitKey(1);
 
-    // }
-    // all.averageTime(times);
+    }
     
 
     

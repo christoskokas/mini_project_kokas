@@ -11,6 +11,7 @@
 #include "opencv2/features2d.hpp"
 #include "opencv2/core.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
+#include <future>
 
 namespace vio_slam
 {
@@ -51,14 +52,16 @@ class FeatureExtractor
 
         FeatureChoice choice;
         
-        FeatureExtractor(FeatureChoice _choice = ORB, const int _nfeatures = 1000, const int _nLevels = 5, const float _imScale = 1.3f, const int _edgeThreshold = 15, const int _patchSize = 31, const int _maxFastThreshold = 20, const int _minFastThreshold = 6, const bool _nonMaxSuppression = true);
+        FeatureExtractor(FeatureChoice _choice = ORB, const int _nfeatures = 1000, const int _nLevels = 5, const float _imScale = 1.3f, const int _edgeThreshold = 15, const int _patchSize = 31, const int _maxFastThreshold = 20, const int _minFastThreshold = 8, const bool _nonMaxSuppression = true);
         
         void findFeatures(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
-        void findORB(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
+        void findORB(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc);
+        void findORBWithCV(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
 
         void computePyramid(cv::Mat& image);
-
+        float computeOrientation(const cv::Mat& image, const cv::Point2f& point);
+    
         void separateImage(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void getNonMaxSuppression(std::vector < cv::KeyPoint >& prevImageKeys, cv::KeyPoint& it);
         bool checkDistance(cv::KeyPoint& first, cv::KeyPoint& second, int distance);
