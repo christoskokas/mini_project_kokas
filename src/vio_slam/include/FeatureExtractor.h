@@ -63,6 +63,7 @@ class FeatureExtractor
         float computeOrientation(const cv::Mat& image, const cv::Point2f& point);
     
         void separateImage(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
+        void separateImageSubPixel(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void getNonMaxSuppression(std::vector < cv::KeyPoint >& prevImageKeys, cv::KeyPoint& it);
         bool checkDistance(cv::KeyPoint& first, cv::KeyPoint& second, int distance);
 

@@ -77,7 +77,10 @@ void FeatureExtractor::findORB(cv::Mat& image, std::vector <cv::KeyPoint>& fastK
 {
     // Timer orb;
     computePyramid(image);
+
     separateImage(image, fastKeys);
+    // separateImageSubPixel(image,fastKeys);
+
     cv::Ptr<cv::ORB> detector {cv::ORB::create(2000,imScale,nLevels,edgeThreshold,0,2,cv::ORB::HARRIS_SCORE,patchSize,maxFastThreshold)};
     detector->compute(image,fastKeys,Desc);
 }
@@ -141,6 +144,8 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
         const int rowJump = (imagePyramid[level].rows - 2 * fastEdge) / gridRows;
         const int colJump = (imagePyramid[level].cols - 2 * fastEdge) / gridCols;
 
+        const int numbPerLevelPerCell = numberPerCell/nLevels;
+
         pyrDifRow[level] = imagePyramid[0].rows/(float)imagePyramid[level].rows;
         pyrDifCol[level] = imagePyramid[0].cols/(float)imagePyramid[level].cols;
 
@@ -163,14 +168,15 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
 
                 cv::FAST(imagePyramid[level].colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,maxFastThreshold,true);
 
-                if (temp.size() < numberPerCell/nLevels)
+                if (temp.size() < numbPerLevelPerCell)
                 {
                     cv::FAST(imagePyramid[level].colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,minFastThreshold,true);
                 }
                 if (!temp.empty())
                 {
                     cv::KeyPointsFilter::retainBest(temp,numberPerCell);
-                    for ( std::vector < cv::KeyPoint>::iterator it=temp.begin(); it !=temp.end(); it++)
+                    std::vector < cv::KeyPoint>::iterator it, end(temp.end());
+                    for (it=temp.begin(); it != end; it++)
                     {
                         
                         (*it).pt.x = ((*it).pt.x + imColStart) * pyrDifCol[level] + edgeWFast;
@@ -201,12 +207,16 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
     for (size_t level = 0; level < gridCols * gridRows; level++)
     {
         // cv::KeyPointsFilter::retainBest(prevImageKeys[i],numberPerCell);
-        for ( std::vector < cv::KeyPoint>::iterator it=prevImageKeys[level].begin(); it !=prevImageKeys[level].end(); it++)
+        if (prevImageKeys[level].empty())
+            continue;
+        std::vector < cv::KeyPoint>::iterator it, end(prevImageKeys[level].end());
+        for (it=prevImageKeys[level].begin(); it != end; it++)
         {
             // if ((*it).class_id < 0)
             //     continue;
             const int oct {(*it).octave};
             (*it).angle = {computeOrientation(imagePyramid[oct], cv::Point2f(((*it).pt.x - edgeWFast)/pyrDifCol[oct],((*it).pt.y - edgeWFast)/pyrDifCol[oct]))};
+
 
             const float size {patchSize * scalePyramid[(*it).octave]};
             fastKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y), size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
@@ -217,10 +227,116 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
     Logging("Keypoint Size After removal", fastKeys.size(),1);
 }
 
+void FeatureExtractor::separateImageSubPixel(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
+{
+    fastKeys.reserve(2000);
+    std::vector <float> pyrDifRow, pyrDifCol;
+    pyrDifRow.resize(nLevels);
+    pyrDifCol.resize(nLevels);
+    const int fastEdge = 3;
+    const int edgeWFast = edgeThreshold - fastEdge;
+    std::vector<std::vector < cv::KeyPoint >> prevImageKeys;
+    prevImageKeys.resize(gridCols * gridRows);
+    for (size_t level = 0; level < nLevels; level++)
+    {
+        // fastEdge is the Edge Threshold of FAST Keypoints, it does not search for keypoints for a border of 3 pixels around image.
+
+        const int rowJump = (imagePyramid[level].rows - 2 * fastEdge) / gridRows;
+        const int colJump = (imagePyramid[level].cols - 2 * fastEdge) / gridCols;
+
+        pyrDifRow[level] = imagePyramid[0].rows/(float)imagePyramid[level].rows;
+        pyrDifCol[level] = imagePyramid[0].cols/(float)imagePyramid[level].cols;
+
+        int count {-1};
+        
+        for (int32_t row = 0; row < gridRows; row++)
+        {
+            
+            const int imRowStart = row * rowJump;
+            const int imRowEnd = (row + 1) * rowJump + 2 * fastEdge;
+
+            for (int32_t col = 0; col < gridCols; col++)
+            {
+                count++;
+
+                const int imColStart = col * colJump;
+                const int imColEnd = (col + 1) * colJump + 2 * fastEdge;
+
+                std::vector < cv::KeyPoint > temp;
+
+                cv::FAST(imagePyramid[level].colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,maxFastThreshold,true);
+
+                if (temp.size() < numberPerCell/nLevels)
+                {
+                    cv::FAST(imagePyramid[level].colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,minFastThreshold,true);
+                }
+                if (!temp.empty())
+                {
+                    cv::KeyPointsFilter::retainBest(temp,numberPerCell);
+                    std::vector < cv::KeyPoint>::iterator it, end(temp.end());
+                    for (it=temp.begin(); it != end; it++)
+                    {
+                        
+                        (*it).pt.x = ((*it).pt.x + imColStart) * pyrDifCol[level] + edgeWFast;
+                        (*it).pt.y = ((*it).pt.y + imRowStart) * pyrDifRow[level] + edgeWFast;
+                        (*it).octave = level;
+
+                        // (*it).class_id = count;
+
+                        if (level == 0)
+                            continue;
+                        
+                        getNonMaxSuppression(prevImageKeys[row*gridCols + col],*it);
+
+                    }
+                    if (level == 0)
+                    {
+                        prevImageKeys[row*gridCols + col].reserve(temp.size() + 100);
+                        prevImageKeys.push_back(temp);
+                        continue;
+                    }
+                    cv::KeyPointsFilter::removeDuplicated(prevImageKeys[row*gridCols + col]);
+
+                }
+            }
+        }
+    }
+    // Timer angle("angle timer");
+    for (size_t level = 0; level < gridCols * gridRows; level++)
+    {
+        // cv::KeyPointsFilter::retainBest(prevImageKeys[i],numberPerCell);
+        if (prevImageKeys[level].empty())
+            continue;
+        std::vector < cv::Point2f > points;
+        points.reserve(prevImageKeys[level].size());
+        for ( std::vector < cv::KeyPoint>::iterator it=prevImageKeys[level].begin(); it !=prevImageKeys[level].end(); it++)
+        {
+            points.push_back((*it).pt);
+        }
+        cv::cornerSubPix(image,points,cv::Size(3,3),cv::Size(1,1), cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER,10,0.001));
+        std::vector < cv::Point2f>::iterator it2=points.begin();
+        for ( std::vector < cv::KeyPoint>::iterator it=prevImageKeys[level].begin(); it !=prevImageKeys[level].end(); it++, it2++)
+        {
+            // if ((*it).class_id < 0)
+            //     continue;
+            const int oct {(*it).octave};
+            (*it).angle = {computeOrientation(imagePyramid[oct], cv::Point2f(((*it2).x - edgeWFast)/pyrDifCol[oct],((*it2).y - edgeWFast)/pyrDifCol[oct]))};
+
+
+            const float size {patchSize * scalePyramid[(*it).octave]};
+            fastKeys.emplace_back(cv::Point2f((*it2).x,(*it2).y), size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
+        }
+    }
+    Logging("keypoint angle",fastKeys[100].angle,1);
+    cv::KeyPointsFilter::retainBest(fastKeys,nFeatures);
+    Logging("Keypoint Size After removal", fastKeys.size(),1);
+}
+
 void FeatureExtractor::getNonMaxSuppression(std::vector < cv::KeyPoint >& prevImageKeys, cv::KeyPoint& it)
 {
     bool found = false;
-    for ( std::vector < cv::KeyPoint>::iterator it2=prevImageKeys.begin(); it2 !=prevImageKeys.end(); it2++)
+    std::vector < cv::KeyPoint>::iterator it2, end(prevImageKeys.end());
+    for (it2=prevImageKeys.begin(); it2 != end; it2++)
     {
         if ( checkDistance(*it2, it, 5) )
         {
@@ -234,10 +350,7 @@ void FeatureExtractor::getNonMaxSuppression(std::vector < cv::KeyPoint >& prevIm
                 (*it2).class_id += 1;
                 
             }
-            else
-            {
-                break;
-            }
+            break;
         }
     }
     if (!found)

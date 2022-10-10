@@ -1242,6 +1242,20 @@ void RobustMatcher2::drawFeatureMatches(const std::vector<cv::DMatch>& matches, 
 
 }
 
+void RobustMatcher2::drawFeatureMatchesStereo(const std::vector<cv::DMatch>& matches, const cv::Mat& image, const std::vector <cv::KeyPoint>& leftKeys, const std::vector <cv::KeyPoint>& rightKeys, cv::Mat& outImage)
+{
+    outImage = image.clone();
+    // drawMatches( firstImage.image, firstImage.keypoints, secondImage.image, secondImage.keypoints, matches, img_matches, cv::Scalar::all(-1),
+                // cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+    for (auto m:matches)
+    {
+        cv::circle(outImage, leftKeys[m.queryIdx].pt,2,cv::Scalar(0,255,0));
+        cv::line(outImage,leftKeys[m.queryIdx].pt, rightKeys[m.trainIdx].pt,cv::Scalar(0,0,255));
+        cv::circle(outImage, rightKeys[m.trainIdx].pt,2,cv::Scalar(255,0,0));
+    }
+
+}
+
 float RobustMatcher2::getAngleOfPoints(cv::Point2f& first, cv::Point2f& second)
 {
     return atan2(second.y - first.y,second.x - first.x);
@@ -1357,11 +1371,12 @@ void RobustMatcher2::testFeatureExtractorClassWithCallback()
 void RobustMatcher2::testFeatureExtractorClass()
 {
     FeatureExtractor trial;
+    FeatureMatcher matcher(zedcamera->mHeight);
     // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
     int i {0};
-
     const int times {600};
     Timer all("all");
+    
     while(i < times)
     {
         
@@ -1369,13 +1384,21 @@ void RobustMatcher2::testFeatureExtractorClass()
         rightImage.getImage(i, "right");
         leftImage.rectifyImage(rmap[0][0],rmap[0][1]);
         rightImage.rectifyImage(rmap[1][0],rmap[1][1]);
-        std::vector <cv::KeyPoint> fastKeys, rightKeys;
+        std::vector <cv::KeyPoint> leftKeys, rightKeys;
         cv::Mat lDesc, rDesc;
+        std::vector <cv::DMatch> matches;
+
+        {
 
         Timer extr("Feature Extraction Took");
-        trial.findORB(rightImage.image, rightKeys, rDesc);
-        trial.findORB(leftImage.image, fastKeys, lDesc);
 
+        trial.findORB(leftImage.image, leftKeys, lDesc);
+        trial.findORB(rightImage.image, rightKeys, rDesc);
+
+
+        Timer matchTimer("Feature Matching Took");
+        matcher.stereoMatch(leftKeys, rightKeys,lDesc, rDesc, matches);
+        }
         // trial.findORBWithCV(rightImage.image, rightKeys);
         // trial.findORBWithCV(leftImage.image, fastKeys);
 
@@ -1392,10 +1415,13 @@ void RobustMatcher2::testFeatureExtractorClass()
 
         i++;
         cv::Mat outImage, outImageR;
-        cv::drawKeypoints(leftImage.image, fastKeys,outImage);
+        cv::drawKeypoints(leftImage.image, leftKeys,outImage);
         cv::imshow("left",outImage);
         cv::drawKeypoints(rightImage.image, rightKeys,outImageR);
         cv::imshow("right",outImageR);
+        cv::Mat outImageMatches;
+        drawFeatureMatchesStereo(matches,leftImage.realImage, leftKeys,rightKeys,outImageMatches);
+        cv::imshow("Matches",outImageMatches);
         cv::waitKey(1);
 
     }

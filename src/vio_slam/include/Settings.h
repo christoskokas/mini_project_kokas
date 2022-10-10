@@ -33,7 +33,7 @@ class Logging
         NOCOUT
     };
 
-    Level curLevel {INFO};
+    Level curLevel {WARNING};
 
     public:
         template <typename T>

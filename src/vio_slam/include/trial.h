@@ -5,6 +5,7 @@
 
 #include "Camera.h"
 #include "FeatureExtractor.h"
+#include "FeatureMatcher.h"
 #include "Settings.h"
 #include "Optimizer.h"
 #include <ros/ros.h>
@@ -218,6 +219,7 @@ class RobustMatcher2 {
 
     
     void drawFeatureMatches(const std::vector<cv::DMatch>& matches, const ImageFrame& firstImage, const ImageFrame& secondImage, cv::Mat& outImage);
+    void drawFeatureMatchesStereo(const std::vector<cv::DMatch>& matches, const cv::Mat& image, const std::vector <cv::KeyPoint>& leftKeys, const std::vector <cv::KeyPoint>& rightKeys, cv::Mat& outImage);
     void drawOpticalFlow(ImageFrame& prevImage, ImageFrame& curImage, cv::Mat& outImage);
 
     void undistortMap();
