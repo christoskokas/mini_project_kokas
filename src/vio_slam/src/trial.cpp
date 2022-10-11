@@ -1371,7 +1371,7 @@ void RobustMatcher2::testFeatureExtractorClassWithCallback()
 void RobustMatcher2::testFeatureExtractorClass()
 {
     FeatureExtractor trial;
-    FeatureMatcher matcher(zedcamera->mHeight);
+    FeatureMatcher matcher(zedcamera->mHeight, trial.getGridRows(), trial.getGridCols());
     // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
     int i {0};
     const int times {600};
@@ -1392,9 +1392,10 @@ void RobustMatcher2::testFeatureExtractorClass()
 
         Timer extr("Feature Extraction Took");
 
-        trial.findORB(leftImage.image, leftKeys, lDesc);
-        trial.findORB(rightImage.image, rightKeys, rDesc);
-
+        // trial.findORB(leftImage.image, leftKeys, lDesc);
+        // trial.findORB(rightImage.image, rightKeys, rDesc);
+        trial.findFAST(leftImage.image, leftKeys, lDesc);
+        trial.findFAST(rightImage.image, rightKeys, rDesc);
 
         Timer matchTimer("Feature Matching Took");
         matcher.stereoMatch(leftKeys, rightKeys,lDesc, rDesc, matches);

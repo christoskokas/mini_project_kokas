@@ -11,6 +11,8 @@ Frame::Frame()
 
 void Frame::pangoQuit(const Zed_Camera* zedPtr)
 {
+    using namespace std::literals::chrono_literals;
+
     const int UI_WIDTH = 180;
     
     pangolin::CreateWindowAndBind("Main", 1024,768);
@@ -62,7 +64,6 @@ void Frame::pangoQuit(const Zed_Camera* zedPtr)
         lines->getValues(temp.mT,camera->T_pc.m);
         if (pangolin::Pushed(a_button))
         {
-            ROS_INFO("Keyframe Added \n");
             {
                 auto keyframe = std::make_shared<CameraFrame>();
                 keyframe->T_pc = camera->T_pc;
@@ -96,6 +97,8 @@ void Frame::pangoQuit(const Zed_Camera* zedPtr)
 
         // Swap frames and Process Events
         pangolin::FinishFrame();
+
+        std::this_thread::sleep_for(50ms);
     }
 }
 

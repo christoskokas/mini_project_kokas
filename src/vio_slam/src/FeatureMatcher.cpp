@@ -3,7 +3,7 @@
 namespace vio_slam
 {
 
-FeatureMatcher::FeatureMatcher(const int _imageHeight, const int _stereoYSpan) : imageHeight(_imageHeight), stereoYSpan(_stereoYSpan)
+FeatureMatcher::FeatureMatcher(const int _imageHeight, const int _gridRows, const int _gridCols, const int _stereoYSpan) : imageHeight(_imageHeight), gridRows(_gridRows), gridCols(_gridCols), stereoYSpan(_stereoYSpan)
 {
 
 }
@@ -14,13 +14,11 @@ void FeatureMatcher::stereoMatch(const std::vector<cv::KeyPoint>& leftKeys, cons
     std::vector<std::vector < int > > indexes;
     
     destributeRightKeys(rightKeys, indexes);
-    
-    std::vector < int > bestIndexes;
-    matchKeys(leftKeys, indexes, leftDesc, rightDesc, matches);
+    matchKeys(leftKeys, rightKeys, indexes, leftDesc, rightDesc, matches);
 
 }
 
-void FeatureMatcher::matchKeys(const std::vector < cv::KeyPoint >& leftKeys, const std::vector<std::vector < int > >& indexes, const cv::Mat& leftDesc, const cv::Mat& rightDesc, std::vector <cv::DMatch>& matches)
+void FeatureMatcher::matchKeys(const std::vector < cv::KeyPoint >& leftKeys, const std::vector < cv::KeyPoint >& rightKeys, const std::vector<std::vector < int > >& indexes, const cv::Mat& leftDesc, const cv::Mat& rightDesc, std::vector <cv::DMatch>& matches)
 {
     int leftRow {0};
     std::vector < int > bestIndexes;
@@ -33,6 +31,7 @@ void FeatureMatcher::matchKeys(const std::vector < cv::KeyPoint >& leftKeys, con
 
         int bestDist = 256;
         int bestIdx = -1;
+        const int lGrid {it->class_id};
 
         for (int32_t iKey = yKey - stereoYSpan; iKey < yKey + stereoYSpan; iKey ++)
         {
@@ -41,6 +40,14 @@ void FeatureMatcher::matchKeys(const std::vector < cv::KeyPoint >& leftKeys, con
             for (size_t allIdx {0};allIdx < endCount; allIdx++)
             {
                 const int idx {indexes[iKey][allIdx]};
+                {
+                    const int rGrid {rightKeys[idx].class_id};
+                    const int difGrid {lGrid - rGrid};
+                    const int leftSide {lGrid%gridCols};
+                    if (!((difGrid <= 1) && lGrid >= rGrid && leftSide != 0 ))
+                        continue;
+                }
+
                 int dist {DescriptorDistance(leftDesc.row(leftRow),rightDesc.row(idx))};
 
                 if (bestDist > dist)
@@ -50,8 +57,11 @@ void FeatureMatcher::matchKeys(const std::vector < cv::KeyPoint >& leftKeys, con
                 }
             }
         }
-        bestIndexes.emplace_back(bestIdx);
-        matches.emplace_back(leftRow,bestIdx,bestDist);
+        if (bestIdx != -1)
+        {
+            bestIndexes.emplace_back(bestIdx);
+            matches.emplace_back(leftRow,bestIdx,bestDist);
+        }
     }
 
 

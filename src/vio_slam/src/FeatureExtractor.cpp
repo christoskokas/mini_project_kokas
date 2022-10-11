@@ -127,6 +127,76 @@ void FeatureExtractor::computePyramid(cv::Mat& image)
     }
 }
 
+void FeatureExtractor::findFAST(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc)
+{
+    findFASTGrids(image,fastKeys,Desc);
+    cv::Ptr<cv::ORB> detector {cv::ORB::create(2000,imScale,nLevels,edgeThreshold,0,2,cv::ORB::HARRIS_SCORE,patchSize,maxFastThreshold)};
+    detector->compute(image,fastKeys,Desc);
+
+}
+
+void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc)
+{
+    fastKeys.reserve(2000);
+    std::vector <cv::KeyPoint> allKeys;
+    allKeys.reserve(4000);
+    const int fastEdge = 3;
+    const int edgeWFast = edgeThreshold - fastEdge;
+    cv::Mat croppedImage = image.colRange(edgeWFast,image.cols - edgeWFast).rowRange(edgeWFast, image.rows - edgeWFast);
+    // fastEdge is the Edge Threshold of FAST Keypoints, it does not search for keypoints for a border of 3 pixels around image.
+
+    const int rowJump = (croppedImage.rows - 2 * fastEdge) / gridRows;
+    const int colJump = (croppedImage.cols - 2 * fastEdge) / gridCols;
+
+    int count {-1};
+    
+    for (int32_t row = 0; row < gridRows; row++)
+    {
+        
+        const int imRowStart = row * rowJump;
+        const int imRowEnd = (row + 1) * rowJump + 2 * fastEdge;
+
+        for (int32_t col = 0; col < gridCols; col++)
+        {
+            count++;
+
+            const int imColStart = col * colJump;
+            const int imColEnd = (col + 1) * colJump + 2 * fastEdge;
+
+            std::vector < cv::KeyPoint > temp;
+
+            cv::FAST(croppedImage.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,maxFastThreshold,true);
+
+            if (temp.size() < numberPerCell)
+            {
+                cv::FAST(croppedImage.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,minFastThreshold,true);
+            }
+            if (!temp.empty())
+            {
+                cv::KeyPointsFilter::retainBest(temp,numberPerCell);
+                std::vector < cv::KeyPoint>::iterator it, end(temp.end());
+                for (it=temp.begin(); it != end; it++)
+                {
+                    (*it).pt.x += imColStart;
+                    (*it).pt.y += imRowStart;
+                    (*it).class_id = count;
+                    allKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y), (*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
+                }
+            }
+        }
+    }
+    std::vector < cv::KeyPoint>::iterator it, end(allKeys.end());
+    for (it=allKeys.begin(); it != end; it++)
+    {
+
+        (*it).angle = {computeOrientation(croppedImage, cv::Point2f((*it).pt.x,(*it).pt.y))};
+
+        fastKeys.emplace_back(cv::Point2f((*it).pt.x + edgeWFast,(*it).pt.y + edgeWFast), (*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
+    }
+    cv::KeyPointsFilter::retainBest(fastKeys,nFeatures);
+    Logging("Keypoint Size After removal", fastKeys.size(),1);
+}
+
 void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
 {
     fastKeys.reserve(2000);
@@ -183,7 +253,7 @@ void FeatureExtractor::separateImage(cv::Mat& image, std::vector <cv::KeyPoint>&
                         (*it).pt.y = ((*it).pt.y + imRowStart) * pyrDifRow[level] + edgeWFast;
                         (*it).octave = level;
 
-                        // (*it).class_id = count;
+                        (*it).class_id = count;
 
                         if (level == 0)
                             continue;
@@ -347,7 +417,7 @@ void FeatureExtractor::getNonMaxSuppression(std::vector < cv::KeyPoint >& prevIm
                 (*it2).pt.y = (it).pt.y;
                 (*it2).response = (it).response;
                 (*it2).octave = (it).octave;
-                (*it2).class_id += 1;
+                // (*it2).class_id += 1;
                 
             }
             break;
@@ -544,5 +614,16 @@ FeatureExtractor::FeatureExtractor(FeatureChoice _choice, const int _nfeatures, 
     
     
 }
+
+int FeatureExtractor::getGridRows()
+{
+    return gridRows;
+}
+
+int FeatureExtractor::getGridCols()
+{
+    return gridCols;
+}
+
 
 } // namespace vio_slam

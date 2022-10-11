@@ -31,8 +31,8 @@ class FeatureExtractor
     const int minFastThreshold;
     const bool nonMaxSuppression;
 
-    const int gridRows {10};
-    const int gridCols {10};
+    const int gridRows {15};
+    const int gridCols {15};
     const int gridsNumber {gridCols * gridRows};
     const int numberPerCell = nFeatures/(gridRows * gridCols);
 
@@ -54,10 +54,17 @@ class FeatureExtractor
         
         FeatureExtractor(FeatureChoice _choice = ORB, const int _nfeatures = 1000, const int _nLevels = 5, const float _imScale = 1.3f, const int _edgeThreshold = 15, const int _patchSize = 31, const int _maxFastThreshold = 20, const int _minFastThreshold = 8, const bool _nonMaxSuppression = true);
         
+        int getGridRows();
+        int getGridCols();
+
         void findFeatures(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findORB(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc);
         void findORBWithCV(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
+
+
+        void findFAST(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc);
+        void findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc);
 
         void computePyramid(cv::Mat& image);
         float computeOrientation(const cv::Mat& image, const cv::Point2f& point);
