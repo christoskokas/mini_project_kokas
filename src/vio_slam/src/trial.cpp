@@ -1245,13 +1245,23 @@ void RobustMatcher2::drawFeatureMatches(const std::vector<cv::DMatch>& matches, 
 void RobustMatcher2::drawFeatureMatchesStereo(const std::vector<cv::DMatch>& matches, const cv::Mat& image, const std::vector <cv::KeyPoint>& leftKeys, const std::vector <cv::KeyPoint>& rightKeys, cv::Mat& outImage)
 {
     outImage = image.clone();
-    // drawMatches( firstImage.image, firstImage.keypoints, secondImage.image, secondImage.keypoints, matches, img_matches, cv::Scalar::all(-1),
-                // cv::Scalar::all(-1), std::vector<char>(), cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
     for (auto m:matches)
     {
         cv::circle(outImage, leftKeys[m.queryIdx].pt,2,cv::Scalar(0,255,0));
         cv::line(outImage,leftKeys[m.queryIdx].pt, rightKeys[m.trainIdx].pt,cv::Scalar(0,0,255));
         cv::circle(outImage, rightKeys[m.trainIdx].pt,2,cv::Scalar(255,0,0));
+    }
+
+}
+
+void RobustMatcher2::drawFeatureMatchesStereoSub(const std::vector<cv::DMatch>& matches, const cv::Mat& image, const std::vector <cv::Point2f>& leftKeys, const std::vector <cv::Point2f>& rightKeys, cv::Mat& outImage)
+{
+    outImage = image.clone();
+    for (auto m:matches)
+    {
+        cv::circle(outImage, leftKeys[m.queryIdx],2,cv::Scalar(0,255,0));
+        cv::line(outImage,leftKeys[m.queryIdx], rightKeys[m.trainIdx],cv::Scalar(0,0,255));
+        cv::circle(outImage, rightKeys[m.trainIdx],2,cv::Scalar(255,0,0));
     }
 
 }
@@ -1398,7 +1408,7 @@ void RobustMatcher2::testFeatureExtractorClass()
         trial.findFAST(rightImage.image, rightKeys, rDesc);
 
         Timer matchTimer("Feature Matching Took");
-        matcher.stereoMatch(leftKeys, rightKeys,lDesc, rDesc, matches);
+        matcher.stereoMatch(leftImage.image, rightImage.image, leftKeys, rightKeys,lDesc, rDesc, matches);
         }
         // trial.findORBWithCV(rightImage.image, rightKeys);
         // trial.findORBWithCV(leftImage.image, fastKeys);
