@@ -173,8 +173,9 @@ void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>&
             }
             if (!temp.empty())
             {
-                cv::KeyPointsFilter::retainBest(temp,numberPerCell);
-                std::vector < cv::KeyPoint>::iterator it, end(temp.end());
+                // cv::KeyPointsFilter::retainBest(temp,numberPerCell);
+                std::vector < cv::KeyPoint>::iterator it;
+                std::vector < cv::KeyPoint>::const_iterator end(temp.end());
                 for (it=temp.begin(); it != end; it++)
                 {
                     (*it).pt.x += imColStart;
@@ -185,11 +186,14 @@ void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>&
             }
         }
     }
-    std::vector < cv::KeyPoint>::iterator it, end(allKeys.end());
+    std::vector < cv::KeyPoint>::iterator it;
+    std::vector < cv::KeyPoint>::const_iterator end(allKeys.end());
     for (it=allKeys.begin(); it != end; it++)
     {
 
-        (*it).angle = {computeOrientation(croppedImage, cv::Point2f((*it).pt.x,(*it).pt.y))};
+        // (*it).angle = {computeOrientation(croppedImage, cv::Point2f((*it).pt.x,(*it).pt.y))};
+
+        (*it).angle = 0;
 
         fastKeys.emplace_back(cv::Point2f((*it).pt.x + edgeWFast,(*it).pt.y + edgeWFast), (*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
     }

@@ -10,7 +10,7 @@ FeatureMatcher::FeatureMatcher(const int _imageHeight, const int _gridRows, cons
 
 void FeatureMatcher::stereoMatch(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector<cv::KeyPoint>& leftKeys, std::vector<cv::KeyPoint>& rightKeys, const cv::Mat& leftDesc, const cv::Mat& rightDesc, std::vector <cv::DMatch>& matches)
 {
-    
+    // Timer("stereo match");
     std::vector<std::vector < int > > indexes;
     
     destributeRightKeys(rightKeys, indexes);
@@ -20,11 +20,12 @@ void FeatureMatcher::stereoMatch(const cv::Mat& leftImage, const cv::Mat& rightI
 
     slidingWindowOpt(leftImage, rightImage, matches, tempMatches, leftKeys, rightKeys);
 
-
+    // Logging("matches size",matches.size(),2);
 }
 
 void FeatureMatcher::matchKeys(std::vector < cv::KeyPoint >& leftKeys, std::vector < cv::KeyPoint >& rightKeys, const std::vector<std::vector < int > >& indexes, const cv::Mat& leftDesc, const cv::Mat& rightDesc, std::vector <cv::DMatch>& tempMatches)
 {
+    // Timer("Matching took");
     MatchedKeysDist matchedKeys(rightKeys.size(),256, -1);
     int leftRow {0};
     tempMatches.reserve(leftKeys.size());
@@ -48,6 +49,8 @@ void FeatureMatcher::matchKeys(std::vector < cv::KeyPoint >& leftKeys, std::vect
         {
             int count {0};
             const size_t endCount {indexes[iKey].size()};
+            if (endCount == 0)
+                continue;
             for (size_t allIdx {0};allIdx < endCount; allIdx++)
             {
                 const int idx {indexes[iKey][allIdx]};
@@ -120,13 +123,14 @@ void FeatureMatcher::matchKeys(std::vector < cv::KeyPoint >& leftKeys, std::vect
 
 void FeatureMatcher::slidingWindowOpt(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector <cv::DMatch>& matches, const std::vector <cv::DMatch>& tempMatches, std::vector<cv::KeyPoint>& leftKeys, std::vector<cv::KeyPoint>& rightKeys)
 {
+    // Timer("sliding Widow took");
     // Because we use FAST to detect Features the sliding window will get a window of side 7 pixels (3 pixels radius + 1 which is the feature)
     const int windowLength {7};
     const int windowRadius {3};
     // Because of the EdgeThreshold used around the image we dont need to check out of bounds
 
-    const int windowMovementX {4};
-    const int windowMovementY {2};
+    const int windowMovementX {3};
+    const int windowMovementY {stereoYSpan};
 
     std::vector<bool> goodDist;
     goodDist.reserve(tempMatches.size());
@@ -146,15 +150,19 @@ void FeatureMatcher::slidingWindowOpt(const cv::Mat& leftImage, const cv::Mat& r
         {
             for (int32_t yMov {-windowMovementY}; yMov < windowMovementY + 1; yMov++)
             {
-                const int rKeyX {(int)rightKeys[it->trainIdx].pt.x + xMov};
-                const int rKeyY {(int)rightKeys[it->trainIdx].pt.y + yMov};
-                const cv::Mat rWin = rightImage.rowRange(rKeyY - windowRadius, rKeyY + windowRadius + 1).colRange(rKeyX - windowRadius, rKeyX + windowRadius + 1);
+                
+
+                const int rKeyX {(int)rightKeys[it->trainIdx].pt.x};
+                const int rKeyY {(int)rightKeys[it->trainIdx].pt.y};
+                if (abs(lKeyY - rKeyY) > 1)
+                    continue;
+                const cv::Mat rWin = rightImage.rowRange(rKeyY + yMov - windowRadius, rKeyY + yMov + windowRadius + 1).colRange(rKeyX + xMov - windowRadius, rKeyX + xMov + windowRadius + 1);
 
                 double dist = cv::norm(lWin,rWin);
                 if (bestDist > dist)
                 {
-                    bestX = rKeyX;
-                    bestY = rKeyY;
+                    bestX = xMov;
+                    bestY = yMov;
                     bestDist = dist;
                 }
             }
@@ -169,8 +177,10 @@ void FeatureMatcher::slidingWindowOpt(const cv::Mat& leftImage, const cv::Mat& r
         }
         if (bestX == -1)
             continue;
-        rightKeys[it->trainIdx].pt.x = bestX;
-        rightKeys[it->trainIdx].pt.y = bestY;
+        if ((bestX == -windowMovementX) || (bestX == windowMovementX) || (bestY == windowMovementY) || (bestY == windowMovementY))
+            continue;
+        rightKeys[it->trainIdx].pt.x += bestX;
+        rightKeys[it->trainIdx].pt.y += bestY;
     }
     }
 
@@ -227,6 +237,8 @@ int FeatureMatcher::DescriptorDistance(const cv::Mat &a, const cv::Mat &b)
 
 void FeatureMatcher::destributeRightKeys(const std::vector < cv::KeyPoint >& rightKeys, std::vector<std::vector < int > >& indexes)
 {
+
+    // Timer("distribute keys took");
 
     indexes.resize(imageHeight);
 

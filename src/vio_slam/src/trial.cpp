@@ -1406,7 +1406,8 @@ void RobustMatcher2::testFeatureExtractorClass()
         // trial.findORB(rightImage.image, rightKeys, rDesc);
         trial.findFAST(leftImage.image, leftKeys, lDesc);
         trial.findFAST(rightImage.image, rightKeys, rDesc);
-
+        }
+        {
         Timer matchTimer("Feature Matching Took");
         matcher.stereoMatch(leftImage.image, rightImage.image, leftKeys, rightKeys,lDesc, rDesc, matches);
         }
