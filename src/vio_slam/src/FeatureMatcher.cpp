@@ -168,35 +168,27 @@ void FeatureMatcher::slidingWindowOpt(const cv::Mat& leftImage, const cv::Mat& r
             }
         }
         // Logging("bestdist ",bestDist,2);
-        if (bestDist < 80)
-            goodDist.push_back(true);
-        else
+        if ((bestX == -windowMovementX) || (bestX == windowMovementX) || (bestY == windowMovementY) || (bestY == windowMovementY) || (bestX == -1) || (bestDist >= 80))
         {
             goodDist.push_back(false);
             continue;
         }
-        if (bestX == -1)
-            continue;
-        if ((bestX == -windowMovementX) || (bestX == windowMovementX) || (bestY == windowMovementY) || (bestY == windowMovementY))
-            continue;
+        goodDist.push_back(true);
+
         rightKeys[it->trainIdx].pt.x += bestX;
         rightKeys[it->trainIdx].pt.y += bestY;
     }
     }
 
-    SubPixelPoints points(tempMatches.size(),tempMatches.size());
 
     int count {0};
     {
     std::vector<cv::DMatch>::const_iterator it, end(tempMatches.end());
     for (it = tempMatches.begin(); it != end; it++, count++ )
         if (goodDist[count])
-        {
-            points.left.emplace_back(leftKeys[it->queryIdx].pt);
-            points.right.emplace_back(rightKeys[it->trainIdx].pt);
             matches.emplace_back(it->queryIdx, it->trainIdx, it->distance);
-        }
     }
+    Logging("matches size", matches.size(),2);
     // cv::cornerSubPix(leftImage, points.left,cv::Size(5,5),cv::Size(1,1),cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 20,0.001));
     // cv::cornerSubPix(rightImage, points.right,cv::Size(5,5),cv::Size(1,1),cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 20,0.001));
     

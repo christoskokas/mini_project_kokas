@@ -1247,9 +1247,9 @@ void RobustMatcher2::drawFeatureMatchesStereo(const std::vector<cv::DMatch>& mat
     outImage = image.clone();
     for (auto m:matches)
     {
-        cv::circle(outImage, leftKeys[m.queryIdx].pt,2,cv::Scalar(0,255,0));
-        cv::line(outImage,leftKeys[m.queryIdx].pt, rightKeys[m.trainIdx].pt,cv::Scalar(0,0,255));
-        cv::circle(outImage, rightKeys[m.trainIdx].pt,2,cv::Scalar(255,0,0));
+        cv::circle(outImage, leftKeys[m.queryIdx].pt,3,cv::Scalar(0,255,0));
+        cv::line(outImage,leftKeys[m.queryIdx].pt, rightKeys[m.trainIdx].pt,cv::Scalar(255,0,0));
+        cv::circle(outImage, rightKeys[m.trainIdx].pt,3,cv::Scalar(0,0,255));
     }
 
 }

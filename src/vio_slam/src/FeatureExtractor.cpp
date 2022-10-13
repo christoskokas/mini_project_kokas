@@ -130,7 +130,7 @@ void FeatureExtractor::computePyramid(cv::Mat& image)
 void FeatureExtractor::findFAST(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc)
 {
     findFASTGrids(image,fastKeys,Desc);
-    cv::Ptr<cv::ORB> detector {cv::ORB::create(2000,imScale,nLevels,edgeThreshold,0,2,cv::ORB::HARRIS_SCORE,patchSize,maxFastThreshold)};
+    cv::Ptr<cv::ORB> detector {cv::ORB::create(2000,imScale,nLevels,edgeThreshold,0,2,cv::ORB::FAST_SCORE,patchSize,maxFastThreshold)};
     detector->compute(image,fastKeys,Desc);
 
 }
@@ -178,8 +178,8 @@ void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>&
                 std::vector < cv::KeyPoint>::const_iterator end(temp.end());
                 for (it=temp.begin(); it != end; it++)
                 {
-                    (*it).pt.x += imColStart;
-                    (*it).pt.y += imRowStart;
+                    (*it).pt.x += imColStart + edgeWFast;
+                    (*it).pt.y += imRowStart + edgeWFast;
                     (*it).class_id = count;
                     allKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y), (*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
                 }
@@ -195,7 +195,7 @@ void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>&
 
         (*it).angle = 0;
 
-        fastKeys.emplace_back(cv::Point2f((*it).pt.x + edgeWFast,(*it).pt.y + edgeWFast), (*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
+        fastKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y), (*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
     }
     cv::KeyPointsFilter::retainBest(fastKeys,nFeatures);
     Logging("Keypoint Size After removal", fastKeys.size(),1);
