@@ -72,7 +72,7 @@ class ImageFrame
 
         void setImage(const sensor_msgs::ImageConstPtr& imageRef);
         void getImage(int frameNumber, const char* whichImage);
-        void rectifyImage(cv::Mat& map1, cv::Mat& map2);
+        void rectifyImage(cv::Mat& image, cv::Mat& map1, cv::Mat& map2);
 
         void opticalFlow(ImageFrame& prevImage,cv::Mat& status, cv::Mat& optFlow);
 

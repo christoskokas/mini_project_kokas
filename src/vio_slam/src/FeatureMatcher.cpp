@@ -8,7 +8,7 @@ FeatureMatcher::FeatureMatcher(const int _imageHeight, const int _gridRows, cons
 
 }
 
-void FeatureMatcher::stereoMatch(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector<cv::KeyPoint>& leftKeys, std::vector<cv::KeyPoint>& rightKeys, const cv::Mat& leftDesc, const cv::Mat& rightDesc, std::vector <cv::DMatch>& matches)
+void FeatureMatcher::stereoMatch(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector<cv::KeyPoint>& leftKeys, std::vector<cv::KeyPoint>& rightKeys, const cv::Mat& leftDesc, const cv::Mat& rightDesc, std::vector <cv::DMatch>& matches, SubPixelPoints& points)
 {
     // Timer("stereo match");
     std::vector<std::vector < int > > indexes;
@@ -18,7 +18,7 @@ void FeatureMatcher::stereoMatch(const cv::Mat& leftImage, const cv::Mat& rightI
     std::vector<cv::DMatch> tempMatches;
     matchKeys(leftKeys, rightKeys, indexes, leftDesc, rightDesc, tempMatches);
 
-    slidingWindowOpt(leftImage, rightImage, matches, tempMatches, leftKeys, rightKeys);
+    slidingWindowOpt(leftImage, rightImage, matches, tempMatches, leftKeys, rightKeys, points);
 
     // Logging("matches size",matches.size(),2);
 }
@@ -91,7 +91,7 @@ void FeatureMatcher::matchKeys(std::vector < cv::KeyPoint >& leftKeys, std::vect
                 }
             }
         }
-        if (bestDist > 60)
+        if (bestDist > 80)
             continue;
         if (bestIdx != -1)
         {
@@ -121,76 +121,91 @@ void FeatureMatcher::matchKeys(std::vector < cv::KeyPoint >& leftKeys, std::vect
     }
 }
 
-void FeatureMatcher::slidingWindowOpt(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector <cv::DMatch>& matches, const std::vector <cv::DMatch>& tempMatches, std::vector<cv::KeyPoint>& leftKeys, std::vector<cv::KeyPoint>& rightKeys)
+void FeatureMatcher::slidingWindowOpt(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector <cv::DMatch>& matches, const std::vector <cv::DMatch>& tempMatches, std::vector<cv::KeyPoint>& leftKeys, std::vector<cv::KeyPoint>& rightKeys, SubPixelPoints& points)
 {
     // Timer("sliding Widow took");
     // Because we use FAST to detect Features the sliding window will get a window of side 7 pixels (3 pixels radius + 1 which is the feature)
-    const int windowLength {7};
-    const int windowRadius {3};
+    const int windowRadius {5};
     // Because of the EdgeThreshold used around the image we dont need to check out of bounds
 
     const int windowMovementX {3};
-    const int windowMovementY {stereoYSpan};
+
+    const int distThreshold {1500};
 
     std::vector<bool> goodDist;
     goodDist.reserve(tempMatches.size());
     matches.reserve(tempMatches.size());
+    points.left.reserve(tempMatches.size());
+    points.right.reserve(tempMatches.size());
     // newMatches.reserve(matches.size());
     {
     std::vector<cv::DMatch>::const_iterator it, end(tempMatches.end());
     for (it = tempMatches.begin(); it != end; it++)
     {
-        double bestDist {250.0};
+        int bestDist {INT_MAX};
         int bestX {-1};
         int bestY {-1};
         const int lKeyX {(int)leftKeys[it->queryIdx].pt.x};
         const int lKeyY {(int)leftKeys[it->queryIdx].pt.y};
+
+        std::vector < float > allDists;
+        allDists.reserve(2*windowMovementX);
+
         const cv::Mat lWin = leftImage.rowRange(lKeyY - windowRadius, lKeyY + windowRadius + 1).colRange(lKeyX - windowRadius, lKeyX + windowRadius + 1);
         for (int32_t xMov {-windowMovementX}; xMov < windowMovementX + 1; xMov++)
         {
-            for (int32_t yMov {-windowMovementY}; yMov < windowMovementY + 1; yMov++)
-            {
-                
-
                 const int rKeyX {(int)rightKeys[it->trainIdx].pt.x};
                 const int rKeyY {(int)rightKeys[it->trainIdx].pt.y};
-                if (abs(lKeyY - rKeyY) > 1)
-                    continue;
-                const cv::Mat rWin = rightImage.rowRange(rKeyY + yMov - windowRadius, rKeyY + yMov + windowRadius + 1).colRange(rKeyX + xMov - windowRadius, rKeyX + xMov + windowRadius + 1);
+                const cv::Mat rWin = rightImage.rowRange(rKeyY - windowRadius, rKeyY + windowRadius + 1).colRange(rKeyX + xMov - windowRadius, rKeyX + xMov + windowRadius + 1);
 
-                double dist = cv::norm(lWin,rWin);
+                float dist = cv::norm(lWin,rWin, cv::NORM_L1);
                 if (bestDist > dist)
                 {
                     bestX = xMov;
-                    bestY = yMov;
                     bestDist = dist;
                 }
-            }
+                allDists.emplace_back(dist);
         }
-        // Logging("bestdist ",bestDist,2);
-        if ((bestX == -windowMovementX) || (bestX == windowMovementX) || (bestY == windowMovementY) || (bestY == windowMovementY) || (bestX == -1) || (bestDist >= 80))
+        if ((bestX == -windowMovementX) || (bestX == windowMovementX) || (bestX == -1))
         {
             goodDist.push_back(false);
             continue;
         }
+        // Linear Interpolation for sub pixel accuracy
+        const int bestDistIdx {bestX + windowMovementX};
+        float delta = (2*allDists[bestDistIdx] - allDists[bestDistIdx-1] - allDists[bestDistIdx+1])/(2*(allDists[bestDistIdx-1] - allDists[bestDistIdx+1]));
+
+        if (delta > 1 || delta < -1)
+        {
+            goodDist.push_back(false);
+            continue;
+        }
+        // Logging("delta ",delta,2);
+
         goodDist.push_back(true);
 
-        rightKeys[it->trainIdx].pt.x += bestX;
-        rightKeys[it->trainIdx].pt.y += bestY;
+
+        rightKeys[it->trainIdx].pt.x += bestX + delta;
     }
     }
 
 
-    int count {0};
     {
+    int count {0};
+    int matchesCount {0};
     std::vector<cv::DMatch>::const_iterator it, end(tempMatches.end());
     for (it = tempMatches.begin(); it != end; it++, count++ )
         if (goodDist[count])
-            matches.emplace_back(it->queryIdx, it->trainIdx, it->distance);
+        {
+            points.left.emplace_back(leftKeys[it->queryIdx].pt);
+            points.right.emplace_back(rightKeys[it->trainIdx].pt);
+            matches.emplace_back(matchesCount, matchesCount, it->distance);
+            matchesCount += 1;
+        }
     }
     Logging("matches size", matches.size(),2);
-    // cv::cornerSubPix(leftImage, points.left,cv::Size(5,5),cv::Size(1,1),cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 20,0.001));
-    // cv::cornerSubPix(rightImage, points.right,cv::Size(5,5),cv::Size(1,1),cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 20,0.001));
+    // cv::cornerSubPix(leftImage, points.left,cv::Size(3,3),cv::Size(-1,-1),cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 20,0.001));
+    // cv::cornerSubPix(rightImage, points.right,cv::Size(3,3),cv::Size(-1,-1),cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 20,0.001));
     
     // count = 0;
     // std::vector<cv::DMatch>::const_iterator it, end(matches.end());

@@ -336,9 +336,9 @@ void RobustMatcher2::testDisparityWithOpticalFlow()
     {
         start = clock();
         leftImage.getImage(frame, "left");
-        leftImage.rectifyImage(rmap[0][0], rmap[0][1]);
+        leftImage.rectifyImage(leftImage.image, rmap[0][0], rmap[0][1]);
         rightImage.getImage(frame, "right");
-        rightImage.rectifyImage(rmap[1][0], rmap[1][1]);
+        rightImage.rectifyImage(rightImage.image, rmap[1][0], rmap[1][1]);
         if (firstImage)
         {
             prevLeftImage.image = leftImage.image.clone();
@@ -533,9 +533,9 @@ void RobustMatcher2::testFeatureMatchingWithOpticalFlow()
     for (int frame = 0; frame < times; frame++)
     {
         leftImage.getImage(frame, "left");
-        leftImage.rectifyImage(rmap[0][0], rmap[0][1]);
+        leftImage.rectifyImage(leftImage.image, rmap[0][0], rmap[0][1]);
         rightImage.getImage(frame, "right");
-        rightImage.rectifyImage(rmap[1][0], rmap[1][1]);
+        rightImage.rectifyImage(rightImage.image, rmap[1][0], rmap[1][1]);
         if (firstImage)
         {
             prevLeftImage.image = leftImage.image.clone();
@@ -726,8 +726,8 @@ void RobustMatcher2::testOpticalFlowWithPairs()
         rightImage.getImage(frame, "right");
         if (!zedcamera->rectified)
         {
-            leftImage.rectifyImage(rmap[0][0], rmap[0][1]);
-            rightImage.rectifyImage(rmap[1][0], rmap[1][1]);
+            leftImage.rectifyImage(leftImage.image, rmap[0][0], rmap[0][1]);
+            rightImage.rectifyImage(rightImage.image, rmap[1][0], rmap[1][1]);
         }
         if (firstImage)
         {
@@ -1156,7 +1156,7 @@ void RobustMatcher2::testImageRectify()
     std::string imagePath = std::string("/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/left/frame0000.jpg");
     leftImage.image = cv::imread(imagePath,cv::IMREAD_GRAYSCALE);
     cv::imshow("left Image", leftImage.image);
-    leftImage.rectifyImage(rmap[0][0],rmap[0][1]);
+    leftImage.rectifyImage(leftImage.image, rmap[0][0],rmap[0][1]);
     cv::imshow("left Image Rectified", leftImage.image);
     first.totalTime();
     cv::waitKey(0);
@@ -1174,7 +1174,7 @@ void RobustMatcher2::undistortMap()
     Logging("P2",P2,1);
 }
 
-void ImageFrame::rectifyImage(cv::Mat& map1, cv::Mat& map2)
+void ImageFrame::rectifyImage(cv::Mat& image, cv::Mat& map1, cv::Mat& map2)
 {
     cv::remap(image, image, map1, map2, cv::INTER_LINEAR);
 }
@@ -1339,8 +1339,8 @@ void RobustMatcher2::testFeatureExtractorClassWithCallback()
             prevStamp = trialL.header.stamp;
             // leftImage.getImage(i, "left");
             // rightImage.getImage(i, "right");
-            trialL.rectifyImage(rmap[0][0],rmap[0][1]);
-            trialR.rectifyImage(rmap[1][0],rmap[1][1]);
+            trialL.rectifyImage(trialL.image, rmap[0][0],rmap[0][1]);
+            trialR.rectifyImage(trialR.image, rmap[1][0],rmap[1][1]);
             std::vector <cv::KeyPoint> fastKeys, rightKeys;
             cv::Mat lDesc, rDesc;
             // ProcessTime their("their");
@@ -1392,13 +1392,13 @@ void RobustMatcher2::testFeatureExtractorClass()
         
         leftImage.getImage(i, "left");
         rightImage.getImage(i, "right");
-        leftImage.rectifyImage(rmap[0][0],rmap[0][1]);
-        rightImage.rectifyImage(rmap[1][0],rmap[1][1]);
+        leftImage.rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
+        leftImage.rectifyImage(leftImage.realImage,rmap[0][0],rmap[0][1]);
+        rightImage.rectifyImage(rightImage.image, rmap[1][0],rmap[1][1]);
         std::vector <cv::KeyPoint> leftKeys, rightKeys;
         cv::Mat lDesc, rDesc;
         std::vector <cv::DMatch> matches;
 
-        {
 
         Timer extr("Feature Extraction Took");
 
@@ -1406,11 +1406,10 @@ void RobustMatcher2::testFeatureExtractorClass()
         // trial.findORB(rightImage.image, rightKeys, rDesc);
         trial.findFAST(leftImage.image, leftKeys, lDesc);
         trial.findFAST(rightImage.image, rightKeys, rDesc);
-        }
-        {
-        Timer matchTimer("Feature Matching Took");
-        matcher.stereoMatch(leftImage.image, rightImage.image, leftKeys, rightKeys,lDesc, rDesc, matches);
-        }
+        // Timer matchTimer("Feature Matching Took");
+        SubPixelPoints points;
+        matcher.stereoMatch(leftImage.image, rightImage.image, leftKeys, rightKeys,lDesc, rDesc, matches, points);
+        
         // trial.findORBWithCV(rightImage.image, rightKeys);
         // trial.findORBWithCV(leftImage.image, fastKeys);
 
@@ -1432,7 +1431,7 @@ void RobustMatcher2::testFeatureExtractorClass()
         cv::drawKeypoints(rightImage.image, rightKeys,outImageR);
         cv::imshow("right",outImageR);
         cv::Mat outImageMatches;
-        drawFeatureMatchesStereo(matches,leftImage.realImage, leftKeys,rightKeys,outImageMatches);
+        drawFeatureMatchesStereoSub(matches,leftImage.realImage, points.left,points.right,outImageMatches);
         cv::imshow("Matches",outImageMatches);
         cv::waitKey(1);
 
@@ -1468,7 +1467,7 @@ void RobustMatcher2::calcP1P2()
 void ImageFrame::findFeaturesOnImage(int frameNumber, const char* whichImage, cv::Mat& map1, cv::Mat& map2)
 {
     getImage(frameNumber, whichImage);
-    rectifyImage(map1, map2);
+    rectifyImage(image, map1, map2);
     findFeaturesORBAdaptive();
 }
 
