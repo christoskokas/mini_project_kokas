@@ -222,6 +222,7 @@ class RobustMatcher2 {
     void drawFeatureMatchesStereo(const std::vector<cv::DMatch>& matches, const cv::Mat& image, const std::vector <cv::KeyPoint>& leftKeys, const std::vector <cv::KeyPoint>& rightKeys, cv::Mat& outImage);
     void drawFeatureMatchesStereoSub(const std::vector<cv::DMatch>& matches, const cv::Mat& image, const std::vector <cv::Point2f>& leftKeys, const std::vector <cv::Point2f>& rightKeys, cv::Mat& outImage);
     void drawOpticalFlow(ImageFrame& prevImage, ImageFrame& curImage, cv::Mat& outImage);
+    void drawOptical(cv::Mat& image, std::vector<cv::Point2f>& prevPoints, std::vector<cv::Point2f>& newPoints, cv::Mat& outImage);
 
     void undistortMap();
     void calcP1P2();
@@ -240,6 +241,7 @@ class RobustMatcher2 {
     void testOpticalFlowWithPairs();
     void testFeatureExtractorClassWithCallback();
     void testFeatureExtractorClass();
+    void testFeatureMatcherOptical();
     
 };
 

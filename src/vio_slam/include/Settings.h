@@ -109,6 +109,16 @@ class ConfigFile
         }
 };
 
+template <typename T, typename U>
+void reduceVectorTemp(std::vector<T>& vec,std::vector<U>& check)
+{
+    int j {0};
+    for (int i = 0; i < int(vec.size()); i++)
+        if (check[i])
+            vec[j++] = vec[i];
+    vec.resize(j);
+}
+
 } // namespace vio_slam
 
 

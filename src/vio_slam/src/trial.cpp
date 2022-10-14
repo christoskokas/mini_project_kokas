@@ -240,6 +240,16 @@ void RobustMatcher2::drawOpticalFlow(ImageFrame& prevImage, ImageFrame& curImage
     }
 }
 
+void RobustMatcher2::drawOptical(cv::Mat& image, std::vector<cv::Point2f>& prevPoints, std::vector<cv::Point2f>& newPoints, cv::Mat& outImage)
+{
+    outImage = image.clone();
+    const size_t size {prevPoints.size()};
+    for(size_t j=0; j<size; j++)
+    {
+        cv::line(outImage,prevPoints[j],newPoints[j],cv::Scalar(255,0,0));
+    }
+}
+
 void ImageFrame::drawFeaturesWithLines(cv::Mat& outImage)
 {
     cv::drawKeypoints(image, keypoints,outImage);
@@ -1320,7 +1330,8 @@ void RobustMatcher2::beginTest()
     // testFeatureMatchingWithOpticalFlow();
     // testOpticalFlowWithPairs();
     // testFeatureExtractorClassWithCallback();
-    testFeatureExtractorClass();
+    // testFeatureExtractorClass();
+    testFeatureMatcherOptical();
 
 }
 
@@ -1380,13 +1391,13 @@ void RobustMatcher2::testFeatureExtractorClassWithCallback()
 
 void RobustMatcher2::testFeatureExtractorClass()
 {
+    
     FeatureExtractor trial;
-    FeatureMatcher matcher(zedcamera->mHeight, trial.getGridRows(), trial.getGridCols());
+    FeatureMatcher matcher(zedcamera, zedcamera->mHeight, trial.getGridRows(), trial.getGridCols());
     // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
     int i {0};
     const int times {600};
     Timer all("all");
-    
     while(i < times)
     {
         
@@ -1402,25 +1413,135 @@ void RobustMatcher2::testFeatureExtractorClass()
 
         Timer extr("Feature Extraction Took");
 
-        trial.findFAST(leftImage.image, leftKeys, lDesc);
-        trial.findFAST(rightImage.image, rightKeys, rDesc);
-        
         SubPixelPoints points;
-        matcher.stereoMatch(leftImage.image, rightImage.image, leftKeys, rightKeys,lDesc, rDesc, matches, points);
+        // trial.findFAST(leftImage.image, leftKeys, lDesc);
+        // trial.findFAST(rightImage.image, rightKeys, rDesc);
         
+        // matcher.stereoMatch(leftImage.image, rightImage.image, leftKeys, rightKeys,lDesc, rDesc, matches, points);
 
+        StereoKeypoints keypoints;
+        StereoDescriptors desc;
+        trial.extractFeatures(leftImage.image, rightImage.image, desc, keypoints);
+        
+        matcher.computeStereoMatches(leftImage.image, rightImage.image, desc, matches, points, keypoints);
+
+
+        
 
 
         i++;
-        cv::Mat outImage, outImageR;
-        cv::drawKeypoints(leftImage.image, leftKeys,outImage);
-        cv::imshow("left",outImage);
-        cv::drawKeypoints(rightImage.image, rightKeys,outImageR);
-        cv::imshow("right",outImageR);
+        // cv::Mat outImage, outImageR;
+        // cv::drawKeypoints(leftImage.image, leftKeys,outImage);
+        // cv::imshow("left",outImage);
+        // cv::drawKeypoints(rightImage.image, rightKeys,outImageR);
+        // cv::imshow("right",outImageR);
         cv::Mat outImageMatches;
         drawFeatureMatchesStereoSub(matches,leftImage.realImage, points.left,points.right,outImageMatches);
         cv::imshow("Matches",outImageMatches);
         cv::waitKey(1);
+
+    }
+    
+
+    
+}
+
+void RobustMatcher2::testFeatureMatcherOptical()
+{
+    const int sizeThreshold {80};
+    FeatureExtractor trial;
+    FeatureMatcher matcher(zedcamera, zedcamera->mHeight, trial.getGridRows(), trial.getGridCols());
+    // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
+    int i {0};
+    const int times {600};
+    Timer all("all");
+    SubPixelPoints points, prevPoints;
+    while(i < times)
+    {
+        
+        leftImage.getImage(i, "left");
+        rightImage.getImage(i, "right");
+        leftImage.rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
+        leftImage.rectifyImage(leftImage.realImage,rmap[0][0],rmap[0][1]);
+        rightImage.rectifyImage(rightImage.image, rmap[1][0],rmap[1][1]);
+        std::vector <cv::KeyPoint> leftKeys, rightKeys;
+        cv::Mat lDesc, rDesc;
+        std::vector <cv::DMatch> matches;
+
+
+        Timer extr("Feature Extraction Took");
+
+        // trial.findFAST(leftImage.image, leftKeys, lDesc);
+        // trial.findFAST(rightImage.image, rightKeys, rDesc);
+        
+        // matcher.stereoMatch(leftImage.image, rightImage.image, leftKeys, rightKeys,lDesc, rDesc, matches, points);
+
+        if (firstImage)
+        {
+            StereoKeypoints keypoints;
+            StereoDescriptors desc;
+            trial.extractFeatures(leftImage.image, rightImage.image, desc, keypoints);
+            
+            matcher.computeStereoMatches(leftImage.image, rightImage.image, desc, matches, points, keypoints);
+
+            firstImage = false;
+            prevPoints.add(points);
+            prevLeftImage.image = leftImage.image.clone();
+            prevRightImage.image = rightImage.image.clone();
+            continue;
+        }
+
+        if (prevPoints.left.size() < sizeThreshold)
+        {
+            StereoKeypoints keypoints;
+            StereoDescriptors desc;
+            trial.extractFeatures(leftImage.image, rightImage.image, desc, keypoints);
+            
+            matcher.computeStereoMatches(leftImage.image, rightImage.image, desc, matches, points, keypoints);
+
+            prevPoints.add(points);
+
+            cv::Mat outImageMatches;
+            drawFeatureMatchesStereoSub(matches,leftImage.realImage, points.left,points.right,outImageMatches);
+            cv::imshow("Matches",outImageMatches);
+
+            points.clear();
+        }
+
+
+
+        // Logging("prev size", points.left.size(),2);
+
+        SubPixelPoints trials;
+        std::vector <uchar> status;
+        matcher.computeOpticalFlow(prevLeftImage.image, leftImage.image, prevPoints.left, points.left, status);
+
+        
+
+
+        // Logging("prev size", prevPoints.left.size(),2);
+        reduceVectorTemp<cv::Point2f,uchar>(prevPoints.left, status);
+        reduceVectorTemp<cv::Point2f,uchar>(points.left, status);
+        // Logging("after size", prevPoints.left.size(),2);
+
+        matcher.slidingWindowOptical(prevLeftImage.image, leftImage.image, prevPoints.left, points.left);
+
+
+        i++;
+        cv::Mat optical;
+        drawOptical(leftImage.image, prevPoints.left, points.left,optical);
+        // cv::Mat outImage, outImageR;
+        // cv::drawKeypoints(leftImage.image, leftKeys,outImage);
+        // cv::imshow("left",outImage);
+        // cv::drawKeypoints(rightImage.image, rightKeys,outImageR);
+        cv::imshow("optical flow",optical);
+        cv::waitKey(1);
+
+
+        prevPoints.clone(points);
+        points.clear();
+        prevLeftImage.image = leftImage.image.clone();
+        prevRightImage.image = rightImage.image.clone();
 
     }
     

@@ -129,13 +129,42 @@ void FeatureExtractor::computePyramid(cv::Mat& image)
 
 void FeatureExtractor::findFAST(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc)
 {
-    findFASTGrids(image,fastKeys,Desc);
+    findFASTGrids(image,fastKeys);
     cv::Ptr<cv::ORB> detector {cv::ORB::create(2000,imScale,nLevels,edgeThreshold,0,2,cv::ORB::FAST_SCORE,patchSize,maxFastThreshold)};
     detector->compute(image,fastKeys,Desc);
 
 }
 
-void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc)
+void FeatureExtractor::extractFeatures(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints)
+{
+
+    findFASTGrids(leftImage,keypoints.left);
+    findFASTGrids(rightImage,keypoints.right);
+    cv::Ptr<cv::ORB> detector {cv::ORB::create(2000,imScale,nLevels,edgeThreshold,0,2,cv::ORB::FAST_SCORE,patchSize,maxFastThreshold)};
+    detector->compute(leftImage, keypoints.left, desc.left);
+    detector->compute(rightImage, keypoints.right, desc.right);
+
+    // updatePoints(leftKeys, rightKeys,points);
+    
+}
+
+// void FeatureExtractor::updatePoints(std::vector <cv::KeyPoint>& leftKeys, std::vector <cv::KeyPoint>& rightKeys, SubPixelPoints& points)
+// {
+//     {
+//     points.left.reserve(leftKeys.size());
+//     std::vector<cv::KeyPoint>::const_iterator it, end(leftKeys.end());
+//     for (it = leftKeys.begin();it != end; it++)
+//         points.left.emplace_back(it->pt);
+//     }
+//     {
+//     points.right.reserve(rightKeys.size());
+//     std::vector<cv::KeyPoint>::const_iterator it, end(rightKeys.end());
+//     for (it = rightKeys.begin();it != end; it++)
+//         points.right.emplace_back(it->pt);
+//     }
+// }
+
+void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
 {
     fastKeys.reserve(2000);
     std::vector <cv::KeyPoint> allKeys;
@@ -193,7 +222,7 @@ void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>&
 
         // (*it).angle = {computeOrientation(croppedImage, cv::Point2f((*it).pt.x,(*it).pt.y))};
 
-        (*it).angle = 0;
+        // (*it).angle = 0;
 
         fastKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y), (*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
     }
@@ -617,6 +646,42 @@ FeatureExtractor::FeatureExtractor(FeatureChoice _choice, const int _nfeatures, 
     scaleInvPyramid[0] = 1.0f;
     
     
+}
+
+void SubPixelPoints::clone(SubPixelPoints& points)
+{
+    left = points.left;
+    right = points.right;
+    depth = points.depth;
+    useable = points.useable;
+}
+
+void SubPixelPoints::add(SubPixelPoints& points)
+{
+    const size_t size {left.size() + points.left.size()};
+
+    left.reserve(size);
+    right.reserve(size);
+    depth.reserve(size);
+    useable.reserve(size);
+
+    const size_t end {points.left.size()};
+
+    for (size_t i = 0; i < end; i++)
+    {
+        left.emplace_back(points.left[i]);
+        right.emplace_back(points.right[i]);
+        depth.emplace_back(points.depth[i]);
+        useable.emplace_back(points.useable[i]);
+    }
+}
+
+void SubPixelPoints::clear()
+{
+    left.clear();
+    right.clear();
+    useable.clear();
+    depth.clear();
 }
 
 int FeatureExtractor::getGridRows()

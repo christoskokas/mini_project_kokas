@@ -16,6 +16,32 @@
 namespace vio_slam
 {
 
+
+struct SubPixelPoints
+{
+    std::vector<cv::Point2f> left;
+    std::vector<cv::Point2f> right;
+    std::vector<float> depth;
+    std::vector<bool> useable;
+
+    void clone(SubPixelPoints& points);
+    void clear();
+    void add(SubPixelPoints& points);
+
+};
+
+struct StereoKeypoints
+{
+    std::vector <cv::KeyPoint> left;
+    std::vector <cv::KeyPoint> right;
+};
+
+struct StereoDescriptors
+{
+    cv::Mat left;
+    cv::Mat right;
+};
+
 class FeatureExtractor
 {
 
@@ -62,9 +88,13 @@ class FeatureExtractor
         void findORB(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc);
         void findORBWithCV(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
 
+        void extractFeatures(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
+
+        // void updatePoints(std::vector <cv::KeyPoint>& leftKeys, std::vector <cv::KeyPoint>& rightKeys, SubPixelPoints& points);
+
 
         void findFAST(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc);
-        void findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc);
+        void findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
 
         void computePyramid(cv::Mat& image);
         float computeOrientation(const cv::Mat& image, const cv::Point2f& point);
