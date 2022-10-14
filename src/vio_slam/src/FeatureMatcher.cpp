@@ -91,7 +91,7 @@ void FeatureMatcher::matchKeys(std::vector < cv::KeyPoint >& leftKeys, std::vect
                 }
             }
         }
-        if (bestDist > 80)
+        if (bestDist > 100)
             continue;
         if (bestIdx != -1)
         {
@@ -171,9 +171,15 @@ void FeatureMatcher::slidingWindowOpt(const cv::Mat& leftImage, const cv::Mat& r
             goodDist.push_back(false);
             continue;
         }
+        // const int bestDistIdx {bestX + windowMovementX};
+        // float delta = (2*allDists[bestDistIdx] - allDists[bestDistIdx-1] - allDists[bestDistIdx+1])/(2*(allDists[bestDistIdx-1] - allDists[bestDistIdx+1]));
+
         // Linear Interpolation for sub pixel accuracy
-        const int bestDistIdx {bestX + windowMovementX};
-        float delta = (2*allDists[bestDistIdx] - allDists[bestDistIdx-1] - allDists[bestDistIdx+1])/(2*(allDists[bestDistIdx-1] - allDists[bestDistIdx+1]));
+        const float dist1 = allDists[windowMovementX + bestX-1];
+        const float dist2 = allDists[windowMovementX + bestX];
+        const float dist3 = allDists[windowMovementX + bestX+1];
+
+        const float delta = (dist1-dist3)/(2.0f*(dist1+dist3-2.0f*dist2));
 
         if (delta > 1 || delta < -1)
         {

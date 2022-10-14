@@ -1402,25 +1402,12 @@ void RobustMatcher2::testFeatureExtractorClass()
 
         Timer extr("Feature Extraction Took");
 
-        // trial.findORB(leftImage.image, leftKeys, lDesc);
-        // trial.findORB(rightImage.image, rightKeys, rDesc);
         trial.findFAST(leftImage.image, leftKeys, lDesc);
         trial.findFAST(rightImage.image, rightKeys, rDesc);
-        // Timer matchTimer("Feature Matching Took");
+        
         SubPixelPoints points;
         matcher.stereoMatch(leftImage.image, rightImage.image, leftKeys, rightKeys,lDesc, rDesc, matches, points);
         
-        // trial.findORBWithCV(rightImage.image, rightKeys);
-        // trial.findORBWithCV(leftImage.image, fastKeys);
-
-        // std::thread left(&vio_slam::FeatureExtractor::findORB, std::ref(trial),std::ref(rightImage.image),std::ref(rightKeys), std::ref(rDesc));
-        // trial.findORB(leftImage.image, fastKeys, lDesc);
-        // left.join();
-
-        // auto d = std::async(std::launch::async, &vio_slam::FeatureExtractor::findORB,std::ref(trial), std::ref(rightImage.image),std::ref(rightKeys), std::ref(rDesc));
-        // d.wait();
-        // auto s = std::async(std::launch::async, &vio_slam::FeatureExtractor::findORB,std::ref(trial), std::ref(leftImage.image),std::ref(fastKeys), std::ref(lDesc));
-        // s.wait();
 
 
 
