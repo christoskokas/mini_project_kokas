@@ -8,13 +8,18 @@ FeatureMatcher::FeatureMatcher(const Zed_Camera* _zed, const int _imageHeight, c
 
 }
 
-void FeatureMatcher::computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, const std::vector<cv::Point2f>& prevPoints, std::vector<cv::Point2f>& newPoints, std::vector <uchar>& status)
+void FeatureMatcher::computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, SubPixelPoints& prevPoints, SubPixelPoints& newPoints)
 {
     cv::Mat err;
-    cv::calcOpticalFlowPyrLK(prevLeftIm, leftIm, prevPoints, newPoints, status, err,cv::Size(21,21),3,cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 100, (0.00100000000000000021)));
+    std::vector <uchar> status;
+    cv::calcOpticalFlowPyrLK(prevLeftIm, leftIm, prevPoints.left, newPoints.left, status, err,cv::Size(21,21),3,cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 100, (0.00100000000000000021)));
+
+    prevPoints.reduce<uchar>(status);
+    newPoints.reduce<uchar>(status);
+
 }
 
-void FeatureMatcher::slidingWindowOptical(const cv::Mat& prevImage, const cv::Mat& image, std::vector<cv::Point2f>& prevPoints, std::vector<cv::Point2f>& newPoints)
+std::vector<bool> FeatureMatcher::slidingWindowOptical(const cv::Mat& prevImage, const cv::Mat& image, std::vector<cv::Point2f>& prevPoints, std::vector<cv::Point2f>& newPoints)
 {
     // Timer("sliding Window took");
     // Because we use FAST to detect Features the sliding window will get a window of side 11 pixels (5 (3 + 2offset) pixels radius + 1 which is the feature)
@@ -27,7 +32,6 @@ void FeatureMatcher::slidingWindowOptical(const cv::Mat& prevImage, const cv::Ma
     std::vector<bool> goodDist;
     goodDist.reserve(prevPoints.size());
     // newMatches.reserve(matches.size());
-    {
     int count {0};
     std::vector<cv::Point2f>::const_iterator it, end(prevPoints.end());
     for (it = prevPoints.begin(); it != end; it++, count++)
@@ -48,7 +52,7 @@ void FeatureMatcher::slidingWindowOptical(const cv::Mat& prevImage, const cv::Ma
 
         bool out {false};
 
-        if ((lRowStart < 0) || (lRowEnd > prevImage.rows) || (lColStart < 0) || (lColEnd > prevImage.cols))
+        if ((lRowStart < 0) || (lRowEnd >= prevImage.rows) || (lColStart < 0) || (lColEnd >= prevImage.cols))
             continue;
 
         const cv::Mat lWin = prevImage.rowRange(lRowStart, lRowEnd).colRange(lColStart, lColEnd);
@@ -64,7 +68,7 @@ void FeatureMatcher::slidingWindowOptical(const cv::Mat& prevImage, const cv::Ma
                 const int rColStart {rKeyX + xMov - windowRadius};
                 const int rColEnd {rKeyX + xMov + windowRadius + 1};
 
-                if ((rRowStart < 0) || (rRowEnd > prevImage.rows) || (rColStart < 0) || (rColEnd > prevImage.cols))
+                if ((rRowStart < 0) || (rRowEnd >= prevImage.rows) || (rColStart < 0) || (rColEnd >= prevImage.cols))
                 {
                     out = true;
                     break;
@@ -126,10 +130,58 @@ void FeatureMatcher::slidingWindowOptical(const cv::Mat& prevImage, const cv::Ma
         newPoints[count].y += bestY + deltaY;
 
     }
+    return goodDist;
+}
+
+void FeatureMatcher::removeWithFund(SubPixelPoints& prevPoints, SubPixelPoints& points)
+{
+    std::vector<uchar> inliers;
+    cv::findFundamentalMat(prevPoints.left, points.left, inliers, cv::FM_RANSAC, 3, 0.99);
+
+    prevPoints.reduce<uchar>(inliers);
+    points.reduce<uchar>(inliers);
+}
+
+void FeatureMatcher::computeRightPoints(const SubPixelPoints& prevPoints, SubPixelPoints& points)
+{
+    const size_t size {prevPoints.left.size()};
+    points.right.resize(size);
+    points.depth.resize(size);
+    points.useable.resize(size);
+    for (size_t i {0};i < size;i++)
+    {
+        const float difX {prevPoints.left[i].x - points.left[i].x};
+        const float difY {prevPoints.left[i].y - points.left[i].y};
+        points.right[i].x = prevPoints.right[i].x - difX;
+        points.right[i].y = prevPoints.right[i].y - difY;
+        // Logging("point",points.right[i],2);
+        // Logging("prev point",prevPoints.right[i],2);
+        // Compute Depth
+        const float disparity {points.left[i].x - points.right[i].x};
+
+        if (disparity > 0.0f)
+        {
+            const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
+            // if false depth is unusable
+            if (depth < zedptr->mBaseline * 40)
+            {
+                points.useable[i] = true;
+                points.depth[i] = depth;
+                continue;
+            }
+            points.depth[i] = 0.0f;
+            points.useable[i] = false;
+
+        }
+        else
+        {
+            points.depth[i] = 0.0f;
+            points.useable[i] = false;
+        }
     }
 
-    reduceVectorTemp<cv::Point2f,bool>(prevPoints,goodDist);
-    reduceVectorTemp<cv::Point2f,bool>(newPoints,goodDist);
+    // calculate depth
+
 
 }
 

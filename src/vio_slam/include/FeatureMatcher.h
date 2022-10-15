@@ -59,9 +59,11 @@ class FeatureMatcher
 
         void slidingWindowOptimization(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector <cv::DMatch>& matches, const std::vector <cv::DMatch>& tempMatches, SubPixelPoints& points);
 
-        void computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, const std::vector<cv::Point2f>& prevPoints, std::vector<cv::Point2f>& newPoints, std::vector <uchar>& status);
+        void computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, SubPixelPoints& prevPoints, SubPixelPoints& newPoints);
 
-        void slidingWindowOptical(const cv::Mat& prevImage, const cv::Mat& image, std::vector<cv::Point2f>& prevPoints, std::vector<cv::Point2f>& newPoints);
+        std::vector<bool> slidingWindowOptical(const cv::Mat& prevImage, const cv::Mat& image, std::vector<cv::Point2f>& prevPoints, std::vector<cv::Point2f>& newPoints);
+        void removeWithFund(SubPixelPoints& prevPoints, SubPixelPoints& points);
+        void computeRightPoints(const SubPixelPoints& prevPoints, SubPixelPoints& points);
 
         void addUcharVectors(std::vector <uchar>& first, std::vector <uchar>& second);
 

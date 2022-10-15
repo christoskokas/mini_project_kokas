@@ -71,7 +71,7 @@ struct CameraFrame : public pangolin::Renderable
     std::string mGroundTruthPath, mPointCloudPath;
     const char *color;
 
-    const float cameraWidth = 0.1f;
+    const float cameraWidth = 0.0575f;
 
     const Zed_Camera* zedCamera;
 

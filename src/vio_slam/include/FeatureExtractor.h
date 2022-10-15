@@ -28,6 +28,15 @@ struct SubPixelPoints
     void clear();
     void add(SubPixelPoints& points);
 
+    template <typename T>
+    void reduce(std::vector<T>& check)
+    {
+        reduceVectorTemp<cv::Point2f,T>(left,check);
+        reduceVectorTemp<cv::Point2f,T>(right,check);
+        reduceVectorTemp<float,T>(depth,check);
+        reduceVectorTemp<bool,T>(useable,check);
+    }
+
 };
 
 struct StereoKeypoints

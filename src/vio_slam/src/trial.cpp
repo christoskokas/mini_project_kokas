@@ -246,7 +246,7 @@ void RobustMatcher2::drawOptical(cv::Mat& image, std::vector<cv::Point2f>& prevP
     const size_t size {prevPoints.size()};
     for(size_t j=0; j<size; j++)
     {
-        cv::line(outImage,prevPoints[j],newPoints[j],cv::Scalar(255,0,0));
+        cv::line(outImage,prevPoints[j],newPoints[j],cv::Scalar(0,255,0));
     }
 }
 
@@ -1453,7 +1453,7 @@ void RobustMatcher2::testFeatureMatcherOptical()
     FeatureMatcher matcher(zedcamera, zedcamera->mHeight, trial.getGridRows(), trial.getGridCols());
     // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
     int i {0};
-    const int times {600};
+    const int times {657};
     Timer all("all");
     SubPixelPoints points, prevPoints;
     while(i < times)
@@ -1464,12 +1464,13 @@ void RobustMatcher2::testFeatureMatcherOptical()
         leftImage.rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
         leftImage.rectifyImage(leftImage.realImage,rmap[0][0],rmap[0][1]);
         rightImage.rectifyImage(rightImage.image, rmap[1][0],rmap[1][1]);
+        rightImage.rectifyImage(rightImage.realImage, rmap[1][0],rmap[1][1]);
         std::vector <cv::KeyPoint> leftKeys, rightKeys;
         cv::Mat lDesc, rDesc;
         std::vector <cv::DMatch> matches;
 
 
-        Timer extr("Feature Extraction Took");
+        // Timer extr("Feature Extraction Took");
 
         // trial.findFAST(leftImage.image, leftKeys, lDesc);
         // trial.findFAST(rightImage.image, rightKeys, rDesc);
@@ -1512,29 +1513,43 @@ void RobustMatcher2::testFeatureMatcherOptical()
 
         // Logging("prev size", points.left.size(),2);
 
-        SubPixelPoints trials;
-        std::vector <uchar> status;
-        matcher.computeOpticalFlow(prevLeftImage.image, leftImage.image, prevPoints.left, points.left, status);
-
-        
-
+        matcher.computeOpticalFlow(prevLeftImage.image, leftImage.image, prevPoints, points);
 
         // Logging("prev size", prevPoints.left.size(),2);
-        reduceVectorTemp<cv::Point2f,uchar>(prevPoints.left, status);
-        reduceVectorTemp<cv::Point2f,uchar>(points.left, status);
+        // reduceVectorTemp<cv::Point2f,uchar>(prevPoints.left, status);
+        // reduceVectorTemp<cv::Point2f,uchar>(points.left, status);
         // Logging("after size", prevPoints.left.size(),2);
 
-        matcher.slidingWindowOptical(prevLeftImage.image, leftImage.image, prevPoints.left, points.left);
+        std::vector<bool> optCheck = matcher.slidingWindowOptical(prevLeftImage.image, leftImage.image, prevPoints.left, points.left);
 
+        prevPoints.reduce<bool>(optCheck);
+        points.reduce<bool>(optCheck);
+
+        matcher.removeWithFund(prevPoints, points);
+
+        matcher.computeRightPoints(prevPoints, points);
+
+        std::vector<bool> optCheckR = matcher.slidingWindowOptical(prevRightImage.image, rightImage.image, prevPoints.right, points.right);
+
+
+        prevPoints.reduce<bool>(optCheckR);
+        points.reduce<bool>(optCheckR);
+
+        ceresSolverFAST(prevPoints,points);
+        publishPose();
 
         i++;
-        cv::Mat optical;
-        drawOptical(leftImage.image, prevPoints.left, points.left,optical);
+        cv::Mat optical,opticalR;
+        drawOptical(leftImage.realImage, prevPoints.left, points.left,optical);
+        drawOptical(rightImage.realImage, prevPoints.right, points.right,opticalR);
+
+
         // cv::Mat outImage, outImageR;
         // cv::drawKeypoints(leftImage.image, leftKeys,outImage);
         // cv::imshow("left",outImage);
         // cv::drawKeypoints(rightImage.image, rightKeys,outImageR);
         cv::imshow("optical flow",optical);
+        cv::imshow("optical flow Right",opticalR);
         cv::waitKey(1);
 
 
@@ -1542,11 +1557,58 @@ void RobustMatcher2::testFeatureMatcherOptical()
         points.clear();
         prevLeftImage.image = leftImage.image.clone();
         prevRightImage.image = rightImage.image.clone();
+        prevLeftImage.realImage = leftImage.realImage.clone();
+        prevRightImage.realImage = rightImage.realImage.clone();
 
     }
     
 
     
+}
+
+void RobustMatcher2::ceresSolverFAST(SubPixelPoints& prevPoints, SubPixelPoints& points)
+{
+    ceres::Problem problem;
+    ceres::LossFunction* lossfunction = NULL;
+    const size_t end {prevPoints.left.size()};
+    for (size_t i = 0; i < end; i++)
+    {   
+        if (prevPoints.useable[i] && points.useable[i])
+        {
+            const double cx {zedcamera->cameraLeft.cx};
+            const double cy {zedcamera->cameraLeft.cy};
+            const double fx {zedcamera->cameraLeft.fx};
+            const double fy {zedcamera->cameraLeft.fy};
+
+
+            double x = (double)(((double)points.left[i].x-cx)*(double)points.depth[i]/fx);
+            double y = (double)(((double)points.left[i].y-cy)*(double)points.depth[i]/fy);
+            double z = (double)points.depth[i];
+            double xp = (double)(((double)prevPoints.left[i].x-cx)*(double)prevPoints.depth[i]/fx);
+            double yp = (double)(((double)prevPoints.left[i].y-cy)*(double)prevPoints.depth[i]/fy);
+            double zp = (double)prevPoints.depth[i];
+            Logging("Previous",cv::Point3d(xp,yp,zp),3);
+            Logging("Observed",cv::Point3d(x,y,z),3);
+            Eigen::Vector3d p3d(x, y, z);
+            Eigen::Vector3d pp3d(xp, yp, zp);
+            ceres::CostFunction* costfunction = Reprojection3dError::Create(p3d, pp3d);
+            problem.AddResidualBlock(costfunction, lossfunction, camera);
+        }
+    }
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::DENSE_SCHUR;
+    options.max_num_iterations = 100;
+    options.trust_region_strategy_type = ceres::DOGLEG;
+    options.minimizer_progress_to_stdout = false;
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+
+    double quat[4];
+    ceres::AngleAxisToQuaternion(camera, quat);
+    Eigen::Quaterniond q(quat[0], quat[1], quat[2], quat[3]);
+    Eigen::Isometry3d Transform(q.matrix());
+    Transform.pretranslate(Eigen::Vector3d(camera[3], camera[4], camera[5]));
+    T = Transform.matrix();
 }
 
 void RobustMatcher2::calcP1P2()
