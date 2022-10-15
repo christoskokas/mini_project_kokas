@@ -209,7 +209,7 @@ class RobustMatcher2 {
     void ceresSolver(cv::Mat& points3D, cv::Mat& prevPoints3D);
     void ceresSolverPnp(cv::Mat& points3D, cv::Mat& prevPoints3D);
 
-    void ceresSolverFAST(SubPixelPoints& points, SubPixelPoints& prevPoints);
+    void ceresSolverFAST(const SubPixelPoints& points, const SubPixelPoints& prevPoints);
 
     void reduceVector(std::vector<cv::Point2f> &v, cv::Mat& status);
     void reduceVectorInt(std::vector<int> &v, cv::Mat& status);

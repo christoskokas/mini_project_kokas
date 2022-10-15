@@ -9,7 +9,7 @@ Frame::Frame()
     
 }
 
-void Frame::pangoQuit(const Zed_Camera* zedPtr)
+void Frame::pangoQuit(Zed_Camera* zedPtr)
 {
     using namespace std::literals::chrono_literals;
 
@@ -62,9 +62,10 @@ void Frame::pangoQuit(const Zed_Camera* zedPtr)
         // glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
         auto lines = std::make_shared<Lines>();    
         lines->getValues(temp.mT,camera->T_pc.m);
-        if (pangolin::Pushed(a_button))
+        if (zedPtr->addKeyFrame)
         {
             {
+                zedPtr->addKeyFrame = false;
                 auto keyframe = std::make_shared<CameraFrame>();
                 keyframe->T_pc = camera->T_pc;
                 // keyframe->mPointCloud = camera->mPointCloud;

@@ -87,7 +87,7 @@ class FeatureExtractor
 
         FeatureChoice choice;
         
-        FeatureExtractor(FeatureChoice _choice = ORB, const int _nfeatures = 1000, const int _nLevels = 5, const float _imScale = 1.3f, const int _edgeThreshold = 15, const int _patchSize = 31, const int _maxFastThreshold = 15, const int _minFastThreshold = 6, const bool _nonMaxSuppression = true);
+        FeatureExtractor(FeatureChoice _choice = ORB, const int _nfeatures = 1000, const int _nLevels = 5, const float _imScale = 1.3f, const int _edgeThreshold = 15, const int _patchSize = 31, const int _maxFastThreshold = 20, const int _minFastThreshold = 10, const bool _nonMaxSuppression = true);
         
         int getGridRows();
         int getGridCols();

@@ -1453,23 +1453,21 @@ void RobustMatcher2::testFeatureMatcherOptical()
     FeatureMatcher matcher(zedcamera, zedcamera->mHeight, trial.getGridRows(), trial.getGridCols());
     // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
     int i {0};
+    int useable {0};
     const int times {657};
     Timer all("all");
     SubPixelPoints points, prevPoints;
     while(i < times)
     {
-        
         leftImage.getImage(i, "left");
         rightImage.getImage(i, "right");
         leftImage.rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
         leftImage.rectifyImage(leftImage.realImage,rmap[0][0],rmap[0][1]);
         rightImage.rectifyImage(rightImage.image, rmap[1][0],rmap[1][1]);
         rightImage.rectifyImage(rightImage.realImage, rmap[1][0],rmap[1][1]);
-        std::vector <cv::KeyPoint> leftKeys, rightKeys;
-        cv::Mat lDesc, rDesc;
         std::vector <cv::DMatch> matches;
 
-
+        Timer loop("loop processing time");
         // Timer extr("Feature Extraction Took");
 
         // trial.findFAST(leftImage.image, leftKeys, lDesc);
@@ -1486,25 +1484,28 @@ void RobustMatcher2::testFeatureMatcherOptical()
             matcher.computeStereoMatches(leftImage.image, rightImage.image, desc, matches, points, keypoints);
 
             firstImage = false;
-            prevPoints.add(points);
+            prevPoints.clone(points);
+            useable = prevPoints.left.size();
             prevLeftImage.image = leftImage.image.clone();
+            prevLeftImage.realImage = leftImage.realImage.clone();
             prevRightImage.image = rightImage.image.clone();
             continue;
         }
 
-        if (prevPoints.left.size() < sizeThreshold)
+        if (useable < sizeThreshold)
         {
+            zedcamera->addKeyFrame = true;
             StereoKeypoints keypoints;
             StereoDescriptors desc;
-            trial.extractFeatures(leftImage.image, rightImage.image, desc, keypoints);
+            trial.extractFeatures(prevLeftImage.image, prevRightImage.image, desc, keypoints);
             
-            matcher.computeStereoMatches(leftImage.image, rightImage.image, desc, matches, points, keypoints);
+            matcher.computeStereoMatches(prevLeftImage.image, prevRightImage.image, desc, matches, points, keypoints);
 
             prevPoints.add(points);
 
             cv::Mat outImageMatches;
-            drawFeatureMatchesStereoSub(matches,leftImage.realImage, points.left,points.right,outImageMatches);
-            cv::imshow("Matches",outImageMatches);
+            // drawFeatureMatchesStereoSub(matches,prevLeftImage.realImage, points.left,points.right,outImageMatches);
+            // cv::imshow("Matches",outImageMatches);
 
             points.clear();
         }
@@ -1512,44 +1513,61 @@ void RobustMatcher2::testFeatureMatcherOptical()
 
 
         // Logging("prev size", points.left.size(),2);
-
+        // Timer loop1("computeOpticalFlow");
         matcher.computeOpticalFlow(prevLeftImage.image, leftImage.image, prevPoints, points);
 
         // Logging("prev size", prevPoints.left.size(),2);
         // reduceVectorTemp<cv::Point2f,uchar>(prevPoints.left, status);
         // reduceVectorTemp<cv::Point2f,uchar>(points.left, status);
         // Logging("after size", prevPoints.left.size(),2);
+        // matcher.removeWithFund(prevPoints, points);
+        // Timer loop2("slidingWindowOptical left");
 
-        std::vector<bool> optCheck = matcher.slidingWindowOptical(prevLeftImage.image, leftImage.image, prevPoints.left, points.left);
+        // std::vector<bool> optCheck = matcher.slidingWindowOptical(prevLeftImage.image, leftImage.image, prevPoints.left, points.left);
 
-        prevPoints.reduce<bool>(optCheck);
-        points.reduce<bool>(optCheck);
+        // prevPoints.reduce<bool>(optCheck);
+        // points.reduce<bool>(optCheck);
 
-        matcher.removeWithFund(prevPoints, points);
+        // Timer loop3("computeRightPoints");
 
         matcher.computeRightPoints(prevPoints, points);
 
-        std::vector<bool> optCheckR = matcher.slidingWindowOptical(prevRightImage.image, rightImage.image, prevPoints.right, points.right);
-
+        // std::vector<bool> optCheckR = matcher.slidingWindowOptical(prevRightImage.image, rightImage.image, prevPoints.right, points.right);
+        std::vector<bool> optCheckR = matcher.slidingWindowOpticalLR(leftImage.image, rightImage.image, points.left, points.right);
 
         prevPoints.reduce<bool>(optCheckR);
         points.reduce<bool>(optCheckR);
 
+
+        useable = matcher.computeDepth(prevPoints, points);
+
+
+
+        // remove outliers using velocity
+        // Timer loop4("ceresSolverFAST");
+
         ceresSolverFAST(prevPoints,points);
         publishPose();
-
+        // Timer loop5("AFTER");
         i++;
-        cv::Mat optical,opticalR;
+        cv::Mat optical,opticalR, opticalLR, opticalPLR;
         drawOptical(leftImage.realImage, prevPoints.left, points.left,optical);
-        drawOptical(rightImage.realImage, prevPoints.right, points.right,opticalR);
+        // drawOptical(rightImage.realImage, prevPoints.right, points.right,opticalR);
+        // drawOptical(leftImage.realImage, prevPoints.left, prevPoints.right,opticalPLR);
+        // drawOptical(leftImage.realImage, points.left, points.right,opticalLR);
 
+        // if (i == 100)
+        //     std::cout << " ";
 
         // cv::Mat outImage, outImageR;
         // cv::drawKeypoints(leftImage.image, leftKeys,outImage);
         // cv::imshow("left",outImage);
         // cv::drawKeypoints(rightImage.image, rightKeys,outImageR);
         cv::imshow("optical flow",optical);
-        cv::imshow("optical flow Right",opticalR);
+        // cv::imshow("optical flow Right",opticalR);
+        // cv::imshow("optical flow left right",opticalLR);
+        // cv::imshow("optical flow prev left right",opticalPLR);
+
         cv::waitKey(1);
 
 
@@ -1562,14 +1580,14 @@ void RobustMatcher2::testFeatureMatcherOptical()
 
     }
     
+    Logging("Last Transform", previousT,2);
 
     
 }
 
-void RobustMatcher2::ceresSolverFAST(SubPixelPoints& prevPoints, SubPixelPoints& points)
+void RobustMatcher2::ceresSolverFAST(const SubPixelPoints& prevPoints, const SubPixelPoints& points)
 {
     ceres::Problem problem;
-    ceres::LossFunction* lossfunction = NULL;
     const size_t end {prevPoints.left.size()};
     for (size_t i = 0; i < end; i++)
     {   
@@ -1581,24 +1599,24 @@ void RobustMatcher2::ceresSolverFAST(SubPixelPoints& prevPoints, SubPixelPoints&
             const double fy {zedcamera->cameraLeft.fy};
 
 
-            double x = (double)(((double)points.left[i].x-cx)*(double)points.depth[i]/fx);
-            double y = (double)(((double)points.left[i].y-cy)*(double)points.depth[i]/fy);
-            double z = (double)points.depth[i];
-            double xp = (double)(((double)prevPoints.left[i].x-cx)*(double)prevPoints.depth[i]/fx);
-            double yp = (double)(((double)prevPoints.left[i].y-cy)*(double)prevPoints.depth[i]/fy);
-            double zp = (double)prevPoints.depth[i];
+            const double x = (double)(((double)points.left[i].x-cx)*(double)points.depth[i]/fx);
+            const double y = (double)(((double)points.left[i].y-cy)*(double)points.depth[i]/fy);
+            const double z = (double)points.depth[i];
+            const double xp = (double)(((double)prevPoints.left[i].x-cx)*(double)prevPoints.depth[i]/fx);
+            const double yp = (double)(((double)prevPoints.left[i].y-cy)*(double)prevPoints.depth[i]/fy);
+            const double zp = (double)prevPoints.depth[i];
             Logging("Previous",cv::Point3d(xp,yp,zp),3);
             Logging("Observed",cv::Point3d(x,y,z),3);
-            Eigen::Vector3d p3d(x, y, z);
-            Eigen::Vector3d pp3d(xp, yp, zp);
+            const Eigen::Vector3d p3d(x, y, z);
+            const Eigen::Vector3d pp3d(xp, yp, zp);
             ceres::CostFunction* costfunction = Reprojection3dError::Create(p3d, pp3d);
-            problem.AddResidualBlock(costfunction, lossfunction, camera);
+            problem.AddResidualBlock(costfunction, nullptr /* squared loss */, camera);
         }
     }
     ceres::Solver::Options options;
-    options.linear_solver_type = ceres::DENSE_SCHUR;
+    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
     options.max_num_iterations = 100;
-    options.trust_region_strategy_type = ceres::DOGLEG;
+    // options.trust_region_strategy_type = ceres::DOGLEG;
     options.minimizer_progress_to_stdout = false;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);

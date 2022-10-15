@@ -75,6 +75,7 @@ class Zed_Camera
     private:
     
     public:
+        bool addKeyFrame {false};
         bool rectified {};
         float mBaseline, mFps;
         int mWidth, mHeight;

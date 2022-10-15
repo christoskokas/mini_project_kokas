@@ -97,7 +97,7 @@ private:
     Eigen::Vector3d point;
     Eigen::Vector2d observed;
     // Camera intrinsics
-    double K[4] = {520.9, 521.0, 325.1, 249.7}; // fx,fy,cx,cy
+    double K[4] = {265.795, 265.6975, 338.7225, 186.95575}; // fx,fy,cx,cy
 };
 
 

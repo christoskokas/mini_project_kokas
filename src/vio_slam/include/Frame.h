@@ -47,7 +47,7 @@ class Frame
     public:
         Frame();
         std::list< KeyFrameVars > keyFrames;
-        void pangoQuit(const Zed_Camera* zedPtr);                    
+        void pangoQuit(Zed_Camera* zedPtr);                    
 
 
 };
@@ -73,7 +73,7 @@ struct CameraFrame : public pangolin::Renderable
 
     const float cameraWidth = 0.0575f;
 
-    const Zed_Camera* zedCamera;
+    Zed_Camera* zedCamera;
 
     std::vector < pcl::PointXYZ > mPointCloud;
     ros::Subscriber groundSub;
