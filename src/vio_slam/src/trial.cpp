@@ -1448,7 +1448,7 @@ void RobustMatcher2::testFeatureExtractorClass()
 
 void RobustMatcher2::testFeatureMatcherOptical()
 {
-    const int sizeThreshold {80};
+    const int sizeThreshold {250};
     FeatureExtractor trial;
     FeatureMatcher matcher(zedcamera, zedcamera->mHeight, trial.getGridRows(), trial.getGridCols());
     // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
@@ -1504,11 +1504,13 @@ void RobustMatcher2::testFeatureMatcherOptical()
             prevPoints.add(points);
 
             cv::Mat outImageMatches;
-            // drawFeatureMatchesStereoSub(matches,prevLeftImage.realImage, points.left,points.right,outImageMatches);
-            // cv::imshow("Matches",outImageMatches);
+            drawFeatureMatchesStereoSub(matches,prevLeftImage.realImage, points.left,points.right,outImageMatches);
+            cv::imshow("Matches",outImageMatches);
+            Logging("i am innnn", "",3);
 
             points.clear();
         }
+        Logging("usable before", useable,3);
 
 
 
@@ -1520,13 +1522,12 @@ void RobustMatcher2::testFeatureMatcherOptical()
         // reduceVectorTemp<cv::Point2f,uchar>(prevPoints.left, status);
         // reduceVectorTemp<cv::Point2f,uchar>(points.left, status);
         // Logging("after size", prevPoints.left.size(),2);
-        // matcher.removeWithFund(prevPoints, points);
-        // Timer loop2("slidingWindowOptical left");
+        // // Timer loop2("slidingWindowOptical left");
 
-        // std::vector<bool> optCheck = matcher.slidingWindowOptical(prevLeftImage.image, leftImage.image, prevPoints.left, points.left);
+        std::vector<bool> optCheck = matcher.slidingWindowOptical(prevLeftImage.image, leftImage.image, prevPoints.left, points.left);
 
-        // prevPoints.reduce<bool>(optCheck);
-        // points.reduce<bool>(optCheck);
+        prevPoints.reduce<bool>(optCheck);
+        points.reduce<bool>(optCheck);
 
         // Timer loop3("computeRightPoints");
 
@@ -1538,15 +1539,104 @@ void RobustMatcher2::testFeatureMatcherOptical()
         prevPoints.reduce<bool>(optCheckR);
         points.reduce<bool>(optCheckR);
 
+        matcher.removeWithFund(prevPoints, points);
 
         useable = matcher.computeDepth(prevPoints, points);
 
+        // cv::Mat E = cv::findEssentialMat(points.left,prevPoints.left,zedcamera->cameraLeft.cameraMatrix);
 
+        // cv::Mat R1,R2,tlel,prevTcv;
+        // cv::decomposeEssentialMat(E,R1,R2,tlel);
+
+        // Logging("R1",R1,3);
+        // Logging("R2",R2,3);
+        // Logging("tlel",tlel,3);
+
+        // cv::Mat R_l,t_l;
+        // std::vector <uchar> lel;
+        // cv::recoverPose(E,points.left,prevPoints.left,zedcamera->cameraLeft.cameraMatrix,R_l,t_l,lel);
+
+        // Logging("R_l",R_l,3);
+        // Logging("t_l",t_l,3);
+
+        // prevPoints.reduce<uchar>(lel);
+        // points.reduce<uchar>(lel);
+
+        std::vector < cv::Point3d> lolol, lelel;
+        std::vector <cv::Point2f> trel;
+        const size_t end {prevPoints.left.size()};
+        lolol.reserve(end);
+        lelel.reserve(end);
+        trel.reserve(end);
+        for (size_t i = 0; i < end; i++)
+        {   
+            if (prevPoints.useable[i] && points.useable[i])
+            {
+                const double cx {zedcamera->cameraLeft.cx};
+                const double cy {zedcamera->cameraLeft.cy};
+                const double fx {zedcamera->cameraLeft.fx};
+                const double fy {zedcamera->cameraLeft.fy};
+
+                const double x = (double)(((double)points.left[i].x-cx)*(double)points.depth[i]/fx);
+                const double y = (double)(((double)points.left[i].y-cy)*(double)points.depth[i]/fy);
+                const double z = (double)points.depth[i];
+
+
+                const double xp = (double)(((double)prevPoints.left[i].x-cx)*(double)prevPoints.depth[i]/fx);
+                const double yp = (double)(((double)prevPoints.left[i].y-cy)*(double)prevPoints.depth[i]/fy);
+                const double zp = (double)prevPoints.depth[i];
+
+                lolol.emplace_back(cv::Point3d(xp,yp,zp));
+                trel.emplace_back(cv::Point2f(points.left[i].x,points.left[i].y));
+                lelel.emplace_back(cv::Point3d(x,y,z));
+
+            }
+        }
+        Logging("size before", lolol.size(),3);
+        matcher.inlierDetection(lolol,lelel, trel);
+        Logging("size after", lolol.size(),3);
+
+
+
+        cv::Mat Rvec, tvec;
+
+        // Logging("size ", lolol.size(),3);
+        // Logging("size p", points.left.size(),3);
+        // Logging("size prev", prevPoints.left.size(),3);
+        // Logging("usable after", useable,3);
+
+        // cv::solvePnPRansac(lolol,points.left,zedcamera->cameraLeft.cameraMatrix,zedcamera->cameraLeft.distCoeffs, Rvec,tvec,false,cv::SOLVEPNP_ITERATIVE);
+        // cv::Rodrigues(R_l,Rvec);
+        cv::Mat trial = (cv::Mat_<double>(1,5) << 0,0,0,0,0);
+        cv::solvePnP(lolol,trel,zedcamera->cameraLeft.cameraMatrix,trial, Rvec,tvec,false,cv::SOLVEPNP_ITERATIVE);
+
+        // cv::solvePnP(lelel,points.right,zedcamera->cameraRight.cameraMatrix,zedcamera->cameraRight.distCoeffs, Rvec,tvec,true,cv::SOLVEPNP_ITERATIVE);
+        cv::Mat trol;
+        cv::Rodrigues(Rvec,trol);
+
+        Eigen::Matrix3d Rlol;
+        Eigen::Vector3d tlol;
+        cv::cv2eigen(trol.t(),Rlol);
+        cv::cv2eigen(-tvec,tlol);
+
+        Eigen::Matrix4d Tra;
+        Tra.setIdentity();
+        Tra.block<3,3>(0,0) = Rlol;
+        Tra.block<3,1>(0,3) = tlol;
+
+        // Logging("R", Rlol,3);
+        // Logging("Rvec", Rvec,3);
+        // Logging("trol", trol,3);
+        // Logging("t", tlol,3);
+        // Logging("tvec", tvec,3);
+        // Logging("Tra", Tra,3);
+
+        T = Tra.matrix();
 
         // remove outliers using velocity
         // Timer loop4("ceresSolverFAST");
 
-        ceresSolverFAST(prevPoints,points);
+        // ceresSolverFAST(prevPoints,points);
         publishPose();
         // Timer loop5("AFTER");
         i++;

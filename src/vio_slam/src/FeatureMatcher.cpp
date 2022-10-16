@@ -12,7 +12,7 @@ void FeatureMatcher::computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat
 {
     cv::Mat err;
     std::vector <uchar> status;
-    cv::calcOpticalFlowPyrLK(prevLeftIm, leftIm, prevPoints.left, newPoints.left, status, err,cv::Size(21,21),3,cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 30, 0.01));
+    cv::calcOpticalFlowPyrLK(prevLeftIm, leftIm, prevPoints.left, newPoints.left, status, err,cv::Size(21,21),1,cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 30, 0.01));
 
     prevPoints.reduce<uchar>(status);
     newPoints.reduce<uchar>(status);
@@ -79,7 +79,7 @@ std::vector<bool> FeatureMatcher::slidingWindowOpticalLR(const cv::Mat& leftImag
             allDists.emplace_back(dist);
 
         }
-        if ((bestX == -windowMovementX) || (bestX == windowMovementX) || (bestX == (windowMovementX + 1)) || out || bestDist > 700)
+        if ((bestX == -windowMovementX) || (bestX == windowMovementX) || (bestX == (windowMovementX + 1)) || out)
         {
             goodDist.push_back(false);
             continue;
@@ -185,7 +185,7 @@ std::vector<bool> FeatureMatcher::slidingWindowOptical(const cv::Mat& prevImage,
             goodDist.push_back(false);
             continue;
         }
-        if ((bestX == -windowMovementX) || (bestX == windowMovementX) || (bestX == (windowMovementX + 1)) || (bestY == -windowMovementY) || (bestY == windowMovementY) || (bestY == (windowMovementY + 1)) || bestDist > 700)
+        if ((bestX == -windowMovementX) || (bestX == windowMovementX) || (bestX == (windowMovementX + 1)) || (bestY == -windowMovementY) || (bestY == windowMovementY) || (bestY == (windowMovementY + 1)))
         {
             goodDist.push_back(false);
             continue;
@@ -344,6 +344,11 @@ void FeatureMatcher::removeWithFund(SubPixelPoints& prevPoints, SubPixelPoints& 
 
     prevPoints.reduce<uchar>(inliers);
     points.reduce<uchar>(inliers);
+
+    // cv::findFundamentalMat(prevPoints.right, points.right, inliers, cv::FM_RANSAC, 1, 0.99);
+
+    // prevPoints.reduce<uchar>(inliers);
+    // points.reduce<uchar>(inliers);
 }
 
 void FeatureMatcher::computeRightPoints(const SubPixelPoints& prevPoints, SubPixelPoints& points)
@@ -367,7 +372,6 @@ int FeatureMatcher::computeDepth(const SubPixelPoints& prevPoints, SubPixelPoint
 {
     int count {0};
     const size_t size {points.left.size()};
-    points.right.resize(size);
     points.depth.resize(size);
     points.useable.resize(size);
     for (size_t i {0};i < size;i++)
@@ -382,8 +386,8 @@ int FeatureMatcher::computeDepth(const SubPixelPoints& prevPoints, SubPixelPoint
             if (depth < zedptr->mBaseline * 40)
             {
                 count ++;
-                points.useable[i] = true;
                 points.depth[i] = depth;
+                points.useable[i] = true;
                 continue;
             }
             points.depth[i] = 0.0f;
@@ -398,6 +402,35 @@ int FeatureMatcher::computeDepth(const SubPixelPoints& prevPoints, SubPixelPoint
     }
 
     return count;
+}
+
+void FeatureMatcher::inlierDetection(std::vector < cv::Point3d>& first, std::vector < cv::Point3d>& second, std::vector <cv::Point2f>& toReduce)
+{
+    double distance {0.0};
+    const size_t end = second.size();
+    for (size_t i {0};i < end; i++)
+    {
+        distance += computeDistanceOf3DPoints(first[i],second[i]);
+    }
+    double avDist {distance/end};
+
+    std::vector <bool> check;
+    check.resize(end);
+    for (size_t i {0};i < end; i++)
+    {
+        if (abs(computeDistanceOf3DPoints(first[i],second[i]) - avDist) > 0.1f)
+            check[i] = false;
+        else
+            check[i] = true;
+    }
+
+    reduceVectorTemp<cv::Point3d,bool>(first,check);
+    reduceVectorTemp<cv::Point2f,bool>(toReduce,check);
+}
+
+double FeatureMatcher::computeDistanceOf3DPoints(cv::Point3d& first, cv::Point3d& second)
+{
+    return sqrt(pow(first.x-second.x,2) + pow(first.y-second.y,2) + pow(first.z-second.z,2));
 }
 
 void FeatureMatcher::addUcharVectors(std::vector <uchar>& first, std::vector <uchar>& second)

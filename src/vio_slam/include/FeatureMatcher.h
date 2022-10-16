@@ -67,7 +67,10 @@ class FeatureMatcher
         void removeWithFund(SubPixelPoints& prevPoints, SubPixelPoints& points);
         void computeRightPoints(const SubPixelPoints& prevPoints, SubPixelPoints& points);
         int computeDepth(const SubPixelPoints& prevPoints, SubPixelPoints& points);
+        void inlierDetection(std::vector < cv::Point3d>& first, std::vector < cv::Point3d>& second, std::vector <cv::Point2f>& toReduce);
 
+
+        double computeDistanceOf3DPoints(cv::Point3d& first, cv::Point3d& second);
 
         void addUcharVectors(std::vector <uchar>& first, std::vector <uchar>& second);
 
