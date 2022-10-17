@@ -1448,17 +1448,24 @@ void RobustMatcher2::testFeatureExtractorClass()
 
 void RobustMatcher2::testFeatureMatcherOptical()
 {
-    const int sizeThreshold {250};
+    const int sizeThreshold {150};
     FeatureExtractor trial;
     FeatureMatcher matcher(zedcamera, zedcamera->mHeight, trial.getGridRows(), trial.getGridCols());
+    PoseEstimator poseEst;
+    
     // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
     int i {0};
     int useable {0};
     const int times {657};
+    std::chrono::_V2::system_clock::time_point startTime, endTime;
+    std::chrono::duration<float> duration;
     Timer all("all");
     SubPixelPoints points, prevPoints;
     while(i < times)
     {
+        if (i > 1)
+            endTime =  startTime;
+        startTime = std::chrono::high_resolution_clock::now();
         leftImage.getImage(i, "left");
         rightImage.getImage(i, "right");
         leftImage.rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
@@ -1592,25 +1599,47 @@ void RobustMatcher2::testFeatureMatcherOptical()
 
             }
         }
-        Logging("size before", lolol.size(),3);
-        matcher.inlierDetection(lolol,lelel, trel);
-        Logging("size after", lolol.size(),3);
+        // Logging("size before", lolol.size(),3);
+        // matcher.inlierDetection(lolol,lelel, trel);
+        // Logging("size after", lolol.size(),3);
+        // useable = lolol.size();
 
 
-
-        cv::Mat Rvec, tvec;
-
+        cv::Mat Rvec(3,1,CV_64F), tvec(3,1,CV_64F);
         // Logging("size ", lolol.size(),3);
         // Logging("size p", points.left.size(),3);
         // Logging("size prev", prevPoints.left.size(),3);
         // Logging("usable after", useable,3);
 
-        // cv::solvePnPRansac(lolol,points.left,zedcamera->cameraLeft.cameraMatrix,zedcamera->cameraLeft.distCoeffs, Rvec,tvec,false,cv::SOLVEPNP_ITERATIVE);
-        // cv::Rodrigues(R_l,Rvec);
         cv::Mat trial = (cv::Mat_<double>(1,5) << 0,0,0,0,0);
-        cv::solvePnP(lolol,trel,zedcamera->cameraLeft.cameraMatrix,trial, Rvec,tvec,false,cv::SOLVEPNP_ITERATIVE);
+
+        if (i < 3)
+        {
+            cv::solvePnP(lolol,trel,zedcamera->cameraLeft.cameraMatrix,trial, Rvec,tvec,false,cv::SOLVEPNP_ITERATIVE);
+            poseEst.setPrevR(Rvec);
+            poseEst.setPrevT(tvec);
+            if (i > 1)
+            {
+                duration = endTime - startTime;
+                float dt = duration.count();
+                poseEst.setPrevDt(dt);
+            }
+        }
+        else
+        {
+            duration = endTime - startTime;
+            float dt = duration.count();
+            poseEst.estimatePose(Rvec, tvec, dt);
+            cv::solvePnP(lolol,trel,zedcamera->cameraLeft.cameraMatrix,trial, Rvec,tvec,true,cv::SOLVEPNP_ITERATIVE);
+        }
+
+        // cv::solvePnPRansac(lolol,trel,zedcamera->cameraLeft.cameraMatrix,trial, Rvec,tvec,false,cv::SOLVEPNP_ITERATIVE);
+        // cv::Rodrigues(R_l,Rvec);
 
         // cv::solvePnP(lelel,points.right,zedcamera->cameraRight.cameraMatrix,zedcamera->cameraRight.distCoeffs, Rvec,tvec,true,cv::SOLVEPNP_ITERATIVE);
+
+
+
         cv::Mat trol;
         cv::Rodrigues(Rvec,trol);
 

@@ -54,6 +54,8 @@ src/trial.cpp
 src/Settings.cpp
 src/FeatureExtractor.cpp
 src/FeatureMatcher.cpp
+src/MaxClique.cpp
+src/PoseEstimator.cpp
 include/Camera.h
 include/FeatureDrawer.h
 include/Frame.h
@@ -61,6 +63,8 @@ include/trial.h
 include/Settings.h
 include/FeatureExtractor.h
 include/FeatureMatcher.h
+include/MaxClique.h
+include/PoseEstimator.h
 )
 
 ## Generate added messages and services

@@ -4,6 +4,7 @@
 #define TRIAL_H
 
 #include "Camera.h"
+#include "PoseEstimator.h"
 #include "FeatureExtractor.h"
 #include "FeatureMatcher.h"
 #include "Settings.h"

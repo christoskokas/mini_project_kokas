@@ -22,10 +22,10 @@ void FeatureMatcher::computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat
 std::vector<bool> FeatureMatcher::slidingWindowOpticalLR(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector<cv::Point2f>& leftPoints, std::vector<cv::Point2f>& rightPoints)
 {
     // Because we use FAST to detect Features the sliding window will get a window of side 11 pixels (5 (3 + 2offset) pixels radius + 1 which is the feature)
-    const int windowRadius {3};
+    const int windowRadius {5};
     // Because of the EdgeThreshold used around the image we dont need to check out of bounds
 
-    const int windowMovementX {3};
+    const int windowMovementX {5};
 
     std::vector<bool> goodDist;
     const size_t size {leftPoints.size()};
@@ -113,11 +113,11 @@ std::vector<bool> FeatureMatcher::slidingWindowOptical(const cv::Mat& prevImage,
 {
     // Timer("sliding Window took");
     // Because we use FAST to detect Features the sliding window will get a window of side 11 pixels (5 (3 + 2offset) pixels radius + 1 which is the feature)
-    const int windowRadius {2};
+    const int windowRadius {5};
     // Because of the EdgeThreshold used around the image we dont need to check out of bounds
 
-    const int windowMovementX {2};
-    const int windowMovementY {2};
+    const int windowMovementX {4};
+    const int windowMovementY {4};
 
     std::vector<bool> goodDist;
     goodDist.reserve(prevPoints.size());
@@ -340,15 +340,15 @@ std::vector<bool> FeatureMatcher::slidingWindowOpticalBackUp(const cv::Mat& prev
 void FeatureMatcher::removeWithFund(SubPixelPoints& prevPoints, SubPixelPoints& points)
 {
     std::vector<uchar> inliers;
-    cv::findFundamentalMat(prevPoints.left, points.left, inliers, cv::FM_RANSAC, 1, 0.99);
+    cv::findFundamentalMat(prevPoints.left, points.left, inliers, cv::FM_RANSAC, 3, 0.99);
 
     prevPoints.reduce<uchar>(inliers);
     points.reduce<uchar>(inliers);
 
-    // cv::findFundamentalMat(prevPoints.right, points.right, inliers, cv::FM_RANSAC, 1, 0.99);
+    cv::findFundamentalMat(prevPoints.right, points.right, inliers, cv::FM_RANSAC, 3, 0.99);
 
-    // prevPoints.reduce<uchar>(inliers);
-    // points.reduce<uchar>(inliers);
+    prevPoints.reduce<uchar>(inliers);
+    points.reduce<uchar>(inliers);
 }
 
 void FeatureMatcher::computeRightPoints(const SubPixelPoints& prevPoints, SubPixelPoints& points)
@@ -406,23 +406,93 @@ int FeatureMatcher::computeDepth(const SubPixelPoints& prevPoints, SubPixelPoint
 
 void FeatureMatcher::inlierDetection(std::vector < cv::Point3d>& first, std::vector < cv::Point3d>& second, std::vector <cv::Point2f>& toReduce)
 {
-    double distance {0.0};
+
     const size_t end = second.size();
+    bool conn[end][end];
+
     for (size_t i {0};i < end; i++)
     {
-        distance += computeDistanceOf3DPoints(first[i],second[i]);
+        for (size_t j {0};j < end; j++)
+        {
+            if (abs(computeDistanceOf3DPoints(first[i],first[j]) - computeDistanceOf3DPoints(second[i],second[j])) < 0.1f)
+                conn[i][j] = true;
+        }
     }
-    double avDist {distance/end};
+
+    int maxIdx {0};
+    int maxSum {0};
+
+    std::vector<std::pair<int,int>>sums;
+    sums.reserve(end);
+
+    for (size_t i {0};i < end; i++)
+    {
+        int sum {0};
+        for (size_t j {0};j < end; j++)
+        {
+            sum += conn[i][j];
+        }
+        sums.emplace_back(std::make_pair(i,sum));
+    }
+
+    std::sort(sums.begin(),sums.end(),[](const std::pair<int,int>& left, const std::pair<int,int>& right)
+    {return left.second > right.second;});
+
+    // get 60% of the best pairs (general case of outlier percentage)
+
+    const int maxInliers {cvRound(sums.size()*0.7f)};
+
+    
+
+    // std::vector <bool> cliques(end,false);
+    // std::vector <int > indxes;
+    // indxes.push_back(maxIdx);
+    // cliques[maxIdx] = true;
+    // int count {1};
+
+    // for (int i = 0;i < indxes.size();i++)
+    // {
+    //     bool added {false};
+    //     for (int j = 0;j<end;j++)
+    //     {
+    //         if (conn[indxes[i]][j])
+    //         {
+    //             indxes.push_back(j);
+    //             added = true;
+    //         }
+    //     }
+    //     if (!added)
+    //         break;
+    //     for (int k = i + 1;k < indxes.size();k++)
+    //     {
+            
+    //     }
+    // }
 
     std::vector <bool> check;
     check.resize(end);
-    for (size_t i {0};i < end; i++)
+    for (size_t i {0};i < maxInliers; i++)
     {
-        if (abs(computeDistanceOf3DPoints(first[i],second[i]) - avDist) > 0.1f)
-            check[i] = false;
-        else
-            check[i] = true;
+        Logging("s",sums[i].first,3);
+        check[sums[i].first] = true;
     }
+
+    // double distance {0.0};
+    // for (size_t i {0};i < end; i++)
+    // {
+    //     distance += computeDistanceOf3DPoints(first[i],second[i]);
+    // }
+    // double avDist {distance/end};
+
+    // std::vector <bool> check;
+    // check.resize(end);
+    // for (size_t i {0};i < end; i++)
+    // {
+    //     if ((abs(computeDistanceOf3DPoints(first[i],second[i])) < 1.1f*avDist) && (abs(computeDistanceOf3DPoints(first[i],second[i])) >0.9f*avDist))
+    //         check[i] = false;
+    //     else
+    //         check[i] = true;
+    // }
 
     reduceVectorTemp<cv::Point3d,bool>(first,check);
     reduceVectorTemp<cv::Point2f,bool>(toReduce,check);
