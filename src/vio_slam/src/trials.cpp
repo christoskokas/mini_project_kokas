@@ -23,10 +23,14 @@
 
 // TODO NOW Change camera cpp, add transform from imu to camera
 
+
 int main (int argc, char **argv)
 {
+#if KITTI_DATASET
+    vio_slam::ConfigFile yamlFile("config_kitti.yaml");
+#else
     vio_slam::ConfigFile yamlFile("config.yaml");
-
+#endif
 
     // ros::init(argc, argv, "trial");
     // ros::NodeHandle nh;

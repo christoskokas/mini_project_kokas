@@ -44,9 +44,6 @@
 namespace vio_slam
 {
 
-bool kitti = false;
-
-
 struct GoodFeatures
 {
     std::vector<cv::Point2f> shiPoints;

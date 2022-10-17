@@ -408,31 +408,18 @@ void FeatureMatcher::inlierDetection(std::vector < cv::Point3d>& first, std::vec
 {
 
     const size_t end = second.size();
-    bool conn[end][end];
-
-    for (size_t i {0};i < end; i++)
-    {
-        for (size_t j {0};j < end; j++)
-        {
-            if (abs(computeDistanceOf3DPoints(first[i],first[j]) - computeDistanceOf3DPoints(second[i],second[j])) < 0.1f)
-                conn[i][j] = true;
-        }
-    }
-
-    int maxIdx {0};
-    int maxSum {0};
-
     std::vector<std::pair<int,int>>sums;
     sums.reserve(end);
 
     for (size_t i {0};i < end; i++)
     {
         int sum {0};
+        sums.emplace_back(std::make_pair(i,0));
         for (size_t j {0};j < end; j++)
         {
-            sum += conn[i][j];
+            if (abs(computeDistanceOf3DPoints(first[i],first[j]) - computeDistanceOf3DPoints(second[i],second[j])) < 0.3f)
+                sums[i].second += 1;
         }
-        sums.emplace_back(std::make_pair(i,sum));
     }
 
     std::sort(sums.begin(),sums.end(),[](const std::pair<int,int>& left, const std::pair<int,int>& right)
@@ -440,7 +427,7 @@ void FeatureMatcher::inlierDetection(std::vector < cv::Point3d>& first, std::vec
 
     // get 60% of the best pairs (general case of outlier percentage)
 
-    const int maxInliers {cvRound(sums.size()*0.7f)};
+    const int maxInliers {cvRound(sums.size()*0.8f)};
 
     
 
@@ -473,7 +460,7 @@ void FeatureMatcher::inlierDetection(std::vector < cv::Point3d>& first, std::vec
     check.resize(end);
     for (size_t i {0};i < maxInliers; i++)
     {
-        Logging("s",sums[i].first,3);
+        // Logging("s",sums[i].first,3);
         check[sums[i].first] = true;
     }
 
@@ -500,7 +487,7 @@ void FeatureMatcher::inlierDetection(std::vector < cv::Point3d>& first, std::vec
 
 double FeatureMatcher::computeDistanceOf3DPoints(cv::Point3d& first, cv::Point3d& second)
 {
-    return sqrt(pow(first.x-second.x,2) + pow(first.y-second.y,2) + pow(first.z-second.z,2));
+    return (pow(first.x-second.x,2) + pow(first.y-second.y,2) + pow(first.z-second.z,2));
 }
 
 void FeatureMatcher::addUcharVectors(std::vector <uchar>& first, std::vector <uchar>& second)

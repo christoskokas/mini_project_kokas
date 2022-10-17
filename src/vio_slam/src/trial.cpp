@@ -1126,18 +1126,15 @@ void ImageFrame::getImage(int frameNumber, const char* whichImage)
     std::string imagePath;
     std::string first;
     std::string second, format;
-    if (!kitti)
-    {
-        first = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/";
-        second = "/frame";
-        format = ".jpg";
-    }
-    else
-    {
-        first = "/home/christos/Downloads/data_odometry_gray/dataset/sequences/00/";
-        second = "/00";
-        format = ".png";
-    }
+#if KITTI_DATASET
+    first = "/home/christos/Downloads/data_odometry_gray/dataset/sequences/00/";
+    second = "/00";
+    format = ".png";
+#else
+    first = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/";
+    second = "/frame";
+    format = ".jpg";
+#endif
 
     if (frameNumber > 999)
     {
@@ -1448,7 +1445,7 @@ void RobustMatcher2::testFeatureExtractorClass()
 
 void RobustMatcher2::testFeatureMatcherOptical()
 {
-    const int sizeThreshold {150};
+    const int sizeThreshold {100};
     FeatureExtractor trial;
     FeatureMatcher matcher(zedcamera, zedcamera->mHeight, trial.getGridRows(), trial.getGridCols());
     PoseEstimator poseEst;
@@ -1468,10 +1465,13 @@ void RobustMatcher2::testFeatureMatcherOptical()
         startTime = std::chrono::high_resolution_clock::now();
         leftImage.getImage(i, "left");
         rightImage.getImage(i, "right");
-        leftImage.rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
-        leftImage.rectifyImage(leftImage.realImage,rmap[0][0],rmap[0][1]);
-        rightImage.rectifyImage(rightImage.image, rmap[1][0],rmap[1][1]);
-        rightImage.rectifyImage(rightImage.realImage, rmap[1][0],rmap[1][1]);
+        if (!zedcamera->rectified)
+        {
+            leftImage.rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
+            leftImage.rectifyImage(leftImage.realImage,rmap[0][0],rmap[0][1]);
+            rightImage.rectifyImage(rightImage.image, rmap[1][0],rmap[1][1]);
+            rightImage.rectifyImage(rightImage.realImage, rmap[1][0],rmap[1][1]);
+        }
         std::vector <cv::DMatch> matches;
 
         Timer loop("loop processing time");
@@ -1750,25 +1750,22 @@ void RobustMatcher2::ceresSolverFAST(const SubPixelPoints& prevPoints, const Sub
 
 void RobustMatcher2::calcP1P2()
 {
-    if (!kitti)
-    {
-        cv::Mat a1, a2;
-        cv::hconcat(cv::Mat::eye(cv::Size(3,3),CV_64FC1),cv::Mat::zeros(cv::Size(1,3),CV_64FC1),a1);
-        cv::hconcat(zedcamera->sensorsRotate,zedcamera->sensorsTranslate,a2);
-        
-        P1 = zedcamera->cameraLeft.cameraMatrix * a1;
-        P2 = zedcamera->cameraRight.cameraMatrix * a2;
+#if KITTI_DATASET
+    P1 = (cv::Mat_<double>(3,4) << 7.188560000000e+02, 0.000000000000e+00, 6.071928000000e+02, 0.000000000000e+00, 0.000000000000e+00, 7.188560000000e+02, 1.852157000000e+02, 0.000000000000e+00, 0.000000000000e+00, 0.000000000000e+00, 1.000000000000e+00, 0.000000000000e+00);
+    P2 = (cv::Mat_<double>(3,4) << 7.188560000000e+02, 0.000000000000e+00, 6.071928000000e+02, -3.861448000000e+02, 0.000000000000e+00, 7.188560000000e+02, 1.852157000000e+02, 0.000000000000e+00, 0.000000000000e+00, 0.000000000000e+00, 1.000000000000e+00, 0.000000000000e+00);
+    Logging("P1",P1,1);
+    Logging("P2",P2,1);
+#else
+    cv::Mat a1, a2;
+    cv::hconcat(cv::Mat::eye(cv::Size(3,3),CV_64FC1),cv::Mat::zeros(cv::Size(1,3),CV_64FC1),a1);
+    cv::hconcat(zedcamera->sensorsRotate,zedcamera->sensorsTranslate,a2);
+    
+    P1 = zedcamera->cameraLeft.cameraMatrix * a1;
+    P2 = zedcamera->cameraRight.cameraMatrix * a2;
 
-        Logging("P1",P1,1);
-        Logging("P2",P2,1);
-    }
-    else
-    {
-        P1 = (cv::Mat_<double>(3,4) << 7.188560000000e+02, 0.000000000000e+00, 6.071928000000e+02, 0.000000000000e+00, 0.000000000000e+00, 7.188560000000e+02, 1.852157000000e+02, 0.000000000000e+00, 0.000000000000e+00, 0.000000000000e+00, 1.000000000000e+00, 0.000000000000e+00);
-        P2 = (cv::Mat_<double>(3,4) << 7.188560000000e+02, 0.000000000000e+00, 6.071928000000e+02, -3.861448000000e+02, 0.000000000000e+00, 7.188560000000e+02, 1.852157000000e+02, 0.000000000000e+00, 0.000000000000e+00, 0.000000000000e+00, 1.000000000000e+00, 0.000000000000e+00);
-        Logging("P1",P1,1);
-        Logging("P2",P2,1);
-    }
+    Logging("P1",P1,1);
+    Logging("P2",P2,1);
+#endif
 }
 
 void ImageFrame::findFeaturesOnImage(int frameNumber, const char* whichImage, cv::Mat& map1, cv::Mat& map2)
