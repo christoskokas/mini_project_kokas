@@ -54,7 +54,6 @@ src/trial.cpp
 src/Settings.cpp
 src/FeatureExtractor.cpp
 src/FeatureMatcher.cpp
-src/MaxClique.cpp
 src/PoseEstimator.cpp
 src/FeatureManager.cpp
 include/Camera.h
@@ -64,7 +63,6 @@ include/trial.h
 include/Settings.h
 include/FeatureExtractor.h
 include/FeatureMatcher.h
-include/MaxClique.h
 include/PoseEstimator.h
 include/FeatureManager.h
 )
