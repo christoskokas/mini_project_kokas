@@ -12,7 +12,7 @@ void FeatureMatcher::computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat
 {
     cv::Mat err;
     std::vector <uchar> status;
-    cv::calcOpticalFlowPyrLK(prevLeftIm, leftIm, prevPoints.left, newPoints.left, status, err,cv::Size(21,21),1,cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 30, 0.01));
+    cv::calcOpticalFlowPyrLK(prevLeftIm, leftIm, prevPoints.left, newPoints.left, status, err,cv::Size(21,21),3,cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 30, 0.01));
 
     prevPoints.reduce<uchar>(status);
     newPoints.reduce<uchar>(status);
@@ -340,12 +340,12 @@ std::vector<bool> FeatureMatcher::slidingWindowOpticalBackUp(const cv::Mat& prev
 void FeatureMatcher::removeWithFund(SubPixelPoints& prevPoints, SubPixelPoints& points)
 {
     std::vector<uchar> inliers;
-    cv::findFundamentalMat(prevPoints.left, points.left, inliers, cv::FM_RANSAC, 3, 0.99);
+    cv::findFundamentalMat(prevPoints.left, points.left, inliers, cv::FM_RANSAC, 1, 0.99);
 
     prevPoints.reduce<uchar>(inliers);
     points.reduce<uchar>(inliers);
 
-    cv::findFundamentalMat(prevPoints.right, points.right, inliers, cv::FM_RANSAC, 3, 0.99);
+    cv::findFundamentalMat(prevPoints.right, points.right, inliers, cv::FM_RANSAC, 1, 0.99);
 
     prevPoints.reduce<uchar>(inliers);
     points.reduce<uchar>(inliers);
@@ -368,10 +368,30 @@ void FeatureMatcher::computeRightPoints(const SubPixelPoints& prevPoints, SubPix
 
 }
 
-int FeatureMatcher::computeDepth(const SubPixelPoints& prevPoints, SubPixelPoints& points)
+void FeatureMatcher::outlierRejection(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, const cv::Mat& rightIm, SubPixelPoints& prevPoints, SubPixelPoints& points)
 {
-    int count {0};
+    // std::vector<bool> optCheck = slidingWindowOptical(prevLeftIm, leftIm, prevPoints.left, points.left);
+
+    // prevPoints.reduce<bool>(optCheck);
+    // points.reduce<bool>(optCheck);
+
+    computeRightPoints(prevPoints, points);
+
+    std::vector<bool> optCheckR = slidingWindowOpticalLR(leftIm, rightIm, points.left, points.right);
+
+    prevPoints.reduce<bool>(optCheckR);
+    points.reduce<bool>(optCheckR);
+
+    removeWithFund(prevPoints, points);
+
+    computeDepth(prevPoints, points);
+}
+
+void FeatureMatcher::computeDepth(SubPixelPoints& prevPoints, SubPixelPoints& points)
+{
     const size_t size {points.left.size()};
+    std::vector<bool>check;
+    check.resize(size);
     points.depth.resize(size);
     points.useable.resize(size);
     for (size_t i {0};i < size;i++)
@@ -381,11 +401,11 @@ int FeatureMatcher::computeDepth(const SubPixelPoints& prevPoints, SubPixelPoint
 
         if (disparity > 0.0f)
         {
+            check[i] = true;
             const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
             // if false, depth is unusable
             if (depth < zedptr->mBaseline * 40)
             {
-                count ++;
                 points.depth[i] = depth;
                 points.useable[i] = true;
                 continue;
@@ -401,7 +421,8 @@ int FeatureMatcher::computeDepth(const SubPixelPoints& prevPoints, SubPixelPoint
         }
     }
 
-    return count;
+    points.reduce<bool>(check);
+    prevPoints.reduce<bool>(check);
 }
 
 void FeatureMatcher::inlierDetection(std::vector < cv::Point3d>& first, std::vector < cv::Point3d>& second, std::vector <cv::Point2f>& toReduce)
@@ -417,7 +438,7 @@ void FeatureMatcher::inlierDetection(std::vector < cv::Point3d>& first, std::vec
         sums.emplace_back(std::make_pair(i,0));
         for (size_t j {0};j < end; j++)
         {
-            if (abs(computeDistanceOf3DPoints(first[i],first[j]) - computeDistanceOf3DPoints(second[i],second[j])) < 0.3f)
+            if (abs(computeDistanceOf3DPoints(first[i],first[j]) - computeDistanceOf3DPoints(second[i],second[j])) < 0.01f)
                 sums[i].second += 1;
         }
     }
@@ -425,62 +446,16 @@ void FeatureMatcher::inlierDetection(std::vector < cv::Point3d>& first, std::vec
     std::sort(sums.begin(),sums.end(),[](const std::pair<int,int>& left, const std::pair<int,int>& right)
     {return left.second > right.second;});
 
-    // get 60% of the best pairs (general case of outlier percentage)
+    const int minSum {cvRound((int)end/10)};
 
-    const int maxInliers {cvRound(sums.size()*0.8f)};
-
-    
-
-    // std::vector <bool> cliques(end,false);
-    // std::vector <int > indxes;
-    // indxes.push_back(maxIdx);
-    // cliques[maxIdx] = true;
-    // int count {1};
-
-    // for (int i = 0;i < indxes.size();i++)
-    // {
-    //     bool added {false};
-    //     for (int j = 0;j<end;j++)
-    //     {
-    //         if (conn[indxes[i]][j])
-    //         {
-    //             indxes.push_back(j);
-    //             added = true;
-    //         }
-    //     }
-    //     if (!added)
-    //         break;
-    //     for (int k = i + 1;k < indxes.size();k++)
-    //     {
-            
-    //     }
-    // }
-
+    int maxInliers {0};
     std::vector <bool> check;
     check.resize(end);
-    for (size_t i {0};i < maxInliers; i++)
+    for (size_t i {0};i<end;i++)
     {
-        // Logging("s",sums[i].first,3);
-        check[sums[i].first] = true;
+        if (sums[i].second > minSum)
+            check[sums[i].first] = true;
     }
-
-    // double distance {0.0};
-    // for (size_t i {0};i < end; i++)
-    // {
-    //     distance += computeDistanceOf3DPoints(first[i],second[i]);
-    // }
-    // double avDist {distance/end};
-
-    // std::vector <bool> check;
-    // check.resize(end);
-    // for (size_t i {0};i < end; i++)
-    // {
-    //     if ((abs(computeDistanceOf3DPoints(first[i],second[i])) < 1.1f*avDist) && (abs(computeDistanceOf3DPoints(first[i],second[i])) >0.9f*avDist))
-    //         check[i] = false;
-    //     else
-    //         check[i] = true;
-    // }
-
     reduceVectorTemp<cv::Point3d,bool>(first,check);
     reduceVectorTemp<cv::Point2f,bool>(toReduce,check);
 }
@@ -540,8 +515,8 @@ void FeatureMatcher::matchPoints(const StereoDescriptors& desc, const std::vecto
 
         int bestDist = 256;
         int bestIdx = -1;
-        int secDist = 256;
-        int secIdx = -1;
+        // int secDist = 256;
+        // int secIdx = -1;
         const int lGrid {it->class_id};
 
         // If the idx has already been checked because they are repeated in indexes vector
@@ -558,17 +533,17 @@ void FeatureMatcher::matchPoints(const StereoDescriptors& desc, const std::vecto
             {
                 const int idx {indexes[iKey][allIdx]};
                 {
-                    const size_t endidxes {checkedIdxes.size()};
-                    bool found {false};
-                    for (size_t checkIdx {0}; checkIdx < endidxes; checkIdx++)
-                        if (idx == checkedIdxes[checkIdx])
-                        {
-                            found = true;
-                            break;
-                        }
-                    if (found)
-                        continue;
-                    checkedIdxes.push_back(idx);
+                    // const size_t endidxes {checkedIdxes.size()};
+                    // bool found {false};
+                    // for (size_t checkIdx {0}; checkIdx < endidxes; checkIdx++)
+                    //     if (idx == checkedIdxes[checkIdx])
+                    //     {
+                    //         found = true;
+                    //         break;
+                    //     }
+                    // if (found)
+                    //     continue;
+                    // checkedIdxes.push_back(idx);
                     
                     const int rGrid {keypoints.right[idx].class_id};
                     const int difGrid {lGrid - rGrid};
@@ -581,25 +556,23 @@ void FeatureMatcher::matchPoints(const StereoDescriptors& desc, const std::vecto
 
                 if (bestDist > dist)
                 {
-                    secDist = bestDist;
-                    secIdx = bestIdx;
+                    // secDist = bestDist;
+                    // secIdx = bestIdx;
                     bestDist = dist;
                     bestIdx = idx;
                     continue;
                 }
-                if (secDist > dist)
-                {
-                    secDist = dist;
-                    secIdx = idx;
-                }
+                // if (secDist > dist)
+                // {
+                //     secDist = dist;
+                //     secIdx = idx;
+                // }
             }
         }
-        if (bestDist > 100)
+        if (bestDist > 75)
             continue;
-        if (bestIdx != -1)
-        {
-            if (bestDist < 0.8f*secDist)
-            {
+            // if (bestDist < 0.8f*secDist)
+            // {
                 if (matchedDist[bestIdx] != 256)
                 {
                     if (bestDist < matchedDist[bestIdx])
@@ -623,8 +596,7 @@ void FeatureMatcher::matchPoints(const StereoDescriptors& desc, const std::vecto
                     matchesCount ++;
                 }
 
-            }
-        }
+            // }
     }
 }
 
@@ -842,14 +814,17 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
     const int windowRadius {5};
     // Because of the EdgeThreshold used around the image we dont need to check out of bounds
 
-    const int windowMovementX {3};
+    const int windowMovementX {5};
 
     std::vector<bool> goodDist;
+    std::vector < std::pair<int,int> > allBestDists;
+    allBestDists.reserve(tempMatches.size());
     goodDist.reserve(tempMatches.size());
     matches.reserve(tempMatches.size());
     points.depth.reserve(tempMatches.size());
     points.useable.reserve(tempMatches.size());
     // newMatches.reserve(matches.size());
+    int matchesCount {0};
     {
     std::vector<cv::DMatch>::const_iterator it, end(tempMatches.end());
     for (it = tempMatches.begin(); it != end; it++)
@@ -898,8 +873,9 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
             continue;
         }
         // Logging("delta ",delta,2);
-
-        goodDist.push_back(true);
+        allBestDists.emplace_back(std::make_pair(matchesCount,bestDist));
+        matchesCount++;
+        
 
 
         points.right[it->trainIdx].x += bestX + delta;
@@ -908,6 +884,8 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
         const float disparity {points.left[it->queryIdx].x - points.right[it->trainIdx].x};
         if (disparity > 0.0f)
         {
+            goodDist.push_back(true);
+
             const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
             // if false depth is unusable
             if (depth < zedptr->mBaseline * 40)
@@ -923,10 +901,18 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
         }
         else
         {
-            points.depth.emplace_back(0.0f);
-            points.useable.emplace_back(false);
+            goodDist.push_back(false);
         }
     }
+    }
+
+    if (matchesCount > maxMatches)
+    {
+        std::sort(allBestDists.begin(),allBestDists.end(),[](const std::pair<int,int>& left, const std::pair<int,int>& right)
+        {return left.second > right.second;});
+        const size_t end {allBestDists.size()};
+        for (size_t i {(size_t)maxMatches}; i < end; i++)
+            goodDist[allBestDists[i].first] = false;
     }
 
 
@@ -943,7 +929,7 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
             matchesCount += 1;
         }
     }
-    // Logging("matches size", matches.size(),2);
+    Logging("matches size", matches.size(),2);
 }
 
 int FeatureMatcher::DescriptorDistance(const cv::Mat &a, const cv::Mat &b)

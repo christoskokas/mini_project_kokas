@@ -5,6 +5,7 @@
 
 #include "Camera.h"
 #include "PoseEstimator.h"
+#include "FeatureManager.h"
 #include "FeatureExtractor.h"
 #include "FeatureMatcher.h"
 #include "Settings.h"

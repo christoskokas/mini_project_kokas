@@ -167,8 +167,8 @@ void FeatureExtractor::extractFeatures(cv::Mat& leftImage, cv::Mat& rightImage, 
 void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
 {
     fastKeys.reserve(2000);
-    std::vector <cv::KeyPoint> allKeys;
-    allKeys.reserve(4000);
+    // std::vector <cv::KeyPoint> allKeys;
+    // allKeys.reserve(4000);
     const int fastEdge = 3;
     const int edgeWFast = edgeThreshold - fastEdge;
     cv::Mat croppedImage = image.colRange(edgeWFast,image.cols - edgeWFast).rowRange(edgeWFast, image.rows - edgeWFast);
@@ -196,7 +196,7 @@ void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>&
 
             cv::FAST(croppedImage.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,maxFastThreshold,true);
 
-            if (temp.size() < numberPerCell)
+            if (temp.empty())
             {
                 cv::FAST(croppedImage.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,minFastThreshold,true);
             }
@@ -210,22 +210,22 @@ void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>&
                     (*it).pt.x += imColStart + edgeWFast;
                     (*it).pt.y += imRowStart + edgeWFast;
                     (*it).class_id = count;
-                    allKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y), (*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
+                    fastKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y), (*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
                 }
             }
         }
     }
-    std::vector < cv::KeyPoint>::iterator it;
-    std::vector < cv::KeyPoint>::const_iterator end(allKeys.end());
-    for (it=allKeys.begin(); it != end; it++)
-    {
+    // std::vector < cv::KeyPoint>::iterator it;
+    // std::vector < cv::KeyPoint>::const_iterator end(allKeys.end());
+    // for (it=allKeys.begin(); it != end; it++)
+    // {
 
-        // (*it).angle = {computeOrientation(croppedImage, cv::Point2f((*it).pt.x,(*it).pt.y))};
+    //     // (*it).angle = {computeOrientation(croppedImage, cv::Point2f((*it).pt.x,(*it).pt.y))};
 
-        // (*it).angle = 0;
+    //     // (*it).angle = 0;
 
-        fastKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y), (*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
-    }
+    //     fastKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y), (*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
+    // }
     cv::KeyPointsFilter::retainBest(fastKeys,nFeatures);
     Logging("Keypoint Size After removal", fastKeys.size(),1);
 }

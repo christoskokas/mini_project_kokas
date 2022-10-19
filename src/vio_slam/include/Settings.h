@@ -8,7 +8,7 @@
 #include <yaml-cpp/yaml.h>
 #include <chrono>
 
-#define KITTI_DATASET false
+#define KITTI_DATASET true
 
 namespace vio_slam
 {

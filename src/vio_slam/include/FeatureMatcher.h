@@ -36,6 +36,7 @@ class FeatureMatcher
         const int stereoYSpan;
         const int imageHeight;
         const int gridRows, gridCols;
+        const int maxMatches {400};
 
         const Zed_Camera* zedptr;
 
@@ -49,7 +50,7 @@ class FeatureMatcher
         int DescriptorDistance(const cv::Mat &a, const cv::Mat &b);
         
     public:
-        FeatureMatcher(const Zed_Camera* _zed, const int _imageHeight = 360, const int _gridRows = 5, const int _gridCols = 5, const int _stereoYSpan = 1);
+        FeatureMatcher(const Zed_Camera* _zed, const int _imageHeight = 360, const int _gridRows = 5, const int _gridCols = 5, const int _stereoYSpan = 3);
 
         void stereoMatch(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector<cv::KeyPoint>& leftKeys, std::vector<cv::KeyPoint>& rightKeys, const cv::Mat& leftDesc, const cv::Mat& rightDesc, std::vector <cv::DMatch>& matches, SubPixelPoints& points);
 
@@ -66,8 +67,9 @@ class FeatureMatcher
         std::vector<bool> slidingWindowOpticalBackUp(const cv::Mat& prevImage, const cv::Mat& image, std::vector<cv::Point2f>& prevPoints, std::vector<cv::Point2f>& newPoints);
         void removeWithFund(SubPixelPoints& prevPoints, SubPixelPoints& points);
         void computeRightPoints(const SubPixelPoints& prevPoints, SubPixelPoints& points);
-        int computeDepth(const SubPixelPoints& prevPoints, SubPixelPoints& points);
+        void computeDepth(SubPixelPoints& prevPoints, SubPixelPoints& points);
         void inlierDetection(std::vector < cv::Point3d>& first, std::vector < cv::Point3d>& second, std::vector <cv::Point2f>& toReduce);
+        void outlierRejection(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, const cv::Mat& rightIm, SubPixelPoints& prevPoints, SubPixelPoints& points);
 
 
         double computeDistanceOf3DPoints(cv::Point3d& first, cv::Point3d& second);

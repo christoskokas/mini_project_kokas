@@ -753,7 +753,7 @@ void RobustMatcher2::testOpticalFlowWithPairs()
             if (prevLeftImage.optPoints.size()<50)
             {
                 // New Keyframe
-                
+                zedcamera->addKeyFrame = true;
                 // prevLeftImage.optPoints.clear();
                 // prevLeftImage.keypoints.clear();
                 // prevLeftImage.findFeaturesORBAdaptive();
@@ -811,7 +811,7 @@ void RobustMatcher2::testOpticalFlowWithPairs()
             rightImage.opticalFlow(prevRightImage,statusR, optFlowR);
             opticalFlowRemoveOutliers(rightImage,prevRightImage,statusR, false);
 
-            cv::Mat status = statusL & statusR;
+            cv::Mat status =( statusL & statusR);
 
             reduceVector(leftImage.optPoints,status);
             reduceVector(prevLeftImage.optPoints,status);
@@ -874,7 +874,41 @@ void RobustMatcher2::testOpticalFlowWithPairs()
             // {
             triangulatePointsOpt(prevLeftImage,prevRightImage,PrevPoints3D);
             triangulatePointsOpt(leftImage,rightImage,Points3D);
-            ceresSolver(Points3D,PrevPoints3D);
+
+            std::vector < cv::Point2f> lel;
+            for (int i = 0;i < leftImage.optPoints.size();i++)
+                lel.push_back(leftImage.optPoints[i]);
+
+            cv::Mat trial = (cv::Mat_<double>(1,5) << 0,0,0,0,0);
+
+            cv::Mat Rvec,tvec;
+            
+            cv::solvePnP(PrevPoints3D,lel,zedcamera->cameraLeft.cameraMatrix,trial,Rvec,tvec,false,cv::SOLVEPNP_ITERATIVE);
+
+            cv::Mat trol;
+            cv::Rodrigues(Rvec,trol);
+
+            Eigen::Matrix3d Rlol;
+            Eigen::Vector3d tlol;
+            cv::cv2eigen(trol.t(),Rlol);
+            cv::cv2eigen(-tvec,tlol);
+
+            Eigen::Matrix4d Tra;
+            Tra.setIdentity();
+            Tra.block<3,3>(0,0) = Rlol;
+            Tra.block<3,1>(0,3) = tlol;
+
+            // Logging("R", Rlol,3);
+            // Logging("Rvec", Rvec,3);
+            // Logging("trol", trol,3);
+            // Logging("t", tlol,3);
+            // Logging("tvec", tvec,3);
+            // Logging("Tra", Tra,3);
+
+            T = Tra.matrix();
+
+
+            // ceresSolver(Points3D,PrevPoints3D);
             publishPose();
             // }
             
@@ -1445,24 +1479,32 @@ void RobustMatcher2::testFeatureExtractorClass()
 
 void RobustMatcher2::testFeatureMatcherOptical()
 {
-    const int sizeThreshold {100};
-    FeatureExtractor trial;
-    FeatureMatcher matcher(zedcamera, zedcamera->mHeight, trial.getGridRows(), trial.getGridCols());
-    PoseEstimator poseEst;
+    const int sizeThreshold {150};
+    const int maxSizeThreshold {500};
+    FeatureExtractor featureExtractor;
+    FeatureMatcher matcher(zedcamera, zedcamera->mHeight, featureExtractor.getGridRows(), featureExtractor.getGridCols());
+    FeatureManager featureM;
+    PoseEstimator poseEst(zedcamera);
     
     // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
     int i {0};
     int useable {0};
+#if KITTI_DATASET
+    const int times {4540};
+#else
     const int times {657};
+#endif
     std::chrono::_V2::system_clock::time_point startTime, endTime;
     std::chrono::duration<float> duration;
     Timer all("all");
     SubPixelPoints points, prevPoints;
     while(i < times)
     {
-        if (i > 1)
+        if (i > 0)
             endTime =  startTime;
         startTime = std::chrono::high_resolution_clock::now();
+        duration = endTime - startTime;
+        float dt = duration.count();
         leftImage.getImage(i, "left");
         rightImage.getImage(i, "right");
         if (!zedcamera->rectified)
@@ -1474,7 +1516,7 @@ void RobustMatcher2::testFeatureMatcherOptical()
         }
         std::vector <cv::DMatch> matches;
 
-        Timer loop("loop processing time");
+        // Timer loop("loop processing time");
         // Timer extr("Feature Extraction Took");
 
         // trial.findFAST(leftImage.image, leftKeys, lDesc);
@@ -1486,7 +1528,7 @@ void RobustMatcher2::testFeatureMatcherOptical()
         {
             StereoKeypoints keypoints;
             StereoDescriptors desc;
-            trial.extractFeatures(leftImage.image, rightImage.image, desc, keypoints);
+            featureExtractor.extractFeatures(leftImage.image, rightImage.image, desc, keypoints);
             
             matcher.computeStereoMatches(leftImage.image, rightImage.image, desc, matches, points, keypoints);
 
@@ -1504,192 +1546,62 @@ void RobustMatcher2::testFeatureMatcherOptical()
             zedcamera->addKeyFrame = true;
             StereoKeypoints keypoints;
             StereoDescriptors desc;
-            trial.extractFeatures(prevLeftImage.image, prevRightImage.image, desc, keypoints);
+            featureExtractor.extractFeatures(prevLeftImage.image, prevRightImage.image, desc, keypoints);
             
             matcher.computeStereoMatches(prevLeftImage.image, prevRightImage.image, desc, matches, points, keypoints);
+
+            std::vector<uchar> inliers;
+            cv::findFundamentalMat(points.left, points.right, inliers, cv::FM_RANSAC, 1, 0.99);
+
+            points.reduce<uchar>(inliers);
 
             prevPoints.add(points);
 
             cv::Mat outImageMatches;
             drawFeatureMatchesStereoSub(matches,prevLeftImage.realImage, points.left,points.right,outImageMatches);
             cv::imshow("Matches",outImageMatches);
-            Logging("i am innnn", "",3);
 
             points.clear();
         }
-        Logging("usable before", useable,3);
 
 
 
-        // Logging("prev size", points.left.size(),2);
-        // Timer loop1("computeOpticalFlow");
         matcher.computeOpticalFlow(prevLeftImage.image, leftImage.image, prevPoints, points);
 
-        // Logging("prev size", prevPoints.left.size(),2);
-        // reduceVectorTemp<cv::Point2f,uchar>(prevPoints.left, status);
-        // reduceVectorTemp<cv::Point2f,uchar>(points.left, status);
-        // Logging("after size", prevPoints.left.size(),2);
-        // // Timer loop2("slidingWindowOptical left");
-
-        std::vector<bool> optCheck = matcher.slidingWindowOptical(prevLeftImage.image, leftImage.image, prevPoints.left, points.left);
-
-        prevPoints.reduce<bool>(optCheck);
-        points.reduce<bool>(optCheck);
-
-        // Timer loop3("computeRightPoints");
-
-        matcher.computeRightPoints(prevPoints, points);
-
-        // std::vector<bool> optCheckR = matcher.slidingWindowOptical(prevRightImage.image, rightImage.image, prevPoints.right, points.right);
-        std::vector<bool> optCheckR = matcher.slidingWindowOpticalLR(leftImage.image, rightImage.image, points.left, points.right);
-
-        prevPoints.reduce<bool>(optCheckR);
-        points.reduce<bool>(optCheckR);
-
-        matcher.removeWithFund(prevPoints, points);
-
-        useable = matcher.computeDepth(prevPoints, points);
-
-        // cv::Mat E = cv::findEssentialMat(points.left,prevPoints.left,zedcamera->cameraLeft.cameraMatrix);
-
-        // cv::Mat R1,R2,tlel,prevTcv;
-        // cv::decomposeEssentialMat(E,R1,R2,tlel);
-
-        // Logging("R1",R1,3);
-        // Logging("R2",R2,3);
-        // Logging("tlel",tlel,3);
-
-        // cv::Mat R_l,t_l;
-        // std::vector <uchar> lel;
-        // cv::recoverPose(E,points.left,prevPoints.left,zedcamera->cameraLeft.cameraMatrix,R_l,t_l,lel);
-
-        // Logging("R_l",R_l,3);
-        // Logging("t_l",t_l,3);
-
-        // prevPoints.reduce<uchar>(lel);
-        // points.reduce<uchar>(lel);
-
-        std::vector < cv::Point3d> lolol, lelel;
-        std::vector <cv::Point2f> trel;
-        const size_t end {prevPoints.left.size()};
-        lolol.reserve(end);
-        lelel.reserve(end);
-        trel.reserve(end);
-        for (size_t i = 0; i < end; i++)
-        {   
-            if (prevPoints.useable[i] && points.useable[i])
-            {
-                const double cx {zedcamera->cameraLeft.cx};
-                const double cy {zedcamera->cameraLeft.cy};
-                const double fx {zedcamera->cameraLeft.fx};
-                const double fy {zedcamera->cameraLeft.fy};
-
-                const double x = (double)(((double)points.left[i].x-cx)*(double)points.depth[i]/fx);
-                const double y = (double)(((double)points.left[i].y-cy)*(double)points.depth[i]/fy);
-                const double z = (double)points.depth[i];
+        matcher.outlierRejection(prevLeftImage.image, leftImage.image, rightImage.image, prevPoints, points);
 
 
-                const double xp = (double)(((double)prevPoints.left[i].x-cx)*(double)prevPoints.depth[i]/fx);
-                const double yp = (double)(((double)prevPoints.left[i].y-cy)*(double)prevPoints.depth[i]/fy);
-                const double zp = (double)prevPoints.depth[i];
+        featureM.calculate3DPoints(prevPoints, points,zedcamera);
 
-                lolol.emplace_back(cv::Point3d(xp,yp,zp));
-                trel.emplace_back(cv::Point2f(points.left[i].x,points.left[i].y));
-                lelel.emplace_back(cv::Point3d(x,y,z));
+        useable = featureM.prevPoints3DStereo.size();
 
-            }
-        }
-        // Logging("size before", lolol.size(),3);
-        // matcher.inlierDetection(lolol,lelel, trel);
-        // Logging("size after", lolol.size(),3);
-        // useable = lolol.size();
-
-
-        cv::Mat Rvec(3,1,CV_64F), tvec(3,1,CV_64F);
-        // Logging("size ", lolol.size(),3);
-        // Logging("size p", points.left.size(),3);
-        // Logging("size prev", prevPoints.left.size(),3);
-        // Logging("usable after", useable,3);
-
-        cv::Mat trial = (cv::Mat_<double>(1,5) << 0,0,0,0,0);
-
+        Eigen::Matrix4d Tra;
         if (i < 3)
         {
-            cv::solvePnP(lolol,trel,zedcamera->cameraLeft.cameraMatrix,trial, Rvec,tvec,false,cv::SOLVEPNP_ITERATIVE);
-            poseEst.setPrevR(Rvec);
-            poseEst.setPrevT(tvec);
-            if (i > 1)
-            {
-                duration = endTime - startTime;
-                float dt = duration.count();
-                poseEst.setPrevDt(dt);
-            }
+            poseEst.initializePose(featureM.prevPoints3DStereo, featureM.points2DStereo, dt, Tra);
         }
         else
         {
-            duration = endTime - startTime;
-            float dt = duration.count();
-            poseEst.estimatePose(Rvec, tvec, dt);
-            cv::solvePnP(lolol,trel,zedcamera->cameraLeft.cameraMatrix,trial, Rvec,tvec,true,cv::SOLVEPNP_ITERATIVE);
+            poseEst.estimatePose(featureM.prevPoints3DStereo, featureM.points2DStereo, dt, Tra);
+            
         }
 
-        // cv::solvePnPRansac(lolol,trel,zedcamera->cameraLeft.cameraMatrix,trial, Rvec,tvec,false,cv::SOLVEPNP_ITERATIVE);
-        // cv::Rodrigues(R_l,Rvec);
-
-        // cv::solvePnP(lelel,points.right,zedcamera->cameraRight.cameraMatrix,zedcamera->cameraRight.distCoeffs, Rvec,tvec,true,cv::SOLVEPNP_ITERATIVE);
-
-
-
-        cv::Mat trol;
-        cv::Rodrigues(Rvec,trol);
-
-        Eigen::Matrix3d Rlol;
-        Eigen::Vector3d tlol;
-        cv::cv2eigen(trol.t(),Rlol);
-        cv::cv2eigen(-tvec,tlol);
-
-        Eigen::Matrix4d Tra;
-        Tra.setIdentity();
-        Tra.block<3,3>(0,0) = Rlol;
-        Tra.block<3,1>(0,3) = tlol;
-
-        // Logging("R", Rlol,3);
-        // Logging("Rvec", Rvec,3);
-        // Logging("trol", trol,3);
-        // Logging("t", tlol,3);
-        // Logging("tvec", tvec,3);
-        // Logging("Tra", Tra,3);
 
         T = Tra.matrix();
 
         // remove outliers using velocity
-        // Timer loop4("ceresSolverFAST");
 
         // ceresSolverFAST(prevPoints,points);
         publishPose();
         // Timer loop5("AFTER");
         i++;
-        cv::Mat optical,opticalR, opticalLR, opticalPLR;
+        cv::Mat optical;
         drawOptical(leftImage.realImage, prevPoints.left, points.left,optical);
-        // drawOptical(rightImage.realImage, prevPoints.right, points.right,opticalR);
-        // drawOptical(leftImage.realImage, prevPoints.left, prevPoints.right,opticalPLR);
-        // drawOptical(leftImage.realImage, points.left, points.right,opticalLR);
-
-        // if (i == 100)
-        //     std::cout << " ";
-
-        // cv::Mat outImage, outImageR;
-        // cv::drawKeypoints(leftImage.image, leftKeys,outImage);
-        // cv::imshow("left",outImage);
-        // cv::drawKeypoints(rightImage.image, rightKeys,outImageR);
         cv::imshow("optical flow",optical);
-        // cv::imshow("optical flow Right",opticalR);
-        // cv::imshow("optical flow left right",opticalLR);
-        // cv::imshow("optical flow prev left right",opticalPLR);
 
         cv::waitKey(1);
 
-
+        featureM.clear();
         prevPoints.clone(points);
         points.clear();
         prevLeftImage.image = leftImage.image.clone();
