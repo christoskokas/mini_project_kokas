@@ -19,7 +19,7 @@ class FeatureManager
 
     public:
 
-        std::vector<cv::Point3d> prevPoints3DStereo;
+        std::vector<cv::Point3d> prevPoints3DStereo, prevPoints3DMono;
         std::vector<cv::Point2d> points2DStereo, points2DMono;
 
         

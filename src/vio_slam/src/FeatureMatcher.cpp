@@ -12,7 +12,7 @@ void FeatureMatcher::computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat
 {
     cv::Mat err;
     std::vector <uchar> status;
-    cv::calcOpticalFlowPyrLK(prevLeftIm, leftIm, prevPoints.left, newPoints.left, status, err,cv::Size(21,21),3,cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 30, 0.01));
+    cv::calcOpticalFlowPyrLK(prevLeftIm, leftIm, prevPoints.left, newPoints.left, status, err,cv::Size(21,21),3, criteria);
 
     prevPoints.reduce<uchar>(status);
     newPoints.reduce<uchar>(status);
@@ -340,15 +340,15 @@ std::vector<bool> FeatureMatcher::slidingWindowOpticalBackUp(const cv::Mat& prev
 void FeatureMatcher::removeWithFund(SubPixelPoints& prevPoints, SubPixelPoints& points)
 {
     std::vector<uchar> inliers;
-    cv::findFundamentalMat(prevPoints.left, points.left, inliers, cv::FM_RANSAC, 1, 0.99);
+    cv::findFundamentalMat(prevPoints.left, points.left, inliers, cv::FM_RANSAC, 3, 0.99);
 
     prevPoints.reduce<uchar>(inliers);
     points.reduce<uchar>(inliers);
 
-    cv::findFundamentalMat(prevPoints.right, points.right, inliers, cv::FM_RANSAC, 1, 0.99);
+    // cv::findFundamentalMat(prevPoints.right, points.right, inliers, cv::FM_RANSAC, 1, 0.99);
 
-    prevPoints.reduce<uchar>(inliers);
-    points.reduce<uchar>(inliers);
+    // prevPoints.reduce<uchar>(inliers);
+    // points.reduce<uchar>(inliers);
 }
 
 void FeatureMatcher::computeRightPoints(const SubPixelPoints& prevPoints, SubPixelPoints& points)
@@ -381,6 +381,9 @@ void FeatureMatcher::outlierRejection(const cv::Mat& prevLeftIm, const cv::Mat& 
 
     prevPoints.reduce<bool>(optCheckR);
     points.reduce<bool>(optCheckR);
+
+    // cv::cornerSubPix(rightIm,points.right,cv::Size(5,5),cv::Size(-1,-1),criteria);
+    // cv::cornerSubPix(leftIm,points.left,cv::Size(5,5),cv::Size(-1,-1),criteria);
 
     removeWithFund(prevPoints, points);
 

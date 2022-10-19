@@ -458,8 +458,8 @@ void RobustMatcher2::ceresSolver(cv::Mat& points3D, cv::Mat& prevPoints3D)
             // Logging("Observed",cv::Point3d(x,y,z),0);
             Eigen::Vector3d p3d(x, y, z);
             Eigen::Vector3d pp3d(xp, yp, zp);
-            ceres::CostFunction* costfunction = Reprojection3dError::Create(p3d, pp3d);
-            problem.AddResidualBlock(costfunction, lossfunction, camera);
+            // ceres::CostFunction* costfunction = Reprojection3dError::Create(p3d, pp3d);
+            // problem.AddResidualBlock(costfunction, lossfunction, camera);
         }
     }
     ceres::Solver::Options options;
@@ -498,8 +498,8 @@ void RobustMatcher2::ceresSolverPnp(cv::Mat& points3D, cv::Mat& prevPoints3D)
             // Logging("Observed",cv::Point3d(x,y,z),0);
             Eigen::Vector3d p3d(x, y, z);
             Eigen::Vector3d pp3d(xp, yp, zp);
-            ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
-            problem.AddResidualBlock(costfunction, lossfunction, camera);
+            // ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
+            // problem.AddResidualBlock(costfunction, lossfunction, camera);
         }
     }
     ceres::Solver::Options options;
@@ -1486,7 +1486,6 @@ void RobustMatcher2::testFeatureMatcherOptical()
     FeatureManager featureM;
     PoseEstimator poseEst(zedcamera);
     
-    // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
     int i {0};
     int useable {0};
 #if KITTI_DATASET
@@ -1516,13 +1515,6 @@ void RobustMatcher2::testFeatureMatcherOptical()
         }
         std::vector <cv::DMatch> matches;
 
-        // Timer loop("loop processing time");
-        // Timer extr("Feature Extraction Took");
-
-        // trial.findFAST(leftImage.image, leftKeys, lDesc);
-        // trial.findFAST(rightImage.image, rightKeys, rDesc);
-        
-        // matcher.stereoMatch(leftImage.image, rightImage.image, leftKeys, rightKeys,lDesc, rDesc, matches, points);
 
         if (firstImage)
         {
@@ -1589,9 +1581,38 @@ void RobustMatcher2::testFeatureMatcherOptical()
 
         T = Tra.matrix();
 
+
+
+        // Eigen::Matrix4d temp;
+        // temp = Tra.matrix();
+
+        // Eigen::Matrix3d Rv = temp.topLeftCorner<3,3>();
+        // Eigen::Vector3d tv = temp.topRightCorner<3,1>();
+
+        // cv::Mat rvec,tvec;
+        // cv::eigen2cv(Rv, rvec);
+        // cv::eigen2cv(tv, tvec);
+
+        // cv::Rodrigues(rvec,rvec);
+
+        // camera[0] = rvec.at<double>(0);
+        // camera[1] = rvec.at<double>(1);
+        // camera[2] = rvec.at<double>(2);
+        // camera[3] = tvec.at<double>(0);
+        // camera[4] = tvec.at<double>(1);
+        // camera[5] = tvec.at<double>(2);
+
+
         // remove outliers using velocity
 
-        // ceresSolverFAST(prevPoints,points);
+        // Logging("before 3d", featureM.prevPoints3DStereo[10],3);
+        // Logging("before 2d", featureM.points2DStereo[10],3);
+
+        // ceresSolverFAST(featureM.prevPoints3DStereo,featureM.points2DStereo);
+        // Logging("after 3d", featureM.prevPoints3DStereo[10],3);
+        // Logging("after 2d", featureM.points2DStereo[10],3);
+
+
         publishPose();
         // Timer loop5("AFTER");
         i++;
@@ -1616,33 +1637,19 @@ void RobustMatcher2::testFeatureMatcherOptical()
     
 }
 
-void RobustMatcher2::ceresSolverFAST(const SubPixelPoints& prevPoints, const SubPixelPoints& points)
+void RobustMatcher2::ceresSolverFAST(std::vector<cv::Point3d>& prevPoints, std::vector<cv::Point2d>& points)
 {
     ceres::Problem problem;
-    const size_t end {prevPoints.left.size()};
+    const size_t end {prevPoints.size()};
+    Eigen::Vector3d coordinates[end];
     for (size_t i = 0; i < end; i++)
     {   
-        if (prevPoints.useable[i] && points.useable[i])
-        {
-            const double cx {zedcamera->cameraLeft.cx};
-            const double cy {zedcamera->cameraLeft.cy};
-            const double fx {zedcamera->cameraLeft.fx};
-            const double fy {zedcamera->cameraLeft.fy};
-
-
-            const double x = (double)(((double)points.left[i].x-cx)*(double)points.depth[i]/fx);
-            const double y = (double)(((double)points.left[i].y-cy)*(double)points.depth[i]/fy);
-            const double z = (double)points.depth[i];
-            const double xp = (double)(((double)prevPoints.left[i].x-cx)*(double)prevPoints.depth[i]/fx);
-            const double yp = (double)(((double)prevPoints.left[i].y-cy)*(double)prevPoints.depth[i]/fy);
-            const double zp = (double)prevPoints.depth[i];
-            Logging("Previous",cv::Point3d(xp,yp,zp),3);
-            Logging("Observed",cv::Point3d(x,y,z),3);
-            const Eigen::Vector3d p3d(x, y, z);
-            const Eigen::Vector3d pp3d(xp, yp, zp);
-            ceres::CostFunction* costfunction = Reprojection3dError::Create(p3d, pp3d);
-            problem.AddResidualBlock(costfunction, nullptr /* squared loss */, camera);
-        }
+        // problem.AddParameterBlock(prevPoints[i],3);
+        coordinates[i].x() = prevPoints[i].x;
+        coordinates[i].y() = prevPoints[i].y;
+        coordinates[i].z() = prevPoints[i].z;
+        ceres::CostFunction* costfunction = Reprojection3dError::Create(points[i].x,points[i].y);
+        problem.AddResidualBlock(costfunction, nullptr /* squared loss */, camera, coordinates[i].data());
     }
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
@@ -1650,6 +1657,9 @@ void RobustMatcher2::ceresSolverFAST(const SubPixelPoints& prevPoints, const Sub
     // options.trust_region_strategy_type = ceres::DOGLEG;
     options.minimizer_progress_to_stdout = false;
     ceres::Solver::Summary summary;
+    Logging("before 3d", coordinates[10].x(),3);
+    Logging("before 3d", coordinates[10].y(),3);
+    Logging("before 3d", coordinates[10].z(),3);
     ceres::Solve(options, &problem, &summary);
 
     double quat[4];
@@ -1658,6 +1668,10 @@ void RobustMatcher2::ceresSolverFAST(const SubPixelPoints& prevPoints, const Sub
     Eigen::Isometry3d Transform(q.matrix());
     Transform.pretranslate(Eigen::Vector3d(camera[3], camera[4], camera[5]));
     T = Transform.matrix();
+    Logging("after 3d", coordinates[10].x(),3);
+    Logging("after 3d", coordinates[10].y(),3);
+    Logging("after 3d", coordinates[10].z(),3);
+
 }
 
 void RobustMatcher2::calcP1P2()

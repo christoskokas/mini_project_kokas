@@ -1262,56 +1262,56 @@ std::vector<cv::DMatch> FeatureDrawer::matchEachGridPrev(Features& firstImage, F
   return matches;
 }
 
-void FeatureDrawer::ceresSolver(std::vector<cv::DMatch>& matches, const cv::Mat& points3D, const cv::Mat& prevpoints3D)
-{
-  ceres::Problem problem;
-  ceres::LossFunction* lossfunction = NULL;
-  int count = 0;
-  for (size_t iii = 0; iii < matches.size(); iii++)
-  {
-    for (size_t jjj = 0; jjj < previousleftKeypoints.size(); jjj++)
-    {
-      if (leftImage.close[matches[iii].queryIdx] && previousLeftImage.close[matches[iii].trainIdx] && previousleftKeypoints[jjj].pt == previousLeftImage.keypoints[matches[iii].trainIdx].pt)
-      {
-        double x = points3D.at<double>(0,matches[iii].queryIdx);
-        double y = points3D.at<double>(1,matches[iii].queryIdx);
-        double z = points3D.at<double>(2,matches[iii].queryIdx);
-        double xp = prevpoints3D.at<double>(0,jjj);
-        double yp = prevpoints3D.at<double>(1,jjj);
-        double zp = prevpoints3D.at<double>(2,jjj);
-        // std::cout << "PREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
-        // std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
-        // std::cout << "x : " << x << " p3d : " << p3d.x() << '\n';
-        Eigen::Vector3d p3d(x, y, z);
-        Eigen::Vector3d pp3d(xp, yp, zp);
-        ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
-        problem.AddResidualBlock(costfunction, lossfunction, camera);
-        count ++;
-        break;
-      }
-    }
+// void FeatureDrawer::ceresSolver(std::vector<cv::DMatch>& matches, const cv::Mat& points3D, const cv::Mat& prevpoints3D)
+// {
+//   ceres::Problem problem;
+//   ceres::LossFunction* lossfunction = NULL;
+//   int count = 0;
+//   for (size_t iii = 0; iii < matches.size(); iii++)
+//   {
+//     for (size_t jjj = 0; jjj < previousleftKeypoints.size(); jjj++)
+//     {
+//       if (leftImage.close[matches[iii].queryIdx] && previousLeftImage.close[matches[iii].trainIdx] && previousleftKeypoints[jjj].pt == previousLeftImage.keypoints[matches[iii].trainIdx].pt)
+//       {
+//         double x = points3D.at<double>(0,matches[iii].queryIdx);
+//         double y = points3D.at<double>(1,matches[iii].queryIdx);
+//         double z = points3D.at<double>(2,matches[iii].queryIdx);
+//         double xp = prevpoints3D.at<double>(0,jjj);
+//         double yp = prevpoints3D.at<double>(1,jjj);
+//         double zp = prevpoints3D.at<double>(2,jjj);
+//         // std::cout << "PREVIOUS : " <<  xp << ' ' << yp  << " " << zp << '\n';
+//         // std::cout << "OBSERVED : " <<  x << ' ' << y  << " " << z << '\n';
+//         // std::cout << "x : " << x << " p3d : " << p3d.x() << '\n';
+//         Eigen::Vector3d p3d(x, y, z);
+//         Eigen::Vector3d pp3d(xp, yp, zp);
+//         ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
+//         problem.AddResidualBlock(costfunction, lossfunction, camera);
+//         count ++;
+//         break;
+//       }
+//     }
     
     
-  }
-  std::cout << "Count : " << count << '\n';
-  ceres::Solver::Options options;
-  options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-  options.max_num_iterations = 100;
-  options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
-  options.minimizer_progress_to_stdout = false;
-  ceres::Solver::Summary summary;
-  ceres::Solve(options, &problem, &summary);
-  // std::cout << summary.BriefReport() << std::endl;
-  // std::cout << "After Optimizing: "  << std::endl;
+//   }
+//   std::cout << "Count : " << count << '\n';
+//   ceres::Solver::Options options;
+//   options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+//   options.max_num_iterations = 100;
+//   options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
+//   options.minimizer_progress_to_stdout = false;
+//   ceres::Solver::Summary summary;
+//   ceres::Solve(options, &problem, &summary);
+//   // std::cout << summary.BriefReport() << std::endl;
+//   // std::cout << "After Optimizing: "  << std::endl;
   
-  double quat[4];
-  ceres::AngleAxisToQuaternion(camera, quat);
-  Eigen::Quaterniond q(quat[0], quat[1], quat[2], quat[3]);
-  Eigen::Isometry3d Transform(q.matrix());
-  Transform.pretranslate(Eigen::Vector3d(camera[3], camera[4], camera[5]));
-  T = Transform.matrix();
+//   double quat[4];
+//   ceres::AngleAxisToQuaternion(camera, quat);
+//   Eigen::Quaterniond q(quat[0], quat[1], quat[2], quat[3]);
+//   Eigen::Isometry3d Transform(q.matrix());
+//   Transform.pretranslate(Eigen::Vector3d(camera[3], camera[4], camera[5]));
+//   T = Transform.matrix();
   
-}
+// }
 
 int RobustMatcher::ratioTest(std::vector<std::vector<cv::DMatch>>& matches) {
   int removed=0;
@@ -1919,8 +1919,8 @@ void FeatureDrawer::keepMatches(const std::vector<cv::DMatch>& matches, const st
             cv::line(trial,cv::Point(leftImage.keypoints[mLR.queryIdx].pt.x,leftImage.keypoints[mLR.queryIdx].pt.y), cv::Point(previousleftKeypoints[keypos].pt.x, previousleftKeypoints[keypos].pt.y), (255,255,255));
             // std::cout << "leftImage : " <<  leftImage.keypoints[mLR.queryIdx].pt.x << " " << leftImage.keypoints[mLR.queryIdx].pt.y << '\n';
             // std::cout << "previousLeftImage : " <<  previousleftKeypoints[keypos].pt.x << " " << previousleftKeypoints[keypos].pt.y << '\n';
-            ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
-            problem.AddResidualBlock(costfunction, lossfunction, camera);
+            // ceres::CostFunction* costfunction = Reprojection3dError::Create(pp3d, p3d);
+            // problem.AddResidualBlock(costfunction, lossfunction, camera);
             
             break;
           }

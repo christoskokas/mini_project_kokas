@@ -22,6 +22,8 @@ void FeatureManager::calculate3DPoints(SubPixelPoints& prevPoints, SubPixelPoint
         // const double y = (double)(((double)points.left[i].y-cy)*(double)points.depth[i]/fy);
         // const double z = (double)points.depth[i];
         points2DMono.emplace_back(cv::Point2d((double)points.left[i].x,(double)points.left[i].y));
+        // prevPoints3DMono.emplace_back(cv::Point3d(xp,yp,zp));
+
 
         if (!prevPoints.useable[i] || !points.useable[i])
             continue;
