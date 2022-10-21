@@ -8,14 +8,22 @@ FeatureMatcher::FeatureMatcher(const Zed_Camera* _zed, const int _imageHeight, c
 
 }
 
-void FeatureMatcher::computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, SubPixelPoints& prevPoints, SubPixelPoints& newPoints)
+void FeatureMatcher::computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, const cv::Mat& prevRightIm, const cv::Mat& rightIm, SubPixelPoints& prevPoints, SubPixelPoints& newPoints)
 {
     cv::Mat err;
     std::vector <uchar> status;
     cv::calcOpticalFlowPyrLK(prevLeftIm, leftIm, prevPoints.left, newPoints.left, status, err,cv::Size(21,21),3, criteria);
 
-    prevPoints.reduce<uchar>(status);
-    newPoints.reduce<uchar>(status);
+    reduceVectorTemp<int,uchar>(prevPoints.indexes,status);
+    // checkVectorTemp<uchar>(prevPoints.useable,status);
+
+    // prevPoints.reduce<uchar>(status);
+    // newPoints.reduce<uchar>(status);
+
+    // cv::calcOpticalFlowPyrLK(prevRightIm, rightIm, prevPoints.right, newPoints.right, status, err,cv::Size(21,21),3, criteria);
+
+    // prevPoints.reduce<uchar>(status);
+    // newPoints.reduce<uchar>(status);
 
 }
 
@@ -46,8 +54,6 @@ std::vector<bool> FeatureMatcher::slidingWindowOpticalLR(const cv::Mat& leftImag
         const int lColStart {lKeyX - windowRadius};
         const int lColEnd {lKeyX + windowRadius + 1};
 
-        bool out {false};
-
         if ((lRowStart < 0) || (lRowEnd >= leftImage.rows) || (lColStart < 0) || (lColEnd >= leftImage.cols))
             continue;
 
@@ -64,8 +70,7 @@ std::vector<bool> FeatureMatcher::slidingWindowOpticalLR(const cv::Mat& leftImag
 
             if ((rRowStart < 0) || (rRowEnd >= rightImage.rows) || (rColStart < 0) || (rColEnd >= rightImage.cols))
             {
-                out = true;
-                break;
+                continue;
             }
 
             const cv::Mat rWin = rightImage.rowRange(rRowStart,rRowEnd).colRange(rColStart, rColEnd);
@@ -79,7 +84,7 @@ std::vector<bool> FeatureMatcher::slidingWindowOpticalLR(const cv::Mat& leftImag
             allDists.emplace_back(dist);
 
         }
-        if ((bestX == -windowMovementX) || (bestX == windowMovementX) || (bestX == (windowMovementX + 1)) || out)
+        if ((bestX == -windowMovementX) || (bestX == windowMovementX) || (bestX == (windowMovementX + 1)))
         {
             goodDist.push_back(false);
             continue;
@@ -337,13 +342,88 @@ std::vector<bool> FeatureMatcher::slidingWindowOpticalBackUp(const cv::Mat& prev
     return goodDist;
 }
 
+bool FeatureMatcher::checkProjection(Eigen::Vector4d& point, cv::Point2d& kp)
+{
+    point = zedptr->cameraPose.pose * point;
+    const double &pointX = point(0);
+    const double &pointY = point(1);
+    const double &pointZ = point(2);
+
+    if (pointZ <= 0.0f)
+        return false;
+
+    const double invZ = 1.0f/pointZ;
+    const double fx = zedptr->cameraLeft.fx;
+    const double fy = zedptr->cameraLeft.fy;
+    const double cx = zedptr->cameraLeft.cx;
+    const double cy = zedptr->cameraLeft.cy;
+
+    const double invfx = 1.0f/fx;
+    const double invfy = 1.0f/fy;
+
+
+    double u {fx*pointX*invZ + cx};
+    double v {fy*pointY*invZ + cy};
+
+
+    const int min {0};
+    const int maxW {zedptr->mWidth};
+    const int maxH {zedptr->mHeight};
+
+    if (u < min || u > maxW)
+        return false;
+    if (v < min || v > maxH)
+        return false;
+
+    // const double k1 = zedptr->cameraLeft.distCoeffs.at<double>(0,0);
+    // const double k2 = zedptr->cameraLeft.distCoeffs.at<double>(0,1);
+    // const double p1 = zedptr->cameraLeft.distCoeffs.at<double>(0,2);
+    // const double p2 = zedptr->cameraLeft.distCoeffs.at<double>(0,3);
+    // const double k3 = zedptr->cameraLeft.distCoeffs.at<double>(0,4);
+
+    const double k1 {0};
+    const double k2 {0};
+    const double p1 {0};
+    const double p2 {0};
+    const double k3 {0};
+
+    double u_distort, v_distort;
+
+    double x = (u - cx) * invfx;
+    double y = (v - cy) * invfy;
+    double r2 = x * x + y * y;
+
+    // Radial distorsion
+    double x_distort = x * (1 + k1 * r2 + k2 * r2 * r2 + k3 * r2 * r2 * r2);
+    double y_distort = y * (1 + k1 * r2 + k2 * r2 * r2 + k3 * r2 * r2 * r2);
+
+    // Tangential distorsion
+    x_distort = x_distort + (2 * p1 * x * y + p2 * (r2 + 2 * x * x));
+    y_distort = y_distort + (p1 * (r2 + 2 * y * y) + 2 * p2 * x * y);
+
+    u_distort = x_distort * fx + cx;
+    v_distort = y_distort * fy + cy;
+
+
+    u = u_distort;
+    v = v_distort;
+
+    kp = cv::Point2d(u, v);
+
+    return true;
+
+}
+
 void FeatureMatcher::removeWithFund(SubPixelPoints& prevPoints, SubPixelPoints& points)
 {
     std::vector<uchar> inliers;
-    cv::findFundamentalMat(prevPoints.left, points.left, inliers, cv::FM_RANSAC, 3, 0.99);
+    cv::findFundamentalMat(prevPoints.left, points.left, inliers, cv::FM_RANSAC, 1, 0.99);
 
-    prevPoints.reduce<uchar>(inliers);
-    points.reduce<uchar>(inliers);
+    reduceVectorTemp<int,uchar>(prevPoints.indexes,inliers);
+
+    // checkVectorTemp<uchar>(prevPoints.useable,inliers);
+    points.useable = prevPoints.useable;
+
 
     // cv::findFundamentalMat(prevPoints.right, points.right, inliers, cv::FM_RANSAC, 1, 0.99);
 
@@ -374,20 +454,20 @@ void FeatureMatcher::outlierRejection(const cv::Mat& prevLeftIm, const cv::Mat& 
 
     // prevPoints.reduce<bool>(optCheck);
     // points.reduce<bool>(optCheck);
+    removeWithFund(prevPoints, points);
 
-    computeRightPoints(prevPoints, points);
+    // computeRightPoints(prevPoints, points);
 
-    std::vector<bool> optCheckR = slidingWindowOpticalLR(leftIm, rightIm, points.left, points.right);
+    // std::vector<bool> optCheckR = slidingWindowOpticalLR(leftIm, rightIm, points.left, points.right);
 
-    prevPoints.reduce<bool>(optCheckR);
-    points.reduce<bool>(optCheckR);
+    // prevPoints.reduce<bool>(optCheckR);
+    // points.reduce<bool>(optCheckR);
 
     // cv::cornerSubPix(rightIm,points.right,cv::Size(5,5),cv::Size(-1,-1),criteria);
     // cv::cornerSubPix(leftIm,points.left,cv::Size(5,5),cv::Size(-1,-1),criteria);
 
-    removeWithFund(prevPoints, points);
 
-    computeDepth(prevPoints, points);
+    // computeDepth(prevPoints, points);
 }
 
 void FeatureMatcher::computeDepth(SubPixelPoints& prevPoints, SubPixelPoints& points)
@@ -428,44 +508,202 @@ void FeatureMatcher::computeDepth(SubPixelPoints& prevPoints, SubPixelPoints& po
     prevPoints.reduce<bool>(check);
 }
 
-void FeatureMatcher::inlierDetection(std::vector < cv::Point3d>& first, std::vector < cv::Point3d>& second, std::vector <cv::Point2f>& toReduce)
+std::vector<bool> FeatureMatcher::inlierDetection(std::vector < cv::Point3d>& first, std::vector < cv::Point3d>& second, std::vector <cv::Point2d>& toReduce)
 {
 
     const size_t end = second.size();
     std::vector<std::pair<int,int>>sums;
     sums.reserve(end);
 
-    for (size_t i {0};i < end; i++)
+    std::vector <bool>inliers(end,false);
+
+
+    const float maxDist {0.5f};
+
+    for (size_t i {0};i < second.size();i++)
     {
-        int sum {0};
-        sums.emplace_back(std::make_pair(i,0));
-        for (size_t j {0};j < end; j++)
+
+        std::vector <bool>indxes(end,false);
+        int count {0};
+        for (size_t j {1};j < second.size() - 1;j++)
         {
-            if (abs(computeDistanceOf3DPoints(first[i],first[j]) - computeDistanceOf3DPoints(second[i],second[j])) < 0.01f)
-                sums[i].second += 1;
+            indxes[i] = true;
+            if (abs(computeDistanceOf3DPoints(first[i],first[j]) - computeDistanceOf3DPoints(second[i],second[j])) < maxDist)
+            {
+                indxes[j] = true;
+                count ++;
+            }
         }
+        if (count > second.size()/2)
+        {
+            inliers = indxes;
+            break;
+        }
+
+
+
+        // if (abs(computeDistanceOf3DPoints(first[i],first[i+1]) - computeDistanceOf3DPoints(second[i],second[i+1])) < maxDist)
+        // {
+        //     inliers[i] = true;
+        //     inliers[i+1] = true;
+        //     i += 2;
+        // }
+        // else 
+        // {
+        //     if (abs(computeDistanceOf3DPoints(first[i],first[i+2]) - computeDistanceOf3DPoints(second[i],second[i+2])) < maxDist)
+        //     {
+        //         inliers[i] = true;
+        //         inliers[i+2] = true;
+        //     }
+        //     else if (abs(computeDistanceOf3DPoints(first[i+1],first[i+2]) - computeDistanceOf3DPoints(second[i+1],second[i+2])) < maxDist)
+        //     {
+        //         inliers[i+1] = true;
+        //         inliers[i+2] = true;
+        //     }
+        //     i += 3;
+        // }
     }
-
-    std::sort(sums.begin(),sums.end(),[](const std::pair<int,int>& left, const std::pair<int,int>& right)
-    {return left.second > right.second;});
-
-    const int minSum {cvRound((int)end/10)};
-
-    int maxInliers {0};
-    std::vector <bool> check;
-    check.resize(end);
-    for (size_t i {0};i<end;i++)
-    {
-        if (sums[i].second > minSum)
-            check[sums[i].first] = true;
-    }
-    reduceVectorTemp<cv::Point3d,bool>(first,check);
-    reduceVectorTemp<cv::Point2f,bool>(toReduce,check);
+    return inliers;
 }
 
 double FeatureMatcher::computeDistanceOf3DPoints(cv::Point3d& first, cv::Point3d& second)
 {
     return (pow(first.x-second.x,2) + pow(first.y-second.y,2) + pow(first.z-second.z,2));
+}
+
+double FeatureMatcher::computeDistanceThreshold(const cv::Point3d& p1, const cv::Point3d& p2, const double L1, const double L2)
+{
+
+    const double DL1 {computeDL(p1,p2,L1)};
+    const double DL2 {computeDL(p2,p1,L2)};
+
+    return 3*sqrt(pow(DL1,2) + pow(DL2,2));
+
+}
+
+double FeatureMatcher::computeDL(const cv::Point3d& p1,const cv::Point3d& p2, const double L)
+{
+    const float focal {2.12};
+    const float De {0.2f};
+
+    const double bs {(double)zedptr->mBaseline};
+    const double A {pow((p1.x-p2.x)*(bs-p1.x)-(p1.y-p2.y)*p1.y-(p1.z-p2.z)*p1.z,2)};
+    const double B {pow((p1.x-p2.x)*p1.x+(p1.y-p2.y)*p1.y+(p1.z-p2.z)*p1.z,2)};
+    const double C {pow(bs*(p1.y-p2.y),2)/2};
+    const double D {pow((p1.x-p2.x)*(bs-p2.x)-(p1.y-p2.y)*p2.y-(p1.z-p2.z)*p2.z,2)};
+    const double E {pow((p1.x-p2.x)*p2.x+(p1.y-p2.y)*p2.y+(p1.z-p2.z)*p2.z,2)};
+    const double F {C};
+
+    const double DL {De*sqrt(pow(p1.z,2)*(A+B+C) + pow(p2.z,2)*(D+E+F))/(L*focal*bs)};
+    return DL;
+
+}
+
+std::vector<bool> FeatureMatcher::getMaxClique( const std::vector<cv::Point3d>& ptsA, const std::vector<cv::Point3d>& ptsB )
+{
+
+    assert( ptsA.size() == ptsB.size() );
+
+    const int32_t numMatches = ptsA.size();
+
+    cv::Mat  consistencyMatrix    = cv::Mat::zeros( numMatches, numMatches, CV_8U );
+    uint8_t* consistencyMatrixPtr = consistencyMatrix.ptr<uint8_t>();
+
+    //TODO: Make this threshold adaptive to quadratic depth error
+    std::vector<int> nodeDegrees( numMatches, 0 );
+
+    for( int i = 0; i < numMatches; ++i )
+    {
+        for( int j = i+1, index = (i*numMatches)+j; j < numMatches; ++j, ++index )
+        {
+
+            const double L1 {cv::norm( ptsA[i] - ptsA[j] )};
+            const double L2 {cv::norm( ptsB[i] - ptsB[j] )};
+
+            const double distThresh {computeDistanceThreshold(ptsA[i], ptsB[i],L1,L2)};
+
+            const double absDistance = abs( L1 - L2 );
+
+            if( absDistance <= distThresh )
+            {
+                consistencyMatrixPtr[index] = 1;
+                ++nodeDegrees[i];
+                ++nodeDegrees[j];
+            }
+        }
+    }
+
+    // Fnd the largest set of mutually consistent matches:
+    //
+    // This is equivalent to ﬁnding the maximum clique on a graph with
+    // adjacency matrix W. Since the maximum clique problem is known to
+    // be NP-complete, we use the following sub-optimal algorithm:
+    //
+    // 1) Initialize the clique to contain the match with the largest
+    //    number of consistent matches (i.e., choose the node with the
+    //    maximum degree).
+    // 2) Find the set of matches compatible with all the matches already
+    //    in the clique.
+    // 3) Add the match with the largest number consistent matches.
+    //
+    // Repeat (2) and (3) until the set of compatible matches is empty.
+
+    const int maxNodeIndex = std::distance( nodeDegrees.begin(),
+                                            std::max_element( nodeDegrees.begin(), nodeDegrees.end() ) );
+
+    // We need to make this matrix not just upper triangular and so we
+    // must 'complete' the Consistency Matrix:
+    consistencyMatrix += consistencyMatrix.t();
+
+    std::vector<int> candidates = consistencyMatrix.row( maxNodeIndex );
+
+    std::vector<int> candidatesIndices;
+    candidatesIndices.reserve( nodeDegrees[ maxNodeIndex ] );
+
+    for( int i = 0; i < numMatches; ++i )
+    {
+        if( candidates[i] > 0 )
+        {
+            candidatesIndices.push_back( i );
+        }
+    }
+
+    std::vector<bool> maxClique;
+    maxClique.resize( nodeDegrees[ maxNodeIndex ] );
+    maxClique[maxNodeIndex] = true;
+
+    while( !candidatesIndices.empty() )
+    {
+        // Find the candidate with largest 'consistent' degree:
+        int maxIndex  = -1;
+        int maxDegree = -1;
+        for( int i = 0; i < candidatesIndices.size(); ++i )
+        {
+            const int degree = cv::countNonZero( consistencyMatrix.row( candidatesIndices[i] ) );
+
+            if( degree > maxDegree )
+            {
+                maxIndex  = candidatesIndices[i];
+                maxDegree = degree;
+            }
+        }
+
+        maxClique[maxIndex] = true;
+        // maxClique.push_back( maxIndex );
+
+        // New clique addition at consistencyMatrix(maxIndex,maxIndex) is now and
+        // always zero, so it'll be erased:
+        candidatesIndices.erase( std::remove_if( candidatesIndices.begin(), candidatesIndices.end(), 
+                                                [=]( const int index )
+                                                {
+                                                    return consistencyMatrixPtr[ index*numMatches + maxIndex ] == 0;
+                                                } ),
+                                std::end( candidatesIndices ) );
+
+    }
+
+
+    return maxClique;
 }
 
 void FeatureMatcher::addUcharVectors(std::vector <uchar>& first, std::vector <uchar>& second)

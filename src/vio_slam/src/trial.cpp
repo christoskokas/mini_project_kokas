@@ -1264,8 +1264,9 @@ void RobustMatcher2::publishPose()
 nav_msgs::Odometry position;
 Eigen::Matrix3d Rot;
 previousT = previousT * T;
-zedcamera->cameraPose.pose = previousT;
-zedcamera->cameraPose.poseTranspose = previousT.transpose();
+zedcamera->cameraPose.setPose(previousT);
+zedcamera->cameraPose.setInvPose(previousT.inverse());
+
 Logging zed("Zed Camera Pose", zedcamera->cameraPose.pose,0);
 }
 
@@ -1362,7 +1363,8 @@ void RobustMatcher2::beginTest()
     // testOpticalFlowWithPairs();
     // testFeatureExtractorClassWithCallback();
     // testFeatureExtractorClass();
-    testFeatureMatcherOptical();
+    // testFeatureMatcherOptical();
+    testFeatureMatcherStable3D();
 
 }
 
@@ -1558,12 +1560,27 @@ void RobustMatcher2::testFeatureMatcherOptical()
 
 
 
-        matcher.computeOpticalFlow(prevLeftImage.image, leftImage.image, prevPoints, points);
+        matcher.computeOpticalFlow(prevLeftImage.image, leftImage.image, prevRightImage.image, rightImage.image, prevPoints, points);
 
         matcher.outlierRejection(prevLeftImage.image, leftImage.image, rightImage.image, prevPoints, points);
 
 
         featureM.calculate3DPoints(prevPoints, points,zedcamera);
+
+
+        // std::vector < bool > inliers = matcher.getMaxClique(featureM.prevPoints3DStereo,featureM.points3DStereo);
+
+        // for (int i{0};i < inliers.size();i ++)
+        // {
+        //     Logging("in ",inliers[i],3);
+        // }
+
+        // std::vector<bool> inliers = matcher.inlierDetection(featureM.prevPoints3DStereo,featureM.points3DStereo,featureM.points2DStereo);
+
+        // reduceVectorTemp<cv::Point3d,bool>(featureM.prevPoints3DStereo,inliers);
+        // reduceVectorTemp<cv::Point2d,bool>(featureM.points2DStereo,inliers);
+        // prevPoints.reduce<bool>(inliers);
+        // points.reduce<bool>(inliers);
 
         useable = featureM.prevPoints3DStereo.size();
 
@@ -1609,6 +1626,7 @@ void RobustMatcher2::testFeatureMatcherOptical()
         // Logging("before 2d", featureM.points2DStereo[10],3);
 
         // ceresSolverFAST(featureM.prevPoints3DStereo,featureM.points2DStereo);
+       
         // Logging("after 3d", featureM.prevPoints3DStereo[10],3);
         // Logging("after 2d", featureM.points2DStereo[10],3);
 
@@ -1624,6 +1642,283 @@ void RobustMatcher2::testFeatureMatcherOptical()
 
         featureM.clear();
         prevPoints.clone(points);
+        points.clear();
+        prevLeftImage.image = leftImage.image.clone();
+        prevRightImage.image = rightImage.image.clone();
+        prevLeftImage.realImage = leftImage.realImage.clone();
+        prevRightImage.realImage = rightImage.realImage.clone();
+
+    }
+    
+    Logging("Last Transform", previousT,2);
+
+    
+}
+
+void RobustMatcher2::testFeatureMatcherStable3D()
+{
+    const int sizeThreshold {80};
+    const int maxSizeThreshold {500};
+    std::vector<KeyFrame> keyFrames;
+    FeatureExtractor featureExtractor;
+    FeatureMatcher matcher(zedcamera, zedcamera->mHeight, featureExtractor.getGridRows(), featureExtractor.getGridCols());
+    FeatureManager featureM;
+    PoseEstimator poseEst(zedcamera);
+    bool in {true};
+    int i {0};
+    int keyframeNumb {0};
+    int useable {0};
+#if KITTI_DATASET
+    const int times {4540};
+#else
+    const int times {657};
+#endif
+    std::chrono::_V2::system_clock::time_point startTime, endTime;
+    std::chrono::duration<float> duration;
+    Timer all("all");
+    SubPixelPoints points, prevPoints;
+    while(i < times)
+    {
+        if (i > 0)
+        {
+            endTime =  std::chrono::high_resolution_clock::now();
+
+            duration = endTime - startTime;
+        }
+        float dt = duration.count();
+        startTime = std::chrono::high_resolution_clock::now();
+        leftImage.getImage(i, "left");
+        rightImage.getImage(i, "right");
+        if (!zedcamera->rectified)
+        {
+            leftImage.rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
+            leftImage.rectifyImage(leftImage.realImage,rmap[0][0],rmap[0][1]);
+            rightImage.rectifyImage(rightImage.image, rmap[1][0],rmap[1][1]);
+            rightImage.rectifyImage(rightImage.realImage, rmap[1][0],rmap[1][1]);
+        }
+        std::vector <cv::DMatch> matches;
+
+
+        if (firstImage)
+        {
+            StereoKeypoints keypoints;
+            StereoDescriptors desc;
+            featureExtractor.extractFeatures(leftImage.image, rightImage.image, desc, keypoints);
+            
+            matcher.computeStereoMatches(leftImage.image, rightImage.image, desc, matches, points, keypoints);
+
+            firstImage = false;
+            prevPoints.clone(points);
+            useable = prevPoints.left.size();
+            prevLeftImage.image = leftImage.image.clone();
+            prevLeftImage.realImage = leftImage.realImage.clone();
+            prevRightImage.image = rightImage.image.clone();
+            continue;
+        }
+
+        if (useable < sizeThreshold)
+        {
+            in = true;
+            zedcamera->addKeyFrame = true;
+            StereoKeypoints keypoints;
+            StereoDescriptors desc;
+            featureExtractor.extractFeatures(prevLeftImage.image, prevRightImage.image, desc, keypoints);
+            
+            matcher.computeStereoMatches(prevLeftImage.image, prevRightImage.image, desc, matches, points, keypoints);
+
+            // std::vector<uchar> inliers;
+            // cv::findFundamentalMat(points.left, points.right, inliers, cv::FM_RANSAC, 1, 0.99);
+
+            // points.reduce<uchar>(inliers);
+            prevPoints.clear();
+            prevPoints.points2D.clear();
+            prevPoints.points3D.clear();
+            prevPoints.clone(points);
+
+            const size_t end {prevPoints.left.size()};
+            prevPoints.indexes.clear();
+            prevPoints.indexes.reserve(end);
+            for (size_t i{0};i < end; i++)
+            {
+                if (prevPoints.useable[i])
+                    prevPoints.indexes.emplace_back(i);
+            }
+
+            cv::Mat outImageMatches;
+            drawFeatureMatchesStereoSub(matches,prevLeftImage.realImage, points.left,points.right,outImageMatches);
+            cv::imshow("Matches",outImageMatches);
+
+            points.clear();
+        }
+
+
+
+        matcher.computeOpticalFlow(prevLeftImage.image, leftImage.image, prevRightImage.image, rightImage.image, prevPoints, points);
+
+        matcher.outlierRejection(prevLeftImage.image, leftImage.image, rightImage.image, prevPoints, points);
+
+
+        // featureM.calculate3DPoints(prevPoints, points,zedcamera);
+
+        if (in)
+        {
+            const size_t end {prevPoints.left.size()};
+            Eigen::MatrixXd homoPoints3D(end,4);
+            for (size_t i = 0; i < end; i++)
+            {   
+                const double cx {zedcamera->cameraLeft.cx};
+                const double cy {zedcamera->cameraLeft.cy};
+                const double fx {zedcamera->cameraLeft.fx};
+                const double fy {zedcamera->cameraLeft.fy};
+
+                const double xp = (double)(((double)prevPoints.left[i].x-cx)*(double)prevPoints.depth[i]/fx);
+                const double yp = (double)(((double)prevPoints.left[i].y-cy)*(double)prevPoints.depth[i]/fy);
+                const double zp = (double)prevPoints.depth[i];
+
+                prevPoints.points3D.emplace_back(cv::Point3d(xp,yp,zp));
+                homoPoints3D(i,0) = xp;
+                homoPoints3D(i,1) = yp;
+                homoPoints3D(i,2) = zp;
+                homoPoints3D(i,3) = 1;
+            }
+            keyFrames.emplace_back(KeyFrame(zedcamera->cameraPose.pose,prevPoints.points3D, homoPoints3D, keyframeNumb));
+            keyFrames[keyframeNumb].pose.setInvPose(zedcamera->cameraPose.pose.inverse());
+            keyframeNumb ++;
+        }
+        // const size_t end {prevPoints.left.size()};
+        // for (size_t i = 0; i < end; i++)
+        // {
+
+        //     prevPoints.points2D.emplace_back(cv::Point2d((double)points.left[i].x,(double)points.left[i].y));
+        // }
+        // std::vector < bool > inliers = matcher.getMaxClique(featureM.prevPoints3DStereo,featureM.points3DStereo);
+
+        // for (int i{0};i < inliers.size();i ++)
+        // {
+        //     Logging("in ",inliers[i],3);
+        // }
+
+        std::vector<cv::Point3d> yesPoints3D;
+        std::vector<cv::Point2d> yesPoints2D;
+        int count {0};
+        const size_t end {prevPoints.indexes.size()};
+        yesPoints3D.reserve(end);
+        yesPoints2D.reserve(end);
+
+        for (int idx:prevPoints.indexes)
+        {
+            if (in)
+            {
+                yesPoints3D.emplace_back(prevPoints.points3D[idx]);
+                yesPoints2D.emplace_back(cv::Point2d((double)points.left[idx].x,(double)points.left[idx].y));
+                count ++;
+
+            }
+            else
+            {
+                Eigen::Vector4d point = keyFrames[keyframeNumb - 1].getWorldPosition(idx);
+                cv::Point2d point2d;
+                if (matcher.checkProjection(point,point2d))
+                {
+                    yesPoints3D.emplace_back(cv::Point3d(point(0), point(1),point(2)));
+                    yesPoints2D.emplace_back(point2d);
+                    count ++;
+
+                }
+
+            }
+        }
+        // Eigen::Vector4d point = zedcamera->cameraPose.pose * keyFrames[keyframeNumb - 1].getWorldPosition(10);
+        // Logging("point", point,3);
+
+        // for (size_t i = 0; i < end; i++)
+        // {
+        //     if (prevPoints.useable[i])
+        //     {
+        //         if (in)
+        //         {
+        //             yesPoints3D.emplace_back(prevPoints.points3D[i]);
+        //         }
+        //         else
+        //         {
+        //             Eigen::MatrixXd point = zedcamera->cameraPose.poseInverse * keyFrames[keyframeNumb - 1].homoPoints3D.row(i).transpose();
+        //             yesPoints3D.emplace_back(cv::Point3d(point(0,0), point(1,0),point(2,0)));
+        //         }
+        //         yesPoints2D.emplace_back(prevPoints.points2D[i]);
+        //         count ++;
+        //     }
+        // }
+        // Logging("lol",zedcamera->cameraPose.poseInverse*keyFrames[keyframeNumb - 1].homoPoints3D.row(10).transpose(),3);
+
+        // std::vector<bool> inliers = matcher.inlierDetection(featureM.prevPoints3DStereo,featureM.points3DStereo,featureM.points2DStereo);
+
+        // reduceVectorTemp<cv::Point3d,bool>(featureM.prevPoints3DStereo,inliers);
+        // reduceVectorTemp<cv::Point2d,bool>(featureM.points2DStereo,inliers);
+        // prevPoints.reduce<bool>(inliers);
+        // points.reduce<bool>(inliers);
+
+        useable = count;
+        Logging("useable",useable,3);
+        Eigen::Matrix4d Tra;
+        if (i < 3)
+        {
+            poseEst.initializePose(yesPoints3D, yesPoints2D, dt, Tra);
+        }
+        else
+        {
+            poseEst.estimatePose(yesPoints3D, yesPoints2D, dt, Tra);
+            
+        }
+
+
+        T = Tra.matrix();
+
+
+
+        // Eigen::Matrix4d temp;
+        // temp = Tra.matrix();
+
+        // Eigen::Matrix3d Rv = temp.topLeftCorner<3,3>();
+        // Eigen::Vector3d tv = temp.topRightCorner<3,1>();
+
+        // cv::Mat rvec,tvec;
+        // cv::eigen2cv(Rv, rvec);
+        // cv::eigen2cv(tv, tvec);
+
+        // cv::Rodrigues(rvec,rvec);
+
+        // camera[0] = rvec.at<double>(0);
+        // camera[1] = rvec.at<double>(1);
+        // camera[2] = rvec.at<double>(2);
+        // camera[3] = tvec.at<double>(0);
+        // camera[4] = tvec.at<double>(1);
+        // camera[5] = tvec.at<double>(2);
+
+
+        // remove outliers using velocity
+
+        // Logging("before 3d", featureM.prevPoints3DStereo[10],3);
+        // Logging("before 2d", featureM.points2DStereo[10],3);
+
+        // ceresSolverFAST(featureM.prevPoints3DStereo,featureM.points2DStereo);
+       
+        // Logging("after 3d", featureM.prevPoints3DStereo[10],3);
+        // Logging("after 2d", featureM.points2DStereo[10],3);
+
+
+        publishPose();
+        // Timer loop5("AFTER");
+        in = false;
+        i++;
+        cv::Mat optical;
+        drawOptical(prevLeftImage.realImage, prevPoints.left, points.left,optical);
+        cv::imshow("optical flow",optical);
+
+        cv::waitKey(1);
+
+        featureM.clear();
+        prevPoints.clone(points);
+        prevPoints.points2D.clear();
         points.clear();
         prevLeftImage.image = leftImage.image.clone();
         prevRightImage.image = rightImage.image.clone();

@@ -4,6 +4,7 @@
 #define TRIAL_H
 
 #include "Camera.h"
+#include "KeyFrame.h"
 #include "PoseEstimator.h"
 #include "FeatureManager.h"
 #include "FeatureExtractor.h"
@@ -243,6 +244,7 @@ class RobustMatcher2 {
     void testFeatureExtractorClassWithCallback();
     void testFeatureExtractorClass();
     void testFeatureMatcherOptical();
+    void testFeatureMatcherStable3D();
     
 };
 

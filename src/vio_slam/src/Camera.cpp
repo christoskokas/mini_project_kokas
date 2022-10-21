@@ -5,6 +5,24 @@
 namespace vio_slam
 {
 
+CameraPose::CameraPose(Eigen::Matrix4d _pose, std::chrono::time_point<std::chrono::high_resolution_clock> _timestamp) : pose(_pose), timestamp(_timestamp)
+{
+    poseInverse = Eigen::Matrix4d::Identity();
+}
+
+void CameraPose::setPose(Eigen::Matrix4d poseT)
+{
+    pose = poseT;
+    // Eigen::Matrix4d temp = poseT.inverse();
+    // poseInverse = temp;
+    timestamp = std::chrono::high_resolution_clock::now();
+}
+
+void CameraPose::setInvPose(Eigen::Matrix4d poseT)
+{
+    poseInverse = poseT;
+}
+
 Zed_Camera::Zed_Camera(ConfigFile& yamlFile)
 {
     confFile = &yamlFile;

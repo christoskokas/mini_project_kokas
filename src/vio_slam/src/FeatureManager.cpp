@@ -8,6 +8,7 @@ void FeatureManager::calculate3DPoints(SubPixelPoints& prevPoints, SubPixelPoint
     const size_t end {prevPoints.left.size()};
 
     prevPoints3DStereo.reserve(end);
+    points3DStereo.reserve(end);
     points2DStereo.reserve(end);
     points2DMono.reserve(end);
 
@@ -33,7 +34,12 @@ void FeatureManager::calculate3DPoints(SubPixelPoints& prevPoints, SubPixelPoint
         const double yp = (double)(((double)prevPoints.left[i].y-cy)*(double)prevPoints.depth[i]/fy);
         const double zp = (double)prevPoints.depth[i];
 
+        const double x = (double)(((double)points.left[i].x-cx)*(double)points.depth[i]/fx);
+        const double y = (double)(((double)points.left[i].y-cy)*(double)points.depth[i]/fy);
+        const double z = (double)points.depth[i];
+
         prevPoints3DStereo.emplace_back(cv::Point3d(xp,yp,zp));
+        points3DStereo.emplace_back(cv::Point3d(x,y,z));
         points2DStereo.emplace_back(cv::Point2d((double)points.left[i].x,(double)points.left[i].y));
         
     }
@@ -42,8 +48,10 @@ void FeatureManager::calculate3DPoints(SubPixelPoints& prevPoints, SubPixelPoint
 void FeatureManager::clear()
 {
     prevPoints3DStereo.clear();
+    prevPoints3DMono.clear();
     points2DMono.clear();
     points2DStereo.clear();
+    points3DStereo.clear();
 }
 
 }

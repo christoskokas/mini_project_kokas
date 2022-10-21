@@ -60,7 +60,7 @@ class FeatureMatcher
 
         void slidingWindowOptimization(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector <cv::DMatch>& matches, const std::vector <cv::DMatch>& tempMatches, SubPixelPoints& points);
 
-        void computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, SubPixelPoints& prevPoints, SubPixelPoints& newPoints);
+        void computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, const cv::Mat& prevRightIm, const cv::Mat& rightIm, SubPixelPoints& prevPoints, SubPixelPoints& newPoints);
 
         std::vector<bool> slidingWindowOptical(const cv::Mat& prevImage, const cv::Mat& image, std::vector<cv::Point2f>& prevPoints, std::vector<cv::Point2f>& newPoints);
         std::vector<bool> slidingWindowOpticalLR(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector<cv::Point2f>& leftPoints, std::vector<cv::Point2f>& rightPoints);
@@ -68,13 +68,20 @@ class FeatureMatcher
         void removeWithFund(SubPixelPoints& prevPoints, SubPixelPoints& points);
         void computeRightPoints(const SubPixelPoints& prevPoints, SubPixelPoints& points);
         void computeDepth(SubPixelPoints& prevPoints, SubPixelPoints& points);
-        void inlierDetection(std::vector < cv::Point3d>& first, std::vector < cv::Point3d>& second, std::vector <cv::Point2f>& toReduce);
+        std::vector<bool> inlierDetection(std::vector < cv::Point3d>& first, std::vector < cv::Point3d>& second, std::vector <cv::Point2d>& toReduce);
         void outlierRejection(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, const cv::Mat& rightIm, SubPixelPoints& prevPoints, SubPixelPoints& points);
 
 
         double computeDistanceOf3DPoints(cv::Point3d& first, cv::Point3d& second);
 
         void addUcharVectors(std::vector <uchar>& first, std::vector <uchar>& second);
+
+        std::vector<bool> getMaxClique( const std::vector<cv::Point3d>& ptsA, const std::vector<cv::Point3d>& ptsB );
+
+        double computeDistanceThreshold(const cv::Point3d& p1, const cv::Point3d& p2, const double L1, const double L2);
+        double computeDL(const cv::Point3d& p1,const cv::Point3d& p2, const double L);
+
+        bool checkProjection(Eigen::Vector4d& point, cv::Point2d& kp);
 
 };
 

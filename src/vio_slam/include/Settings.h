@@ -120,6 +120,15 @@ void reduceVectorTemp(std::vector<T>& vec,std::vector<U>& check)
     vec.resize(j);
 }
 
+template <typename T>
+void checkVectorTemp(std::vector<bool>& vec,std::vector<T>& check)
+{
+    for (int i = 0; i < int(vec.size()); i++)
+        if (!(check[i] && vec[i]))
+            vec[i] = false;
+
+}
+
 } // namespace vio_slam
 
 
