@@ -43,6 +43,8 @@ void PoseEstimator::estimatePose(std::vector<cv::Point3d>& points3D, std::vector
     if (points3D.size() > 4)
         if (!cv::solvePnP(points3D,points2D,zedcamera->cameraLeft.cameraMatrix,dist, Rvec,tvec,true,cv::SOLVEPNP_ITERATIVE))
             Logging("SolvePnP Failed, keep device steady!","",3);
+        // if (!cv::solvePnPRansac(points3D,points2D,zedcamera->cameraLeft.cameraMatrix,dist, Rvec,tvec,true,cv::SOLVEPNP_ITERATIVE,8))
+        //     Logging("SolvePnP Failed, keep device steady!","",3);
 
     setPrevR(Rvec);
     setPrevT(tvec);
@@ -60,6 +62,8 @@ void PoseEstimator::initializePose(std::vector<cv::Point3d>& points3D, std::vect
     bool sPnP {false};
     if (points3D.size() > 4)
     {
+        // if (!cv::solvePnPRansac(points3D,points2D,zedcamera->cameraLeft.cameraMatrix,dist, Rvec,tvec,true,cv::SOLVEPNP_ITERATIVE,8))
+        //     Logging("SolvePnP Failed, keep device steady!","",3);
         if (!cv::solvePnP(points3D,points2D,zedcamera->cameraLeft.cameraMatrix,dist, Rvec,tvec,false,cv::SOLVEPNP_ITERATIVE))
             Logging("Initialization Failed, keep device steady!","",3);
         else

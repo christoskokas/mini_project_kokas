@@ -135,6 +135,19 @@ void FeatureExtractor::findFAST(cv::Mat& image, std::vector <cv::KeyPoint>& fast
 
 }
 
+void FeatureExtractor::extractORB(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints)
+{
+
+    findORB(leftImage,keypoints.left, desc.left);
+    findORB(rightImage,keypoints.right, desc.right);
+    // cv::Ptr<cv::ORB> detector {cv::ORB::create(2000,imScale,nLevels,edgeThreshold,0,2,cv::ORB::FAST_SCORE,patchSize,maxFastThreshold)};
+    // detector->compute(leftImage, keypoints.left, desc.left);
+    // detector->compute(rightImage, keypoints.right, desc.right);
+
+    // updatePoints(leftKeys, rightKeys,points);
+    
+}
+
 void FeatureExtractor::extractFeatures(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints)
 {
 
@@ -147,22 +160,6 @@ void FeatureExtractor::extractFeatures(cv::Mat& leftImage, cv::Mat& rightImage, 
     // updatePoints(leftKeys, rightKeys,points);
     
 }
-
-// void FeatureExtractor::updatePoints(std::vector <cv::KeyPoint>& leftKeys, std::vector <cv::KeyPoint>& rightKeys, SubPixelPoints& points)
-// {
-//     {
-//     points.left.reserve(leftKeys.size());
-//     std::vector<cv::KeyPoint>::const_iterator it, end(leftKeys.end());
-//     for (it = leftKeys.begin();it != end; it++)
-//         points.left.emplace_back(it->pt);
-//     }
-//     {
-//     points.right.reserve(rightKeys.size());
-//     std::vector<cv::KeyPoint>::const_iterator it, end(rightKeys.end());
-//     for (it = rightKeys.begin();it != end; it++)
-//         points.right.emplace_back(it->pt);
-//     }
-// }
 
 void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys)
 {

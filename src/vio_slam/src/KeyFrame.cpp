@@ -12,7 +12,7 @@ KeyFrame::KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, Eigen
 
 Eigen::Vector4d KeyFrame::getWorldPosition(int idx)
 {
-    return pose.poseInverse * homoPoints3D.row(idx).transpose();
+    return pose.pose * homoPoints3D.row(idx).transpose();
 }
 
 };

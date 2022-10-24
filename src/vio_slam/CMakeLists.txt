@@ -57,6 +57,7 @@ src/FeatureMatcher.cpp
 src/PoseEstimator.cpp
 src/FeatureManager.cpp
 src/KeyFrame.cpp
+src/FeatureTracker.cpp
 include/Camera.h
 include/FeatureDrawer.h
 include/Frame.h
@@ -67,6 +68,7 @@ include/FeatureMatcher.h
 include/PoseEstimator.h
 include/FeatureManager.h
 include/KeyFrame.h
+include/FeatureTracker.h
 )
 
 ## Generate added messages and services

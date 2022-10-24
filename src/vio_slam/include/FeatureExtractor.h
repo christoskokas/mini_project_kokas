@@ -23,7 +23,8 @@ struct SubPixelPoints
     std::vector<cv::Point2f> left;
     std::vector<cv::Point2d> points2D;
     std::vector<cv::Point2f> right;
-    std::vector<int> indexes;
+    std::vector<int> indexes3D;
+    std::vector<int> indexes2D;
     std::vector<float> depth;
     std::vector<bool> useable;
 
@@ -71,8 +72,8 @@ class FeatureExtractor
     const int minFastThreshold;
     const bool nonMaxSuppression;
 
-    const int gridRows {25};
-    const int gridCols {25};
+    const int gridRows {10};
+    const int gridCols {10};
     const int gridsNumber {gridCols * gridRows};
     const int numberPerCell = nFeatures/(gridRows * gridCols);
 
@@ -103,6 +104,7 @@ class FeatureExtractor
         void findORBWithCV(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
 
         void extractFeatures(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
+        void extractORB(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
 
         // void updatePoints(std::vector <cv::KeyPoint>& leftKeys, std::vector <cv::KeyPoint>& rightKeys, SubPixelPoints& points);
 

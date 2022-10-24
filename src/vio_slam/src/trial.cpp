@@ -1364,7 +1364,8 @@ void RobustMatcher2::beginTest()
     // testFeatureExtractorClassWithCallback();
     // testFeatureExtractorClass();
     // testFeatureMatcherOptical();
-    testFeatureMatcherStable3D();
+    // testFeatureMatcherStable3D();
+    testOpticalReDo();
 
 }
 
@@ -1560,7 +1561,7 @@ void RobustMatcher2::testFeatureMatcherOptical()
 
 
 
-        matcher.computeOpticalFlow(prevLeftImage.image, leftImage.image, prevRightImage.image, rightImage.image, prevPoints, points);
+        matcher.computeOpticalFlow(prevLeftImage.image, leftImage.image, prevPoints, points);
 
         matcher.outlierRejection(prevLeftImage.image, leftImage.image, rightImage.image, prevPoints, points);
 
@@ -1665,7 +1666,7 @@ void RobustMatcher2::testFeatureMatcherStable3D()
     FeatureManager featureM;
     PoseEstimator poseEst(zedcamera);
     bool in {true};
-    int i {0};
+    int loopI {0};
     int keyframeNumb {0};
     int useable {0};
 #if KITTI_DATASET
@@ -1677,9 +1678,9 @@ void RobustMatcher2::testFeatureMatcherStable3D()
     std::chrono::duration<float> duration;
     Timer all("all");
     SubPixelPoints points, prevPoints;
-    while(i < times)
+    while(loopI < times)
     {
-        if (i > 0)
+        if (loopI > 0)
         {
             endTime =  std::chrono::high_resolution_clock::now();
 
@@ -1687,8 +1688,8 @@ void RobustMatcher2::testFeatureMatcherStable3D()
         }
         float dt = duration.count();
         startTime = std::chrono::high_resolution_clock::now();
-        leftImage.getImage(i, "left");
-        rightImage.getImage(i, "right");
+        leftImage.getImage(loopI, "left");
+        rightImage.getImage(loopI, "right");
         if (!zedcamera->rectified)
         {
             leftImage.rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
@@ -1708,8 +1709,24 @@ void RobustMatcher2::testFeatureMatcherStable3D()
             matcher.computeStereoMatches(leftImage.image, rightImage.image, desc, matches, points, keypoints);
 
             firstImage = false;
-            prevPoints.clone(points);
-            useable = prevPoints.left.size();
+            std::vector<uchar> inliers;
+            cv::findFundamentalMat(points.left, points.right, inliers, cv::FM_RANSAC, 3, 0.99);
+
+            points.reduce<uchar>(inliers);
+            const size_t end {points.left.size()};
+            prevPoints.indexes3D.reserve(end);
+            int idxleft {0};
+            for (size_t i{0};i < end; i++)
+            {
+                if (points.useable[i])
+                {
+                    prevPoints.indexes3D.emplace_back(idxleft);
+                    prevPoints.left.emplace_back(points.left[i]);
+                    prevPoints.depth.emplace_back(points.depth[i]);
+                    idxleft++;
+                }
+            }
+            prevPoints.indexes2D = prevPoints.indexes3D;
             prevLeftImage.image = leftImage.image.clone();
             prevLeftImage.realImage = leftImage.realImage.clone();
             prevRightImage.image = rightImage.image.clone();
@@ -1726,23 +1743,30 @@ void RobustMatcher2::testFeatureMatcherStable3D()
             
             matcher.computeStereoMatches(prevLeftImage.image, prevRightImage.image, desc, matches, points, keypoints);
 
-            // std::vector<uchar> inliers;
-            // cv::findFundamentalMat(points.left, points.right, inliers, cv::FM_RANSAC, 1, 0.99);
+            std::vector<uchar> inliers;
+            cv::findFundamentalMat(points.left, points.right, inliers, cv::FM_RANSAC, 0.5, 0.99);
 
-            // points.reduce<uchar>(inliers);
+            points.reduce<uchar>(inliers);
             prevPoints.clear();
             prevPoints.points2D.clear();
             prevPoints.points3D.clear();
-            prevPoints.clone(points);
+            // prevPoints.clone(points);
 
-            const size_t end {prevPoints.left.size()};
-            prevPoints.indexes.clear();
-            prevPoints.indexes.reserve(end);
+            const size_t end {points.left.size()};
+            prevPoints.indexes3D.clear();
+            prevPoints.indexes3D.reserve(end);
+            int idxleft {0};
             for (size_t i{0};i < end; i++)
             {
-                if (prevPoints.useable[i])
-                    prevPoints.indexes.emplace_back(i);
+                if (points.useable[i])
+                {
+                    prevPoints.indexes3D.emplace_back(idxleft);
+                    prevPoints.left.emplace_back(points.left[i]);
+                    prevPoints.depth.emplace_back(points.depth[i]);
+                    idxleft++;
+                }
             }
+            prevPoints.indexes2D = prevPoints.indexes3D;
 
             cv::Mat outImageMatches;
             drawFeatureMatchesStereoSub(matches,prevLeftImage.realImage, points.left,points.right,outImageMatches);
@@ -1753,17 +1777,22 @@ void RobustMatcher2::testFeatureMatcherStable3D()
 
 
 
-        matcher.computeOpticalFlow(prevLeftImage.image, leftImage.image, prevRightImage.image, rightImage.image, prevPoints, points);
+        matcher.computeOpticalFlow(prevLeftImage.image, leftImage.image, prevPoints, points);
 
         matcher.outlierRejection(prevLeftImage.image, leftImage.image, rightImage.image, prevPoints, points);
 
 
+        if (loopI == 200)
+        {
+            Logging("","",0);
+        }
         // featureM.calculate3DPoints(prevPoints, points,zedcamera);
 
         if (in)
         {
             const size_t end {prevPoints.left.size()};
             Eigen::MatrixXd homoPoints3D(end,4);
+            prevPoints.indexes3D.clear();
             for (size_t i = 0; i < end; i++)
             {   
                 const double cx {zedcamera->cameraLeft.cx};
@@ -1780,6 +1809,7 @@ void RobustMatcher2::testFeatureMatcherStable3D()
                 homoPoints3D(i,1) = yp;
                 homoPoints3D(i,2) = zp;
                 homoPoints3D(i,3) = 1;
+                prevPoints.indexes3D.emplace_back(i);
             }
             keyFrames.emplace_back(KeyFrame(zedcamera->cameraPose.pose,prevPoints.points3D, homoPoints3D, keyframeNumb));
             keyFrames[keyframeNumb].pose.setInvPose(zedcamera->cameraPose.pose.inverse());
@@ -1797,21 +1827,23 @@ void RobustMatcher2::testFeatureMatcherStable3D()
         // {
         //     Logging("in ",inliers[i],3);
         // }
-
+        std::vector<cv::Point2f> tr1,tr2;
         std::vector<cv::Point3d> yesPoints3D;
         std::vector<cv::Point2d> yesPoints2D;
         int count {0};
-        const size_t end {prevPoints.indexes.size()};
+        const size_t end {prevPoints.indexes3D.size()};
         yesPoints3D.reserve(end);
         yesPoints2D.reserve(end);
-
-        for (int idx:prevPoints.indexes)
+        int idx2D {0};
+        for (int idx:prevPoints.indexes3D)
         {
             if (in)
             {
                 yesPoints3D.emplace_back(prevPoints.points3D[idx]);
-                yesPoints2D.emplace_back(cv::Point2d((double)points.left[idx].x,(double)points.left[idx].y));
+                yesPoints2D.emplace_back(cv::Point2d((double)points.left[idx2D].x,(double)points.left[idx2D].y));
                 count ++;
+                tr1.emplace_back(prevPoints.left[idx2D].x,prevPoints.left[idx2D].y);
+                tr2.emplace_back(points.left[idx2D].x,points.left[idx2D].y);
 
             }
             else
@@ -1821,12 +1853,15 @@ void RobustMatcher2::testFeatureMatcherStable3D()
                 if (matcher.checkProjection(point,point2d))
                 {
                     yesPoints3D.emplace_back(cv::Point3d(point(0), point(1),point(2)));
-                    yesPoints2D.emplace_back(point2d);
+                    yesPoints2D.emplace_back((double)points.left[idx2D].x,(double)points.left[idx2D].y);
                     count ++;
+                    tr1.emplace_back(prevPoints.left[idx2D].x,prevPoints.left[idx2D].y);
+                    tr2.emplace_back(points.left[idx2D].x,points.left[idx2D].y);
 
                 }
 
             }
+            idx2D ++;
         }
         // Eigen::Vector4d point = zedcamera->cameraPose.pose * keyFrames[keyframeNumb - 1].getWorldPosition(10);
         // Logging("point", point,3);
@@ -1860,7 +1895,7 @@ void RobustMatcher2::testFeatureMatcherStable3D()
         useable = count;
         Logging("useable",useable,3);
         Eigen::Matrix4d Tra;
-        if (i < 3)
+        if (loopI < 3)
         {
             poseEst.initializePose(yesPoints3D, yesPoints2D, dt, Tra);
         }
@@ -1872,7 +1907,7 @@ void RobustMatcher2::testFeatureMatcherStable3D()
 
 
         T = Tra.matrix();
-
+        publishPose();
 
 
         // Eigen::Matrix4d temp;
@@ -1905,19 +1940,28 @@ void RobustMatcher2::testFeatureMatcherStable3D()
         // Logging("after 3d", featureM.prevPoints3DStereo[10],3);
         // Logging("after 2d", featureM.points2DStereo[10],3);
 
+        // for (int idx:prevPoints.indexes2D)
+        // {
+        //     tr1.push_back(prevPoints.left[idx]);
+        //     tr2.push_back(points.left[idx]);
+        // }
 
-        publishPose();
         // Timer loop5("AFTER");
         in = false;
-        i++;
+        loopI++;
         cv::Mat optical;
-        drawOptical(prevLeftImage.realImage, prevPoints.left, points.left,optical);
+        drawOptical(prevLeftImage.realImage, tr1, tr2,optical);
         cv::imshow("optical flow",optical);
 
         cv::waitKey(1);
 
+
+        prevPoints.left.clear();
+        prevPoints.left = tr2;
+        prevPoints.indexes2D.clear();
+
         featureM.clear();
-        prevPoints.clone(points);
+        // prevPoints.clone(points);
         prevPoints.points2D.clear();
         points.clear();
         prevLeftImage.image = leftImage.image.clone();
@@ -1931,6 +1975,65 @@ void RobustMatcher2::testFeatureMatcherStable3D()
 
     
 }
+
+void RobustMatcher2::testOpticalReDo()
+{
+    const int sizeThreshold {80};
+    const int maxSizeThreshold {500};
+    std::vector<KeyFrame> keyFrames;
+    FeatureExtractor featureExtractor;
+    FeatureMatcher matcher(zedcamera, zedcamera->mHeight, featureExtractor.getGridRows(), featureExtractor.getGridCols());
+    FeatureManager featureM;
+    PoseEstimator poseEst(zedcamera);
+    FeatureTracker ft(rmap,zedcamera);
+    bool in {true};
+    int loopI {0};
+    int keyframeNumb {0};
+    int useable {0};
+#if KITTI_DATASET
+    const int times {4540};
+#else
+    const int times {657};
+#endif
+    std::chrono::_V2::system_clock::time_point startTime, endTime;
+    std::chrono::duration<float> duration;
+    Timer all("all");
+    SubPixelPoints points, prevPoints;
+    ft.initializeTracking();
+
+    
+
+    cv::imshow("left",ft.getLImage());
+    cv::waitKey(0);
+    // while(loopI < times)
+    // {
+    //     if (loopI > 0)
+    //     {
+    //         endTime =  std::chrono::high_resolution_clock::now();
+
+    //         duration = endTime - startTime;
+    //     }
+    //     float dt = duration.count();
+    //     startTime = std::chrono::high_resolution_clock::now();
+    //     leftImage.getImage(loopI, "left");
+    //     rightImage.getImage(loopI, "right");
+    //     if (!zedcamera->rectified)
+    //     {
+    //         leftImage.rectifyImage(leftImage.image,rmap[0][0],rmap[0][1]);
+    //         leftImage.rectifyImage(leftImage.realImage,rmap[0][0],rmap[0][1]);
+    //         rightImage.rectifyImage(rightImage.image, rmap[1][0],rmap[1][1]);
+    //         rightImage.rectifyImage(rightImage.realImage, rmap[1][0],rmap[1][1]);
+    //     }
+    //     std::vector <cv::DMatch> matches;
+
+
+    // }
+    
+    Logging("Last Transform", previousT,2);
+
+    
+}
+
 
 void RobustMatcher2::ceresSolverFAST(std::vector<cv::Point3d>& prevPoints, std::vector<cv::Point2d>& points)
 {

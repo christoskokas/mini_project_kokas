@@ -9,6 +9,7 @@
 #include "FeatureManager.h"
 #include "FeatureExtractor.h"
 #include "FeatureMatcher.h"
+#include "FeatureTracker.h"
 #include "Settings.h"
 #include "Optimizer.h"
 #include <ros/ros.h>
@@ -245,6 +246,7 @@ class RobustMatcher2 {
     void testFeatureExtractorClass();
     void testFeatureMatcherOptical();
     void testFeatureMatcherStable3D();
+    void testOpticalReDo();
     
 };
 
