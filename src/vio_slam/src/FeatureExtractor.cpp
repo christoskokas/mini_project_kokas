@@ -673,6 +673,24 @@ void SubPixelPoints::add(SubPixelPoints& points)
     }
 }
 
+void SubPixelPoints::addLeft(SubPixelPoints& points)
+{
+    const size_t size {left.size() + points.left.size()};
+
+    left.reserve(size);
+    depth.reserve(size);
+    useable.reserve(size);
+
+    const size_t end {points.left.size()};
+
+    for (size_t i = 0; i < end; i++)
+    {
+        left.emplace_back(points.left[i]);
+        depth.emplace_back(points.depth[i]);
+        useable.emplace_back(points.useable[i]);
+    }
+}
+
 void SubPixelPoints::clear()
 {
     left.clear();

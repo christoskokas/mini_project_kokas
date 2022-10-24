@@ -12,6 +12,9 @@
 #include "Settings.h"
 #include "Optimizer.h"
 
+#define MATCHESIM false
+#define OPTICALIM true
+
 namespace vio_slam
 {
 
@@ -22,8 +25,8 @@ class ImageData
     public:
         cv::Mat im, rIm;
 
-        void setImage(int frameNumber, const char* whichImage);
-        void rectifyImage(cv::Mat& image, cv::Mat& map1, cv::Mat& map2);
+        void setImage(const int frameNumber, const char* whichImage);
+        void rectifyImage(cv::Mat& image, const cv::Mat& map1, const cv::Mat& map2);
 };
 
 struct FeatureData
@@ -46,14 +49,25 @@ class FeatureTracker
         std::chrono::_V2::system_clock::time_point startTime, endTime;
         std::chrono::duration<float> duration;
 
+        Eigen::Matrix4d poseEst = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d poseEstFrame = Eigen::Matrix4d::Identity();
+
+        const int waitIm {1};
+
+        const int mnSize {200};
+        int uStereo {0};
+        int uMono {0};
+
         ImageData pLIm, pRIm, lIm, rIm;
         cv::Mat rmap[2][2];
         Zed_Camera* zedPtr;
         FeatureExtractor fe;
         FeatureMatcher fm;
-        SubPixelPoints pnts,prepnts;
+        SubPixelPoints pnts,prePnts;
         PoseEstimator pE;
         FeatureData fd;
+
+        cv::TermCriteria criteria {cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 60, (0.0001000000000000000021))};
 
 
     public :
@@ -61,12 +75,22 @@ class FeatureTracker
         FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr);
 
         void initializeTracking();
+        void beginTracking(const int frames);
 
-        void setLRImages(int frameNumber);
-        void setLImage(int frameNumber);
+        void updateKeys(const int frame);
+
+        void stereoFeatures(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts);
+        void opticalFlow();
+        void getEssentialPose();
+
+        void setLRImages(const int frameNumber);
+        void setLImage(const int frameNumber);
         void setPreLImage();
         void setPreRImage();
         void setPre();
+        void clearPre();
+
+        float calcDt();
 
         cv::Mat getLImage();
         cv::Mat getRImage();
@@ -75,6 +99,11 @@ class FeatureTracker
 
         void rectifyLRImages();
         void rectifyLImage();
+
+        void drawMatches(const cv::Mat& lIm, const SubPixelPoints& pnts, const std::vector<cv::DMatch> matches);
+        void drawOptical(const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts);
+
+        void publishPose();
 
 };
 

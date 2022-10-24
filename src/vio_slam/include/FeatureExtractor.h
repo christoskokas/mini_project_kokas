@@ -31,6 +31,7 @@ struct SubPixelPoints
     void clone(SubPixelPoints& points);
     void clear();
     void add(SubPixelPoints& points);
+    void addLeft(SubPixelPoints& points);
 
     template <typename T>
     void reduce(std::vector<T>& check)
@@ -41,6 +42,17 @@ struct SubPixelPoints
         reduceVectorTemp<cv::Point2f,T>(right,check);
         reduceVectorTemp<float,T>(depth,check);
         reduceVectorTemp<bool,T>(useable,check);
+    }
+
+    template <typename T>
+    void reduceWithValue(std::vector<T>& check, const float value)
+    {
+        reduceVectorWithValue<cv::Point3d,T>(points3D,check, value);
+        reduceVectorWithValue<cv::Point2d,T>(points2D,check, value);
+        reduceVectorWithValue<cv::Point2f,T>(left,check, value);
+        reduceVectorWithValue<cv::Point2f,T>(right,check, value);
+        reduceVectorWithValue<float,T>(depth,check, value);
+        reduceVectorWithValue<bool,T>(useable,check, value);
     }
 
 };

@@ -120,6 +120,16 @@ void reduceVectorTemp(std::vector<T>& vec,std::vector<U>& check)
     vec.resize(j);
 }
 
+template <typename T, typename U>
+void reduceVectorWithValue(std::vector<T>& vec,std::vector<U>& check, const float value)
+{
+    int j {0};
+    for (int i = 0; i < int(vec.size()); i++)
+        if (check[i] < value)
+            vec[j++] = vec[i];
+    vec.resize(j);
+}
+
 template <typename T>
 void checkVectorTemp(std::vector<bool>& vec,std::vector<T>& check)
 {

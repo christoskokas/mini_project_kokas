@@ -36,7 +36,7 @@ class FeatureMatcher
         const int stereoYSpan;
         const int imageHeight;
         const int gridRows, gridCols;
-        const int maxMatches {600};
+        const int maxMatches {1000};
 
         const Zed_Camera* zedptr;
 

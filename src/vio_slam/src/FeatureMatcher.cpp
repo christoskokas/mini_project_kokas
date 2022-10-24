@@ -1313,7 +1313,7 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
             matchesCount += 1;
         }
     }
-    Logging("matches size", matches.size(),2);
+    // Logging("matches size", matches.size(),2);
 }
 
 int FeatureMatcher::DescriptorDistance(const cv::Mat &a, const cv::Mat &b)

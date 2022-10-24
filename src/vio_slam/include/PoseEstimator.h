@@ -22,8 +22,8 @@ class PoseEstimator
         cv::Mat pprevR,pptra,prevR,ptra;
         void setPrevPrevR(cv::Mat& R);
         void setPrevPrevT(cv::Mat& T);
-        void convertToEigenMat(cv::Mat& Rvec, cv::Mat& tvec, Eigen::Matrix4d& transform);
     public:
+        void convertToEigenMat(cv::Mat& Rvec, cv::Mat& tvec, Eigen::Matrix4d& transform);
         PoseEstimator(const Zed_Camera* _zedcamera);
         void predictPose(cv::Mat& Rvec, cv::Mat& Tvec, const float dt);
         void estimatePose(std::vector<cv::Point3d>& points3D, std::vector<cv::Point2d>& points2D, const float dt, Eigen::Matrix4d& transform);

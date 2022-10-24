@@ -2001,10 +2001,12 @@ void RobustMatcher2::testOpticalReDo()
     SubPixelPoints points, prevPoints;
     ft.initializeTracking();
 
+    ft.beginTracking(times);
+
     
 
-    cv::imshow("left",ft.getLImage());
-    cv::waitKey(0);
+    // cv::imshow("left",ft.getLImage());
+    // cv::waitKey(0);
     // while(loopI < times)
     // {
     //     if (loopI > 0)
