@@ -22,8 +22,11 @@ class KeyFrame
         Eigen::MatrixXd homoPoints3D;
         const int numb;
 
+        KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, const int _numb = 0);
         KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, Eigen::MatrixXd _homoPoints3D, const int _numb = 0);
         Eigen::Vector4d getWorldPosition(int idx);
+
+        Eigen::Matrix4d getPose();
 };
 
 } // namespace vio_slam

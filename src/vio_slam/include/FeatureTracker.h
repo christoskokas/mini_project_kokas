@@ -14,6 +14,7 @@
 
 #define MATCHESIM false
 #define OPTICALIM true
+#define PROJECTIM true
 
 namespace vio_slam
 {
@@ -39,7 +40,7 @@ struct FeatureData
 
     FeatureData(Zed_Camera* zedPtr);
 
-    void compute3DPoints(SubPixelPoints& prePnts, SubPixelPoints& pnts);
+    void compute3DPoints(SubPixelPoints& prePnts);
 
 };
 
@@ -49,14 +50,19 @@ class FeatureTracker
         std::chrono::_V2::system_clock::time_point startTime, endTime;
         std::chrono::duration<float> duration;
 
+        std::vector<KeyFrame> keyframes;
+
         Eigen::Matrix4d poseEst = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d keyFramePose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d poseEstFrame = Eigen::Matrix4d::Identity();
-
-        const int waitIm {1};
-
+        cv::Mat prevR = (cv::Mat_<double>(3,3) << 1,0,0,0, 1,0,0,0,1);
+        const int waitIm {0};
         const int mnSize {200};
+        
         int uStereo {0};
         int uMono {0};
+        int keyNumb {1};
+
 
         ImageData pLIm, pRIm, lIm, rIm;
         cv::Mat rmap[2][2];
@@ -82,12 +88,14 @@ class FeatureTracker
         void stereoFeatures(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts);
         void opticalFlow();
         void getEssentialPose();
+        void getSolvePnPPose();
 
         void setLRImages(const int frameNumber);
         void setLImage(const int frameNumber);
         void setPreLImage();
         void setPreRImage();
         void setPre();
+        void setPreInit();
         void clearPre();
 
         float calcDt();
@@ -102,7 +110,11 @@ class FeatureTracker
 
         void drawMatches(const cv::Mat& lIm, const SubPixelPoints& pnts, const std::vector<cv::DMatch> matches);
         void drawOptical(const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts);
+        void draw2D3D(const cv::Mat& im, const std::vector<cv::Point3d>& p3D, const std::vector<cv::Point2d>& p2D);
 
+        bool checkProjection3D(cv::Point3d& point3D, const int keyFrameNumb);
+
+        void convertToEigen(cv::Mat& Rvec, cv::Mat& tvec, Eigen::Matrix4d& tr);
         void publishPose();
 
 };

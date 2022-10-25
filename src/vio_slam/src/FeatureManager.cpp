@@ -41,7 +41,8 @@ void FeatureManager::calculate3DPoints(SubPixelPoints& prevPoints, SubPixelPoint
         prevPoints3DStereo.emplace_back(cv::Point3d(xp,yp,zp));
         points3DStereo.emplace_back(cv::Point3d(x,y,z));
         points2DStereo.emplace_back(cv::Point2d((double)points.left[i].x,(double)points.left[i].y));
-        
+        points.points2D.emplace_back((double)points.left[i].x,(double)points.left[i].y);
+        prevPoints.points3D.emplace_back(x,y,z);
     }
 }
 

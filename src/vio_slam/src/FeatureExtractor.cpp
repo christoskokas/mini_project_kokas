@@ -697,6 +697,7 @@ void SubPixelPoints::clear()
     right.clear();
     useable.clear();
     depth.clear();
+    points2D.clear();
 }
 
 int FeatureExtractor::getGridRows()
