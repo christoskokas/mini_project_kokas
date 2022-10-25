@@ -364,7 +364,7 @@ void FeatureTracker::drawMatches(const cv::Mat& lIm, const SubPixelPoints& pnts,
         cv::circle(outIm, pnts.right[m.trainIdx],2,cv::Scalar(255,0,0));
     }
     cv::imshow("Matches", outIm);
-    cv::waitKey(waitIm);
+    cv::waitKey(waitImMat);
 }
 
 void FeatureTracker::drawOptical(const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts)
@@ -378,15 +378,17 @@ void FeatureTracker::drawOptical(const cv::Mat& im, const std::vector<cv::Point2
         cv::circle(outIm, pnts[i],2,cv::Scalar(255,0,0));
     }
     cv::imshow("Optical", outIm);
-    cv::waitKey(waitIm);
+    cv::waitKey(waitImOpt);
 }
 
 void FeatureTracker::draw2D3D(const cv::Mat& im, const std::vector<cv::Point3d>& p3D, const std::vector<cv::Point2d>& p2D)
 {
     cv::Mat dist = (cv::Mat_<double>(1,5) << 0,0,0,0,0);
-    cv::Mat t = (cv::Mat_<double>(1,3) << 0,0,0);
-    cv::Mat R = (cv::Mat_<double>(3,3) << 1,0,0,0,1,0,0,0,1);
+    cv::Mat t;
+    cv::Mat R;
     std::vector<cv::Point2d> out;
+    cv::eigen2cv(zedPtr->cameraPose.Rv,R);
+    cv::eigen2cv(zedPtr->cameraPose.tv,t);
     cv::projectPoints(p3D,R,t,zedPtr->cameraLeft.cameraMatrix,dist,out);
 
     cv::Mat outIm = im.clone();
@@ -398,7 +400,7 @@ void FeatureTracker::draw2D3D(const cv::Mat& im, const std::vector<cv::Point3d>&
         cv::circle(outIm, p2D[i],2,cv::Scalar(255,0,0));
     }
     cv::imshow("Project", outIm);
-    cv::waitKey(waitIm);
+    cv::waitKey(waitImPro);
 
 }
 
@@ -454,6 +456,7 @@ bool FeatureTracker::checkProjection3D(cv::Point3d& point3D, const int keyFrameN
 
     double x = (u - cx) * invfx;
     double y = (v - cy) * invfy;
+    
     double r2 = x * x + y * y;
 
     // Radial distorsion

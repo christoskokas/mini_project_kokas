@@ -12,7 +12,7 @@
 #include "Settings.h"
 #include "Optimizer.h"
 
-#define MATCHESIM false
+#define MATCHESIM true
 #define OPTICALIM true
 #define PROJECTIM true
 
@@ -56,7 +56,9 @@ class FeatureTracker
         Eigen::Matrix4d keyFramePose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d poseEstFrame = Eigen::Matrix4d::Identity();
         cv::Mat prevR = (cv::Mat_<double>(3,3) << 1,0,0,0, 1,0,0,0,1);
-        const int waitIm {0};
+        const int waitImMat {1};
+        const int waitImOpt {1};
+        const int waitImPro {0};
         const int mnSize {200};
         
         int uStereo {0};
