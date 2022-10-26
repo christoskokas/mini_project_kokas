@@ -48,13 +48,14 @@ FeatureData::FeatureData(Zed_Camera* zedPtr) : fx(zedPtr->cameraLeft.fx), fy(zed
 
 }
 
-void FeatureData::compute3DPoints(SubPixelPoints& prePnts)
+void FeatureData::compute3DPoints(SubPixelPoints& prePnts, const int keyNumb)
 {
     const size_t end{prePnts.left.size()};
 
     const size_t start{prePnts.points3D.size()};
 
     prePnts.points3D.reserve(end);
+    prePnts.kfn.reserve(end);
     for (size_t i = start; i < end; i++)
     {   
 
@@ -63,6 +64,7 @@ void FeatureData::compute3DPoints(SubPixelPoints& prePnts)
         const double yp = (double)(((double)prePnts.left[i].y-cy)*zp/fy);
 
         prePnts.points3D.emplace_back(xp,yp,zp);
+        prePnts.kfn.emplace_back(keyNumb);
         
     }
 }
@@ -105,10 +107,10 @@ void FeatureTracker::initializeTracking()
     cv::Mat tr = (cv::Mat_<double>(3,1) << 0.0,0.0,0.0);
     pE.setPrevT(tr);
     setPreInit();
-    fd.compute3DPoints(prePnts);
+    fd.compute3DPoints(prePnts, keyNumb);
     uStereo = prePnts.points3D.size();
-    keyframes.emplace_back(zedPtr->cameraPose.pose,prePnts.points3D,0);
-
+    keyframes.emplace_back(zedPtr->cameraPose.pose,prePnts.points3D,keyNumb);
+    keyNumb++;
 }
 
 void FeatureTracker::beginTracking(const int frames)
@@ -121,7 +123,7 @@ void FeatureTracker::beginTracking(const int frames)
         {
             zedPtr->addKeyFrame = true;
             updateKeys(frame);
-            fd.compute3DPoints(prePnts);
+            fd.compute3DPoints(prePnts, keyNumb);
             keyframes.emplace_back(zedPtr->cameraPose.pose,prePnts.points3D,keyNumb);
             keyNumb ++;
             
@@ -190,7 +192,7 @@ void FeatureTracker::getSolvePnPPose()
     for (size_t i {0};i < end;i++)
     {
         cv::Point3d point = prePnts.points3D[i];
-        if (checkProjection3D(point,keyNumb))
+        if (checkProjection3D(point,prePnts.kfn[i]))
         {
             inliers[i] = true;
             if (prePnts.useable[i])
@@ -202,16 +204,45 @@ void FeatureTracker::getSolvePnPPose()
     }
     prePnts.reduce<bool>(inliers);
     pnts.reduce<bool>(inliers);
+    std::vector<cv::Point2d> outp2D;
+    cv::projectPoints(p3D,cv::Mat::eye(3,3, CV_64F),cv::Mat::zeros(3,1, CV_64F),zedPtr->cameraLeft.cameraMatrix,cv::Mat::zeros(5,1, CV_64F),outp2D);
+    inliers.clear();
+    const size_t endproj{p3D.size()};
+    inliers.resize(endproj);
+    const int wid {zedPtr->mWidth};
+    const int hig {zedPtr->mHeight};
+    for (size_t i{0};i < endproj; i++)
+    {
+        if (!(outp2D[i].x > wid || outp2D[i].x < 0 || outp2D[i].y > hig || outp2D[i].y < 0))
+            inliers[i] = true;
+    }
+
+    prePnts.reduce<bool>(inliers);
+    pnts.reduce<bool>(inliers);
+    reduceVectorTemp<cv::Point2d,bool>(outp2D,inliers);
+    reduceVectorTemp<cv::Point2d,bool>(p2D,inliers);
+    reduceVectorTemp<cv::Point3d,bool>(p3D,inliers);
+
+    std::vector<uchar> check;
+    cv::findFundamentalMat(outp2D, p2D, check, cv::FM_RANSAC, 3, 0.99);
+
+    prePnts.reduce<uchar>(check);
+    pnts.reduce<uchar>(check);
+    reduceVectorTemp<cv::Point2d,uchar>(outp2D,check);
+    reduceVectorTemp<cv::Point2d,uchar>(p2D,check);
+    reduceVectorTemp<cv::Point3d,uchar>(p3D,check);
+
     uStereo = p3D.size();
     if (uStereo > 10)
     {
          cv::solvePnP(p3D, p2D,zedPtr->cameraLeft.cameraMatrix, dist,Rvec,tvec,false);
+        //  cv::solvePnPRansac(p3D, p2D,zedPtr->cameraLeft.cameraMatrix, dist,Rvec,tvec,false,100,2.0f);
         pE.convertToEigenMat(Rvec, tvec, poseEstFrame);
         publishPose();
 
     }
 #if PROJECTIM
-    draw2D3D(lIm.rIm,p3D, p2D);
+    draw2D3D(pLIm.rIm,p3D, p2D);
 #endif
 }
 
@@ -230,20 +261,12 @@ void FeatureTracker::opticalFlow()
     prePnts.reduceWithValue<float>(err, minErrValue);
     pnts.reduceWithValue<float>(err, minErrValue);
 
-    inliers.clear();
-    cv::findFundamentalMat(pnts.left, prePnts.left, inliers, cv::FM_RANSAC, 3, 0.99);
-    // cv::findFundamentalMat(prePnts.left, pnts.left, inliers1, cv::FM_RANSAC, 3, 0.99);
-
-    // for (int i{0};i < inliers.size();i ++)
-    // {
-    //     if (!(inliers1[i] && inliers[i]))
-    //         inliers[i] = 0U;
-
-    // }
+    // inliers.clear();
+    // cv::findFundamentalMat(pnts.left, prePnts.left, inliers, cv::FM_RANSAC, 3, 0.99);
 
 
-    prePnts.reduce<uchar>(inliers);
-    pnts.reduce<uchar>(inliers);
+    // prePnts.reduce<uchar>(inliers);
+    // pnts.reduce<uchar>(inliers);
 
     const size_t end{pnts.left.size()};
     for (size_t i{0};i < end;i++)
@@ -384,11 +407,9 @@ void FeatureTracker::drawOptical(const cv::Mat& im, const std::vector<cv::Point2
 void FeatureTracker::draw2D3D(const cv::Mat& im, const std::vector<cv::Point3d>& p3D, const std::vector<cv::Point2d>& p2D)
 {
     cv::Mat dist = (cv::Mat_<double>(1,5) << 0,0,0,0,0);
-    cv::Mat t;
-    cv::Mat R;
+    cv::Mat R = (cv::Mat_<double>(3,3) << 1,0,0,0,1,0,0,0,1);
+    cv::Mat t = (cv::Mat_<double>(1,3) << 0,0,0);
     std::vector<cv::Point2d> out;
-    cv::eigen2cv(zedPtr->cameraPose.Rv,R);
-    cv::eigen2cv(zedPtr->cameraPose.tv,t);
     cv::projectPoints(p3D,R,t,zedPtr->cameraLeft.cameraMatrix,dist,out);
 
     cv::Mat outIm = im.clone();
@@ -409,7 +430,10 @@ bool FeatureTracker::checkProjection3D(cv::Point3d& point3D, const int keyFrameN
     
 
     Eigen::Vector4d point(point3D.x, point3D.y, point3D.z,1);
-    point = keyframes[keyFrameNumb - 1].getPose() * zedPtr->cameraPose.poseInverse * point;
+    point = zedPtr->cameraPose.poseInverse * keyframes[keyFrameNumb].getPose() * point;
+    point3D.x = point(0);
+    point3D.y = point(1);
+    point3D.z = point(2);
     const double &pointX = point(0);
     const double &pointY = point(1);
     const double &pointZ = point(2);

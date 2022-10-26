@@ -40,7 +40,7 @@ struct FeatureData
 
     FeatureData(Zed_Camera* zedPtr);
 
-    void compute3DPoints(SubPixelPoints& prePnts);
+    void compute3DPoints(SubPixelPoints& prePnts, const int keyNumb);
 
 };
 
@@ -59,11 +59,11 @@ class FeatureTracker
         const int waitImMat {1};
         const int waitImOpt {1};
         const int waitImPro {0};
-        const int mnSize {200};
+        const int mnSize {500};
         
         int uStereo {0};
         int uMono {0};
-        int keyNumb {1};
+        int keyNumb {0};
 
 
         ImageData pLIm, pRIm, lIm, rIm;
