@@ -2,5 +2,4 @@
 push.sh
 src/vio_slam/.vscode
 src/vio_slam/build
-src/vio_slam/images/left
-src/vio_slam/images/right
+src/vio_slam/images

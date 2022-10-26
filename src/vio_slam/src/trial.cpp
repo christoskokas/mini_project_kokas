@@ -1160,9 +1160,14 @@ void ImageFrame::getImage(int frameNumber, const char* whichImage)
     std::string imagePath;
     std::string first;
     std::string second, format;
+    std::string t = whichImage;
 #if KITTI_DATASET
-    first = "/home/christos/Downloads/data_odometry_gray/dataset/sequences/00/";
+    first = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/kitti_00/";
     second = "/00";
+    format = ".png";
+#elif ZED_DATASET
+    first = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/zed_exp/";
+    second = "/" + t + "00";
     format = ".png";
 #else
     first = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/";
@@ -1172,19 +1177,19 @@ void ImageFrame::getImage(int frameNumber, const char* whichImage)
 
     if (frameNumber > 999)
     {
-        imagePath = first + whichImage + second + std::to_string(frameNumber/1000) + std::to_string((frameNumber%1000 - frameNumber%100)/100) + std::to_string((frameNumber%100 - frameNumber%10)/10) + std::to_string(frameNumber%10) + format;
+        imagePath = first + t + second + std::to_string(frameNumber/1000) + std::to_string((frameNumber%1000 - frameNumber%100)/100) + std::to_string((frameNumber%100 - frameNumber%10)/10) + std::to_string(frameNumber%10) + format;
     }
     if (frameNumber > 99)
     {
-        imagePath = first + whichImage + second + "0" + std::to_string(frameNumber/100) + std::to_string((frameNumber%100 - frameNumber%10)/10) + std::to_string(frameNumber%10) + format;
+        imagePath = first + t + second + "0" + std::to_string(frameNumber/100) + std::to_string((frameNumber%100 - frameNumber%10)/10) + std::to_string(frameNumber%10) + format;
     }
     else if (frameNumber > 9)
     {
-        imagePath = first + whichImage + second + "00" + std::to_string(frameNumber/10) + std::to_string(frameNumber%10) + format;
+        imagePath = first + t + second + "00" + std::to_string(frameNumber/10) + std::to_string(frameNumber%10) + format;
     }
     else
     {
-        imagePath = first + whichImage + second + "000" + std::to_string(frameNumber) + format;
+        imagePath = first + t + second + "000" + std::to_string(frameNumber) + format;
     }
     image = cv::imread(imagePath,cv::IMREAD_GRAYSCALE);
     realImage = cv::imread(imagePath,cv::IMREAD_COLOR);
@@ -1493,6 +1498,8 @@ void RobustMatcher2::testFeatureMatcherOptical()
     int useable {0};
 #if KITTI_DATASET
     const int times {4540};
+#elif ZED_DATASET
+    const int times {4580};
 #else
     const int times {657};
 #endif
@@ -1671,6 +1678,8 @@ void RobustMatcher2::testFeatureMatcherStable3D()
     int useable {0};
 #if KITTI_DATASET
     const int times {4540};
+#elif ZED_DATASET
+    const int times {4580};
 #else
     const int times {657};
 #endif
@@ -1992,6 +2001,8 @@ void RobustMatcher2::testOpticalReDo()
     int useable {0};
 #if KITTI_DATASET
     const int times {4540};
+#elif ZED_DATASET
+    const int times {4580};
 #else
     const int times {657};
 #endif
@@ -2035,7 +2046,6 @@ void RobustMatcher2::testOpticalReDo()
 
     
 }
-
 
 void RobustMatcher2::ceresSolverFAST(std::vector<cv::Point3d>& prevPoints, std::vector<cv::Point2d>& points)
 {

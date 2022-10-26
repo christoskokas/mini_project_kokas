@@ -9,6 +9,7 @@
 #include <chrono>
 
 #define KITTI_DATASET false
+#define ZED_DATASET true
 
 namespace vio_slam
 {

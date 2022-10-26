@@ -8,9 +8,14 @@ void ImageData::setImage(const int frameNumber, const char* whichImage)
     std::string imagePath;
     std::string first;
     std::string second, format;
+    std::string t = whichImage;
 #if KITTI_DATASET
-    first = "/home/christos/Downloads/data_odometry_gray/dataset/sequences/00/";
+    first = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/kitti_00/";
     second = "/00";
+    format = ".png";
+#elif ZED_DATASET
+    first = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/zed_exp/";
+    second = "/" + t + "00";
     format = ".png";
 #else
     first = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/";
@@ -20,19 +25,19 @@ void ImageData::setImage(const int frameNumber, const char* whichImage)
 
     if (frameNumber > 999)
     {
-        imagePath = first + whichImage + second + std::to_string(frameNumber/1000) + std::to_string((frameNumber%1000 - frameNumber%100)/100) + std::to_string((frameNumber%100 - frameNumber%10)/10) + std::to_string(frameNumber%10) + format;
+        imagePath = first + t + second + std::to_string(frameNumber/1000) + std::to_string((frameNumber%1000 - frameNumber%100)/100) + std::to_string((frameNumber%100 - frameNumber%10)/10) + std::to_string(frameNumber%10) + format;
     }
     if (frameNumber > 99)
     {
-        imagePath = first + whichImage + second + "0" + std::to_string(frameNumber/100) + std::to_string((frameNumber%100 - frameNumber%10)/10) + std::to_string(frameNumber%10) + format;
+        imagePath = first + t + second + "0" + std::to_string(frameNumber/100) + std::to_string((frameNumber%100 - frameNumber%10)/10) + std::to_string(frameNumber%10) + format;
     }
     else if (frameNumber > 9)
     {
-        imagePath = first + whichImage + second + "00" + std::to_string(frameNumber/10) + std::to_string(frameNumber%10) + format;
+        imagePath = first + t + second + "00" + std::to_string(frameNumber/10) + std::to_string(frameNumber%10) + format;
     }
     else
     {
-        imagePath = first + whichImage + second + "000" + std::to_string(frameNumber) + format;
+        imagePath = first + t + second + "000" + std::to_string(frameNumber) + format;
     }
     im = cv::imread(imagePath,cv::IMREAD_GRAYSCALE);
     rIm = cv::imread(imagePath,cv::IMREAD_COLOR);
@@ -290,16 +295,18 @@ void FeatureTracker::opticalFlow()
     prePnts.reduceWithValue<float>(err, minErrValue);
     pnts.reduceWithValue<float>(err, minErrValue);
 
-    // inliers.clear();
-    // cv::findFundamentalMat(pnts.left, prePnts.left, inliers, cv::FM_RANSAC, 3, 0.99);
-
-
-    // prePnts.reduce<uchar>(inliers);
-    // pnts.reduce<uchar>(inliers);
-
     const size_t end{pnts.left.size()};
+    std::vector<bool> check;
+    check.resize(end);
     for (size_t i{0};i < end;i++)
+    {
         pnts.points2D.emplace_back((double)pnts.left[i].x,(double)pnts.left[i].y);
+        if (!(pnts.left[i].x > zedPtr->mWidth || pnts.left[i].x < 0 || pnts.left[i].y > zedPtr->mHeight || pnts.left[i].y < 0))
+            check[i] = true;
+    }
+
+    prePnts.reduce<bool>(check);
+    pnts.reduce<bool>(check);
 
 #if OPTICALIM
     drawOptical(lIm.rIm,prePnts.left, pnts.left);

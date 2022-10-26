@@ -28,6 +28,8 @@ int main (int argc, char **argv)
 {
 #if KITTI_DATASET
     vio_slam::ConfigFile yamlFile("config_kitti.yaml");
+#elif ZED_DATASET
+    vio_slam::ConfigFile yamlFile("config_exp.yaml");
 #else
     vio_slam::ConfigFile yamlFile("config.yaml");
 #endif

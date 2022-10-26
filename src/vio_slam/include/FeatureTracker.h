@@ -12,7 +12,7 @@
 #include "Settings.h"
 #include "Optimizer.h"
 
-#define MATCHESIM false
+#define MATCHESIM true
 #define OPTICALIM true
 #define PROJECTIM true
 
