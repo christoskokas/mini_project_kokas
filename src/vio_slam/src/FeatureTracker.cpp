@@ -111,6 +111,7 @@ void FeatureTracker::initializeTracking()
     uStereo = prePnts.points3D.size();
     keyframes.emplace_back(zedPtr->cameraPose.pose,prePnts.points3D,keyNumb);
     keyNumb++;
+    addFeatures = checkFeaturesArea(prePnts);
 }
 
 void FeatureTracker::beginTracking(const int frames)
@@ -119,7 +120,7 @@ void FeatureTracker::beginTracking(const int frames)
     {
         float dt {calcDt()};
         setLRImages(frame);
-        if (uStereo < mnSize)
+        if (addFeatures || uStereo < mnSize)
         {
             zedPtr->addKeyFrame = true;
             updateKeys(frame);
@@ -135,8 +136,38 @@ void FeatureTracker::beginTracking(const int frames)
         getSolvePnPPose();
 
         setPre();
-        
+
+        addFeatures = checkFeaturesArea(prePnts);
     }
+}
+
+bool FeatureTracker::checkFeaturesArea(const SubPixelPoints& prePnts)
+{
+    const size_t end{prePnts.left.size()};
+    const int sep {3};
+    std::vector<int> gridCount;
+    gridCount.resize(sep * sep);
+    const int wid {(int)zedPtr->mWidth/sep + 1};
+    const int hig {(int)zedPtr->mHeight/sep + 1};
+    for (size_t i{0};i < end; i++)
+    {
+        const int w {(int)prePnts.left[i].x/wid};
+        const int h {(int)prePnts.left[i].y/hig};
+        gridCount[(int)(h + sep*w)] += 1;
+    }
+    const int mnK {5};
+    const int mnG {4};
+    const size_t endgr {gridCount.size()};
+    int count {0};
+    for (size_t i{0}; i < endgr; i ++ )
+    {
+        if ( gridCount[i] > mnK)
+            count ++;
+    }
+    if ( count > (sep * sep - mnG))
+        return false;
+    else
+        return true;
 }
 
 void FeatureTracker::getEssentialPose()
@@ -180,7 +211,6 @@ void FeatureTracker::getEssentialPose()
 void FeatureTracker::getSolvePnPPose()
 {
 
-    cv::Mat Rvec(3,3,CV_64F), tvec(3,1,CV_64F);
     cv::Mat dist = (cv::Mat_<double>(1,5) << 0,0,0,0,0);
     std::vector<bool> inliers;
     const size_t end {prePnts.points3D.size()};
@@ -195,11 +225,8 @@ void FeatureTracker::getSolvePnPPose()
         if (checkProjection3D(point,prePnts.kfn[i]))
         {
             inliers[i] = true;
-            if (prePnts.useable[i])
-            {
-                p3D.emplace_back(point);
-                p2D.emplace_back(pnts.points2D[i]);
-            }
+            p3D.emplace_back(point);
+            p2D.emplace_back(pnts.points2D[i]);
         }
     }
     prePnts.reduce<bool>(inliers);
@@ -209,8 +236,8 @@ void FeatureTracker::getSolvePnPPose()
     inliers.clear();
     const size_t endproj{p3D.size()};
     inliers.resize(endproj);
-    const int wid {zedPtr->mWidth};
-    const int hig {zedPtr->mHeight};
+    const int wid {zedPtr->mWidth - 1};
+    const int hig {zedPtr->mHeight - 1};
     for (size_t i{0};i < endproj; i++)
     {
         if (!(outp2D[i].x > wid || outp2D[i].x < 0 || outp2D[i].y > hig || outp2D[i].y < 0))
@@ -235,6 +262,8 @@ void FeatureTracker::getSolvePnPPose()
     uStereo = p3D.size();
     if (uStereo > 10)
     {
+        cv::Mat Rvec = cv::Mat::zeros(3,1, CV_64F);
+        cv::Mat tvec = cv::Mat::zeros(3,1, CV_64F);
          cv::solvePnP(p3D, p2D,zedPtr->cameraLeft.cameraMatrix, dist,Rvec,tvec,false);
         //  cv::solvePnPRansac(p3D, p2D,zedPtr->cameraLeft.cameraMatrix, dist,Rvec,tvec,false,100,2.0f);
         pE.convertToEigenMat(Rvec, tvec, poseEstFrame);

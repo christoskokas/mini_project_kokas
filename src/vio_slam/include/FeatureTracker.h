@@ -12,7 +12,7 @@
 #include "Settings.h"
 #include "Optimizer.h"
 
-#define MATCHESIM true
+#define MATCHESIM false
 #define OPTICALIM true
 #define PROJECTIM true
 
@@ -58,12 +58,14 @@ class FeatureTracker
         cv::Mat prevR = (cv::Mat_<double>(3,3) << 1,0,0,0, 1,0,0,0,1);
         const int waitImMat {1};
         const int waitImOpt {1};
-        const int waitImPro {0};
-        const int mnSize {500};
+        const int waitImPro {1};
+        const int mnSize {200};
         
         int uStereo {0};
         int uMono {0};
         int keyNumb {0};
+
+        bool addFeatures {false};
 
 
         ImageData pLIm, pRIm, lIm, rIm;
@@ -115,6 +117,7 @@ class FeatureTracker
         void draw2D3D(const cv::Mat& im, const std::vector<cv::Point3d>& p3D, const std::vector<cv::Point2d>& p2D);
 
         bool checkProjection3D(cv::Point3d& point3D, const int keyFrameNumb);
+        bool checkFeaturesArea(const SubPixelPoints& prePnts);
 
         void convertToEigen(cv::Mat& Rvec, cv::Mat& tvec, Eigen::Matrix4d& tr);
         void publishPose();
