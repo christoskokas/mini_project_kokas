@@ -58,7 +58,7 @@ class FeatureTracker
         cv::Mat prevR = (cv::Mat_<double>(3,3) << 1,0,0,0, 1,0,0,0,1);
         const int waitImMat {1};
         const int waitImOpt {1};
-        const int waitImPro {1};
+        const int waitImPro {0};
         const int mnSize {200};
         
         int uStereo {0};
@@ -90,6 +90,8 @@ class FeatureTracker
         void updateKeys(const int frame);
 
         void stereoFeatures(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts);
+        void stereoFeaturesMask(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts, const SubPixelPoints& prePnts);
+        void stereoFeaturesPop(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts, const SubPixelPoints& prePnts);
         void opticalFlow();
         void getEssentialPose();
         void getSolvePnPPose();
@@ -118,6 +120,8 @@ class FeatureTracker
 
         bool checkProjection3D(cv::Point3d& point3D, const int keyFrameNumb);
         bool checkFeaturesArea(const SubPixelPoints& prePnts);
+        void setMask(const SubPixelPoints& prePnts, cv::Mat& mask);
+        void setPopVec(const SubPixelPoints& prePnts, std::vector<int>& pop);
 
         void convertToEigen(cv::Mat& Rvec, cv::Mat& tvec, Eigen::Matrix4d& tr);
         void publishPose();

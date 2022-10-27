@@ -119,6 +119,8 @@ class FeatureExtractor
         void findORBWithCV(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
 
         void extractFeatures(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
+        void extractFeaturesMask(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints, const cv::Mat& mask);
+        void extractFeaturesPop(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints, const std::vector<int>& pop);
         void extractORB(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
 
         // void updatePoints(std::vector <cv::KeyPoint>& leftKeys, std::vector <cv::KeyPoint>& rightKeys, SubPixelPoints& points);
@@ -126,6 +128,8 @@ class FeatureExtractor
 
         void findFAST(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc);
         void findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
+        void findFASTGridsMask(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, const cv::Mat& mask);
+        void findFASTGridsPop(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, const std::vector<int>& pop);
 
         void computePyramid(cv::Mat& image);
         float computeOrientation(const cv::Mat& image, const cv::Point2f& point);

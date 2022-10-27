@@ -25,15 +25,16 @@ void ImageData::setImage(const int frameNumber, const char* whichImage)
 
     if (frameNumber > 999)
     {
-        imagePath = first + t + second + std::to_string(frameNumber/1000) + std::to_string((frameNumber%1000 - frameNumber%100)/100) + std::to_string((frameNumber%100 - frameNumber%10)/10) + std::to_string(frameNumber%10) + format;
+        imagePath = first + t + second + std::to_string(frameNumber/(int)(pow(10,3))%10) + std::to_string(frameNumber/(int)(pow(10,2))%10) + std::to_string(frameNumber/(int)(pow(10,1))%10) + std::to_string(frameNumber%10) + format;
+        int i{};
     }
-    if (frameNumber > 99)
+    else if (frameNumber > 99)
     {
-        imagePath = first + t + second + "0" + std::to_string(frameNumber/100) + std::to_string((frameNumber%100 - frameNumber%10)/10) + std::to_string(frameNumber%10) + format;
+        imagePath = first + t + second + "0" + std::to_string(frameNumber/(int)(pow(10,2))%10) + std::to_string(frameNumber/(int)(pow(10,1))%10) + std::to_string(frameNumber%10) + format;
     }
     else if (frameNumber > 9)
     {
-        imagePath = first + t + second + "00" + std::to_string(frameNumber/10) + std::to_string(frameNumber%10) + format;
+        imagePath = first + t + second + "00" + std::to_string(frameNumber/(int)(pow(10,1))%10) + std::to_string(frameNumber%10) + format;
     }
     else
     {
@@ -82,6 +83,76 @@ FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr) : zedPt
     rmap[1][1] = _rmap[1][1];
 }
 
+void FeatureTracker::setMask(const SubPixelPoints& prePnts, cv::Mat& mask)
+{
+    const int rad {4};
+    mask = cv::Mat(zedPtr->mHeight, zedPtr->mWidth, CV_8UC1, cv::Scalar(255));
+
+    std::vector<cv::Point2f>::const_iterator it, end{prePnts.left.end()};
+    for (it = prePnts.left.begin();it != end; it++)
+    {
+        if (mask.at<uchar>(*it) == 255)
+        {
+            cv::circle(mask, *it, rad, 0, cv::FILLED);
+        }
+    }
+
+}
+
+void FeatureTracker::setPopVec(const SubPixelPoints& prePnts, std::vector<int>& pop)
+{
+    const int gRows {fe.getGridRows()};
+    const int gCols {fe.getGridCols()};
+    pop.resize(gRows * gCols);
+    const int wid {(int)zedPtr->mWidth/gCols + 1};
+    const int hig {(int)zedPtr->mHeight/gRows + 1};
+    std::vector<cv::Point2f>::const_iterator it, end(prePnts.left.end());
+    for (it = prePnts.left.begin(); it != end; it ++)
+    {
+        const int w {(int)it->x/wid};
+        const int h {(int)it->y/hig};
+        pop[(int)(w + h*gCols)] += 1;
+    }
+}
+
+void FeatureTracker::stereoFeaturesPop(cv::Mat& leftIm, cv::Mat& rightIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts, const SubPixelPoints& prePnts)
+{
+    StereoDescriptors desc;
+    StereoKeypoints keys;
+    std::vector<int> pop;
+    setPopVec(prePnts, pop);
+    fe.extractFeaturesPop(leftIm, rightIm, desc, keys, pop);
+    fm.computeStereoMatches(leftIm, rightIm, desc, matches, pnts, keys);
+    std::vector<uchar> inliers;
+    cv::findFundamentalMat(pnts.left, pnts.right, inliers, cv::FM_RANSAC, 3, 0.99);
+
+    pnts.reduce<uchar>(inliers);
+    reduceVectorTemp<cv::DMatch,uchar>(matches, inliers);
+    Logging("matches size", matches.size(),1);
+#if MATCHESIM
+    drawMatches(lIm.rIm, pnts, matches);
+#endif
+}
+
+void FeatureTracker::stereoFeaturesMask(cv::Mat& leftIm, cv::Mat& rightIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts, const SubPixelPoints& prePnts)
+{
+    StereoDescriptors desc;
+    StereoKeypoints keys;
+    cv::Mat mask;
+    setMask(prePnts, mask);
+    fe.extractFeaturesMask(leftIm, rightIm, desc, keys, mask);
+    fm.computeStereoMatches(leftIm, rightIm, desc, matches, pnts, keys);
+    std::vector<uchar> inliers;
+    cv::findFundamentalMat(pnts.left, pnts.right, inliers, cv::FM_RANSAC, 3, 0.99);
+
+    pnts.reduce<uchar>(inliers);
+    reduceVectorTemp<cv::DMatch,uchar>(matches, inliers);
+    Logging("matches size", matches.size(),1);
+#if MATCHESIM
+    drawMatches(lIm.rIm, pnts, matches);
+#endif
+}
+
 void FeatureTracker::stereoFeatures(cv::Mat& leftIm, cv::Mat& rightIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts)
 {
     StereoDescriptors desc;
@@ -123,6 +194,8 @@ void FeatureTracker::beginTracking(const int frames)
 {
     for (int32_t frame {1}; frame < frames; frame++)
     {
+        if (frame > 999)
+            Logging("frame numb", frame,3);
         float dt {calcDt()};
         setLRImages(frame);
         if (addFeatures || uStereo < mnSize)
@@ -317,7 +390,7 @@ void FeatureTracker::opticalFlow()
 void FeatureTracker::updateKeys(const int frame)
 {
     std::vector<cv::DMatch> matches;
-    stereoFeatures(pLIm.im, pRIm.im, matches,pnts);
+    stereoFeaturesPop(pLIm.im, pRIm.im, matches,pnts, prePnts);
     prePnts.addLeft(pnts);
     pnts.clear();
 }

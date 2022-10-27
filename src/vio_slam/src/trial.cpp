@@ -1177,15 +1177,15 @@ void ImageFrame::getImage(int frameNumber, const char* whichImage)
 
     if (frameNumber > 999)
     {
-        imagePath = first + t + second + std::to_string(frameNumber/1000) + std::to_string((frameNumber%1000 - frameNumber%100)/100) + std::to_string((frameNumber%100 - frameNumber%10)/10) + std::to_string(frameNumber%10) + format;
+        imagePath = first + t + second + std::to_string(frameNumber/(int)(pow(10,3))%10) + std::to_string(frameNumber/(int)(pow(10,2))%10) + std::to_string(frameNumber/(int)(pow(10,1))%10) + std::to_string(frameNumber%10) + format;
     }
     if (frameNumber > 99)
     {
-        imagePath = first + t + second + "0" + std::to_string(frameNumber/100) + std::to_string((frameNumber%100 - frameNumber%10)/10) + std::to_string(frameNumber%10) + format;
+        imagePath = first + t + second + "0" + std::to_string(frameNumber/(int)(pow(10,2))%10) + std::to_string(frameNumber/(int)(pow(10,1))%10) + std::to_string(frameNumber%10) + format;
     }
     else if (frameNumber > 9)
     {
-        imagePath = first + t + second + "00" + std::to_string(frameNumber/10) + std::to_string(frameNumber%10) + format;
+        imagePath = first + t + second + "00" + std::to_string(frameNumber/(int)(pow(10,1))%10) + std::to_string(frameNumber%10) + format;
     }
     else
     {
