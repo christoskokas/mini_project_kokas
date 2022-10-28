@@ -77,7 +77,7 @@ class FeatureTracker
         PoseEstimator pE;
         FeatureData fd;
 
-        cv::TermCriteria criteria {cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 60, (0.0001000000000000000021))};
+        cv::TermCriteria criteria {cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 30, (0.0001000000000000000021))};
 
 
     public :
@@ -116,9 +116,9 @@ class FeatureTracker
 
         void drawMatches(const cv::Mat& lIm, const SubPixelPoints& pnts, const std::vector<cv::DMatch> matches);
         void drawOptical(const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts);
-        void draw2D3D(const cv::Mat& im, const std::vector<cv::Point3d>& p3D, const std::vector<cv::Point2d>& p2D);
+        void draw2D3D(const cv::Mat& im, const std::vector<cv::Point2d>& p2Dfp3D, const std::vector<cv::Point2d>& p2D);
 
-        bool checkProjection3D(cv::Point3d& point3D, const int keyFrameNumb);
+        bool checkProjection3D(cv::Point3d& point3D, const int keyFrameNumb, cv::Point2d& point2d);
         bool checkFeaturesArea(const SubPixelPoints& prePnts);
         void setMask(const SubPixelPoints& prePnts, cv::Mat& mask);
         void setPopVec(const SubPixelPoints& prePnts, std::vector<int>& pop);

@@ -31,8 +31,8 @@ Camera_r_path: /zed2i/zed_node/right_raw/image_raw_color
 # /camera_1/right/image_raw
 
 Camera:
-  width: 1382
-  height: 512
+  width: 1241
+  height: 376
   fps: 10.0
   bl: 0.5707
 
@@ -56,7 +56,7 @@ Stereo:
     rows: 4
     cols: 4
     dt: f
-    data: [1.0, 0.0, 0.0, -0.119947,
+    data: [1.0, 0.0, 0.0, -0.5707,
          0.0, 1.0, 0.0, 0.0,
          0.0, 0.0, 1.0, 0.0,
          0.0, 0.0, 0.0, 1.0]

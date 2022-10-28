@@ -50,7 +50,7 @@ class FeatureMatcher
         int DescriptorDistance(const cv::Mat &a, const cv::Mat &b);
         
     public:
-        FeatureMatcher(const Zed_Camera* _zed, const int _imageHeight = 360, const int _gridRows = 5, const int _gridCols = 5, const int _stereoYSpan = 2);
+        FeatureMatcher(const Zed_Camera* _zed, const int _imageHeight = 360, const int _gridRows = 5, const int _gridCols = 5, const int _stereoYSpan = 3);
 
         void stereoMatch(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector<cv::KeyPoint>& leftKeys, std::vector<cv::KeyPoint>& rightKeys, const cv::Mat& leftDesc, const cv::Mat& rightDesc, std::vector <cv::DMatch>& matches, SubPixelPoints& points);
 
