@@ -60,6 +60,7 @@ class FeatureTracker
         const int waitImOpt {1};
         const int waitImPro {0};
         const int mnSize {200};
+
         
         int uStereo {0};
         int uMono {0};
@@ -76,6 +77,9 @@ class FeatureTracker
         SubPixelPoints pnts,prePnts;
         PoseEstimator pE;
         FeatureData fd;
+
+        const double dt;
+        LKalmanFilter lkal;
 
         cv::TermCriteria criteria {cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 30, (0.0001000000000000000021))};
 

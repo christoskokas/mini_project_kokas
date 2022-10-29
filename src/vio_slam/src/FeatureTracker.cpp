@@ -75,7 +75,7 @@ void FeatureData::compute3DPoints(SubPixelPoints& prePnts, const int keyNumb)
     }
 }
 
-FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr) : zedPtr(_zedPtr), fm(zedPtr, zedPtr->mHeight, fe.getGridRows(), fe.getGridCols()), pE(zedPtr), fd(zedPtr)
+FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr) : zedPtr(_zedPtr), fm(zedPtr, zedPtr->mHeight, fe.getGridRows(), fe.getGridCols()), pE(zedPtr), fd(zedPtr), dt(zedPtr->mFps), lkal(dt)
 {
     rmap[0][0] = _rmap[0][0];
     rmap[0][1] = _rmap[0][1];
@@ -194,7 +194,6 @@ void FeatureTracker::beginTracking(const int frames)
 {
     for (int32_t frame {1}; frame < frames; frame++)
     {
-        float dt {calcDt()};
         setLRImages(frame);
         if (addFeatures || uStereo < mnSize)
         {
@@ -305,11 +304,6 @@ void FeatureTracker::getSolvePnPPose()
         {
             if (prePnts.useable[i])
             {
-                Logging("pointafter",point,3);
-                Logging("point2d",p2dtemp,3);
-                Logging("point2dnew",pnts.points2D[i],3);
-                Logging("key",prePnts.kfn[i],3);
-                Logging("i",i,3);
                 inliers[i] = true;
                 p3D.emplace_back(point);
                 p2D.emplace_back(pnts.points2D[i]);
@@ -347,16 +341,41 @@ void FeatureTracker::getSolvePnPPose()
     reduceVectorTemp<cv::Point3d,uchar>(p3D,check);
 
     uStereo = p3D.size();
+    cv::Mat Rvec = cv::Mat::zeros(3,1, CV_64F);
+    cv::Mat tvec = cv::Mat::zeros(3,1, CV_64F);
     if (uStereo > 10)
     {
-        cv::Mat Rvec = cv::Mat::zeros(3,1, CV_64F);
-        cv::Mat tvec = cv::Mat::zeros(3,1, CV_64F);
-         cv::solvePnP(p3D, p2D,zedPtr->cameraLeft.cameraMatrix, dist,Rvec,tvec,false);
-        //  cv::solvePnPRansac(p3D, p2D,zedPtr->cameraLeft.cameraMatrix, dist,Rvec,tvec,false,100,2.0f);
-        pE.convertToEigenMat(Rvec, tvec, poseEstFrame);
-        publishPose();
+        //  cv::solvePnP(p3D, p2D,zedPtr->cameraLeft.cameraMatrix, dist,Rvec,tvec,true);
+        check.clear();
+        cv::solvePnPRansac(p3D, p2D,zedPtr->cameraLeft.cameraMatrix, dist,Rvec,tvec,true,100,2.0f, 0.999, check);
 
     }
+
+    prePnts.reduce<uchar>(check);
+    pnts.reduce<uchar>(check);
+    reduceVectorTemp<cv::Point2d,uchar>(outp2D,check);
+    reduceVectorTemp<cv::Point2d,uchar>(p2D,check);
+    reduceVectorTemp<cv::Point3d,uchar>(p3D,check);
+    cv::Mat measurements = cv::Mat::zeros(6,1, CV_64F);
+
+    if (p3D.size() > lkal.minInliers)
+    {
+        lkal.fillMeasurements(measurements, tvec, Rvec);
+    }
+    else
+    {
+        Logging("less than 50","",3);
+    }
+
+    cv::Mat translation_estimated(3, 1, CV_64F);
+    cv::Mat rotation_estimated(3, 3, CV_64F);
+
+    lkal.updateKalmanFilter(measurements, translation_estimated, rotation_estimated);
+    Logging("measurements",measurements,3);
+    Logging("rot",rotation_estimated,3);
+    Logging("tra",translation_estimated,3);
+    pE.convertToEigenMat(rotation_estimated, translation_estimated, poseEstFrame);
+    publishPose();
 #if PROJECTIM
     draw2D3D(pLIm.rIm, outp2D, p2D);
 #endif
