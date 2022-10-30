@@ -130,8 +130,8 @@ void FeatureTracker::stereoFeaturesPop(cv::Mat& leftIm, cv::Mat& rightIm, std::v
     Logging("matches size", matches.size(),1);
 
 #if KEYSIM
-    drawKeys(lIm.rIm, keys.left);
-    drawKeys(rIm.rIm, keys.right);
+    drawKeys(pLIm.rIm, keys.left);
+    drawKeys(pRIm.rIm, keys.right);
 #endif
 
 
@@ -364,6 +364,14 @@ void FeatureTracker::getSolvePnPPose()
     reduceVectorTemp<cv::Point3d,uchar>(p3D,check);
     cv::Mat measurements = cv::Mat::zeros(6,1, CV_64F);
 
+    Logging("norm",cv::norm(tvec,pTvec),3);
+    Logging("normr",cv::norm(Rvec,pRvec),3);
+    if (cv::norm(tvec,pTvec) + cv::norm(Rvec,pRvec) > 1)
+    {
+        tvec = pTvec;
+        Rvec = pRvec;
+    }
+
     if (p3D.size() > lkal.minInliers)
     {
         lkal.fillMeasurements(measurements, tvec, Rvec);
@@ -372,6 +380,9 @@ void FeatureTracker::getSolvePnPPose()
     {
         Logging("less than 50","",3);
     }
+
+    pTvec = tvec;
+    pRvec = Rvec;
 
     cv::Mat translation_estimated(3, 1, CV_64F);
     cv::Mat rotation_estimated(3, 3, CV_64F);

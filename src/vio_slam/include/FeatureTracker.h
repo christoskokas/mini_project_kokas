@@ -13,7 +13,7 @@
 #include "Optimizer.h"
 
 #define KEYSIM true
-#define MATCHESIM true
+#define MATCHESIM false
 #define OPTICALIM true
 #define PROJECTIM true
 
@@ -59,6 +59,8 @@ class FeatureTracker
         Eigen::Matrix4d keyFramePose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d poseEstFrame = Eigen::Matrix4d::Identity();
         cv::Mat prevR = (cv::Mat_<double>(3,3) << 1,0,0,0, 1,0,0,0,1);
+        cv::Mat pTvec = cv::Mat::zeros(3,1, CV_64F);
+        cv::Mat pRvec = cv::Mat::zeros(3,1, CV_64F);
         const int waitImKey {1};
         const int waitImMat {1};
         const int waitImOpt {1};
@@ -85,7 +87,7 @@ class FeatureTracker
         const double dt;
         LKalmanFilter lkal;
 
-        cv::TermCriteria criteria {cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 30, (0.0001000000000000000021))};
+        cv::TermCriteria criteria {cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 60, (0.0001000000000000000021))};
 
 
     public :
