@@ -214,6 +214,7 @@ void FeatureExtractor::findFASTGridsPop(cv::Mat& image, std::vector <cv::KeyPoin
         {
             count++;
 
+
             if (pop[count] > mnNKey)
                 continue;
 
@@ -230,7 +231,7 @@ void FeatureExtractor::findFASTGridsPop(cv::Mat& image, std::vector <cv::KeyPoin
             }
             if (!temp.empty())
             {
-                // cv::KeyPointsFilter::retainBest(temp,numberPerCell);
+                cv::KeyPointsFilter::retainBest(temp,numberPerCell);
                 std::vector < cv::KeyPoint>::iterator it;
                 std::vector < cv::KeyPoint>::const_iterator end(temp.end());
                 for (it=temp.begin(); it != end; it++)
@@ -254,7 +255,7 @@ void FeatureExtractor::findFASTGridsPop(cv::Mat& image, std::vector <cv::KeyPoin
 
     //     fastKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y), (*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
     // }
-    cv::KeyPointsFilter::retainBest(fastKeys,nFeatures);
+    // cv::KeyPointsFilter::retainBest(fastKeys,nFeatures);
     Logging("Keypoint Size After removal", fastKeys.size(),1);
 }
 
@@ -364,6 +365,11 @@ void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>&
             const int imColStart = col * colJump;
             const int imColEnd = (col + 1) * colJump + 2 * fastEdge;
 
+            // Logging("imRowStart",imRowStart,3);
+            // Logging("imRowEnd",imRowEnd,3);
+            // Logging("imColStart",imColStart,3);
+            // Logging("imColEnd",imColEnd,3);
+
             std::vector < cv::KeyPoint > temp;
 
             cv::FAST(croppedImage.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,maxFastThreshold,true);
@@ -374,7 +380,7 @@ void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>&
             }
             if (!temp.empty())
             {
-                // cv::KeyPointsFilter::retainBest(temp,numberPerCell);
+                cv::KeyPointsFilter::retainBest(temp,numberPerCell);
                 std::vector < cv::KeyPoint>::iterator it;
                 std::vector < cv::KeyPoint>::const_iterator end(temp.end());
                 for (it=temp.begin(); it != end; it++)
@@ -398,7 +404,7 @@ void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>&
 
     //     fastKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y), (*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
     // }
-    cv::KeyPointsFilter::retainBest(fastKeys,nFeatures);
+    // cv::KeyPointsFilter::retainBest(fastKeys,nFeatures);
     Logging("Keypoint Size After removal", fastKeys.size(),1);
 }
 

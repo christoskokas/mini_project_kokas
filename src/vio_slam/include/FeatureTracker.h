@@ -12,6 +12,7 @@
 #include "Settings.h"
 #include "Optimizer.h"
 
+#define KEYSIM true
 #define MATCHESIM true
 #define OPTICALIM true
 #define PROJECTIM true
@@ -33,6 +34,8 @@ class ImageData
 struct FeatureData
 {
     const double fx,fy,cx,cy;
+
+    Zed_Camera* zedPtr;
 
     std::vector<cv::Point3d> prePnts3DStereo;
     std::vector<cv::Point2d> pnts2DStereo, prePnts2DMono, pnts2DMono;
@@ -56,9 +59,10 @@ class FeatureTracker
         Eigen::Matrix4d keyFramePose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d poseEstFrame = Eigen::Matrix4d::Identity();
         cv::Mat prevR = (cv::Mat_<double>(3,3) << 1,0,0,0, 1,0,0,0,1);
+        const int waitImKey {1};
         const int waitImMat {1};
         const int waitImOpt {1};
-        const int waitImPro {0};
+        const int waitImPro {1};
         const int mnSize {200};
 
         
@@ -118,11 +122,12 @@ class FeatureTracker
         void rectifyLRImages();
         void rectifyLImage();
 
+        void drawKeys(cv::Mat& im, std::vector<cv::KeyPoint>& keys);
         void drawMatches(const cv::Mat& lIm, const SubPixelPoints& pnts, const std::vector<cv::DMatch> matches);
         void drawOptical(const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts);
         void draw2D3D(const cv::Mat& im, const std::vector<cv::Point2d>& p2Dfp3D, const std::vector<cv::Point2d>& p2D);
 
-        bool checkProjection3D(cv::Point3d& point3D, const int keyFrameNumb, cv::Point2d& point2d);
+        bool checkProjection3D(cv::Point3d& point3D, cv::Point2d& point2d);
         bool checkFeaturesArea(const SubPixelPoints& prePnts);
         void setMask(const SubPixelPoints& prePnts, cv::Mat& mask);
         void setPopVec(const SubPixelPoints& prePnts, std::vector<int>& pop);

@@ -23,7 +23,6 @@ struct SubPixelPoints
     std::vector<cv::Point2f> left;
     std::vector<cv::Point2d> points2D;
     std::vector<cv::Point2f> right;
-    std::vector<int> kfn;
     std::vector<int> indexes3D;
     std::vector<int> indexes2D;
     std::vector<float> depth;
@@ -43,7 +42,6 @@ struct SubPixelPoints
         reduceVectorTemp<cv::Point2f,T>(right,check);
         reduceVectorTemp<float,T>(depth,check);
         reduceVectorTemp<bool,T>(useable,check);
-        reduceVectorTemp<int,T>(kfn,check);
     }
 
     template <typename T>
@@ -55,7 +53,6 @@ struct SubPixelPoints
         reduceVectorWithValue<cv::Point2f,T>(right,check, value);
         reduceVectorWithValue<float,T>(depth,check, value);
         reduceVectorWithValue<bool,T>(useable,check, value);
-        reduceVectorWithValue<int,T>(kfn,check, value);
     }
 
 };
@@ -143,7 +140,6 @@ class FeatureExtractor
         void getPixelOffset(int pixels[25], int rowStride);
         int checkIntensities(const uchar* rowPtr, uchar threshold_mask[512], int pixels[25], int thresh);
         float computeScore(const uchar* rowPtr, uchar threshold_mask[512], int pixels[25], int fastThresh);
-    // FindFeatures orbs;
 
 
 };

@@ -49,7 +49,7 @@ void ImageData::rectifyImage(cv::Mat& image, const cv::Mat& map1, const cv::Mat&
     cv::remap(image, image, map1, map2, cv::INTER_LINEAR);
 }
 
-FeatureData::FeatureData(Zed_Camera* zedPtr) : fx(zedPtr->cameraLeft.fx), fy(zedPtr->cameraLeft.fy), cx(zedPtr->cameraLeft.cx), cy(zedPtr->cameraLeft.cy)
+FeatureData::FeatureData(Zed_Camera* _zedPtr) : zedPtr(_zedPtr), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy)
 {
 
 }
@@ -61,16 +61,15 @@ void FeatureData::compute3DPoints(SubPixelPoints& prePnts, const int keyNumb)
     const size_t start{prePnts.points3D.size()};
 
     prePnts.points3D.reserve(end);
-    prePnts.kfn.reserve(end);
     for (size_t i = start; i < end; i++)
     {   
 
         const double zp = (double)prePnts.depth[i];
         const double xp = (double)(((double)prePnts.left[i].x-cx)*zp/fx);
         const double yp = (double)(((double)prePnts.left[i].y-cy)*zp/fy);
-
-        prePnts.points3D.emplace_back(xp,yp,zp);
-        prePnts.kfn.emplace_back(keyNumb);
+        Eigen::Vector4d p4d(xp,yp,zp,1);
+        p4d = zedPtr->cameraPose.pose * p4d;
+        prePnts.points3D.emplace_back(p4d(0),p4d(1),p4d(2));
         
     }
 }
@@ -124,11 +123,18 @@ void FeatureTracker::stereoFeaturesPop(cv::Mat& leftIm, cv::Mat& rightIm, std::v
     fe.extractFeaturesPop(leftIm, rightIm, desc, keys, pop);
     fm.computeStereoMatches(leftIm, rightIm, desc, matches, pnts, keys);
     std::vector<uchar> inliers;
-    cv::findFundamentalMat(pnts.left, pnts.right, inliers, cv::FM_RANSAC, 3, 0.99);
+    cv::findFundamentalMat(pnts.left, pnts.right, inliers, cv::FM_RANSAC, 0.1, 0.99);
 
     pnts.reduce<uchar>(inliers);
     reduceVectorTemp<cv::DMatch,uchar>(matches, inliers);
     Logging("matches size", matches.size(),1);
+
+#if KEYSIM
+    drawKeys(lIm.rIm, keys.left);
+    drawKeys(rIm.rIm, keys.right);
+#endif
+
+
 #if MATCHESIM
     drawMatches(lIm.rIm, pnts, matches);
 #endif
@@ -300,7 +306,7 @@ void FeatureTracker::getSolvePnPPose()
     {
         cv::Point3d point = prePnts.points3D[i];
         cv::Point2d p2dtemp;
-        if (checkProjection3D(point,prePnts.kfn[i],p2dtemp))
+        if (checkProjection3D(point,p2dtemp))
         {
             if (prePnts.useable[i])
             {
@@ -332,7 +338,7 @@ void FeatureTracker::getSolvePnPPose()
     reduceVectorTemp<cv::Point3d,bool>(p3D,inliers);
 
     std::vector<uchar> check;
-    cv::findFundamentalMat(outp2D, p2D, check, cv::FM_RANSAC, 3, 0.99);
+    cv::findFundamentalMat(outp2D, p2D, check, cv::FM_RANSAC, 1, 0.99);
 
     prePnts.reduce<uchar>(check);
     pnts.reduce<uchar>(check);
@@ -513,6 +519,18 @@ void FeatureTracker::rectifyLImage()
     lIm.rectifyImage(lIm.rIm, rmap[0][0], rmap[0][1]);
 }
 
+void FeatureTracker::drawKeys(cv::Mat& im, std::vector<cv::KeyPoint>& keys)
+{
+    cv::Mat outIm = im.clone();
+    for (auto& key:keys)
+    {
+        cv::circle(outIm, key.pt,2,cv::Scalar(0,255,0));
+
+    }
+    cv::imshow("keys", outIm);
+    cv::waitKey(waitImKey);
+}
+
 void FeatureTracker::drawMatches(const cv::Mat& lIm, const SubPixelPoints& pnts, const std::vector<cv::DMatch> matches)
 {
     cv::Mat outIm = lIm.clone();
@@ -555,13 +573,13 @@ void FeatureTracker::draw2D3D(const cv::Mat& im, const std::vector<cv::Point2d>&
 
 }
 
-bool FeatureTracker::checkProjection3D(cv::Point3d& point3D, const int keyFrameNumb, cv::Point2d& point2d)
+bool FeatureTracker::checkProjection3D(cv::Point3d& point3D, cv::Point2d& point2d)
 {
     
     // Logging("key",keyFrameNumb,3);
     Eigen::Vector4d point(point3D.x, point3D.y, point3D.z,1);
     // Logging("point",point,3);
-    point = zedPtr->cameraPose.poseInverse * keyframes[keyFrameNumb].getPose() * point;
+    point = zedPtr->cameraPose.poseInverse * point;
     // Logging("point",point,3);
     // Logging("zedPtr",zedPtr->cameraPose.poseInverse,3);
     // Logging("getPose",keyframes[keyFrameNumb].getPose(),3);
