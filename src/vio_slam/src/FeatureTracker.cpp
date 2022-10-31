@@ -123,7 +123,7 @@ void FeatureTracker::stereoFeaturesPop(cv::Mat& leftIm, cv::Mat& rightIm, std::v
     fe.extractFeaturesPop(leftIm, rightIm, desc, keys, pop);
     fm.computeStereoMatches(leftIm, rightIm, desc, matches, pnts, keys);
     std::vector<uchar> inliers;
-    cv::findFundamentalMat(pnts.left, pnts.right, inliers, cv::FM_RANSAC, 0.1, 0.99);
+    cv::findFundamentalMat(pnts.left, pnts.right, inliers, cv::FM_RANSAC, 1, 0.99);
 
     pnts.reduce<uchar>(inliers);
     reduceVectorTemp<cv::DMatch,uchar>(matches, inliers);
@@ -193,7 +193,7 @@ void FeatureTracker::initializeTracking()
     uStereo = prePnts.points3D.size();
     keyframes.emplace_back(zedPtr->cameraPose.pose,prePnts.points3D,keyNumb);
     keyNumb++;
-    addFeatures = checkFeaturesArea(prePnts);
+    // addFeatures = checkFeaturesArea(prePnts);
 }
 
 void FeatureTracker::beginTracking(const int frames)
@@ -201,7 +201,7 @@ void FeatureTracker::beginTracking(const int frames)
     for (int32_t frame {1}; frame < frames; frame++)
     {
         setLRImages(frame);
-        if (addFeatures || uStereo < mnSize)
+        if (uStereo < mnSize)
         {
             zedPtr->addKeyFrame = true;
             updateKeys(frame);
@@ -214,11 +214,11 @@ void FeatureTracker::beginTracking(const int frames)
 
 
 
-        getSolvePnPPose();
+        getSolvePnPPoseWithEss();
 
         setPre();
 
-        addFeatures = checkFeaturesArea(prePnts);
+        // addFeatures = checkFeaturesArea(prePnts);
     }
 }
 
@@ -236,8 +236,8 @@ bool FeatureTracker::checkFeaturesArea(const SubPixelPoints& prePnts)
         const int h {(int)prePnts.left[i].y/hig};
         gridCount[(int)(h + sep*w)] += 1;
     }
-    const int mnK {25};
-    const int mnG {4};
+    const int mnK {10};
+    const int mnG {7};
     const size_t endgr {gridCount.size()};
     int count {0};
     for (size_t i{0}; i < endgr; i ++ )
@@ -357,11 +357,11 @@ void FeatureTracker::getSolvePnPPose()
 
     }
 
-    prePnts.reduce<uchar>(check);
-    pnts.reduce<uchar>(check);
-    reduceVectorTemp<cv::Point2d,uchar>(outp2D,check);
-    reduceVectorTemp<cv::Point2d,uchar>(p2D,check);
-    reduceVectorTemp<cv::Point3d,uchar>(p3D,check);
+    // prePnts.reduce<uchar>(check);
+    // pnts.reduce<uchar>(check);
+    // reduceVectorTemp<cv::Point2d,uchar>(outp2D,check);
+    // reduceVectorTemp<cv::Point2d,uchar>(p2D,check);
+    // reduceVectorTemp<cv::Point3d,uchar>(p3D,check);
     cv::Mat measurements = cv::Mat::zeros(6,1, CV_64F);
 
     Logging("norm",cv::norm(tvec,pTvec),3);
@@ -372,7 +372,7 @@ void FeatureTracker::getSolvePnPPose()
         Rvec = pRvec;
     }
 
-    if (p3D.size() > lkal.minInliers)
+    if (p3D.size() > mnInKal)
     {
         lkal.fillMeasurements(measurements, tvec, Rvec);
     }
@@ -397,6 +397,132 @@ void FeatureTracker::getSolvePnPPose()
     draw2D3D(pLIm.rIm, outp2D, p2D);
 #endif
 }
+
+void FeatureTracker::getSolvePnPPoseWithEss()
+{
+
+    cv::Mat dist = (cv::Mat_<double>(1,5) << 0,0,0,0,0);
+    std::vector<bool> inliers;
+    const size_t end {prePnts.points3D.size()};
+    inliers.resize(end);
+    std::vector<cv::Point3d> p3D;
+    std::vector<cv::Point2d> p2D;
+    std::vector<cv::Point2d> pp2Dess;
+    std::vector<cv::Point2d> p2Dess;
+    std::vector<cv::Point2d> outp2D;
+    p3D.reserve(end);
+    p2D.reserve(end);
+    outp2D.reserve(end);
+    for (size_t i {0};i < end;i++)
+    {
+        cv::Point3d point = prePnts.points3D[i];
+        cv::Point2d p2dtemp;
+        if (checkProjection3D(point,p2dtemp))
+        {
+            inliers[i] = true;
+            p3D.emplace_back(point);
+            p2D.emplace_back(pnts.points2D[i]);
+            outp2D.emplace_back(p2dtemp);
+            pp2Dess.emplace_back(prePnts.left[i]);
+        }
+    }
+    prePnts.reduce<bool>(inliers);
+    pnts.reduce<bool>(inliers);
+
+
+    inliers.clear();
+    const size_t endproj{p3D.size()};
+    inliers.resize(endproj);
+    const int wid {zedPtr->mWidth - 1};
+    const int hig {zedPtr->mHeight - 1};
+    for (size_t i{0};i < endproj; i++)
+    {
+        if (!(outp2D[i].x > wid || outp2D[i].x < 0 || outp2D[i].y > hig || outp2D[i].y < 0))
+            inliers[i] = true;
+    }
+
+    prePnts.reduce<bool>(inliers);
+    pnts.reduce<bool>(inliers);
+    reduceVectorTemp<cv::Point2d,bool>(outp2D,inliers);
+    reduceVectorTemp<cv::Point2d,bool>(p2D,inliers);
+    reduceVectorTemp<cv::Point2d,bool>(pp2Dess,inliers);
+    reduceVectorTemp<cv::Point3d,bool>(p3D,inliers);
+
+    std::vector<uchar> check;
+    cv::findFundamentalMat(outp2D, p2D, check, cv::FM_RANSAC, 1, 0.99);
+
+    prePnts.reduce<uchar>(check);
+    pnts.reduce<uchar>(check);
+    reduceVectorTemp<cv::Point2d,uchar>(outp2D,check);
+    reduceVectorTemp<cv::Point2d,uchar>(p2D,check);
+    reduceVectorTemp<cv::Point2d,uchar>(pp2Dess,check);
+    reduceVectorTemp<cv::Point3d,uchar>(p3D,check);
+
+    cv::Mat E = cv::findEssentialMat(pp2Dess,p2D,zedPtr->cameraLeft.cameraMatrix,cv::FM_RANSAC, 0.999,1.0f);
+    cv::Mat Rvec = cv::Mat::zeros(3,1, CV_64F);
+    cv::Mat tvec = cv::Mat::zeros(3,1, CV_64F);
+    cv::Mat R1es,R2es,tes;
+    cv::decomposeEssentialMat(E,R1es, R2es, tes);
+    cv::Rodrigues(R1es,R1es);
+    cv::Rodrigues(R2es,R2es);
+    const double norm1 {cv::norm(Rvec,R1es)};
+    const double norm2 {cv::norm(Rvec,R2es)};
+
+    if (norm1 > norm2)
+        Rvec = R2es;
+    else
+        Rvec = R1es;
+
+    uStereo = p3D.size();
+    if (uStereo > 10)
+    {
+        //  cv::solvePnP(p3D, p2D,zedPtr->cameraLeft.cameraMatrix, dist,Rvec,tvec,true);
+        check.clear();
+        cv::solvePnPRansac(p3D, p2D,zedPtr->cameraLeft.cameraMatrix, dist,Rvec,tvec,true,100,2.0f, 0.999, check);
+
+    }
+
+    prePnts.reduce<uchar>(check);
+    pnts.reduce<uchar>(check);
+    reduceVectorTemp<cv::Point2d,uchar>(outp2D,check);
+    reduceVectorTemp<cv::Point2d,uchar>(p2D,check);
+    reduceVectorTemp<cv::Point3d,uchar>(p3D,check);
+    cv::Mat measurements = cv::Mat::zeros(6,1, CV_64F);
+
+    Logging("norm",cv::norm(tvec,pTvec),3);
+    Logging("normr",cv::norm(Rvec,pRvec),3);
+    if (cv::norm(tvec,pTvec) + cv::norm(Rvec,pRvec) > 1)
+    {
+        tvec = pTvec;
+        Rvec = pRvec;
+    }
+
+    if (p3D.size() > mnInKal)
+    {
+        lkal.fillMeasurements(measurements, tvec, Rvec);
+    }
+    else
+    {
+        Logging("less than ",mnInKal,3);
+    }
+
+    pTvec = tvec;
+    pRvec = Rvec;
+
+    cv::Mat translation_estimated(3, 1, CV_64F);
+    cv::Mat rotation_estimated(3, 3, CV_64F);
+
+    lkal.updateKalmanFilter(measurements, translation_estimated, rotation_estimated);
+    Logging("measurements",measurements,3);
+    Logging("rot",rotation_estimated,3);
+    Logging("tra",translation_estimated,3);
+    pE.convertToEigenMat(rotation_estimated, translation_estimated, poseEstFrame);
+    publishPose();
+#if PROJECTIM
+    draw2D3D(pLIm.rIm, outp2D, p2D);
+#endif
+}
+
 
 void FeatureTracker::opticalFlow()
 {

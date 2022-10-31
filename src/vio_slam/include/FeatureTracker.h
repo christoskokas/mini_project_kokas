@@ -12,7 +12,7 @@
 #include "Settings.h"
 #include "Optimizer.h"
 
-#define KEYSIM true
+#define KEYSIM false
 #define MATCHESIM false
 #define OPTICALIM true
 #define PROJECTIM true
@@ -65,7 +65,8 @@ class FeatureTracker
         const int waitImMat {1};
         const int waitImOpt {1};
         const int waitImPro {1};
-        const int mnSize {200};
+        const int mnSize {100};
+        const int mnInKal {30};
 
         
         int uStereo {0};
@@ -105,6 +106,7 @@ class FeatureTracker
         void opticalFlow();
         void getEssentialPose();
         void getSolvePnPPose();
+        void getSolvePnPPoseWithEss();
 
         void setLRImages(const int frameNumber);
         void setLImage(const int frameNumber);

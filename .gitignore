@@ -3,3 +3,5 @@ push.sh
 src/vio_slam/.vscode
 src/vio_slam/build
 src/vio_slam/images
+src/Plotting/build
+src/Plotting/.vscode

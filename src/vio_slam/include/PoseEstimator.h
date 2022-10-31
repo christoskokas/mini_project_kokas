@@ -29,8 +29,6 @@ class LKalmanFilter
 
     public:
 
-        const int minInliers {50};
-
         LKalmanFilter(const double _dt);
 
         void fillMeasurements( cv::Mat& measurements,const cv::Mat& translation_measured, const cv::Mat& rotation_measured);
