@@ -11,6 +11,11 @@
 #define KITTI_DATASET true
 #define ZED_DATASET false
 
+#define SAVEODOMETRYDATA true
+
+#if SAVEODOMETRYDATA
+#endif
+
 namespace vio_slam
 {
 

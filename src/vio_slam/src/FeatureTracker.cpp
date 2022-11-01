@@ -75,6 +75,9 @@ void FeatureData::compute3DPoints(SubPixelPoints& prePnts, const int keyNumb)
 }
 
 FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr) : zedPtr(_zedPtr), fm(zedPtr, zedPtr->mHeight, fe.getGridRows(), fe.getGridCols()), pE(zedPtr), fd(zedPtr), dt(zedPtr->mFps), lkal(dt)
+#if SAVEODOMETRYDATA
+, datafile(filepath)
+#endif
 {
     rmap[0][0] = _rmap[0][0];
     rmap[0][1] = _rmap[0][1];
@@ -220,6 +223,9 @@ void FeatureTracker::beginTracking(const int frames)
 
         // addFeatures = checkFeaturesArea(prePnts);
     }
+#if SAVEODOMETRYDATA
+    datafile.close();
+#endif
 }
 
 bool FeatureTracker::checkFeaturesArea(const SubPixelPoints& prePnts)
@@ -807,11 +813,26 @@ void FeatureTracker::convertToEigen(cv::Mat& Rvec, cv::Mat& tvec, Eigen::Matrix4
 
 void FeatureTracker::publishPose()
 {
-poseEst = poseEst * poseEstFrame;
-zedPtr->cameraPose.setPose(poseEst);
-zedPtr->cameraPose.setInvPose(poseEst.inverse());
+    poseEst = poseEst * poseEstFrame;
+    zedPtr->cameraPose.setPose(poseEst);
+    zedPtr->cameraPose.setInvPose(poseEst.inverse());
+#if SAVEODOMETRYDATA
+    saveData();
+#endif
+    Logging zed("Zed Camera Pose", zedPtr->cameraPose.pose,3);
+}
 
-Logging zed("Zed Camera Pose", zedPtr->cameraPose.pose,3);
+void FeatureTracker::saveData()
+{
+    Eigen::Matrix4d mat = zedPtr->cameraPose.pose.transpose();
+    for (int32_t i{0}; i < 12; i ++)
+    {
+        if ( i == 0 )
+            datafile << mat(i);
+        else
+            datafile << " " << mat(i);
+    }
+    datafile << '\n';
 }
 
 } // namespace vio_slam

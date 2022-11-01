@@ -11,6 +11,9 @@
 #include "FeatureMatcher.h"
 #include "Settings.h"
 #include "Optimizer.h"
+#include <fstream>
+#include <string>
+#include <iostream>
 
 #define KEYSIM false
 #define MATCHESIM false
@@ -50,6 +53,14 @@ struct FeatureData
 class FeatureTracker
 {
     private :
+
+#if SAVEODOMETRYDATA
+        std::string filepath {"zedPoses.txt"};
+#else
+        std::string filepath {"empty.txt"};
+#endif
+
+        std::ofstream datafile;
         std::chrono::_V2::system_clock::time_point startTime, endTime;
         std::chrono::duration<float> duration;
 
@@ -90,6 +101,7 @@ class FeatureTracker
 
         cv::TermCriteria criteria {cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 60, (0.0001000000000000000021))};
 
+        void saveData();
 
     public :
 

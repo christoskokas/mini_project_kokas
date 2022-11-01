@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.15)
-project("example" LANGUAGES CXX)
+project(plotting LANGUAGES CXX)
 
 # guard against in-source builds
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
     message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there. You may need to remove CMakeCache.txt. ")
 endif()
+
 
 # find python libraries
 find_package(Python3 COMPONENTS Interpreter Development NumPy REQUIRED)
@@ -16,7 +17,7 @@ include(FetchContent)
 FetchContent_Declare(
     matplotlib
     GIT_REPOSITORY https://github.com/lava/matplotlib-cpp.git
-    GIT_TAG        f23347fca25219d1c42cbb91608b5556814bf572
+    GIT_TAG        ef0383f1315d32e0156335e10b82e90b334f6d9f
 )
 FetchContent_GetProperties(matplotlib)
 if(NOT matplotlib_POPULATED)
@@ -34,6 +35,7 @@ include/Plotter.h
 
 # add executable
 add_executable(plot src/plot.cpp)
+
 
 target_link_libraries(${PROJECT_NAME}
 ${PYTHON_LIBRARIES}

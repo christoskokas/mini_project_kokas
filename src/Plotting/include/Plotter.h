@@ -3,15 +3,19 @@
 #ifndef PLOTTER_H
 #define PLOTTER_H
 
+#define _USE_MATH_DEFINES
+
 #include "matplotlibcpp.h"
 #include <iostream>
 #include <fstream>
+#include <cmath>
 
 namespace plt = matplotlibcpp;
 
 class Plotter
 {
     private:
+
 
         std::vector<float> dataV;
         std::vector<float> dataV2;
