@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 from pathlib import Path
-import string
+from scipy.spatial.transform import Rotation 
 
 def getData(fileName,sep) :
     absolute_path = os.path.dirname(__file__)
@@ -35,6 +35,8 @@ def getKitti(fileName, size) :
         count = 0
         for line in f:
             i = 1
+            j = 0
+            k = 0
             for x in line.split() :
                 if (i == 4) :
                     arrayX[count,0] = x
@@ -43,13 +45,27 @@ def getKitti(fileName, size) :
                 elif (i == 12):
                     arrayY[count,0] = x
                 else :
-                    arrayR[count,0,0] = x
+                    arrayR[count,j,k] = x
+                    k += 1
+                    if k == 3 :
+                        k = 0
+                        j += 1
                 i += 1
             count += 1
     return arrayX,arrayY,arrayZ,arrayR
 
 x,y,z,r = getKitti("00.txt", 4541)
 xp,yp,zp,rp = getKitti("zedPoses.txt", 4541)
+
+r1 = Rotation.from_matrix(r)
+anglesk = r1.as_euler("xyz",degrees=False)
+
+r2 = Rotation.from_matrix(rp)
+anglesz = r2.as_euler("xyz",degrees=False)
+
+erx = anglesk[:,0] - anglesz[:,0]
+ery = anglesk[:,1] - anglesz[:,1]
+erz = anglesk[:,2] - anglesz[:,2]
 
 ex = x - xp
 ey = y - yp
@@ -88,6 +104,22 @@ axer1 = fig2.add_subplot(3,1,3)
 axer1.plot(ez)
 axer1.set_xlabel('frames')
 axer1.set_ylabel('Error Z in meters')
+
+fig3 = plt.figure(3)
+axer1 = fig3.add_subplot(3,1,1)
+axer1.plot(erx)
+axer1.set_xlabel('frames')
+axer1.set_ylabel('Error X in rad')
+
+axer1 = fig3.add_subplot(3,1,2)
+axer1.plot(ery)
+axer1.set_xlabel('frames')
+axer1.set_ylabel('Error Y in rad')
+
+axer1 = fig3.add_subplot(3,1,3)
+axer1.plot(erz)
+axer1.set_xlabel('frames')
+axer1.set_ylabel('Error Z in rad')
 
 plt.show()
 # array = getData("data.txt",',')
