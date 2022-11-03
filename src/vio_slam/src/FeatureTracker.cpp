@@ -215,14 +215,16 @@ void FeatureTracker::beginTracking(const int frames)
         }
         opticalFlow();
 
-
+        // Logging("addf", addFeatures,3);
+        Logging("ustereo", uStereo,3);
 
         // getSolvePnPPoseWithEss();
+
         getPoseCeres();
 
         setPre();
 
-        addFeatures = checkFeaturesArea(prePnts);
+        addFeatures = checkFeaturesAreaCont(prePnts);
     }
     datafile.close();
 }
@@ -241,7 +243,7 @@ bool FeatureTracker::checkFeaturesArea(const SubPixelPoints& prePnts)
         const int h {(int)prePnts.left[i].y/hig};
         gridCount[(int)(h + sep*w)] += 1;
     }
-    const int mnK {10};
+    const int mnK {1};
     const int mnG {7};
     const size_t endgr {gridCount.size()};
     int count {0};
@@ -254,6 +256,45 @@ bool FeatureTracker::checkFeaturesArea(const SubPixelPoints& prePnts)
         return true;
     else
         return false;
+}
+
+bool FeatureTracker::checkFeaturesAreaCont(const SubPixelPoints& prePnts)
+{
+    static int skip = 0;
+    const size_t end{prePnts.left.size()};
+    const int sep {3};
+    std::vector<int> gridCount;
+    gridCount.resize(sep * sep);
+    const int wid {(int)zedPtr->mWidth/sep + 1};
+    const int hig {(int)zedPtr->mHeight/sep + 1};
+    for (size_t i{0};i < end; i++)
+    {
+        const int w {(int)prePnts.left[i].x/wid};
+        const int h {(int)prePnts.left[i].y/hig};
+        gridCount[(int)(h + sep*w)] += 1;
+    }
+    const int mnK {3};
+    const int mnmxG {7};
+    const int mnG {3};
+    const size_t endgr {gridCount.size()};
+    int count {0};
+    for (size_t i{0}; i < endgr; i ++ )
+    {
+        if ( gridCount[i] > mnK)
+            count ++;
+    }
+    if ( count < mnmxG)
+        skip++;
+    else if (count < mnG)
+        return true;
+    else
+        skip = 0;
+    Logging("skip", skip,3);
+    Logging("count", count,3);
+    if ( skip > 2 || skip == 0)
+        return false;
+    else
+        return true;
 }
 
 void FeatureTracker::getEssentialPose()
@@ -737,7 +778,7 @@ void FeatureTracker::opticalFlow()
     prePnts.reduceWithValue<float>(err, minErrValue);
     pnts.reduceWithValue<float>(err, minErrValue);
 
-    cv::findFundamentalMat(prePnts.left, pnts.left, inliers, cv::FM_RANSAC, 1, 0.999);
+    cv::findFundamentalMat(prePnts.left, pnts.left, inliers, cv::FM_RANSAC, 1, 0.9999);
 
 
     prePnts.reduce<uchar>(inliers);

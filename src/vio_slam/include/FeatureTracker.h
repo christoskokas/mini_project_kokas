@@ -17,7 +17,7 @@
 
 #define KEYSIM false
 #define MATCHESIM true
-#define OPTICALIM false
+#define OPTICALIM true
 #define PROJECTIM true
 #define POINTSIM true
 
@@ -154,6 +154,7 @@ class FeatureTracker
 
         bool checkProjection3D(cv::Point3d& point3D, cv::Point2d& point2d);
         bool checkFeaturesArea(const SubPixelPoints& prePnts);
+        bool checkFeaturesAreaCont(const SubPixelPoints& prePnts);
         void setMask(const SubPixelPoints& prePnts, cv::Mat& mask);
         void setPopVec(const SubPixelPoints& prePnts, std::vector<int>& pop);
 
