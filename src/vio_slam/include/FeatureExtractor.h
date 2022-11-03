@@ -45,6 +45,15 @@ struct SubPixelPoints
     }
 
     template <typename T>
+    void reduceWithInliers(std::vector<T>& check)
+    {
+        reduceVectorInliersTemp<cv::Point3d,T>(points3D,check);
+        reduceVectorInliersTemp<cv::Point2f,T>(left,check);
+        reduceVectorInliersTemp<float,T>(depth,check);
+        reduceVectorInliersTemp<bool,T>(useable,check);
+    }
+
+    template <typename T>
     void reduceWithValue(std::vector<T>& check, const float value)
     {
         reduceVectorWithValue<cv::Point3d,T>(points3D,check, value);
@@ -84,8 +93,17 @@ class FeatureExtractor
     const int minFastThreshold;
     const bool nonMaxSuppression;
 
+#if KITTI_DATASET
     const int gridRows {10};
     const int gridCols {10};
+#elif ZED_DATASET
+    const int gridRows {10};
+    const int gridCols {10};
+#else
+    const int gridRows {5};
+    const int gridCols {5};
+#endif
+
     const int gridsNumber {gridCols * gridRows};
     const int numberPerCell = nFeatures/(gridRows * gridCols);
 
@@ -105,7 +123,7 @@ class FeatureExtractor
 
         FeatureChoice choice;
         
-        FeatureExtractor(FeatureChoice _choice = ORB, const int _nfeatures = 1000, const int _nLevels = 5, const float _imScale = 1.3f, const int _edgeThreshold = 10, const int _patchSize = 31, const int _maxFastThreshold = 20, const int _minFastThreshold = 7, const bool _nonMaxSuppression = true);
+        FeatureExtractor(FeatureChoice _choice = ORB, const int _nfeatures = 2000, const int _nLevels = 5, const float _imScale = 1.3f, const int _edgeThreshold = 10, const int _patchSize = 31, const int _maxFastThreshold = 15, const int _minFastThreshold = 7, const bool _nonMaxSuppression = true);
         
         int getGridRows();
         int getGridCols();

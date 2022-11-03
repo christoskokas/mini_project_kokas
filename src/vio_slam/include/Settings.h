@@ -11,10 +11,7 @@
 #define KITTI_DATASET true
 #define ZED_DATASET false
 
-#define SAVEODOMETRYDATA true
-
-#if SAVEODOMETRYDATA
-#endif
+#define SAVEODOMETRYDATA false
 
 namespace vio_slam
 {
@@ -115,6 +112,15 @@ class ConfigFile
                 return configNode[first].as<T>();
         }
 };
+
+template <typename T, typename U>
+void reduceVectorInliersTemp(std::vector<T>& vec,std::vector<U>& check)
+{
+    int j {0};
+    for (int i = 0; i < int(check.size()); i++)
+        vec[j++] = vec[check[i]];
+    vec.resize(j);
+}
 
 template <typename T, typename U>
 void reduceVectorTemp(std::vector<T>& vec,std::vector<U>& check)

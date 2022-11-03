@@ -16,9 +16,10 @@
 #include <iostream>
 
 #define KEYSIM false
-#define MATCHESIM false
-#define OPTICALIM true
+#define MATCHESIM true
+#define OPTICALIM false
 #define PROJECTIM true
+#define POINTSIM true
 
 namespace vio_slam
 {
@@ -76,7 +77,7 @@ class FeatureTracker
         const int waitImMat {1};
         const int waitImOpt {1};
         const int waitImPro {1};
-        const int mnSize {100};
+        const int mnSize {150};
         const int mnInKal {30};
 
         
@@ -99,7 +100,7 @@ class FeatureTracker
         const double dt;
         LKalmanFilter lkal;
 
-        cv::TermCriteria criteria {cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 60, (0.0001000000000000000021))};
+        cv::TermCriteria criteria {cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 30, (0.0001000000000000000021))};
 
         void saveData();
 
@@ -119,6 +120,13 @@ class FeatureTracker
         void getEssentialPose();
         void getSolvePnPPose();
         void getSolvePnPPoseWithEss();
+        void getPoseCeres();
+        void get3dPointsforPose(std::vector<cv::Point3d>& p3D);
+        void get3dPointsforPoseAll(std::vector<cv::Point3d>& p3D);
+        void poseEstKal(cv::Mat& Rvec, cv::Mat& tvec, const size_t p3dsize);
+        void essForMonoPose(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Point3d>& p3D);
+        void pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Point3d>& p3D);
+        void compute2Dfrom3D(std::vector<cv::Point3d>& p3D, std::vector<cv::Point2d>& p2D, std::vector<cv::Point2d>& pn2D);
 
         void setLRImages(const int frameNumber);
         void setLImage(const int frameNumber);
@@ -141,6 +149,7 @@ class FeatureTracker
         void drawKeys(cv::Mat& im, std::vector<cv::KeyPoint>& keys);
         void drawMatches(const cv::Mat& lIm, const SubPixelPoints& pnts, const std::vector<cv::DMatch> matches);
         void drawOptical(const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts);
+        void drawPoints(const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts, const char* str);
         void draw2D3D(const cv::Mat& im, const std::vector<cv::Point2d>& p2Dfp3D, const std::vector<cv::Point2d>& p2D);
 
         bool checkProjection3D(cv::Point3d& point3D, cv::Point2d& point2d);

@@ -129,7 +129,6 @@ std::vector<bool> FeatureMatcher::slidingWindowOpticalLR(const cv::Mat& leftImag
     return goodDist;
 }
 
-
 std::vector<bool> FeatureMatcher::slidingWindowOpticalFlow(const cv::Mat& prevImage, const cv::Mat& image, std::vector<cv::Point2f>& prevPoints, std::vector<cv::Point2f>& newPoints)
 {
     // Timer("sliding Window took");
@@ -246,7 +245,6 @@ std::vector<bool> FeatureMatcher::slidingWindowOpticalFlow(const cv::Mat& prevIm
     }
     return goodDist;
 }
-
 
 std::vector<bool> FeatureMatcher::slidingWindowOptical(const cv::Mat& prevImage, const cv::Mat& image, std::vector<cv::Point2f>& prevPoints, std::vector<cv::Point2f>& newPoints)
 {
@@ -904,8 +902,8 @@ void FeatureMatcher::matchPoints(const StereoDescriptors& desc, const std::vecto
         const int lGrid {it->class_id};
 
         // If the idx has already been checked because they are repeated in indexes vector
-        std::vector <int> checkedIdxes;
-        checkedIdxes.reserve(500);
+        // std::vector <int> checkedIdxes;
+        // checkedIdxes.reserve(500);
 
         for (int32_t iKey = yKey - stereoYSpan; iKey < yKey + stereoYSpan + 1; iKey ++)
         {
@@ -953,32 +951,32 @@ void FeatureMatcher::matchPoints(const StereoDescriptors& desc, const std::vecto
                 // }
             }
         }
-        if (bestDist > 75)
+        if (bestDist > 25)
             continue;
             // if (bestDist < 0.8f*secDist)
             // {
-                if (matchedDist[bestIdx] != 256)
-                {
-                    if (bestDist < matchedDist[bestIdx])
-                    {
-                        points.left[matchedLIdx[bestIdx]] = it->pt;
-                        points.right[matchedLIdx[bestIdx]] = keypoints.right[bestIdx].pt;
-                        tempMatches[matchedLIdx[bestIdx]] = cv::DMatch(matchedLIdx[bestIdx],matchedLIdx[bestIdx],bestDist);
-                        matchedDist[bestIdx] = bestDist;
-                        // matchedKeys.lIdx[bestIdx] = matchesCount;
+        if (matchedDist[bestIdx] != 256)
+        {
+            if (bestDist < matchedDist[bestIdx])
+            {
+                points.left[matchedLIdx[bestIdx]] = it->pt;
+                points.right[matchedLIdx[bestIdx]] = keypoints.right[bestIdx].pt;
+                tempMatches[matchedLIdx[bestIdx]] = cv::DMatch(matchedLIdx[bestIdx],matchedLIdx[bestIdx],bestDist);
+                matchedDist[bestIdx] = bestDist;
+                // matchedKeys.lIdx[bestIdx] = matchesCount;
 
-                    }
-                    continue;
-                }
-                else
-                {
-                    matchedLIdx[bestIdx] = matchesCount;
-                    matchedDist[bestIdx] = bestDist;
-                    points.left.emplace_back(it->pt);
-                    points.right.emplace_back(keypoints.right[bestIdx].pt);
-                    tempMatches.emplace_back(matchedLIdx[bestIdx],matchedLIdx[bestIdx],bestDist);
-                    matchesCount ++;
-                }
+            }
+            continue;
+        }
+        else
+        {
+            matchedLIdx[bestIdx] = matchesCount;
+            matchedDist[bestIdx] = bestDist;
+            points.left.emplace_back(it->pt);
+            points.right.emplace_back(keypoints.right[bestIdx].pt);
+            tempMatches.emplace_back(matchedLIdx[bestIdx],matchedLIdx[bestIdx],bestDist);
+            matchesCount ++;
+        }
 
             // }
     }
@@ -1278,7 +1276,7 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
                 points.depth.emplace_back(depth);
                 continue;
             }
-            points.depth.emplace_back(0.0f);
+            points.depth.emplace_back(depth);
             points.useable.emplace_back(false);
 
             // Logging("depth",depth,2);

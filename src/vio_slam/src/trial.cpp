@@ -2042,9 +2042,6 @@ void RobustMatcher2::testOpticalReDo()
 
     // }
     
-    Logging("Last Transform", previousT,2);
-
-    
 }
 
 void RobustMatcher2::ceresSolverFAST(std::vector<cv::Point3d>& prevPoints, std::vector<cv::Point2d>& points)

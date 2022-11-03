@@ -52,10 +52,12 @@ def getKitti(fileName, size) :
                         j += 1
                 i += 1
             count += 1
+            if count == size :
+                break
     return arrayX,arrayY,arrayZ,arrayR
 
-x,y,z,r = getKitti("00.txt", 4541)
-xp,yp,zp,rp = getKitti("zedPoses.txt", 4541)
+x,y,z,r = getKitti("00.txt", 4539)
+xp,yp,zp,rp = getKitti("zedPoses.txt", 4539)
 
 r1 = Rotation.from_matrix(r)
 anglesk = r1.as_euler("xyz",degrees=False)
@@ -85,7 +87,7 @@ ax1.set_xlabel('X Label')
 ax1.set_ylabel('Y Label')
 ax1.set_zlabel('Z Label')
 ax1.set_xlim(-600,600)
-ax1.set_ylim(-600,600)
+ax1.set_ylim(-200,800)
 ax1.set_zlim(-600,600)
 
 

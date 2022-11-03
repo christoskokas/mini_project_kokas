@@ -34,7 +34,8 @@ Camera:
   width: 1241
   height: 376
   fps: 10.0
-  bl: 0.5707
+  bl: 0.53716
+  # bl: 0.53716571886441790845454444283695
 
 Camera_path: /zed2i/zed_node/left_raw/image_raw_color
 ground_truth_path: /odom/ground_truth/2
