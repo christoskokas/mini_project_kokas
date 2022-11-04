@@ -220,7 +220,8 @@ void FeatureTracker::beginTracking(const int frames)
 
         // getSolvePnPPoseWithEss();
 
-        getPoseCeres();
+        // getPoseCeres();
+        getPoseCeresNew();
 
         setPre();
 
@@ -594,6 +595,71 @@ void FeatureTracker::getPoseCeres()
     // uStereo = p3D.size();
     poseEstKal(Rvec, tvec, p3D.size());
 
+}
+
+void FeatureTracker::getPoseCeresNew()
+{
+
+    std::vector<cv::Point3d> p3D;
+
+    get3dPointsforPoseAll(p3D);
+
+    cv::Mat Rvec = cv::Mat::zeros(3,1, CV_64F);
+    cv::Mat tvec = cv::Mat::zeros(3,1, CV_64F);
+
+    essForMonoPose(Rvec, tvec,p3D);
+
+    if (p3D.size() > 10)
+    {
+        pnpRansac(Rvec, tvec, p3D);
+    }
+    optimizePoseMotionOnly(p3D);
+    // uStereo = p3D.size();
+    poseEstKal(Rvec, tvec, p3D.size());
+
+}
+
+void FeatureTracker::optimizePoseMotionOnly(std::vector<cv::Point3d>& p3D)
+{
+    std::vector<cv::Point3d>p3Dclose;
+    std::vector<cv::Point2d>p2Dclose;
+    get3DClose(p3D,p3Dclose, p2Dclose);
+    std::vector<int>idxVec;
+    uStereo = p3Dclose.size();
+    uMono = p3D.size() - uStereo;
+    getIdxVec(idxVec, p3Dclose.size());
+
+    for (size_t i{0}; i < mxIter ; i++)
+    {
+        std::srand(unsigned(std::time(0)));
+        std::random_shuffle(idxVec.begin(),idxVec.end());
+        
+    }
+
+}
+
+void FeatureTracker::get3DClose(std::vector<cv::Point3d>& p3D, std::vector<cv::Point3d>& p3Dclose, std::vector<cv::Point2d>& p2Dclose)
+{
+    const size_t end{prePnts.left.size()};
+    p3Dclose.reserve(end);
+    p2Dclose.reserve(end);
+    for (size_t i{0}; i < end ; i++)
+    {
+        if ( prePnts.useable[i] )
+        {
+            p3Dclose.emplace_back(p3D[i]);
+            p2Dclose.emplace_back((double)pnts.left[i].x, (double)pnts.left[i].y);
+        }
+    }
+}
+
+void FeatureTracker::getIdxVec(std::vector<int>& idxVec, const size_t size)
+{
+    idxVec.reserve(size);
+    for (size_t i{0}; i < size ; i++)
+    {
+        idxVec.emplace_back(i);
+    }
 }
 
 void FeatureTracker::compute2Dfrom3D(std::vector<cv::Point3d>& p3D, std::vector<cv::Point2d>& p2D, std::vector<cv::Point2d>& pn2D)

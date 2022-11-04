@@ -161,7 +161,6 @@ void FeatureExtractor::extractFeaturesPop(cv::Mat& leftImage, cv::Mat& rightImag
     
 }
 
-
 void FeatureExtractor::extractFeaturesMask(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints, const cv::Mat& mask)
 {
 

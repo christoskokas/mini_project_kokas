@@ -80,6 +80,9 @@ class FeatureTracker
         const int mnSize {150};
         const int mnInKal {30};
 
+        // Optimization Parameters
+        const size_t mxIter {100};
+        const float mnErr {1.0f};
         
         int uStereo {0};
         int uMono {0};
@@ -121,6 +124,12 @@ class FeatureTracker
         void getSolvePnPPose();
         void getSolvePnPPoseWithEss();
         void getPoseCeres();
+        void getPoseCeresNew();
+
+        void optimizePoseMotionOnly(std::vector<cv::Point3d>& p3D);
+        void get3DClose(std::vector<cv::Point3d>& p3D, std::vector<cv::Point3d>& p3Dclose, std::vector<cv::Point2d>& p2Dclose);
+        void getIdxVec(std::vector<int>& idxVec, const size_t size);
+
         void get3dPointsforPose(std::vector<cv::Point3d>& p3D);
         void get3dPointsforPoseAll(std::vector<cv::Point3d>& p3D);
         void poseEstKal(cv::Mat& Rvec, cv::Mat& tvec, const size_t p3dsize);

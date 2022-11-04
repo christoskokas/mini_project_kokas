@@ -98,17 +98,24 @@ class ReprojectionErrorMono
 {
 public:
 
-    ReprojectionErrorMono(const double observed_x, const double observed_y)
-        : observed_x(observed_x), observed_y(observed_y)
+    ReprojectionErrorMono(const Eigen::Vector3d& point, const double observed_x, const double observed_y)
+        : point(point), observed_x(observed_x), observed_y(observed_y)
     {
     }
 
     template<typename T>
-    bool operator()(const T* const camera, const T* const point, T* residuals) const
+    bool operator()(const T* const camera, T* residuals) const
     {
+        T pt1[3];
+        pt1[0] = T(point.x());
+        pt1[1] = T(point.y());
+        pt1[2] = T(point.z());
+        
         T p[3];
 
-        ceres::AngleAxisRotatePoint(camera, point, p);
+
+
+        ceres::AngleAxisRotatePoint(camera, pt1, p);
 
         p[0] += camera[3];
         p[1] += camera[4];
@@ -124,14 +131,15 @@ public:
         return true;
     }
 
-    static ceres::CostFunction* Create(const double observed_x, const double observed_y)
+    static ceres::CostFunction* Create(const Eigen::Vector3d& point, const double observed_x, const double observed_y)
     {
         // AutoDiffCostFunction<Reprojection3dError, 3, 6> 3 = dimensions of residuals, 6 = dimensions of camera(first input),if more then they go after camera accoring to bool operator()(const T* const camera, T* residuals).
-        return (new ceres::AutoDiffCostFunction<ReprojectionErrorMono, 2, 6,3>(
-                        new ReprojectionErrorMono(observed_x,observed_y)));
+        return (new ceres::AutoDiffCostFunction<ReprojectionErrorMono, 2, 6>(
+                        new ReprojectionErrorMono(point, observed_x,observed_y)));
     }
 
 private:
+    Eigen::Vector3d point;
     double observed_x;
     double observed_y;
     // Camera intrinsics
