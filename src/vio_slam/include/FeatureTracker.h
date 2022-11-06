@@ -113,6 +113,7 @@ class FeatureTracker
 
         void initializeTracking();
         void beginTracking(const int frames);
+        void beginTrackingTrial(const int frames);
 
         void updateKeys(const int frame);
 

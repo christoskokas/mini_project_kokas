@@ -230,6 +230,38 @@ void FeatureTracker::beginTracking(const int frames)
     datafile.close();
 }
 
+void FeatureTracker::beginTrackingTrial(const int frames)
+{
+    for (int32_t frame {1}; frame < frames; frame++)
+    {
+        setLRImages(frame);
+        fm.checkDepthChange(pLIm.im,pRIm.im,prePnts);
+        if (addFeatures || uStereo < mnSize)
+        {
+            zedPtr->addKeyFrame = true;
+            updateKeys(frame);
+            fd.compute3DPoints(prePnts, keyNumb);
+            keyframes.emplace_back(zedPtr->cameraPose.pose,prePnts.points3D,keyNumb);
+            keyNumb ++;
+            
+        }
+        opticalFlow();
+
+        // Logging("addf", addFeatures,3);
+        Logging("ustereo", uStereo,3);
+
+        // getSolvePnPPoseWithEss();
+
+        // getPoseCeres();
+        getPoseCeresNew();
+
+        setPre();
+
+        addFeatures = checkFeaturesAreaCont(prePnts);
+    }
+    datafile.close();
+}
+
 bool FeatureTracker::checkFeaturesArea(const SubPixelPoints& prePnts)
 {
     const size_t end{prePnts.left.size()};

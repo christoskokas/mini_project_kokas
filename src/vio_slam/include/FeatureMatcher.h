@@ -37,6 +37,8 @@ class FeatureMatcher
         const int imageHeight;
         const int gridRows, gridCols;
         const int maxMatches {1000};
+        const int mnDisp;
+        const int closeNumber {40};
 
         const Zed_Camera* zedptr;
 
@@ -59,6 +61,7 @@ class FeatureMatcher
         void slidingWindowOpt(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector <cv::DMatch>& matches, const std::vector <cv::DMatch>& tempMatches, std::vector<cv::KeyPoint>& leftKeys, std::vector<cv::KeyPoint>& rightKeys, SubPixelPoints& points);
 
         void slidingWindowOptimization(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector <cv::DMatch>& matches, const std::vector <cv::DMatch>& tempMatches, SubPixelPoints& points);
+        void checkDepthChange(const cv::Mat& leftImage, const cv::Mat& rightImage, SubPixelPoints& points);
 
         void computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, SubPixelPoints& prevPoints, SubPixelPoints& newPoints);
         void computeOpticalFlowWithSliding(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, SubPixelPoints& prevPoints, SubPixelPoints& newPoints);

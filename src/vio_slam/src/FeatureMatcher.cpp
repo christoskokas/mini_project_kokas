@@ -3,7 +3,7 @@
 namespace vio_slam
 {
 
-FeatureMatcher::FeatureMatcher(const Zed_Camera* _zed, const int _imageHeight, const int _gridRows, const int _gridCols, const int _stereoYSpan) : zedptr(_zed), imageHeight(_imageHeight), gridRows(_gridRows), gridCols(_gridCols), stereoYSpan(_stereoYSpan)
+FeatureMatcher::FeatureMatcher(const Zed_Camera* _zed, const int _imageHeight, const int _gridRows, const int _gridCols, const int _stereoYSpan) : zedptr(_zed), imageHeight(_imageHeight), gridRows(_gridRows), gridCols(_gridCols), stereoYSpan(_stereoYSpan), mnDisp(floor((float)_zed->cameraLeft.fx/40))
 {
 
 }
@@ -1312,6 +1312,98 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
         }
     }
     // Logging("matches size", matches.size(),2);
+}
+
+void FeatureMatcher::checkDepthChange(const cv::Mat& leftImage, const cv::Mat& rightImage, SubPixelPoints& points)
+{
+    // Timer("sliding Window took");
+    // Because we use FAST to detect Features the sliding window will get a window of side 11 pixels (5 (3 + 2offset) pixels radius + 1 which is the feature)
+    const int windowRadius {5};
+    // Because of the EdgeThreshold used around the image we dont need to check out of bounds
+
+    const int windowMovementX {5};
+
+
+    const size_t end{points.left.size()};
+    for (size_t i{0}; i < end; i ++)
+    {
+        if ( points.useable[i] )
+            continue;
+        const int pDisp {cvRound(((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/points.depth[i])};
+        const int xStart {- windowMovementX};
+        const int xEnd {windowMovementX + 1};
+        int bestDist {INT_MAX};
+        int bestX {windowMovementX + 1};
+        const int lKeyX {(int)points.left[i].x};
+        const int lKeyY {(int)points.left[i].y};
+        const int rKeyX {(int)points.left[i].x - pDisp};
+        const int rKeyY {(int)points.left[i].y};
+
+        std::vector < float > allDists;
+        allDists.reserve(2*windowMovementX);
+
+        const int lRowStart {lKeyY - windowRadius};
+        const int lRowEnd {lKeyY + windowRadius + 1};
+        const int lColStart {lKeyX - windowRadius};
+        const int lColEnd {lKeyX + windowRadius + 1};
+
+        if ((lRowStart < 0) || (lRowEnd >= leftImage.rows) || (lColStart < 0) || (lColEnd >= leftImage.cols))
+            continue;
+
+        const cv::Mat lWin = leftImage.rowRange(lRowStart, lRowEnd).colRange(lColStart, lColEnd);
+        for (int32_t xMov {xStart}; xMov <xEnd; xMov++)
+        {
+
+            const int rRowStart {rKeyY - windowRadius};
+            const int rRowEnd {rKeyY + windowRadius + 1};
+            const int rColStart {rKeyX + xMov - windowRadius};
+            const int rColEnd {rKeyX + xMov + windowRadius + 1};
+
+            if ((rRowStart < 0) || (rRowEnd >= rightImage.rows) || (rColStart < 0) || (rColEnd >= rightImage.cols))
+                break;
+
+            const cv::Mat rWin = rightImage.rowRange(rRowStart, rRowEnd).colRange(rColStart, rColEnd);
+
+            float dist = cv::norm(lWin,rWin, cv::NORM_L1);
+            if (bestDist > dist)
+            {
+                bestX = xMov;
+                bestDist = dist;
+            }
+            allDists.emplace_back(dist);
+
+        }
+        if ((bestX == -windowMovementX) || (bestX == windowMovementX) || (bestX == (windowMovementX + 1)))
+            continue;
+
+        const float dist1 = allDists[windowMovementX + bestX-1];
+        const float dist2 = allDists[windowMovementX + bestX];
+        const float dist3 = allDists[windowMovementX + bestX+1];
+
+        const float delta = (dist1-dist3)/(2.0f*(dist1+dist3-2.0f*dist2));
+
+        if (delta > 1 || delta < -1)
+            continue;
+        // Logging("delta ",delta,2);
+
+        const float pR = rKeyX + bestX + delta;
+
+        // calculate depth
+        const float disparity {points.left[i].x - pR};
+        if (disparity > 0.0f)
+        {
+            const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
+            // if false depth is unusable
+            Logging("pre Depth", points.depth[i],3);
+            points.depth[i] = depth;
+            Logging("after Depth", points.depth[i],3);
+            if (depth < zedptr->mBaseline * 40)
+            {
+                points.useable[i] = true;
+                continue;
+            }
+        }
+    }
 }
 
 int FeatureMatcher::DescriptorDistance(const cv::Mat &a, const cv::Mat &b)

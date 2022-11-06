@@ -2012,7 +2012,8 @@ void RobustMatcher2::testOpticalReDo()
     SubPixelPoints points, prevPoints;
     ft.initializeTracking();
 
-    ft.beginTracking(times);
+    // ft.beginTracking(times);
+    ft.beginTrackingTrial(times);
 
     
 
