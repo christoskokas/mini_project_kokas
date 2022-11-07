@@ -645,27 +645,121 @@ void FeatureTracker::getPoseCeresNew()
     {
         pnpRansac(Rvec, tvec, p3D);
     }
-    optimizePoseMotionOnly(p3D);
+    // optimizePoseMotionOnly(p3D, Rvec, tvec);
     // uStereo = p3D.size();
     poseEstKal(Rvec, tvec, p3D.size());
 
 }
 
-void FeatureTracker::optimizePoseMotionOnly(std::vector<cv::Point3d>& p3D)
+void FeatureTracker::optimizePoseMotionOnly(std::vector<cv::Point3d>& p3D, cv::Mat& Rvec, cv::Mat& tvec)
 {
     std::vector<cv::Point3d>p3Dclose;
     std::vector<cv::Point2d>p2Dclose;
     get3DClose(p3D,p3Dclose, p2Dclose);
-    std::vector<int>idxVec;
     uStereo = p3Dclose.size();
     uMono = p3D.size() - uStereo;
+    
+    // ceresRansac(p3Dclose, p2Dclose, Rvec, tvec);
+    ceresClose(p3Dclose, p2Dclose, Rvec, tvec);
+
+}
+
+void FeatureTracker::ceresRansac(std::vector<cv::Point3d>& p3Dclose, std::vector<cv::Point2d>& p2Dclose, cv::Mat& Rvec, cv::Mat& tvec)
+{
+    std::vector<int>idxVec;
     getIdxVec(idxVec, p3Dclose.size());
+
+    float mnError {INFINITY};
+    int earlyTerm {0};
+
+    double outCamera[6];
 
     for (size_t i{0}; i < mxIter ; i++)
     {
-        std::srand(unsigned(std::time(0)));
-        std::random_shuffle(idxVec.begin(),idxVec.end());
-        
+        ceres::Problem problem;
+        std::set<int> idxs;
+        getSamples(idxVec, idxs);
+        // make initial guess
+
+        double camera[6] {Rvec.at<double>(0), Rvec.at<double>(1), Rvec.at<double>(2), tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2)};
+        std::set<int>::iterator it;
+        for (it=idxs.begin(); it!=idxs.end(); ++it)
+        {
+            ceres::CostFunction* costf = ReprojectionErrorMono::Create(p3Dclose[*it],p2Dclose[*it]);
+            problem.AddResidualBlock(costf, nullptr /* squared loss */, camera);
+        }
+        ceres::Solver::Options options;
+        options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+        options.max_num_iterations = 25;
+        // options.trust_region_strategy_type = ceres::DOGLEG;
+        options.minimizer_progress_to_stdout = false;
+        ceres::Solver::Summary summary;
+        ceres::Solve(options, &problem, &summary);
+        // double cost {0.0};
+        // problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, NULL, NULL, NULL);
+        // Logging("cost ", summary.final_cost,3);
+        if ( mnError > summary.final_cost )
+        {
+            earlyTerm = 0;
+            mnError = summary.final_cost;
+            outCamera[0] = camera[0];
+            outCamera[1] = camera[1];
+            outCamera[2] = camera[2];
+            outCamera[3] = camera[3];
+            outCamera[4] = camera[4];
+            outCamera[5] = camera[5];
+        }
+        else
+            earlyTerm ++;
+        if ( earlyTerm > 5 )
+            break;
+    }
+    Rvec.at<double>(0) = outCamera[0];
+    Rvec.at<double>(1) = outCamera[1];
+    Rvec.at<double>(2) = outCamera[2];
+    tvec.at<double>(0) = outCamera[3];
+    tvec.at<double>(1) = outCamera[4];
+    tvec.at<double>(2) = outCamera[5];
+}
+
+void FeatureTracker::ceresClose(std::vector<cv::Point3d>& p3Dclose, std::vector<cv::Point2d>& p2Dclose, cv::Mat& Rvec, cv::Mat& tvec)
+{
+    ceres::Problem problem;
+    // make initial guess
+
+    double camera[6] {Rvec.at<double>(0), Rvec.at<double>(1), Rvec.at<double>(2), tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2)};
+    size_t end {p3Dclose.size()};
+    for (size_t i{0}; i < end; i++)
+    {
+        ceres::CostFunction* costf = ReprojectionErrorMono::Create(p3Dclose[i],p2Dclose[i]);
+        problem.AddResidualBlock(costf, nullptr /* squared loss */, camera);
+    }
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    options.max_num_iterations = 25;
+    // options.trust_region_strategy_type = ceres::DOGLEG;
+    options.minimizer_progress_to_stdout = false;
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+    // double cost {0.0};
+    // problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, NULL, NULL, NULL);
+    // Logging("cost ", summary.final_cost,3);
+    Rvec.at<double>(0) = camera[0];
+    Rvec.at<double>(1) = camera[1];
+    Rvec.at<double>(2) = camera[2];
+    tvec.at<double>(0) = camera[3];
+    tvec.at<double>(1) = camera[4];
+    tvec.at<double>(2) = camera[5];
+}
+
+void FeatureTracker::getSamples(std::vector<int>& idxVec,std::set<int>& idxs)
+{
+    const size_t mxSize {idxVec.size()};
+    while (idxs.size() < sampleSize)
+    {
+        std::random_device rd;
+        std::mt19937 gen(rd());std::uniform_int_distribution<> distr(0, mxSize);
+        idxs.insert(distr(gen));
     }
 
 }

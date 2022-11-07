@@ -1394,11 +1394,21 @@ void FeatureMatcher::checkDepthChange(const cv::Mat& leftImage, const cv::Mat& r
         {
             const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
             // if false depth is unusable
-            Logging("pre Depth", points.depth[i],3);
             points.depth[i] = depth;
-            Logging("after Depth", points.depth[i],3);
             if (depth < zedptr->mBaseline * 40)
             {
+                const double fx {zedptr->cameraLeft.fx};
+                const double fy {zedptr->cameraLeft.fy};
+                const double cx {zedptr->cameraLeft.cx};
+                const double cy {zedptr->cameraLeft.cy};
+
+                const double zp = (double)points.depth[i];
+                const double xp = (double)(((double)points.left[i].x-cx)*zp/fx);
+                const double yp = (double)(((double)points.left[i].y-cy)*zp/fy);
+                Eigen::Vector4d p4d(xp,yp,zp,1);
+                p4d = zedptr->cameraPose.pose * p4d;
+                points.points3D[i] = cv::Point3d(p4d(0),p4d(1),p4d(2));
+
                 points.useable[i] = true;
                 continue;
             }

@@ -14,6 +14,7 @@
 #include <fstream>
 #include <string>
 #include <iostream>
+#include <random>
 
 #define KEYSIM false
 #define MATCHESIM true
@@ -79,9 +80,10 @@ class FeatureTracker
         const int waitImPro {1};
         const int mnSize {150};
         const int mnInKal {30};
+        const int sampleSize {15};
 
         // Optimization Parameters
-        const size_t mxIter {100};
+        const size_t mxIter {25};
         const float mnErr {1.0f};
         
         int uStereo {0};
@@ -127,9 +129,12 @@ class FeatureTracker
         void getPoseCeres();
         void getPoseCeresNew();
 
-        void optimizePoseMotionOnly(std::vector<cv::Point3d>& p3D);
+        void optimizePoseMotionOnly(std::vector<cv::Point3d>& p3D, cv::Mat& Rvec, cv::Mat& tvec);
         void get3DClose(std::vector<cv::Point3d>& p3D, std::vector<cv::Point3d>& p3Dclose, std::vector<cv::Point2d>& p2Dclose);
         void getIdxVec(std::vector<int>& idxVec, const size_t size);
+        void getSamples(std::vector<int>& idxVec,std::set<int>& idxs);
+        void ceresRansac(std::vector<cv::Point3d>& p3Dclose, std::vector<cv::Point2d>& p2Dclose, cv::Mat& Rvec, cv::Mat& tvec);
+        void ceresClose(std::vector<cv::Point3d>& p3Dclose, std::vector<cv::Point2d>& p2Dclose, cv::Mat& Rvec, cv::Mat& tvec);
 
         void get3dPointsforPose(std::vector<cv::Point3d>& p3D);
         void get3dPointsforPoseAll(std::vector<cv::Point3d>& p3D);
