@@ -130,20 +130,26 @@ public:
         Eigen::Vector4d vec {point.x, point.y, point.z, 1.0};
         Eigen::Vector4d pvec = se3.matrix() * vec;
 
-        Logging("SE3", pvec,3);
+        // Logging("SE3", pvec,3);
+        // Logging("point", point,3);
+        // Logging("pvec[0]", pvec[0],3);
 
-        T p[3];
+        // T p[3];
 
 
-        ceres::AngleAxisRotatePoint(camera, pt1, p);
+        // ceres::AngleAxisRotatePoint(camera, pt1, p);
 
-        p[0] += camera[3];
-        p[1] += camera[4];
-        p[2] += camera[5];
+        // p[0] += camera[3];
+        // p[1] += camera[4];
+        // p[2] += camera[5];
 
         T predicted[2];
-        predicted[0] = T(p[0]*K[0]/p[2] + K[2]);
-        predicted[1] = T(p[1]*K[1]/p[2] + K[3]);
+        predicted[0] = T(pvec[0]*K[0]/pvec[2] + K[2]);
+        predicted[1] = T(pvec[1]*K[1]/pvec[2] + K[3]);
+
+        // Logging("predicted[0]", predicted[0],3);
+        // Logging("obs.x", obs.x,3);
+
 
         residuals[0] = predicted[0] - T(obs.x);
         residuals[1] = predicted[1] - T(obs.y);
@@ -192,7 +198,7 @@ public:
     }
 
     template<typename T>
-    bool operator()(const T* const camera, T* residuals) const
+    bool operator()(const T* const cameraR, const T* const cameraT, T* residuals) const
     {
         T pt1[3];
         pt1[0] = T(point.x);
@@ -208,18 +214,19 @@ public:
         T p[3];
 
 
-        ceres::AngleAxisRotatePoint(camera, pt1, p);
+        ceres::AngleAxisRotatePoint(cameraR, pt1, p);
 
-        p[0] += camera[3];
-        p[1] += camera[4];
-        p[2] += camera[5];
+        p[0] += cameraT[0];
+        p[1] += cameraT[1];
+        p[2] += cameraT[2];
 
-        T predicted[2];
-        predicted[0] = T(p[0]*K[0]/p[2] + K[2]);
-        predicted[1] = T(p[1]*K[1]/p[2] + K[3]);
+        T predicted_x;
+        T predicted_y;
+        predicted_x = T(p[0]*K[0]/p[2] + K[2]);
+        predicted_y = T(p[1]*K[1]/p[2] + K[3]);
 
-        residuals[0] = predicted[0] - T(obs.x);
-        residuals[1] = predicted[1] - T(obs.y);
+        residuals[0] = predicted_x - T(obs.x);
+        residuals[1] = predicted_y - T(obs.y);
 
         // Logging("pointx", point.x,3);
         // Logging("point", point,3);
@@ -242,7 +249,7 @@ public:
     static ceres::CostFunction* Create(const cv::Point3d& point, const cv::Point2d& obs)
     {
         // AutoDiffCostFunction<Reprojection3dError, 3, 6> 3 = dimensions of residuals, 6 = dimensions of camera(first input),if more then they go after camera accoring to bool operator()(const T* const camera, T* residuals).
-        return (new ceres::NumericDiffCostFunction<ReprojectionErrorMono, ceres::CENTRAL, 2, 6>(
+        return (new ceres::NumericDiffCostFunction<ReprojectionErrorMono, ceres::CENTRAL, 2, 3, 3>(
                         new ReprojectionErrorMono(point, obs)));
     }
 
@@ -253,6 +260,65 @@ private:
     double observed_y;
     // Camera intrinsics
     double K[4] = {718.856, 718.856, 607.1928, 185.2157}; // fx,fy,cx,cy
+    // double K[4] = {265.795, 265.6975, 338.7225, 186.95575}; // fx,fy,cx,cy
+
+};
+
+class ReprojectionErrorWeighted
+{
+public:
+
+    ReprojectionErrorWeighted(const cv::Point3d& point, const cv::Point2d& obs, const double& weight)
+        : point(point), obs(obs), weight(weight)
+    {
+    }
+
+    template<typename T>
+    bool operator()(const T* const cameraR, const T* const cameraT, T* residuals) const
+    {
+        T pt1[3];
+        pt1[0] = T(point.x);
+        pt1[1] = T(point.y);
+        pt1[2] = T(point.z);
+
+        T p[3];
+
+
+        ceres::AngleAxisRotatePoint(cameraR, pt1, p);
+
+        p[0] += cameraT[0];
+        p[1] += cameraT[1];
+        p[2] += cameraT[2];
+
+        T predicted_x;
+        T predicted_y;
+        predicted_x = T(p[0]*K[0]/p[2] + K[2]);
+        predicted_y = T(p[1]*K[1]/p[2] + K[3]);
+
+        residuals[0] = weight * (predicted_x - T(obs.x));
+        residuals[1] = weight * (predicted_y - T(obs.y));
+
+
+        return true;
+    }
+
+    static ceres::CostFunction* Create(const cv::Point3d& point, const cv::Point2d& obs, const double& weight)
+    {
+        // AutoDiffCostFunction<Reprojection3dError, 3, 6> 3 = dimensions of residuals, 6 = dimensions of camera(first input),if more then they go after camera accoring to bool operator()(const T* const camera, T* residuals).
+        return (new ceres::NumericDiffCostFunction<ReprojectionErrorWeighted, ceres::CENTRAL, 2, 3, 3>(
+                        new ReprojectionErrorWeighted(point, obs, weight)));
+    }
+
+private:
+    cv::Point3d point;
+    cv::Point2d obs;
+    double observed_x;
+    double observed_y;
+    double weight;
+    // Camera intrinsics
+    double K[4] = {718.856, 718.856, 607.1928, 185.2157}; // fx,fy,cx,cy
+    // double K[4] = {265.795, 265.6975, 338.7225, 186.95575}; // fx,fy,cx,cy
+
 };
 
 } // namespace vio_slam

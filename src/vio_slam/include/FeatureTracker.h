@@ -78,7 +78,7 @@ class FeatureTracker
         const int waitImMat {1};
         const int waitImOpt {1};
         const int waitImPro {1};
-        const int mnSize {150};
+        const int mnSize {100};
         const int mnInKal {30};
         const int sampleSize {15};
 
@@ -91,6 +91,7 @@ class FeatureTracker
         int keyNumb {0};
 
         bool addFeatures {false};
+        bool bigRot {false};
 
 
         ImageData pLIm, pRIm, lIm, rIm;
@@ -129,12 +130,16 @@ class FeatureTracker
         void getPoseCeres();
         void getPoseCeresNew();
 
+        void optimizePoseMO(std::vector<cv::Point3d>& p3D, cv::Mat& Rvec, cv::Mat& tvec);
         void optimizePoseMotionOnly(std::vector<cv::Point3d>& p3D, cv::Mat& Rvec, cv::Mat& tvec);
         void get3DClose(std::vector<cv::Point3d>& p3D, std::vector<cv::Point3d>& p3Dclose, std::vector<cv::Point2d>& p2Dclose);
         void getIdxVec(std::vector<int>& idxVec, const size_t size);
         void getSamples(std::vector<int>& idxVec,std::set<int>& idxs);
         void ceresRansac(std::vector<cv::Point3d>& p3Dclose, std::vector<cv::Point2d>& p2Dclose, cv::Mat& Rvec, cv::Mat& tvec);
         void ceresClose(std::vector<cv::Point3d>& p3Dclose, std::vector<cv::Point2d>& p2Dclose, cv::Mat& Rvec, cv::Mat& tvec);
+        void ceresWeights(std::vector<cv::Point3d>& p3Dclose, std::vector<cv::Point2d>& p2Dclose, cv::Mat& Rvec, cv::Mat& tvec, std::vector<float>& weights);
+        void ceresMO(std::vector<cv::Point3d>& p3Dclose, std::vector<cv::Point2d>& p2Dclose, cv::Mat& Rvec, cv::Mat& tvec);
+        void checkKeyDestrib(std::vector<cv::Point2d>& p2Dclose);
 
         void get3dPointsforPose(std::vector<cv::Point3d>& p3D);
         void get3dPointsforPoseAll(std::vector<cv::Point3d>& p3D);
@@ -142,6 +147,8 @@ class FeatureTracker
         void essForMonoPose(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Point3d>& p3D);
         void pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Point3d>& p3D);
         void compute2Dfrom3D(std::vector<cv::Point3d>& p3D, std::vector<cv::Point2d>& p2D, std::vector<cv::Point2d>& pn2D);
+        float norm_pdf(float x, float mu, float sigma);
+        void getWeights(std::vector<float>& weights, std::vector<cv::Point2d>& p2Dclose);
 
         void setLRImages(const int frameNumber);
         void setLImage(const int frameNumber);

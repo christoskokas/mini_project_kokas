@@ -236,7 +236,7 @@ void FeatureTracker::beginTrackingTrial(const int frames)
     {
         setLRImages(frame);
         fm.checkDepthChange(pLIm.im,pRIm.im,prePnts);
-        if (addFeatures || uStereo < mnSize)
+        if ( addFeatures || uStereo < mnSize )
         {
             zedPtr->addKeyFrame = true;
             updateKeys(frame);
@@ -245,6 +245,7 @@ void FeatureTracker::beginTrackingTrial(const int frames)
             keyNumb ++;
             
         }
+        
         opticalFlow();
 
         // Logging("addf", addFeatures,3);
@@ -260,6 +261,35 @@ void FeatureTracker::beginTrackingTrial(const int frames)
         addFeatures = checkFeaturesAreaCont(prePnts);
     }
     datafile.close();
+}
+
+void FeatureTracker::getWeights(std::vector<float>& weights, std::vector<cv::Point2d>& p2Dclose)
+{
+    const size_t end {prePnts.left.size()};
+    weights.reserve(end);
+    p2Dclose.reserve(end);
+    const float vd {zedPtr->mBaseline * 40};
+    const float sig {vd/2};
+    uStereo = 0;
+    for (size_t i {0}; i < end; i++)
+    {
+        p2Dclose.emplace_back((double)pnts.left[i].x, (double)pnts.left[i].y);
+        if ( prePnts.depth[i] < vd)
+        {
+            uStereo ++;
+            weights.emplace_back(1.0f);
+        }
+        else
+        {
+            float prob = norm_pdf(prePnts.depth[i], vd, sig);
+            weights.emplace_back(2 * prob * vd);
+        }
+    }
+}
+
+float FeatureTracker::norm_pdf(float x, float mu, float sigma)
+{
+	return 1.0 / (sigma * sqrt(2.0 * M_PI)) * exp(-(pow((x - mu)/sigma, 2)/2.0));
 }
 
 bool FeatureTracker::checkFeaturesArea(const SubPixelPoints& prePnts)
@@ -564,7 +594,7 @@ void FeatureTracker::getSolvePnPPoseWithEss()
     {
         //  cv::solvePnP(p3D, p2D,zedPtr->cameraLeft.cameraMatrix, dist,Rvec,tvec,true);
         std::vector<int>idxs;
-        cv::solvePnPRansac(p3D, p2D,zedPtr->cameraLeft.cameraMatrix, dist,Rvec,tvec,true,100,2.0f, 0.999, idxs);
+        cv::solvePnPRansac(p3D, p2D,zedPtr->cameraLeft.cameraMatrix, dist,Rvec,tvec,true,100,2.0f, 0.99, idxs);
 
         reduceVectorInliersTemp<cv::Point2d,int>(p2D,idxs);
         reduceVectorInliersTemp<cv::Point2d,int>(p3Dp2D,idxs);
@@ -645,8 +675,11 @@ void FeatureTracker::getPoseCeresNew()
     {
         pnpRansac(Rvec, tvec, p3D);
     }
-    optimizePoseMotionOnly(p3D, Rvec, tvec);
-    Logging("NEWWWWWWWWWW","",3);
+    optimizePoseMO(p3D, Rvec, tvec);
+    // if (abs(Rvec.at<double>(1)) > 0.04)
+    //     bigRot = true;
+    // else
+    //     bigRot = false;
     // uStereo = p3D.size();
     poseEstKal(Rvec, tvec, p3D.size());
 
@@ -662,6 +695,91 @@ void FeatureTracker::optimizePoseMotionOnly(std::vector<cv::Point3d>& p3D, cv::M
     
     // ceresRansac(p3Dclose, p2Dclose, Rvec, tvec);
     ceresClose(p3Dclose, p2Dclose, Rvec, tvec);
+    // ceresMO(p3Dclose, p2Dclose, Rvec, tvec);
+
+    checkKeyDestrib(p2Dclose);
+}
+
+void FeatureTracker::optimizePoseMO(std::vector<cv::Point3d>& p3D, cv::Mat& Rvec, cv::Mat& tvec)
+{
+    std::vector<cv::Point2d>p2Dclose;
+    std::vector<float> weights;
+    getWeights(weights, p2Dclose);
+
+    uMono = p3D.size() - uStereo;
+    
+    // ceresRansac(p3Dclose, p2Dclose, Rvec, tvec);
+    ceresWeights(p3D, p2Dclose, Rvec, tvec, weights);
+    // ceresMO(p3Dclose, p2Dclose, Rvec, tvec);
+
+    // checkKeyDestrib(p2Dclose);
+}
+
+void FeatureTracker::ceresWeights(std::vector<cv::Point3d>& p3Dclose, std::vector<cv::Point2d>& p2Dclose, cv::Mat& Rvec, cv::Mat& tvec, std::vector<float>& weights)
+{
+    ceres::Problem problem;
+    // make initial guess
+    double cameraR[3] {Rvec.at<double>(0), Rvec.at<double>(1), Rvec.at<double>(2)};
+    double cameraT[3] {tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2)};
+    size_t end {p3Dclose.size()};
+    problem.AddParameterBlock(cameraR,3);
+    problem.AddParameterBlock(cameraT,3);
+    for (size_t i{0}; i < end; i++)
+    {
+        ceres::CostFunction* costf = ReprojectionErrorWeighted::Create(p3Dclose[i],p2Dclose[i], (double)weights[i]);
+        
+        problem.AddResidualBlock(costf, new ceres::HuberLoss(10.0) /* squared loss */, cameraR, cameraT);
+    }
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    
+    options.max_num_iterations = 100;
+    options.minimizer_progress_to_stdout = false;
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+    Rvec.at<double>(0) = cameraR[0];
+    Rvec.at<double>(1) = cameraR[1];
+    Rvec.at<double>(2) = cameraR[2];
+    tvec.at<double>(0) = cameraT[0];
+    tvec.at<double>(1) = cameraT[1];
+    tvec.at<double>(2) = cameraT[2];
+}
+
+void FeatureTracker::checkKeyDestrib(std::vector<cv::Point2d>& p2Dclose)
+{
+    const int sep {2};
+    const int w {zedPtr->mWidth/sep};
+    const int h {zedPtr->mHeight/sep};
+    std::vector<int> grids;
+    grids.resize(sep * sep);
+    const size_t end {prePnts.left.size()};
+
+    for (size_t i{0}; i < end; i++)
+    {
+        int x {(int)prePnts.left[i].x/w};
+        int y {(int)prePnts.left[i].y/h};
+        grids[(int)(x + sep * y)] += 1;
+    }
+    for (size_t i {0}; i < sep * sep; i++)
+    {
+        Logging("grid",i,3);
+        Logging("",grids[i],3);
+    }
+    grids.clear();
+    grids.resize(sep * sep);
+    const size_t end2 {p2Dclose.size()};
+    for (size_t i{0}; i < end2; i++)
+    {
+        int x {(int)p2Dclose[i].x/w};
+        int y {(int)p2Dclose[i].y/h};
+        grids[(int)(x + sep * y)] += 1;
+    }
+    
+    for (size_t i {0}; i < sep * sep; i++)
+    {
+        Logging("grid3d",i,3);
+        Logging("",grids[i],3);
+    }
 
 }
 
@@ -728,13 +846,63 @@ void FeatureTracker::ceresClose(std::vector<cv::Point3d>& p3Dclose, std::vector<
     ceres::Problem problem;
     // make initial guess
 
-    double camera[6] {Rvec.at<double>(0), Rvec.at<double>(1), Rvec.at<double>(2), tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2)};
+
+    // double camera[6] {Rvec.at<double>(0), Rvec.at<double>(1), Rvec.at<double>(2), tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2)};
+    double cameraR[3] {Rvec.at<double>(0), Rvec.at<double>(1), Rvec.at<double>(2)};
+    double cameraT[3] {tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2)};
     size_t end {p3Dclose.size()};
-    Logging("R", Rvec.at<double>(0),3);
-    Logging("cam", camera[0],3);
+    // Logging("R", Rvec.at<double>(0),3);
+    // Logging("cam", camera[0],3);
+    problem.AddParameterBlock(cameraR,3);
+    problem.AddParameterBlock(cameraT,3);
     for (size_t i{0}; i < end; i++)
     {
         ceres::CostFunction* costf = ReprojectionErrorMono::Create(p3Dclose[i],p2Dclose[i]);
+        
+        problem.AddResidualBlock(costf, new ceres::HuberLoss(1.35) /* squared loss */, cameraR, cameraT);
+    }
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    
+    options.max_num_iterations = 100;
+    // options.trust_region_strategy_type = ceres::DOGLEG;
+    options.minimizer_progress_to_stdout = false;
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+    // options.gradient_tolerance = 1e-16;
+    // options.function_tolerance = 1e-16;
+    // options.parameter_tolerance = 1e-16;
+    // double cost {0.0};
+    // problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, NULL, NULL, NULL);
+    // Logging("cost ", summary.final_cost,3);
+    // Logging("R bef", Rvec,3);
+    // Logging("T bef", tvec,3);
+    Rvec.at<double>(0) = cameraR[0];
+    Rvec.at<double>(1) = cameraR[1];
+    Rvec.at<double>(2) = cameraR[2];
+    tvec.at<double>(0) = cameraT[0];
+    tvec.at<double>(1) = cameraT[1];
+    tvec.at<double>(2) = cameraT[2];
+    // Logging("R after", Rvec,3);
+    // Logging("T after", tvec,3);
+}
+
+void FeatureTracker::ceresMO(std::vector<cv::Point3d>& p3Dclose, std::vector<cv::Point2d>& p2Dclose, cv::Mat& Rvec, cv::Mat& tvec)
+{
+    ceres::Problem problem;
+    // make initial guess
+
+    Eigen::Quaterniond q;
+    q = Eigen::AngleAxisd(Rvec.at<double>(0), Eigen::Vector3d::UnitX()) * Eigen::AngleAxisd(Rvec.at<double>(1), Eigen::Vector3d::UnitY()) * Eigen::AngleAxisd(Rvec.at<double>(3), Eigen::Vector3d::UnitZ());
+    Logging("q", q.x(),3);
+    double camera[7] {q.w(), q.x(), q.y(), q.z(), tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2)};
+    size_t end {p3Dclose.size()};
+    // Logging("R", Rvec.at<double>(0),3);
+    // Logging("cam", camera[0],3);
+    // problem.AddParameterBlock(camera);
+    for (size_t i{0}; i < end; i++)
+    {
+        ceres::CostFunction* costf = ReprojectionErrorMO::Create(p3Dclose[i],p2Dclose[i]);
         problem.AddResidualBlock(costf, new ceres::HuberLoss(5.991) /* squared loss */, camera);
     }
     ceres::Solver::Options options;
@@ -753,12 +921,16 @@ void FeatureTracker::ceresClose(std::vector<cv::Point3d>& p3Dclose, std::vector<
     // Logging("cost ", summary.final_cost,3);
     // Logging("R bef", Rvec,3);
     // Logging("T bef", tvec,3);
-    Rvec.at<double>(0) = camera[0];
-    Rvec.at<double>(1) = camera[1];
-    Rvec.at<double>(2) = camera[2];
-    tvec.at<double>(0) = camera[3];
-    tvec.at<double>(1) = camera[4];
-    tvec.at<double>(2) = camera[5];
+    Eigen::Quaterniond d(camera[0],camera[1],camera[2],camera[3]);
+    auto euler = d.toRotationMatrix().eulerAngles(0, 1, 2);
+    Logging("euler", euler[0],3);
+    Logging("Rvec.at<double>(0)", Rvec.at<double>(0),3);
+    Rvec.at<double>(0) = euler[0];
+    Rvec.at<double>(1) = euler[1];
+    Rvec.at<double>(2) = euler[2];
+    tvec.at<double>(0) = camera[4];
+    tvec.at<double>(1) = camera[5];
+    tvec.at<double>(2) = camera[6];
     // Logging("R after", Rvec,3);
     // Logging("T after", tvec,3);
 }
@@ -868,7 +1040,7 @@ void FeatureTracker::pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Poi
     // cv::solvePnP(p3Ddepth, p2Ddepth,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true);
 
     std::vector<int>idxs;
-    cv::solvePnPRansac(p3D, pnts.left,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true,100, 8.0f, 0.999, idxs);
+    cv::solvePnPRansac(p3D, pnts.left,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true,100, 8.0f, 0.99, idxs);
 
     // prePnts.reduceWithInliers<int>(idxs);
     // pnts.reduceWithInliers<int>(idxs);
@@ -983,7 +1155,7 @@ void FeatureTracker::opticalFlow()
 
     // cv::cornerSubPix(lIm.im,pnts.left,cv::Size(5,5),cv::Size(-1,-1),criteria);
 
-    cv::findFundamentalMat(prePnts.left, pnts.left, inliers, cv::FM_RANSAC, 3, 0.9999);
+    cv::findFundamentalMat(prePnts.left, pnts.left, inliers, cv::FM_RANSAC, 3, 0.99);
 
 
     prePnts.reduce<uchar>(inliers);

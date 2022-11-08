@@ -1360,7 +1360,7 @@ void FeatureMatcher::checkDepthChange(const cv::Mat& leftImage, const cv::Mat& r
             const int rColEnd {rKeyX + xMov + windowRadius + 1};
 
             if ((rRowStart < 0) || (rRowEnd >= rightImage.rows) || (rColStart < 0) || (rColEnd >= rightImage.cols))
-                break;
+                continue;
 
             const cv::Mat rWin = rightImage.rowRange(rRowStart, rRowEnd).colRange(rColStart, rColEnd);
 
@@ -1379,7 +1379,8 @@ void FeatureMatcher::checkDepthChange(const cv::Mat& leftImage, const cv::Mat& r
         const float dist1 = allDists[windowMovementX + bestX-1];
         const float dist2 = allDists[windowMovementX + bestX];
         const float dist3 = allDists[windowMovementX + bestX+1];
-
+        if ( dist1 == 0.0f || dist2 == 0.0f || dist3 == 0.0f )
+            continue;
         const float delta = (dist1-dist3)/(2.0f*(dist1+dist3-2.0f*dist2));
 
         if (delta > 1 || delta < -1)

@@ -196,7 +196,7 @@ void FeatureExtractor::findFASTGridsPop(cv::Mat& image, std::vector <cv::KeyPoin
     const int edgeWFast = edgeThreshold - fastEdge;
     cv::Mat croppedImage = image.colRange(edgeWFast,image.cols - edgeWFast).rowRange(edgeWFast, image.rows - edgeWFast);
 
-    const int mnNKey {numberPerCell/2};
+    const int mnNKey {numberPerCell/4};
     // fastEdge is the Edge Threshold of FAST Keypoints, it does not search for keypoints for a border of 3 pixels around image.
     const int rowJump = (croppedImage.rows - 2 * fastEdge) / gridRows;
     const int colJump = (croppedImage.cols - 2 * fastEdge) / gridCols;
