@@ -5,3 +5,6 @@ src/vio_slam/build
 src/vio_slam/images
 src/Plotting/build
 src/Plotting/.vscode
+src/vio_slam/Thirdparty/Sophus/build
+src/vio_slam/Thirdparty/Sophus/examples
+src/vio_slam/Thirdparty/Sophus/py

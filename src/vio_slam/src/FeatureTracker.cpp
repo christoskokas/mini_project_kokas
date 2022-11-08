@@ -125,7 +125,7 @@ void FeatureTracker::stereoFeaturesPop(cv::Mat& leftIm, cv::Mat& rightIm, std::v
     std::vector<uchar> inliers;
     if ( pnts.left.size() >  6)
     {
-        cv::findFundamentalMat(pnts.left, pnts.right, inliers, cv::FM_RANSAC, 1, 0.99);
+        cv::findFundamentalMat(pnts.left, pnts.right, inliers, cv::FM_RANSAC, 3, 0.99);
 
         pnts.reduce<uchar>(inliers);
         reduceVectorTemp<cv::DMatch,uchar>(matches, inliers);
@@ -139,7 +139,7 @@ void FeatureTracker::stereoFeaturesPop(cv::Mat& leftIm, cv::Mat& rightIm, std::v
 
 
 #if MATCHESIM
-    drawMatches(lIm.rIm, pnts, matches);
+    drawMatches(pLIm.rIm, pnts, matches);
 #endif
 }
 
@@ -306,7 +306,7 @@ bool FeatureTracker::checkFeaturesAreaCont(const SubPixelPoints& prePnts)
         const int h {(int)prePnts.left[i].y/hig};
         gridCount[(int)(h + sep*w)] += 1;
     }
-    const int mnK {3};
+    const int mnK {10};
     const int mnmxG {7};
     const int mnG {3};
     const size_t endgr {gridCount.size()};
@@ -645,7 +645,8 @@ void FeatureTracker::getPoseCeresNew()
     {
         pnpRansac(Rvec, tvec, p3D);
     }
-    // optimizePoseMotionOnly(p3D, Rvec, tvec);
+    optimizePoseMotionOnly(p3D, Rvec, tvec);
+    Logging("NEWWWWWWWWWW","",3);
     // uStereo = p3D.size();
     poseEstKal(Rvec, tvec, p3D.size());
 
@@ -729,27 +730,37 @@ void FeatureTracker::ceresClose(std::vector<cv::Point3d>& p3Dclose, std::vector<
 
     double camera[6] {Rvec.at<double>(0), Rvec.at<double>(1), Rvec.at<double>(2), tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2)};
     size_t end {p3Dclose.size()};
+    Logging("R", Rvec.at<double>(0),3);
+    Logging("cam", camera[0],3);
     for (size_t i{0}; i < end; i++)
     {
         ceres::CostFunction* costf = ReprojectionErrorMono::Create(p3Dclose[i],p2Dclose[i]);
-        problem.AddResidualBlock(costf, nullptr /* squared loss */, camera);
+        problem.AddResidualBlock(costf, new ceres::HuberLoss(5.991) /* squared loss */, camera);
     }
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-    options.max_num_iterations = 25;
+    
+    options.max_num_iterations = 100;
     // options.trust_region_strategy_type = ceres::DOGLEG;
     options.minimizer_progress_to_stdout = false;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
+    // options.gradient_tolerance = 1e-16;
+    // options.function_tolerance = 1e-16;
+    // options.parameter_tolerance = 1e-16;
     // double cost {0.0};
     // problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, NULL, NULL, NULL);
     // Logging("cost ", summary.final_cost,3);
+    // Logging("R bef", Rvec,3);
+    // Logging("T bef", tvec,3);
     Rvec.at<double>(0) = camera[0];
     Rvec.at<double>(1) = camera[1];
     Rvec.at<double>(2) = camera[2];
     tvec.at<double>(0) = camera[3];
     tvec.at<double>(1) = camera[4];
     tvec.at<double>(2) = camera[5];
+    // Logging("R after", Rvec,3);
+    // Logging("T after", tvec,3);
 }
 
 void FeatureTracker::getSamples(std::vector<int>& idxVec,std::set<int>& idxs)
@@ -970,7 +981,9 @@ void FeatureTracker::opticalFlow()
     prePnts.reduceWithValue<float>(err, minErrValue);
     pnts.reduceWithValue<float>(err, minErrValue);
 
-    cv::findFundamentalMat(prePnts.left, pnts.left, inliers, cv::FM_RANSAC, 1, 0.9999);
+    // cv::cornerSubPix(lIm.im,pnts.left,cv::Size(5,5),cv::Size(-1,-1),criteria);
+
+    cv::findFundamentalMat(prePnts.left, pnts.left, inliers, cv::FM_RANSAC, 3, 0.9999);
 
 
     prePnts.reduce<uchar>(inliers);

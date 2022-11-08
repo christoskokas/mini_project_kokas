@@ -34,6 +34,7 @@ find_package(Pangolin REQUIRED)
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(Sophus REQUIRED)
 
 ## Declare ROS messages and services
 add_message_files(
@@ -71,6 +72,9 @@ include/KeyFrame.h
 include/FeatureTracker.h
 )
 
+add_subdirectory(Thirdparty/Sophus)
+
+
 ## Generate added messages and services
 generate_messages(DEPENDENCIES 
 std_msgs
@@ -84,6 +88,7 @@ include_directories(
   ${PCL_INCLUDE_DIRS} 
   ${PROJECT_SOURCE_DIR}
   ${PROJECT_SOURCE_DIR}/include
+  ${PROJECT_SOURCE_DIR}/Thirdparty/Sophus
   ${Pangolin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
   ${CERES_INCLUDE_DIRS}
@@ -106,6 +111,7 @@ ${Pangolin_LIBRARIES}
 ${EIGEN3_LIBS}
 ${CERES_LIBRARIES}
 ${YAML_CPP_LIBRARIES}
+${SOPHUS_LIBS}
 )
 
 add_executable(VioSlam src/VioSlam.cpp)

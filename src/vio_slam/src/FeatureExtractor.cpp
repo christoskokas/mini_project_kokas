@@ -255,7 +255,7 @@ void FeatureExtractor::findFASTGridsPop(cv::Mat& image, std::vector <cv::KeyPoin
     //     fastKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y), (*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
     // }
     // cv::KeyPointsFilter::retainBest(fastKeys,nFeatures);
-    Logging("Keypoint Size After removal", fastKeys.size(),1);
+    // Logging("Keypoint Size After removal", fastKeys.size(),1);
 }
 
 void FeatureExtractor::findFASTGridsMask(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, const cv::Mat& mask)
