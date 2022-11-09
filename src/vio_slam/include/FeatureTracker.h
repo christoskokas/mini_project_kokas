@@ -16,7 +16,7 @@
 #include <iostream>
 #include <random>
 
-#define KEYSIM false
+#define KEYSIM true
 #define MATCHESIM true
 #define OPTICALIM true
 #define PROJECTIM true
@@ -32,7 +32,7 @@ class ImageData
     public:
         cv::Mat im, rIm;
 
-        void setImage(const int frameNumber, const char* whichImage);
+        void setImage(const int frameNumber, const char* whichImage, const std::string& seq);
         void rectifyImage(cv::Mat& image, const cv::Mat& map1, const cv::Mat& map2);
 };
 
@@ -57,7 +57,11 @@ class FeatureTracker
     private :
 
 #if SAVEODOMETRYDATA
+#if KITTI_DATASET
+        std::string filepath {KITTI_SEQ + std::string(".txt")};
+#else
         std::string filepath {"zedPoses.txt"};
+#endif
 #else
         std::string filepath {"empty.txt"};
 #endif
@@ -71,6 +75,7 @@ class FeatureTracker
         Eigen::Matrix4d poseEst = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d keyFramePose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d poseEstFrame = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d poseEstFrameInv = Eigen::Matrix4d::Identity();
         cv::Mat prevR = (cv::Mat_<double>(3,3) << 1,0,0,0, 1,0,0,0,1);
         cv::Mat pTvec = cv::Mat::zeros(3,1, CV_64F);
         cv::Mat pRvec = cv::Mat::zeros(3,1, CV_64F);
@@ -81,6 +86,7 @@ class FeatureTracker
         const int mnSize {100};
         const int mnInKal {30};
         const int sampleSize {15};
+        const int gridVelNumb {10};
 
         // Optimization Parameters
         const size_t mxIter {25};
@@ -108,6 +114,9 @@ class FeatureTracker
 
         cv::TermCriteria criteria {cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 30, (0.0001000000000000000021))};
 
+        std::vector<float> gridTraX;
+        std::vector<float> gridTraY;
+
         void saveData();
 
     public :
@@ -123,7 +132,10 @@ class FeatureTracker
         void stereoFeatures(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts);
         void stereoFeaturesMask(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts, const SubPixelPoints& prePnts);
         void stereoFeaturesPop(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts, const SubPixelPoints& prePnts);
+        void calculateNextPnts();
+        void calculateNextPntsGrids();
         void opticalFlow();
+        void opticalFlowPredict();
         void getEssentialPose();
         void getSolvePnPPose();
         void getSolvePnPPoseWithEss();
@@ -147,6 +159,7 @@ class FeatureTracker
         void essForMonoPose(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Point3d>& p3D);
         void pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Point3d>& p3D);
         void compute2Dfrom3D(std::vector<cv::Point3d>& p3D, std::vector<cv::Point2d>& p2D, std::vector<cv::Point2d>& pn2D);
+        int calcNumberOfStereo();
         float norm_pdf(float x, float mu, float sigma);
         void getWeights(std::vector<float>& weights, std::vector<cv::Point2d>& p2Dclose);
 
@@ -168,13 +181,15 @@ class FeatureTracker
         void rectifyLRImages();
         void rectifyLImage();
 
-        void drawKeys(cv::Mat& im, std::vector<cv::KeyPoint>& keys);
+        void drawKeys(const char* com, cv::Mat& im, std::vector<cv::KeyPoint>& keys);
         void drawMatches(const cv::Mat& lIm, const SubPixelPoints& pnts, const std::vector<cv::DMatch> matches);
-        void drawOptical(const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts);
+        void drawOptical(const char* com, const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts);
         void drawPoints(const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts, const char* str);
         void draw2D3D(const cv::Mat& im, const std::vector<cv::Point2d>& p2Dfp3D, const std::vector<cv::Point2d>& p2D);
 
+        void calcGridVel();
         bool checkProjection3D(cv::Point3d& point3D, cv::Point2d& point2d);
+        void predictProjection3D(const cv::Point3d& point3D, cv::Point2d& point2d);
         bool checkFeaturesArea(const SubPixelPoints& prePnts);
         bool checkFeaturesAreaCont(const SubPixelPoints& prePnts);
         void setMask(const SubPixelPoints& prePnts, cv::Mat& mask);

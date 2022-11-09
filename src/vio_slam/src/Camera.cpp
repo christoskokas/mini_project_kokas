@@ -34,6 +34,10 @@ Zed_Camera::Zed_Camera(ConfigFile& yamlFile)
 {
     confFile = &yamlFile;
     this->rectified = confFile->getValue<bool>("rectified");
+    numOfFrames = confFile->getValue<int>("numOfFrames");
+#if KITTI_DATASET
+    seq = confFile->getValue<std::string>("seq");
+#endif
     setCameraValues();
     setCameraMatrices();
 
@@ -65,9 +69,25 @@ void Zed_Camera::setCameraValues()
     mWidth = confFile->getValue<int>("Camera","width");
     mHeight = confFile->getValue<int>("Camera","height");
     mFps = confFile->getValue<float>("Camera","fps");
-    mBaseline = confFile->getValue<float>("Camera","bl");
-    cameraLeft.setIntrinsicValues("Camera_l",confFile);
-    cameraRight.setIntrinsicValues("Camera_r",confFile);
+    if ( rectified )
+    {
+         cameraLeft.setIntrinsicValuesR("Camera_l",confFile);
+        cameraRight.setIntrinsicValuesR("Camera_r",confFile);
+        mBaseline = setBaseline();
+    }
+    else
+    {
+        cameraLeft.setIntrinsicValuesUnR("Camera_l",confFile);
+        cameraRight.setIntrinsicValuesUnR("Camera_r",confFile);
+        mBaseline = confFile->getValue<float>("Camera","bl");
+    }
+}
+
+float Zed_Camera::setBaseline()
+{
+    std::vector < float > P {confFile->getValue<std::vector<float>>("Camera_r","P","data")};
+
+    return -P[3]/(float)cameraLeft.fx;
 }
 
 Zed_Camera::~Zed_Camera()
@@ -91,7 +111,7 @@ float Camera::GetFx()
     return fx;
 }
 
-void Camera::setIntrinsicValues(const std::string& cameraPath, ConfigFile* confFile)
+void Camera::setIntrinsicValuesUnR(const std::string& cameraPath, ConfigFile* confFile)
 {
     fx = confFile->getValue<double>(cameraPath,"fx");
     fy = confFile->getValue<double>(cameraPath,"fy");
@@ -103,6 +123,31 @@ void Camera::setIntrinsicValues(const std::string& cameraPath, ConfigFile* confF
     p2 = confFile->getValue<double>(cameraPath,"p2");
     k3 = confFile->getValue<double>(cameraPath,"k3");
     path = confFile->getValue<std::string>(cameraPath + "_path");
+    // nh->getParam(cameraPath + "/fx",fx);
+    // nh->getParam(cameraPath + "/fy",fy);
+    // nh->getParam(cameraPath + "/cx",cx);
+    // nh->getParam(cameraPath + "/cy",cy);
+    // nh->getParam(cameraPath + "/k1",k1);
+    // nh->getParam(cameraPath + "/k2",k2);
+    // nh->getParam(cameraPath + "/p1",p1);
+    // nh->getParam(cameraPath + "/p2",p2);
+    // nh->getParam(cameraPath + "/k3",k3);
+    // nh->getParam(cameraPath + "_path", path);
+}
+
+void Camera::setIntrinsicValuesR(const std::string& cameraPath, ConfigFile* confFile)
+{
+    std::vector < double > P {confFile->getValue<std::vector<double>>(cameraPath,"P","data")};
+
+    fx = P[0];
+    fy = P[5];
+    cx = P[2];
+    cy = P[6];
+    k1 = 0;
+    k2 = 0;
+    p1 = 0;
+    p2 = 0;
+    k3 = 0;
     // nh->getParam(cameraPath + "/fx",fx);
     // nh->getParam(cameraPath + "/fy",fy);
     // nh->getParam(cameraPath + "/cx",cx);

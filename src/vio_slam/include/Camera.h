@@ -68,7 +68,8 @@ class Camera
         Camera() = default;
         ~Camera();
         float GetFx();
-        void setIntrinsicValues(const std::string& cameraPath, ConfigFile* confFile);
+        void setIntrinsicValuesUnR(const std::string& cameraPath, ConfigFile* confFile);
+        void setIntrinsicValuesR(const std::string& cameraPath, ConfigFile* confFile);
 };
 
 /**
@@ -85,6 +86,8 @@ class Zed_Camera
         bool rectified {};
         float mBaseline, mFps;
         int mWidth, mHeight;
+        int numOfFrames {};
+        std::string seq {};
 
         Camera cameraLeft;
         Camera cameraRight;
@@ -99,6 +102,7 @@ class Zed_Camera
         ~Zed_Camera();
         void setCameraMatrices();
         void setCameraValues();
+        float setBaseline();
 
 };
 

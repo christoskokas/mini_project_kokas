@@ -1999,13 +1999,7 @@ void RobustMatcher2::testOpticalReDo()
     int loopI {0};
     int keyframeNumb {0};
     int useable {0};
-#if KITTI_DATASET
-    const int times {4540};
-#elif ZED_DATASET
-    const int times {4580};
-#else
-    const int times {657};
-#endif
+    const int times {zedcamera->numOfFrames};
     std::chrono::_V2::system_clock::time_point startTime, endTime;
     std::chrono::duration<float> duration;
     Timer all("all");
@@ -2085,8 +2079,11 @@ void RobustMatcher2::ceresSolverFAST(std::vector<cv::Point3d>& prevPoints, std::
 void RobustMatcher2::calcP1P2()
 {
 #if KITTI_DATASET
-    P1 = (cv::Mat_<double>(3,4) << 7.188560000000e+02, 0.000000000000e+00, 6.071928000000e+02, 0.000000000000e+00, 0.000000000000e+00, 7.188560000000e+02, 1.852157000000e+02, 0.000000000000e+00, 0.000000000000e+00, 0.000000000000e+00, 1.000000000000e+00, 0.000000000000e+00);
-    P2 = (cv::Mat_<double>(3,4) << 7.188560000000e+02, 0.000000000000e+00, 6.071928000000e+02, -3.861448000000e+02, 0.000000000000e+00, 7.188560000000e+02, 1.852157000000e+02, 0.000000000000e+00, 0.000000000000e+00, 0.000000000000e+00, 1.000000000000e+00, 0.000000000000e+00);
+
+    std::vector < double > Pl  {zedcamera->confFile->getValue<std::vector<double>>("Camera_l","P","data")};
+    std::vector < double > Pr  {zedcamera->confFile->getValue<std::vector<double>>("Camera_r","P","data")};
+    P1 = (cv::Mat_<double>(3,4) << Pl[0], Pl[1], Pl[2], Pl[3], Pl[4], Pl[5], Pl[6], Pl[7], Pl[8], Pl[9], Pl[10], Pl[11] );
+    P2 = (cv::Mat_<double>(3,4) << Pr[0], Pr[1], Pr[2], Pr[3], Pr[4], Pr[5], Pr[6], Pr[7], Pr[8], Pr[9], Pr[10], Pr[11] );
     Logging("P1",P1,1);
     Logging("P2",P2,1);
 #else

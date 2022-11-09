@@ -27,7 +27,8 @@
 int main (int argc, char **argv)
 {
 #if KITTI_DATASET
-    vio_slam::ConfigFile yamlFile("config_kitti.yaml");
+    std::string file = std::string("config_kitti_") + KITTI_SEQ + std::string(".yaml");
+    vio_slam::ConfigFile yamlFile(file.c_str());
 #elif ZED_DATASET
     vio_slam::ConfigFile yamlFile("config_exp.yaml");
 #else
