@@ -79,14 +79,15 @@ class FeatureTracker
         Eigen::Matrix4d prevWPose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d prevWPoseInv = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d predNPose = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d prevposeEstFrame = Eigen::Matrix4d::Identity();
         cv::Mat prevR = (cv::Mat_<double>(3,3) << 1,0,0,0, 1,0,0,0,1);
         cv::Mat pTvec = cv::Mat::zeros(3,1, CV_64F);
         cv::Mat pRvec = cv::Mat::zeros(3,1, CV_64F);
         const int waitImKey {1};
         const int waitImMat {1};
         const int waitImOpt {1};
-        const int waitImPro {1};
-        const int mnSize {100};
+        const int waitImPro {0};
+        const int mnSize {150};
         const int mnInKal {30};
         const int sampleSize {15};
         const int gridVelNumb {10};
@@ -200,9 +201,12 @@ class FeatureTracker
         bool checkFeaturesAreaCont(const SubPixelPoints& prePnts);
         void setMask(const SubPixelPoints& prePnts, cv::Mat& mask);
         void setPopVec(const SubPixelPoints& prePnts, std::vector<int>& pop);
+        void changeUndef(std::vector <uchar>& inliers, std::vector<cv::Point2f>& temp);
+        inline void setVel(double& pvx, double& pvy, double& pvz, double vx, double vy, double vz);
 
         void convertToEigen(cv::Mat& Rvec, cv::Mat& tvec, Eigen::Matrix4d& tr);
         void publishPose();
+        void publishPoseTrial();
 
 };
 

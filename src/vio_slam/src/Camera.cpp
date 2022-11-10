@@ -11,6 +11,13 @@ void CameraPose::separatePose()
     tv = pose.topRightCorner<3,1>();
 }
 
+void CameraPose::setVel(const double _vx, const double _vy, const double _vz)
+{
+    vx = _vx;
+    vy = _vy;
+    vz = _vz;
+}
+
 CameraPose::CameraPose(Eigen::Matrix4d _pose, std::chrono::time_point<std::chrono::high_resolution_clock> _timestamp) : pose(_pose), timestamp(_timestamp)
 {
     poseInverse = Eigen::Matrix4d::Identity();

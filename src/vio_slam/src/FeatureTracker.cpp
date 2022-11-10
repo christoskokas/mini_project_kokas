@@ -1096,15 +1096,15 @@ void FeatureTracker::poseEstKal(cv::Mat& Rvec, cv::Mat& tvec, const size_t p3dsi
         Rvec = pRvec;
     }
 
-    if ( p3dsize > mnInKal)
-    {
-        lkal.fillMeasurements(measurements, tvec, Rvec);
-    }
-    else
-    {
-        lkal.fillMeasurements(measurements, pTvec, pRvec);
-        Logging("less than ",mnInKal,3);
-    }
+    lkal.fillMeasurements(measurements, tvec, Rvec);
+    // if ( p3dsize > mnInKal)
+    // {
+    // }
+    // else
+    // {
+    //     lkal.fillMeasurements(measurements, pTvec, pRvec);
+    //     Logging("less than ",mnInKal,3);
+    // }
 
     pTvec = tvec;
     pRvec = Rvec;
@@ -1115,6 +1115,8 @@ void FeatureTracker::poseEstKal(cv::Mat& Rvec, cv::Mat& tvec, const size_t p3dsi
     lkal.updateKalmanFilter(measurements, translation_estimated, rotation_estimated);
     pE.convertToEigenMat(rotation_estimated, translation_estimated, poseEstFrame);
     publishPose();
+    // publishPoseTrial();
+
 }
 
 void FeatureTracker::get3dPointsforPose(std::vector<cv::Point3d>& p3D)
@@ -1274,6 +1276,14 @@ void FeatureTracker::opticalFlow()
 #endif
 }
 
+void FeatureTracker::changeUndef(std::vector <uchar>& inliers, std::vector<cv::Point2f>& temp)
+{
+    const size_t end{pnts.left.size()};
+    for (size_t i{0}; i < end; i++)
+        if ( !inliers[i] )
+            pnts.left[i] = temp[i];
+}
+
 void FeatureTracker::opticalFlowPredict()
 {
     std::vector<float> err, err1;
@@ -1282,10 +1292,12 @@ void FeatureTracker::opticalFlowPredict()
 #if OPTICALIM
     drawOptical("before", lIm.rIm,prePnts.left, pnts.left);
 #endif
-    cv::calcOpticalFlowPyrLK(pLIm.im, lIm.im, prePnts.left, pnts.left, inliers, err,cv::Size(21,21),1, criteria,cv::OPTFLOW_USE_INITIAL_FLOW);
+    std::vector<cv::Point2f> temp = pnts.left;
+    cv::calcOpticalFlowPyrLK(pLIm.im, lIm.im, prePnts.left, pnts.left, inliers, err,cv::Size(21,21),3, criteria,cv::OPTFLOW_USE_INITIAL_FLOW);
 
-    prePnts.reduce<uchar>(inliers);
-    pnts.reduce<uchar>(inliers);
+    changeUndef(inliers, temp);
+    // prePnts.reduce<uchar>(inliers);
+    // pnts.reduce<uchar>(inliers);
     // reduceVectorTemp<float,uchar>(err,inliers);
 
     // const float minErrValue {20.0f};
@@ -1679,6 +1691,58 @@ void FeatureTracker::publishPose()
     saveData();
 #endif
     Logging zed("Zed Camera Pose", zedPtr->cameraPose.pose,3);
+}
+
+void FeatureTracker::publishPoseTrial()
+{
+    const float velThresh {0.07f};
+    static double pvx {}, pvy {}, pvz {};
+    double px {},py {},pz {};
+    px = poseEst(0,3);
+    py = poseEst(1,3);
+    pz = poseEst(2,3);
+    Eigen::Matrix4d prePoseEst = poseEst;
+    poseEst = poseEst * poseEstFrame;
+    double vx {},vy {},vz {};
+    vx = (poseEst(0,3) - px)/dt;
+    vy = (poseEst(1,3) - py)/dt;
+    vz = (poseEst(2,3) - pz)/dt;
+    poseEstFrameInv = poseEstFrame.inverse();
+    prevWPose = zedPtr->cameraPose.pose;
+    prevWPoseInv = zedPtr->cameraPose.poseInverse;
+    if ( curFrame != 1 )
+    {
+
+        if ( abs(vx - pvx) > velThresh || abs(vy - pvy) > velThresh || abs(vz - pvz) > velThresh )
+        {
+            poseEst = prePoseEst * prevposeEstFrame;
+        }
+        else
+        {
+            setVel(pvx, pvy, pvz, vx, vy, vz);
+            prevposeEstFrame = poseEstFrame;
+        }
+
+    }
+    else
+    {
+        setVel(pvx, pvy, pvz, vx, vy, vz);
+        prevposeEstFrame = poseEstFrame;
+    }
+    predNPose = poseEst * (prevWPoseInv * poseEst);
+    zedPtr->cameraPose.setPose(poseEst);
+    zedPtr->cameraPose.setInvPose(poseEst.inverse());
+#if SAVEODOMETRYDATA
+    saveData();
+#endif
+    Logging zed("Zed Camera Pose", zedPtr->cameraPose.pose,3);
+}
+
+inline void FeatureTracker::setVel(double& pvx, double& pvy, double& pvz, double vx, double vy, double vz)
+{
+    pvx = vx;
+    pvy = vy;
+    pvz = vz;
 }
 
 void FeatureTracker::saveData()

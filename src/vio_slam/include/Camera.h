@@ -30,7 +30,7 @@ namespace vio_slam
 class CameraPose
 {
     private:
-
+        double vx {}, vy {}, vz {};
     public:
         Eigen::Matrix4d pose;
         Eigen::Matrix3d Rv;
@@ -39,6 +39,7 @@ class CameraPose
         std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;
         //  = std::chrono::high_resolution_clock::now();
         CameraPose(Eigen::Matrix4d _pose = Eigen::Matrix4d::Identity(), std::chrono::time_point<std::chrono::high_resolution_clock> _timestamp = std::chrono::high_resolution_clock::now());
+        void setVel(const double _vx, const double _vy, const double _vz);
         void setPose(Eigen::Matrix4d poseT);
         void setInvPose(Eigen::Matrix4d poseT);
         void separatePose();
