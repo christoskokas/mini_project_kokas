@@ -16,7 +16,7 @@
 #include <iostream>
 #include <random>
 
-#define KEYSIM true
+#define KEYSIM false
 #define MATCHESIM true
 #define OPTICALIM true
 #define PROJECTIM true
@@ -76,6 +76,9 @@ class FeatureTracker
         Eigen::Matrix4d keyFramePose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d poseEstFrame = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d poseEstFrameInv = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d prevWPose = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d prevWPoseInv = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d predNPose = Eigen::Matrix4d::Identity();
         cv::Mat prevR = (cv::Mat_<double>(3,3) << 1,0,0,0, 1,0,0,0,1);
         cv::Mat pTvec = cv::Mat::zeros(3,1, CV_64F);
         cv::Mat pRvec = cv::Mat::zeros(3,1, CV_64F);
@@ -95,6 +98,7 @@ class FeatureTracker
         int uStereo {0};
         int uMono {0};
         int keyNumb {0};
+        int curFrame {0};
 
         bool addFeatures {false};
         bool bigRot {false};
@@ -112,7 +116,7 @@ class FeatureTracker
         const double dt;
         LKalmanFilter lkal;
 
-        cv::TermCriteria criteria {cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 30, (0.0001000000000000000021))};
+        cv::TermCriteria criteria {cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 30, (0.01))};
 
         std::vector<float> gridTraX;
         std::vector<float> gridTraY;
@@ -168,6 +172,8 @@ class FeatureTracker
         void setPreLImage();
         void setPreRImage();
         void setPre();
+        void setPreTrial();
+        void checkBoundsLeft();
         void setPreInit();
         void clearPre();
 

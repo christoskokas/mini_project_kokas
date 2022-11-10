@@ -208,6 +208,7 @@ void FeatureTracker::beginTracking(const int frames)
 {
     for (int32_t frame {1}; frame < frames; frame++)
     {
+        curFrame = frame;
         setLRImages(frame);
         if (addFeatures || uStereo < mnSize)
         {
@@ -239,6 +240,7 @@ void FeatureTracker::beginTrackingTrial(const int frames)
 {
     for (int32_t frame {1}; frame < frames; frame++)
     {
+        curFrame = frame;
         setLRImages(frame);
         fm.checkDepthChange(pLIm.im,pRIm.im,prePnts);
         if ( addFeatures || uStereo < mnSize )
@@ -261,7 +263,7 @@ void FeatureTracker::beginTrackingTrial(const int frames)
         // getPoseCeres();
         getPoseCeresNew();
 
-        setPre();
+        setPreTrial();
 
         addFeatures = checkFeaturesAreaCont(prePnts);
         Logging("ustereo", uStereo,3);
@@ -675,7 +677,7 @@ void FeatureTracker::getPoseCeresNew()
     cv::Mat Rvec = cv::Mat::zeros(3,1, CV_64F);
     cv::Mat tvec = cv::Mat::zeros(3,1, CV_64F);
 
-    essForMonoPose(Rvec, tvec, p3D);
+    // essForMonoPose(Rvec, tvec, p3D);
 
     if (p3D.size() > 10)
     {
@@ -688,7 +690,7 @@ void FeatureTracker::getPoseCeresNew()
     // else
     //     bigRot = false;
     // uStereo = p3D.size();
-    poseEstKal(Rvec, tvec, p3D.size());
+    poseEstKal(Rvec, tvec, uStereo);
 
 }
 
@@ -1088,7 +1090,7 @@ void FeatureTracker::poseEstKal(cv::Mat& Rvec, cv::Mat& tvec, const size_t p3dsi
 {
     cv::Mat measurements = cv::Mat::zeros(6,1, CV_64F);
 
-    if (cv::norm(tvec,pTvec) + cv::norm(Rvec,pRvec) > 2)
+    if (cv::norm(tvec,pTvec) + cv::norm(Rvec,pRvec) > 2 && curFrame != 1)
     {
         tvec = pTvec;
         Rvec = pRvec;
@@ -1100,6 +1102,7 @@ void FeatureTracker::poseEstKal(cv::Mat& Rvec, cv::Mat& tvec, const size_t p3dsi
     }
     else
     {
+        lkal.fillMeasurements(measurements, pTvec, pRvec);
         Logging("less than ",mnInKal,3);
     }
 
@@ -1279,7 +1282,7 @@ void FeatureTracker::opticalFlowPredict()
 #if OPTICALIM
     drawOptical("before", lIm.rIm,prePnts.left, pnts.left);
 #endif
-    cv::calcOpticalFlowPyrLK(pLIm.im, lIm.im, prePnts.left, pnts.left, inliers, err,cv::Size(15,15),5, criteria,cv::OPTFLOW_USE_INITIAL_FLOW);
+    cv::calcOpticalFlowPyrLK(pLIm.im, lIm.im, prePnts.left, pnts.left, inliers, err,cv::Size(21,21),1, criteria,cv::OPTFLOW_USE_INITIAL_FLOW);
 
     prePnts.reduce<uchar>(inliers);
     pnts.reduce<uchar>(inliers);
@@ -1298,17 +1301,17 @@ void FeatureTracker::opticalFlowPredict()
     prePnts.reduce<uchar>(inliers);
     pnts.reduce<uchar>(inliers);
 
-    const size_t end{pnts.left.size()};
-    std::vector<bool> check;
-    check.resize(end);
-    for (size_t i{0};i < end;i++)
-    {
-        if (!(pnts.left[i].x > zedPtr->mWidth || pnts.left[i].x < 0 || pnts.left[i].y > zedPtr->mHeight || pnts.left[i].y < 0))
-            check[i] = true;
-    }
+    // const size_t end{pnts.left.size()};
+    // std::vector<bool> check;
+    // check.resize(end);
+    // for (size_t i{0};i < end;i++)
+    // {
+    //     if (!(pnts.left[i].x > zedPtr->mWidth || pnts.left[i].x < 0 || pnts.left[i].y > zedPtr->mHeight || pnts.left[i].y < 0))
+    //         check[i] = true;
+    // }
 
-    prePnts.reduce<bool>(check);
-    pnts.reduce<bool>(check);
+    // prePnts.reduce<bool>(check);
+    // pnts.reduce<bool>(check);
 #if OPTICALIM
     drawOptical("after", lIm.rIm,prePnts.left, pnts.left);
 #endif
@@ -1366,6 +1369,35 @@ void FeatureTracker::setPre()
     // calcGridVel();
     prePnts.left = pnts.left;
     clearPre();
+}
+
+void FeatureTracker::setPreTrial()
+{
+    setPreLImage();
+    setPreRImage();
+    // calcGridVel();
+    checkBoundsLeft();
+    clearPre();
+}
+
+void FeatureTracker::checkBoundsLeft()
+{
+    const int w {zedPtr->mWidth};
+    const int h {zedPtr->mHeight};
+    // prePnts.left = pnts.left;
+    std::vector<bool> check;
+    check.resize(pnts.left.size());
+    int count {0};
+    std::vector<cv::Point2f>::const_iterator it, end(pnts.left.end());
+    for (it = pnts.left.begin(); it != end; it ++, count ++)
+    {
+        prePnts.left[count] = *it;
+        if (!(it->x > w || it->x < 0 || it->y > h || it->y < 0))
+        {
+            check[count] = true;
+        }
+    }
+    prePnts.reduce<bool>(check);
 }
 
 void FeatureTracker::setPreInit()
@@ -1576,9 +1608,9 @@ void FeatureTracker::predictProjection3D(const cv::Point3d& point3D, cv::Point2d
     // Logging("key",keyFrameNumb,3);
     Eigen::Vector4d point(point3D.x, point3D.y, point3D.z,1);
     // Logging("point",point,3);
-    point = zedPtr->cameraPose.poseInverse * point;
+    // point = zedPtr->cameraPose.poseInverse * point;
 
-    point = poseEstFrameInv * point;
+    point = predNPose.inverse() * point;
     // Logging("point",point,3);
     // Logging("zedPtr",zedPtr->cameraPose.poseInverse,3);
     // Logging("getPose",keyframes[keyFrameNumb].getPose(),3);
@@ -1638,8 +1670,11 @@ void FeatureTracker::publishPose()
 {
     poseEst = poseEst * poseEstFrame;
     poseEstFrameInv = poseEstFrame.inverse();
+    prevWPose = zedPtr->cameraPose.pose;
+    prevWPoseInv = zedPtr->cameraPose.poseInverse;
     zedPtr->cameraPose.setPose(poseEst);
     zedPtr->cameraPose.setInvPose(poseEst.inverse());
+    predNPose = poseEst * (prevWPoseInv * poseEst);
 #if SAVEODOMETRYDATA
     saveData();
 #endif
