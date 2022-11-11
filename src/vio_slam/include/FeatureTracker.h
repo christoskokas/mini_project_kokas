@@ -16,7 +16,7 @@
 #include <iostream>
 #include <random>
 
-#define KEYSIM false
+#define KEYSIM true
 #define MATCHESIM true
 #define OPTICALIM true
 #define PROJECTIM true
@@ -86,8 +86,9 @@ class FeatureTracker
         const int waitImKey {1};
         const int waitImMat {1};
         const int waitImOpt {1};
-        const int waitImPro {0};
-        const int mnSize {150};
+        const int waitImPro {1};
+        const int mnSize {100};
+        const int mxSize {400};
         const int mnInKal {30};
         const int sampleSize {15};
         const int gridVelNumb {10};
@@ -103,6 +104,12 @@ class FeatureTracker
 
         bool addFeatures {false};
         bool bigRot {false};
+        bool redo {false};
+
+
+
+        SubPixelPoints tr;
+
 
 
         ImageData pLIm, pRIm, lIm, rIm;
@@ -131,16 +138,21 @@ class FeatureTracker
         void initializeTracking();
         void beginTracking(const int frames);
         void beginTrackingTrial(const int frames);
+        void beginTrackingTrialClose(const int frames);
 
         void updateKeys(const int frame);
+        void updateKeysClose(const int frame);
 
         void stereoFeatures(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts);
         void stereoFeaturesMask(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts, const SubPixelPoints& prePnts);
+        void stereoFeaturesClose(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts);
         void stereoFeaturesPop(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts, const SubPixelPoints& prePnts);
         void calculateNextPnts();
         void calculateNextPntsGrids();
         void opticalFlow();
         void opticalFlowPredict();
+        void opticalFlowGood();
+        void matcherTrial();
         void getEssentialPose();
         void getSolvePnPPose();
         void getSolvePnPPoseWithEss();
@@ -190,6 +202,7 @@ class FeatureTracker
 
         void drawKeys(const char* com, cv::Mat& im, std::vector<cv::KeyPoint>& keys);
         void drawMatches(const cv::Mat& lIm, const SubPixelPoints& pnts, const std::vector<cv::DMatch> matches);
+        void drawMatchesKeys(const cv::Mat& lIm, const std::vector<cv::Point2f>& keys1, const std::vector<cv::Point2f>& keys2, const std::vector<cv::DMatch> matches);
         void drawOptical(const char* com, const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts);
         void drawPoints(const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts, const char* str);
         void draw2D3D(const cv::Mat& im, const std::vector<cv::Point2d>& p2Dfp3D, const std::vector<cv::Point2d>& p2D);
@@ -201,8 +214,11 @@ class FeatureTracker
         bool checkFeaturesAreaCont(const SubPixelPoints& prePnts);
         void setMask(const SubPixelPoints& prePnts, cv::Mat& mask);
         void setPopVec(const SubPixelPoints& prePnts, std::vector<int>& pop);
-        void changeUndef(std::vector <uchar>& inliers, std::vector<cv::Point2f>& temp);
+        void changeUndef(std::vector<float>& err, std::vector <uchar>& inliers, std::vector<cv::Point2f>& temp);
         inline void setVel(double& pvx, double& pvy, double& pvz, double vx, double vy, double vz);
+        void checkPointsDist(std::vector<cv::Point2f>& pnts1, std::vector<cv::Point2f>& pnts2);
+        float pointsDist(const cv::Point2f& p1, const cv::Point2f& p2);
+        void changeOptRes(std::vector <uchar>&  inliers, std::vector<cv::Point2f>& pnts1, std::vector<cv::Point2f>& pnts2);
 
         void convertToEigen(cv::Mat& Rvec, cv::Mat& tvec, Eigen::Matrix4d& tr);
         void publishPose();

@@ -2007,7 +2007,8 @@ void RobustMatcher2::testOpticalReDo()
     ft.initializeTracking();
 
     // ft.beginTracking(times);
-    ft.beginTrackingTrial(times);
+    // ft.beginTrackingTrial(times);
+    ft.beginTrackingTrialClose(times);
 
     
 

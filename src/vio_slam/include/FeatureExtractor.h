@@ -105,7 +105,6 @@ class FeatureExtractor
 #endif
 
     const int gridsNumber {gridCols * gridRows};
-    const int numberPerCell = nFeatures/(gridRows * gridCols);
 
     std::vector <cv::Mat> imagePyramid;
     std::vector < float > scalePyramid;
@@ -115,6 +114,7 @@ class FeatureExtractor
 
     public:
         
+        const int numberPerCell = nFeatures/(gridRows * gridCols);
         enum FeatureChoice
         {
             ORB,
@@ -132,17 +132,21 @@ class FeatureExtractor
         void findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findORB(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc);
         void findORBWithCV(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
+        void findORBGrids(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc);
 
         void extractFeatures(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
+        void extractFeaturesClose(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
         void extractFeaturesMask(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints, const cv::Mat& mask);
         void extractFeaturesPop(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints, const std::vector<int>& pop);
         void extractORB(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
+        void extractORBGrids(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
 
         // void updatePoints(std::vector <cv::KeyPoint>& leftKeys, std::vector <cv::KeyPoint>& rightKeys, SubPixelPoints& points);
 
 
         void findFAST(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc);
         void findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
+        void findFASTGridsClose(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findFASTGridsMask(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, const cv::Mat& mask);
         void findFASTGridsPop(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, const std::vector<int>& pop);
 

@@ -865,6 +865,17 @@ void FeatureMatcher::computeStereoMatches(const cv::Mat& leftImage, const cv::Ma
 
 }
 
+void FeatureMatcher::computeStereoMatchesClose(const cv::Mat& leftImage, const cv::Mat& rightImage, const StereoDescriptors& desc, std::vector <cv::DMatch>& matches, SubPixelPoints& points, StereoKeypoints& keypoints)
+{
+    std::vector<std::vector < int > > indexes;
+    std::vector<cv::DMatch> tempMatches;
+    destributeRightKeys(keypoints.right, indexes);
+    matchPoints(desc, indexes,tempMatches,points, keypoints);
+
+    slidingWindowOptimizationClose(leftImage, rightImage, matches, tempMatches,points);
+
+}
+
 void FeatureMatcher::stereoMatch(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector<cv::KeyPoint>& leftKeys, std::vector<cv::KeyPoint>& rightKeys, const cv::Mat& leftDesc, const cv::Mat& rightDesc, std::vector <cv::DMatch>& matches, SubPixelPoints& points)
 {
     // Timer("stereo match");
@@ -1200,11 +1211,12 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
 
     std::vector<bool> goodDist;
     std::vector < std::pair<int,int> > allBestDists;
-    allBestDists.reserve(tempMatches.size());
-    goodDist.reserve(tempMatches.size());
-    matches.reserve(tempMatches.size());
-    points.depth.reserve(tempMatches.size());
-    points.useable.reserve(tempMatches.size());
+    const size_t tsize {tempMatches.size()};
+    allBestDists.reserve(tsize);
+    goodDist.reserve(tsize);
+    matches.reserve(tsize);
+    points.depth.reserve(tsize);
+    points.useable.reserve(tsize);
     // newMatches.reserve(matches.size());
     int matchesCount {0};
     {
@@ -1270,13 +1282,12 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
 
             const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
             // if false depth is unusable
+            points.depth.emplace_back(depth);
             if (depth < zedptr->mBaseline * 40)
             {
                 points.useable.emplace_back(true);
-                points.depth.emplace_back(depth);
                 continue;
             }
-            points.depth.emplace_back(depth);
             points.useable.emplace_back(false);
 
             // Logging("depth",depth,2);
@@ -1288,13 +1299,109 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
     }
     }
 
-    if (matchesCount > maxMatches)
+
     {
-        std::sort(allBestDists.begin(),allBestDists.end(),[](const std::pair<int,int>& left, const std::pair<int,int>& right)
-        {return left.second > right.second;});
-        const size_t end {allBestDists.size()};
-        for (size_t i {(size_t)maxMatches}; i < end; i++)
-            goodDist[allBestDists[i].first] = false;
+    reduceVectorTemp<cv::Point2f,bool>(points.left,goodDist);
+    reduceVectorTemp<cv::Point2f,bool>(points.right,goodDist);
+    int count {0};
+    int matchesCount {0};
+    std::vector<cv::DMatch>::const_iterator it, end(tempMatches.end());
+    for (it = tempMatches.begin(); it != end; it++, count++ )
+        if (goodDist[count])
+        {
+            matches.emplace_back(matchesCount, matchesCount, it->distance);
+            matchesCount += 1;
+        }
+    }
+    // Logging("matches size", matches.size(),2);
+}
+
+void FeatureMatcher::slidingWindowOptimizationClose(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector <cv::DMatch>& matches, const std::vector <cv::DMatch>& tempMatches, SubPixelPoints& points)
+{
+    // Timer("sliding Window took");
+    // Because we use FAST to detect Features the sliding window will get a window of side 11 pixels (5 (3 + 2offset) pixels radius + 1 which is the feature)
+    const int windowRadius {5};
+    // Because of the EdgeThreshold used around the image we dont need to check out of bounds
+
+    const int windowMovementX {5};
+
+    std::vector<bool> goodDist;
+    const size_t tsize {tempMatches.size()};
+    goodDist.reserve(tsize);
+    matches.reserve(tsize);
+    points.depth.reserve(tsize);
+    points.useable.reserve(tsize);
+    // newMatches.reserve(matches.size());
+    {
+    std::vector<cv::DMatch>::const_iterator it, end(tempMatches.end());
+    for (it = tempMatches.begin(); it != end; it++)
+    {
+        int bestDist {INT_MAX};
+        int bestX {windowMovementX + 1};
+        const int lKeyX {(int)points.left[it->queryIdx].x};
+        const int lKeyY {(int)points.left[it->queryIdx].y};
+
+        std::vector < float > allDists;
+        allDists.reserve(2*windowMovementX);
+
+        const cv::Mat lWin = leftImage.rowRange(lKeyY - windowRadius, lKeyY + windowRadius + 1).colRange(lKeyX - windowRadius, lKeyX + windowRadius + 1);
+        for (int32_t xMov {-windowMovementX}; xMov < windowMovementX + 1; xMov++)
+        {
+                const int rKeyX {(int)points.right[it->trainIdx].x};
+                const int rKeyY {(int)points.right[it->trainIdx].y};
+                const cv::Mat rWin = rightImage.rowRange(rKeyY - windowRadius, rKeyY + windowRadius + 1).colRange(rKeyX + xMov - windowRadius, rKeyX + xMov + windowRadius + 1);
+
+                float dist = cv::norm(lWin,rWin, cv::NORM_L1);
+                if (bestDist > dist)
+                {
+                    bestX = xMov;
+                    bestDist = dist;
+                }
+                allDists.emplace_back(dist);
+        }
+        if ((bestX == -windowMovementX) || (bestX == windowMovementX) || (bestX == (windowMovementX + 1)))
+        {
+            goodDist.push_back(false);
+            continue;
+        }
+        // const int bestDistIdx {bestX + windowMovementX};
+        // float delta = (2*allDists[bestDistIdx] - allDists[bestDistIdx-1] - allDists[bestDistIdx+1])/(2*(allDists[bestDistIdx-1] - allDists[bestDistIdx+1]));
+
+        // Linear Interpolation for sub pixel accuracy
+        const float dist1 = allDists[windowMovementX + bestX-1];
+        const float dist2 = allDists[windowMovementX + bestX];
+        const float dist3 = allDists[windowMovementX + bestX+1];
+
+        const float delta = (dist1-dist3)/(2.0f*(dist1+dist3-2.0f*dist2));
+
+        if (delta > 1 || delta < -1)
+        {
+            goodDist.push_back(false);
+            continue;
+        }
+        // Logging("delta ",delta,2);
+        
+
+
+        points.right[it->trainIdx].x += bestX + delta;
+
+        // calculate depth
+        const float disparity {points.left[it->queryIdx].x - points.right[it->trainIdx].x};
+        if (disparity > 0.0f)
+        {
+
+            const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
+            // if false depth is unusable
+            if (depth < zedptr->mBaseline * closeNumber)
+            {
+                points.depth.emplace_back(depth);
+                points.useable.emplace_back(true);
+                goodDist.push_back(true);
+                continue;
+            }
+        }
+        goodDist.push_back(false);
+    }
     }
 
 
@@ -1327,8 +1434,8 @@ void FeatureMatcher::checkDepthChange(const cv::Mat& leftImage, const cv::Mat& r
     const size_t end{points.left.size()};
     for (size_t i{0}; i < end; i ++)
     {
-        if ( points.useable[i] )
-            continue;
+        // if ( points.useable[i] )
+        //     continue;
         const int pDisp {cvRound(((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/points.depth[i])};
         const int xStart {- windowMovementX};
         const int xEnd {windowMovementX + 1};
