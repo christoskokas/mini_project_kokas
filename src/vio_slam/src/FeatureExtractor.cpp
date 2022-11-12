@@ -965,7 +965,7 @@ int FeatureExtractor::checkIntensities(const uchar* rowPtr, uchar threshold_mask
     return score;
 }
 
-FeatureExtractor::FeatureExtractor(FeatureChoice _choice, const int _nfeatures, const int _nLevels, const float _imScale, const int _edgeThreshold, const int _patchSize, const int _maxFastThreshold, const int _minFastThreshold, const bool _nonMaxSuppression) : choice(_choice), nFeatures(_nfeatures), nLevels(_nLevels), imScale(_imScale), edgeThreshold(_edgeThreshold), patchSize(_patchSize), maxFastThreshold(_maxFastThreshold), minFastThreshold(_minFastThreshold), nonMaxSuppression(_nonMaxSuppression)
+FeatureExtractor::FeatureExtractor(const int _nfeatures, const int _nLevels, const float _imScale, const int _edgeThreshold, const int _patchSize, const int _maxFastThreshold, const int _minFastThreshold, const bool _nonMaxSuppression) : nFeatures(_nfeatures), nLevels(_nLevels), imScale(_imScale), edgeThreshold(_edgeThreshold), patchSize(_patchSize), maxFastThreshold(_maxFastThreshold), minFastThreshold(_minFastThreshold), nonMaxSuppression(_nonMaxSuppression)
 {
     // Different Implementation, instead of downsampling the image 8 times (making it smaller)
     // because this project consists of 2 cameras 1 facing backwards and 1 facing forwards, the pyramid will contain both upsampled and downsampled images.

@@ -11,8 +11,8 @@ LKalmanFilter::LKalmanFilter(const double _dt) : dt(_dt)
 void LKalmanFilter::initKalmanFilter(double dt)
 {
     KF.init(nStates, nMeasurements, nInputs, CV_64F);                 // init Kalman Filter
-    cv::setIdentity(KF.processNoiseCov, cv::Scalar::all(1e-5));       // set process noise
-    cv::setIdentity(KF.measurementNoiseCov, cv::Scalar::all(1e-4));   // set measurement noise
+    cv::setIdentity(KF.processNoiseCov, cv::Scalar::all(1));       // set process noise
+    cv::setIdentity(KF.measurementNoiseCov, cv::Scalar::all(1));   // set measurement noise
     cv::setIdentity(KF.errorCovPost, cv::Scalar::all(1));             // error covariance
                     /* DYNAMIC MODEL */
     //  [1 0 0 dt  0  0 dt2   0   0 0 0 0  0  0  0   0   0   0]

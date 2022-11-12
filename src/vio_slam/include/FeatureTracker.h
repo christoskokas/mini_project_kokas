@@ -66,6 +66,8 @@ class FeatureTracker
         std::string filepath {"empty.txt"};
 #endif
 
+        const int nFeatures {2000};
+
         std::ofstream datafile;
         std::chrono::_V2::system_clock::time_point startTime, endTime;
         std::chrono::duration<float> duration;
@@ -106,7 +108,7 @@ class FeatureTracker
         bool bigRot {false};
         bool redo {false};
 
-
+        cv::Mat prevF;
 
         SubPixelPoints tr;
 

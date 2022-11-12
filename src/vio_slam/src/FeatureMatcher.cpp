@@ -962,7 +962,7 @@ void FeatureMatcher::matchPoints(const StereoDescriptors& desc, const std::vecto
                 // }
             }
         }
-        if (bestDist > 100)
+        if (bestDist > 75)
             continue;
             // if (bestDist < 0.8f*secDist)
             // {
@@ -1434,8 +1434,8 @@ void FeatureMatcher::checkDepthChange(const cv::Mat& leftImage, const cv::Mat& r
     const size_t end{points.left.size()};
     for (size_t i{0}; i < end; i ++)
     {
-        // if ( points.useable[i] )
-        //     continue;
+        if ( points.useable[i] )
+            continue;
         const int pDisp {cvRound(((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/points.depth[i])};
         const int xStart {- windowMovementX};
         const int xEnd {windowMovementX + 1};

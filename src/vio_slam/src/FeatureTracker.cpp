@@ -74,7 +74,7 @@ void FeatureData::compute3DPoints(SubPixelPoints& prePnts, const int keyNumb)
     }
 }
 
-FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr) : zedPtr(_zedPtr), fm(zedPtr, zedPtr->mHeight, fe.getGridRows(), fe.getGridCols()), pE(zedPtr), fd(zedPtr), dt(zedPtr->mFps), lkal(dt), datafile(filepath)
+FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr) : zedPtr(_zedPtr), fe(nFeatures), fm(zedPtr, zedPtr->mHeight, fe.getGridRows(), fe.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1/zedPtr->mFps), lkal(dt), datafile(filepath)
 {
     rmap[0][0] = _rmap[0][0];
     rmap[0][1] = _rmap[0][1];
@@ -84,7 +84,7 @@ FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr) : zedPt
 
 void FeatureTracker::setMask(const SubPixelPoints& prePnts, cv::Mat& mask)
 {
-    const int rad {10};
+    const int rad {3};
     mask = cv::Mat(zedPtr->mHeight, zedPtr->mWidth, CV_8UC1, cv::Scalar(255));
 
     std::vector<cv::Point2f>::const_iterator it, end{prePnts.left.end()};
@@ -306,9 +306,9 @@ void FeatureTracker::beginTrackingTrialClose(const int frames)
         if ( (addFeatures || uStereo < mnSize) && ( uStereo < mxSize) )
         {
             zedPtr->addKeyFrame = true;
-            if ( uMono > mxSize )
-                updateKeysClose(frame);
-            else
+            // if ( uMono > mxSize )
+            //     updateKeysClose(frame);
+            // else
                 updateKeys(frame);
             fd.compute3DPoints(prePnts, keyNumb);
             keyframes.emplace_back(zedPtr->cameraPose.pose,prePnts.points3D,keyNumb);
@@ -742,8 +742,8 @@ void FeatureTracker::getPoseCeresNew()
 
     get3dPointsforPoseAll(p3D);
 
-    cv::Mat Rvec = pRvec.clone();
-    cv::Mat tvec = pTvec.clone();
+    cv::Mat Rvec = cv::Mat::zeros(3,1, CV_64F);
+    cv::Mat tvec = cv::Mat::zeros(3,1, CV_64F);
 
 
     // essForMonoPose(Rvec, tvec, p3D);
@@ -1130,6 +1130,19 @@ void FeatureTracker::pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Poi
 
     // cv::solvePnP(p3Ddepth, p2Ddepth,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true);
 
+
+    // if ( curFrame != 1 )
+    // {
+    //     std::vector<cv::Point2d> p2D, pn2D;
+    //     compute2Dfrom3D(p3D, p2D, pn2D);
+    //     Logging("p2d size", p2D.size(), 3);
+    //     std::vector<cv::Point2d> outp3, outp2;
+    //     cv::correctMatches(prevF,p2D,pn2D,outp3,outp2);
+    //     Logging("p2d size", p2D.size(), 3);
+    //     for (size_t i{0}; i < outp2.size(); i++)
+    //         pnts.left[i] = cv::Point2f((float)outp2[i].x, (float)outp2[i].y);
+
+    // }
     std::vector<int>idxs;
     cv::solvePnPRansac(p3D, pnts.left,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true,100, 8.0f, 0.99, idxs);
 
@@ -1145,6 +1158,9 @@ void FeatureTracker::pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Poi
     // reduceVectorInliersTemp<cv::Point3d,int>(p3Ddepth,idxs);
 
     uStereo = p3D.size();
+
+    // std::vector<uchar> in;
+    // prevF = cv::findFundamentalMat(p2D, pn2D, in, cv::FM_RANSAC,6.0f,0.99);
 
 #if PROJECTIM
     std::vector<cv::Point2d> p2D, pn2D;
@@ -1169,7 +1185,7 @@ void FeatureTracker::poseEstKal(cv::Mat& Rvec, cv::Mat& tvec, const size_t p3dsi
     // Logging("Rvec", Rvec, 3);
     // Logging("pRvec", pRvec, 3);
 
-    if ((cv::norm(tvec,pTvec) > 1.0f || cv::norm(Rvec,pRvec) > 0.1f) && curFrame != 1)
+    if ((cv::norm(tvec,pTvec) > 1.0f || cv::norm(Rvec,pRvec) > 0.5f) && curFrame != 1)
     {
         tvec = pTvec.clone();
         Rvec = pRvec.clone();
@@ -1186,9 +1202,8 @@ void FeatureTracker::poseEstKal(cv::Mat& Rvec, cv::Mat& tvec, const size_t p3dsi
     cv::Mat rotation_estimated(3, 3, CV_64F);
 
     lkal.updateKalmanFilter(measurements, translation_estimated, rotation_estimated);
-    cv::Mat Rotest;
-    translation_estimated = tvec.clone();
-    cv::Rodrigues(Rvec, rotation_estimated);
+    // translation_estimated = tvec.clone();
+    // cv::Rodrigues(Rvec, rotation_estimated);
     pE.convertToEigenMat(rotation_estimated, translation_estimated, poseEstFrame);
     publishPose();
     // publishPoseTrial();
@@ -1231,15 +1246,7 @@ void FeatureTracker::get3dPointsforPoseAll(std::vector<cv::Point3d>& p3D)
         if (checkProjection3D(point,p2dtemp))
         {
             inliers[i] = true;
-            const double fx {zedPtr->cameraLeft.fx};
-            const double fy {zedPtr->cameraLeft.fy};
-            const double cx {zedPtr->cameraLeft.cx};
-            const double cy {zedPtr->cameraLeft.cy};
-
-            const double zp = (double)prePnts.depth[i];
-            const double xp = (double)(((double)prePnts.left[i].x-cx)*zp/fx);
-            const double yp = (double)(((double)prePnts.left[i].y-cy)*zp/fy);
-            p3D.emplace_back(xp,yp,zp);
+            p3D.emplace_back(point);
         }
     }
     prePnts.reduce<bool>(inliers);
@@ -1324,7 +1331,7 @@ void FeatureTracker::opticalFlow()
 {
     std::vector<float> err, err1;
     std::vector <uchar>  inliers;
-    cv::calcOpticalFlowPyrLK(pLIm.im, lIm.im, prePnts.left, pnts.left, inliers, err,cv::Size(15,15),5, criteria);
+    cv::calcOpticalFlowPyrLK(pLIm.im, lIm.im, prePnts.left, pnts.left, inliers, err,cv::Size(21,21),3, criteria);
 
     prePnts.reduce<uchar>(inliers);
     pnts.reduce<uchar>(inliers);
@@ -1384,13 +1391,13 @@ void FeatureTracker::opticalFlowPredict()
     // prePnts.reduce<uchar>(inliers);
     // pnts.reduce<uchar>(inliers);
 
-    matcherTrial();
+    // matcherTrial();
 
-    cv::findFundamentalMat(prePnts.left, pnts.left, inliers, cv::FM_RANSAC, 3, 0.99);
+    // cv::findFundamentalMat(prePnts.left, pnts.left, inliers, cv::FM_RANSAC, 3, 0.99);
 
 
-    prePnts.reduce<uchar>(inliers);
-    pnts.reduce<uchar>(inliers);
+    // prePnts.reduce<uchar>(inliers);
+    // pnts.reduce<uchar>(inliers);
 #if OPTICALIM
     drawOptical("after", pLIm.rIm,prePnts.left, pnts.left);
 #endif
@@ -1400,12 +1407,13 @@ void FeatureTracker::opticalFlowPredict()
 void FeatureTracker::changeOptRes(std::vector <uchar>&  inliers, std::vector<cv::Point2f>& pnts1, std::vector<cv::Point2f>& pnts2)
 {
     const size_t end {pnts1.size()};
+    const int off{0};
     // const float mxPointsDist {400.0f};
-    const int w {zedPtr->mWidth};
-    const int h {zedPtr->mHeight};
+    const int w {zedPtr->mWidth + off};
+    const int h {zedPtr->mHeight + off};
     for ( size_t i {0}; i < end; i ++)
     {
-        if ( !inliers[i] || pnts1[i].x > w || pnts1[i].x < 0 || pnts1[i].y > h || pnts1[i].y < 0 )
+        if ( !inliers[i] || pnts1[i].x > w || pnts1[i].x < -off || pnts1[i].y > h || pnts1[i].y < -off )
             pnts2[i] = pnts1[i];
     }
 }
