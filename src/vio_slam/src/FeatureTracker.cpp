@@ -84,7 +84,7 @@ FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr) : zedPt
 
 void FeatureTracker::setMask(const SubPixelPoints& prePnts, cv::Mat& mask)
 {
-    const int rad {3};
+    const int rad {10};
     mask = cv::Mat(zedPtr->mHeight, zedPtr->mWidth, CV_8UC1, cv::Scalar(255));
 
     std::vector<cv::Point2f>::const_iterator it, end{prePnts.left.end()};
@@ -158,6 +158,12 @@ void FeatureTracker::stereoFeaturesMask(cv::Mat& leftIm, cv::Mat& rightIm, std::
 
     // pnts.reduce<uchar>(inliers);
     // reduceVectorTemp<cv::DMatch,uchar>(matches, inliers);
+
+#if KEYSIM
+    drawKeys("left", pLIm.rIm, keys.left);
+    drawKeys("right", pRIm.rIm, keys.right);
+#endif
+
     Logging("matches size", matches.size(),1);
 #if MATCHESIM
     drawMatches(pLIm.rIm, pnts, matches);
@@ -192,10 +198,10 @@ void FeatureTracker::stereoFeatures(cv::Mat& leftIm, cv::Mat& rightIm, std::vect
     fe.extractFeatures(leftIm, rightIm, desc, keys);
     fm.computeStereoMatches(leftIm, rightIm, desc, matches, pnts, keys);
     std::vector<uchar> inliers;
-    cv::findFundamentalMat(pnts.left, pnts.right, inliers, cv::FM_RANSAC, 3, 0.99);
+    // cv::findFundamentalMat(pnts.left, pnts.right, inliers, cv::FM_RANSAC, 3, 0.99);
 
-    pnts.reduce<uchar>(inliers);
-    reduceVectorTemp<cv::DMatch,uchar>(matches, inliers);
+    // pnts.reduce<uchar>(inliers);
+    // reduceVectorTemp<cv::DMatch,uchar>(matches, inliers);
     Logging("matches size", matches.size(),1);
 #if MATCHESIM
     drawMatches(lIm.rIm, pnts, matches);
@@ -753,8 +759,6 @@ void FeatureTracker::getPoseCeresNew()
         pnpRansac(Rvec, tvec, p3D);
     }
     // optimizePoseMO(p3D, Rvec, tvec);
-    uStereo = calcNumberOfStereo();
-    uMono = p3D.size() - uStereo;
     // if (abs(Rvec.at<double>(1)) > 0.04)
     //     bigRot = true;
     // else
@@ -1115,34 +1119,7 @@ void FeatureTracker::essForMonoPose(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv
 
 void FeatureTracker::pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Point3d>& p3D)
 {
-    // std::vector<cv::Point3d> p3Ddepth;
-    // std::vector<cv::Point2d> p2Ddepth;
-    // const size_t end {p3D.size()};
-    // p3Ddepth.reserve(end);
-    // for (size_t i{0};i < end; i ++)
-    // {
-    //     if ( prePnts.useable[i] )
-    //     {
-    //         p3Ddepth.emplace_back(p3D[i]);
-    //         p2Ddepth.emplace_back((double)pnts.left[i].x,(double)pnts.left[i].y);
-    //     }
-    // }
 
-    // cv::solvePnP(p3Ddepth, p2Ddepth,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true);
-
-
-    // if ( curFrame != 1 )
-    // {
-    //     std::vector<cv::Point2d> p2D, pn2D;
-    //     compute2Dfrom3D(p3D, p2D, pn2D);
-    //     Logging("p2d size", p2D.size(), 3);
-    //     std::vector<cv::Point2d> outp3, outp2;
-    //     cv::correctMatches(prevF,p2D,pn2D,outp3,outp2);
-    //     Logging("p2d size", p2D.size(), 3);
-    //     for (size_t i{0}; i < outp2.size(); i++)
-    //         pnts.left[i] = cv::Point2f((float)outp2[i].x, (float)outp2[i].y);
-
-    // }
     std::vector<int>idxs;
     cv::solvePnPRansac(p3D, pnts.left,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true,100, 8.0f, 0.99, idxs);
 
@@ -1159,8 +1136,6 @@ void FeatureTracker::pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Poi
 
     uStereo = p3D.size();
 
-    // std::vector<uchar> in;
-    // prevF = cv::findFundamentalMat(p2D, pn2D, in, cv::FM_RANSAC,6.0f,0.99);
 
 #if PROJECTIM
     std::vector<cv::Point2d> p2D, pn2D;
@@ -1382,14 +1357,14 @@ void FeatureTracker::opticalFlowPredict()
     std::vector <uchar>  inliers;
     calculateNextPnts();
     std::vector<cv::Point2f> temp = pnts.left;
-    cv::calcOpticalFlowPyrLK(pLIm.im, lIm.im, prePnts.left, pnts.left, inliers, err,cv::Size(21,21),1, criteria,cv::OPTFLOW_USE_INITIAL_FLOW);
+    cv::calcOpticalFlowPyrLK(pLIm.im, lIm.im, prePnts.left, pnts.left, inliers, err,cv::Size(21,21),3, criteria,cv::OPTFLOW_USE_INITIAL_FLOW);
     changeOptRes(inliers, temp, pnts.left);
 
 #if OPTICALIM
     drawOptical("before", pLIm.rIm,prePnts.left, pnts.left);
 #endif
-    // prePnts.reduce<uchar>(inliers);
-    // pnts.reduce<uchar>(inliers);
+    prePnts.reduce<uchar>(inliers);
+    pnts.reduce<uchar>(inliers);
 
     // matcherTrial();
 
@@ -1413,8 +1388,8 @@ void FeatureTracker::changeOptRes(std::vector <uchar>&  inliers, std::vector<cv:
     const int h {zedPtr->mHeight + off};
     for ( size_t i {0}; i < end; i ++)
     {
-        if ( !inliers[i] || pnts1[i].x > w || pnts1[i].x < -off || pnts1[i].y > h || pnts1[i].y < -off )
-            pnts2[i] = pnts1[i];
+        if ( pnts1[i].x > w || pnts1[i].x < -off || pnts1[i].y > h || pnts1[i].y < -off )
+            inliers[i] = false;
     }
 }
 
@@ -1577,6 +1552,7 @@ void FeatureTracker::checkBoundsLeft()
     std::vector<bool> check;
     check.resize(pnts.left.size());
     int count {0};
+    uStereo = 0;
     std::vector<cv::Point2f>::const_iterator it, end(pnts.left.end());
     for (it = pnts.left.begin(); it != end; it ++, count ++)
     {
@@ -1584,9 +1560,12 @@ void FeatureTracker::checkBoundsLeft()
         if (!(it->x > w || it->x < 0 || it->y > h || it->y < 0))
         {
             check[count] = true;
+            if ( prePnts.useable[count] )
+                uStereo ++;
         }
     }
     prePnts.reduce<bool>(check);
+    uMono = prePnts.left.size() - uStereo;
 }
 
 void FeatureTracker::setPreInit()

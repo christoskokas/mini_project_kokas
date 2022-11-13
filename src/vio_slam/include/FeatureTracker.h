@@ -150,6 +150,7 @@ class FeatureTracker
         void stereoFeaturesClose(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts);
         void stereoFeaturesPop(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts, const SubPixelPoints& prePnts);
         void calculateNextPnts();
+        void calculateNextPntsDepth();
         void calculateNextPntsGrids();
         void opticalFlow();
         void opticalFlowPredict();
@@ -212,6 +213,7 @@ class FeatureTracker
         void calcGridVel();
         bool checkProjection3D(cv::Point3d& point3D, cv::Point2d& point2d);
         void predictProjection3D(const cv::Point3d& point3D, cv::Point2d& point2d);
+        void predictProjection3DNewDepth(const cv::Point2f& point2f, const float& depth, cv::Point2d& point2d);
         bool checkFeaturesArea(const SubPixelPoints& prePnts);
         bool checkFeaturesAreaCont(const SubPixelPoints& prePnts);
         void setMask(const SubPixelPoints& prePnts, cv::Mat& mask);

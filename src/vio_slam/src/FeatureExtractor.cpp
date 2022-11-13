@@ -296,23 +296,27 @@ void FeatureExtractor::findFASTGridsMask(cv::Mat& image, std::vector <cv::KeyPoi
 
     int count {-1};
     
-    for (int32_t row = 0; row < gridRows; row++)
+    for (int32_t row = 0; row < gridRows + 1; row++)
     {
         
         const int imRowStart = row * rowJump;
-        const int imRowEnd = (row + 1) * rowJump + 2 * fastEdge;
+        int imRowEnd = (row + 1) * rowJump + 2 * fastEdge;
+        if ( imRowEnd > croppedImage.rows )
+            imRowEnd = croppedImage.rows;
 
-        for (int32_t col = 0; col < gridCols; col++)
+        for (int32_t col = 0; col < gridCols + 1; col++)
         {
             count++;
 
             const int imColStart = col * colJump;
-            const int imColEnd = (col + 1) * colJump + 2 * fastEdge;
+            int  imColEnd = (col + 1) * colJump + 2 * fastEdge;
+            if ( imColEnd > croppedImage.cols )
+                imColEnd = croppedImage.cols;
 
             std::vector < cv::KeyPoint > temp;
             cv::FAST(croppedImage.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,maxFastThreshold,true);
 
-            if (temp.size() < mnNKey)
+            if (temp.empty())
             {
                 cv::FAST(croppedImage.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,minFastThreshold,true);
             }
@@ -365,19 +369,22 @@ void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>&
 
     int count {-1};
     
-    for (int32_t row = 0; row < gridRows; row++)
+    for (int32_t row = 0; row < gridRows + 1; row++)
     {
         
         const int imRowStart = row * rowJump;
-        const int imRowEnd = (row + 1) * rowJump + 2 * fastEdge;
+        int imRowEnd = (row + 1) * rowJump + 2 * fastEdge;
+        if ( imRowEnd > croppedImage.rows )
+            imRowEnd = croppedImage.rows;
 
-        for (int32_t col = 0; col < gridCols; col++)
+        for (int32_t col = 0; col < gridCols + 1; col++)
         {
             count++;
 
             const int imColStart = col * colJump;
-            const int imColEnd = (col + 1) * colJump + 2 * fastEdge;
-
+            int  imColEnd = (col + 1) * colJump + 2 * fastEdge;
+            if ( imColEnd > croppedImage.cols )
+                imColEnd = croppedImage.cols;
             // Logging("imRowStart",imRowStart,3);
             // Logging("imRowEnd",imRowEnd,3);
             // Logging("imColStart",imColStart,3);
@@ -387,7 +394,7 @@ void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>&
 
             cv::FAST(croppedImage.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,maxFastThreshold,true);
 
-            if (temp.size() < mnNKey)
+            if (temp.empty())
             {
                 cv::FAST(croppedImage.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,minFastThreshold,true);
             }

@@ -94,8 +94,8 @@ class FeatureExtractor
     const bool nonMaxSuppression;
 
 #if KITTI_DATASET
-    const int gridRows {10};
-    const int gridCols {10};
+    const int gridRows {30};
+    const int gridCols {30};
 #elif ZED_DATASET
     const int gridRows {10};
     const int gridCols {10};

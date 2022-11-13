@@ -941,7 +941,7 @@ void FeatureMatcher::matchPoints(const StereoDescriptors& desc, const std::vecto
                     const int rGrid {keypoints.right[idx].class_id};
                     const int difGrid {lGrid - rGrid};
                     const int leftSide {lGrid%gridCols};
-                    if (!((difGrid <= 1) && lGrid >= rGrid && leftSide != 0 ))
+                    if ((lGrid%gridCols < rGrid%gridCols))
                         continue;
                 }
 
@@ -1224,7 +1224,7 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
     for (it = tempMatches.begin(); it != end; it++)
     {
         int bestDist {INT_MAX};
-        int bestX {windowMovementX + 1};
+        int bestX {0};
         const int lKeyX {(int)points.left[it->queryIdx].x};
         const int lKeyY {(int)points.left[it->queryIdx].y};
 
@@ -1246,7 +1246,7 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
                 }
                 allDists.emplace_back(dist);
         }
-        if ((bestX == -windowMovementX) || (bestX == windowMovementX) || (bestX == (windowMovementX + 1)))
+        if ((bestX == -windowMovementX) || (bestX == windowMovementX))
         {
             goodDist.push_back(false);
             continue;
@@ -1337,7 +1337,7 @@ void FeatureMatcher::slidingWindowOptimizationClose(const cv::Mat& leftImage, co
     for (it = tempMatches.begin(); it != end; it++)
     {
         int bestDist {INT_MAX};
-        int bestX {windowMovementX + 1};
+        int bestX {0};
         const int lKeyX {(int)points.left[it->queryIdx].x};
         const int lKeyY {(int)points.left[it->queryIdx].y};
 
@@ -1359,7 +1359,7 @@ void FeatureMatcher::slidingWindowOptimizationClose(const cv::Mat& leftImage, co
                 }
                 allDists.emplace_back(dist);
         }
-        if ((bestX == -windowMovementX) || (bestX == windowMovementX) || (bestX == (windowMovementX + 1)))
+        if ((bestX == -windowMovementX) || (bestX == windowMovementX))
         {
             goodDist.push_back(false);
             continue;
