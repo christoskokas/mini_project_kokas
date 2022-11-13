@@ -937,11 +937,16 @@ void FeatureMatcher::matchPoints(const StereoDescriptors& desc, const std::vecto
                     // if (found)
                     //     continue;
                     // checkedIdxes.push_back(idx);
-                    
+                    int maxDif {0};
+                    if ( gridCols >= 10)
+                        maxDif = floor(gridCols/10);
+                    else
+                        maxDif = 1;
                     const int rGrid {keypoints.right[idx].class_id};
                     const int difGrid {lGrid - rGrid};
                     const int leftSide {lGrid%gridCols};
-                    if ((lGrid%gridCols < rGrid%gridCols))
+                    const int rightSide {rGrid%gridCols};
+                    if (((leftSide - rightSide > maxDif) || (leftSide < rightSide)))
                         continue;
                 }
 

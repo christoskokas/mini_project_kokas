@@ -84,7 +84,7 @@ FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr) : zedPt
 
 void FeatureTracker::setMask(const SubPixelPoints& prePnts, cv::Mat& mask)
 {
-    const int rad {10};
+    const int rad {3};
     mask = cv::Mat(zedPtr->mHeight, zedPtr->mWidth, CV_8UC1, cv::Scalar(255));
 
     std::vector<cv::Point2f>::const_iterator it, end{prePnts.left.end()};
@@ -1357,7 +1357,7 @@ void FeatureTracker::opticalFlowPredict()
     std::vector <uchar>  inliers;
     calculateNextPnts();
     std::vector<cv::Point2f> temp = pnts.left;
-    cv::calcOpticalFlowPyrLK(pLIm.im, lIm.im, prePnts.left, pnts.left, inliers, err,cv::Size(21,21),3, criteria,cv::OPTFLOW_USE_INITIAL_FLOW);
+    cv::calcOpticalFlowPyrLK(pLIm.im, lIm.im, prePnts.left, pnts.left, inliers, err,cv::Size(21,21),1, criteria,cv::OPTFLOW_USE_INITIAL_FLOW);
     changeOptRes(inliers, temp, pnts.left);
 
 #if OPTICALIM
