@@ -91,6 +91,8 @@ class FeatureTracker
         const int waitImPro {1};
         const int mnSize {100};
         const int mxSize {400};
+        const int highSpeed {15};
+        const int mxMonoSize {300};
         const int mnInKal {30};
         const int sampleSize {15};
         const int gridVelNumb {10};

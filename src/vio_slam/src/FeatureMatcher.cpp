@@ -905,6 +905,7 @@ void FeatureMatcher::matchPoints(const StereoDescriptors& desc, const std::vecto
     for (it = keypoints.left.begin(); it != end; it++, leftRow++)
     {
         const int yKey = cvRound(it->pt.y);
+        const float uL {it->pt.y};
 
         int bestDist = 256;
         int bestIdx = -1;
@@ -937,17 +938,21 @@ void FeatureMatcher::matchPoints(const StereoDescriptors& desc, const std::vecto
                     // if (found)
                     //     continue;
                     // checkedIdxes.push_back(idx);
-                    int maxDif {0};
-                    if ( gridCols >= 10)
-                        maxDif = floor(gridCols/10);
-                    else
-                        maxDif = 1;
-                    const int rGrid {keypoints.right[idx].class_id};
-                    const int difGrid {lGrid - rGrid};
-                    const int leftSide {lGrid%gridCols};
-                    const int rightSide {rGrid%gridCols};
-                    if (((leftSide - rightSide > maxDif) || (leftSide < rightSide)))
+                    const float uR {keypoints.right[idx].pt.y};
+                    if (uL < uR)
                         continue;
+
+                    // int maxDif {0};
+                    // if ( gridCols >= 10)
+                    //     maxDif = floor(gridCols/10);
+                    // else
+                    //     maxDif = 1;
+                    // const int rGrid {keypoints.right[idx].class_id};
+                    // const int difGrid {lGrid - rGrid};
+                    // const int leftSide {lGrid%(gridCols + 1)};
+                    // const int rightSide {rGrid%(gridCols + 1)};
+                    // if (((leftSide - rightSide > maxDif) || (leftSide < rightSide)))
+                    //     continue;
                 }
 
                 int dist {DescriptorDistance(desc.left.row(leftRow),desc.right.row(idx))};
@@ -971,28 +976,28 @@ void FeatureMatcher::matchPoints(const StereoDescriptors& desc, const std::vecto
             continue;
             // if (bestDist < 0.8f*secDist)
             // {
-        if (matchedDist[bestIdx] != 256)
-        {
-            if (bestDist < matchedDist[bestIdx])
-            {
-                points.left[matchedLIdx[bestIdx]] = it->pt;
-                points.right[matchedLIdx[bestIdx]] = keypoints.right[bestIdx].pt;
-                tempMatches[matchedLIdx[bestIdx]] = cv::DMatch(matchedLIdx[bestIdx],matchedLIdx[bestIdx],bestDist);
-                matchedDist[bestIdx] = bestDist;
-                // matchedKeys.lIdx[bestIdx] = matchesCount;
+        // if (matchedDist[bestIdx] != 256)
+        // {
+        //     if (bestDist < matchedDist[bestIdx])
+        //     {
+        //         points.left[matchedLIdx[bestIdx]] = it->pt;
+        //         points.right[matchedLIdx[bestIdx]] = keypoints.right[bestIdx].pt;
+        //         tempMatches[matchedLIdx[bestIdx]] = cv::DMatch(matchedLIdx[bestIdx],matchedLIdx[bestIdx],bestDist);
+        //         matchedDist[bestIdx] = bestDist;
+        //         // matchedKeys.lIdx[bestIdx] = matchesCount;
 
-            }
-            continue;
-        }
-        else
-        {
+        //     }
+        //     continue;
+        // }
+        // else
+        // {
             matchedLIdx[bestIdx] = matchesCount;
             matchedDist[bestIdx] = bestDist;
             points.left.emplace_back(it->pt);
             points.right.emplace_back(keypoints.right[bestIdx].pt);
             tempMatches.emplace_back(matchedLIdx[bestIdx],matchedLIdx[bestIdx],bestDist);
             matchesCount ++;
-        }
+        // }
 
             // }
     }
@@ -1209,7 +1214,7 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
 {
     // Timer("sliding Window took");
     // Because we use FAST to detect Features the sliding window will get a window of side 11 pixels (5 (3 + 2offset) pixels radius + 1 which is the feature)
-    const int windowRadius {5};
+    const int windowRadius {3};
     // Because of the EdgeThreshold used around the image we dont need to check out of bounds
 
     const int windowMovementX {5};
@@ -1325,7 +1330,7 @@ void FeatureMatcher::slidingWindowOptimizationClose(const cv::Mat& leftImage, co
 {
     // Timer("sliding Window took");
     // Because we use FAST to detect Features the sliding window will get a window of side 11 pixels (5 (3 + 2offset) pixels radius + 1 which is the feature)
-    const int windowRadius {5};
+    const int windowRadius {3};
     // Because of the EdgeThreshold used around the image we dont need to check out of bounds
 
     const int windowMovementX {5};

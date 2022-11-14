@@ -74,7 +74,7 @@ void FeatureData::compute3DPoints(SubPixelPoints& prePnts, const int keyNumb)
     }
 }
 
-FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr) : zedPtr(_zedPtr), fe(nFeatures), fm(zedPtr, zedPtr->mHeight, fe.getGridRows(), fe.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1/zedPtr->mFps), lkal(dt), datafile(filepath)
+FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr) : zedPtr(_zedPtr),fe(nFeatures), fm(zedPtr, zedPtr->mHeight, fe.getGridRows(), fe.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1/zedPtr->mFps), lkal(dt), datafile(filepath)
 {
     rmap[0][0] = _rmap[0][0];
     rmap[0][1] = _rmap[0][1];
@@ -309,12 +309,15 @@ void FeatureTracker::beginTrackingTrialClose(const int frames)
         curFrame = frame;
         setLRImages(frame);
         fm.checkDepthChange(pLIm.im,pRIm.im,prePnts);
-        if ( (addFeatures || uStereo < mnSize) && ( uStereo < mxSize) )
+        if ( (addFeatures || uStereo < mnSize || cv::norm(pTvec)*zedPtr->mFps > highSpeed) && ( uStereo < mxSize) )
         {
+            // Logging("ptvec",pTvec,3);
+            // Logging("cv::norm(pTvec)",cv::norm(pTvec),3);
+
             zedPtr->addKeyFrame = true;
-            // if ( uMono > mxSize )
-            //     updateKeysClose(frame);
-            // else
+            if ( uMono > mxMonoSize )
+                updateKeysClose(frame);
+            else
                 updateKeys(frame);
             fd.compute3DPoints(prePnts, keyNumb);
             keyframes.emplace_back(zedPtr->cameraPose.pose,prePnts.points3D,keyNumb);
@@ -748,8 +751,8 @@ void FeatureTracker::getPoseCeresNew()
 
     get3dPointsforPoseAll(p3D);
 
-    cv::Mat Rvec = cv::Mat::zeros(3,1, CV_64F);
-    cv::Mat tvec = cv::Mat::zeros(3,1, CV_64F);
+    cv::Mat Rvec = pRvec.clone();
+    cv::Mat tvec = pTvec.clone();
 
 
     // essForMonoPose(Rvec, tvec, p3D);
@@ -1121,8 +1124,11 @@ void FeatureTracker::pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Poi
 {
 
     std::vector<int>idxs;
+    // Logging("Rvecbef", Rvec,3);
+    // Logging("Tvecbef", tvec,3);
     cv::solvePnPRansac(p3D, pnts.left,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true,100, 8.0f, 0.99, idxs);
-
+    // Logging("Rvecaft", Rvec,3);
+    // Logging("Tvecaft", tvec,3);
     // prePnts.reduceWithInliers<int>(idxs);
     // pnts.reduceWithInliers<int>(idxs);
     reduceVectorInliersTemp<cv::Point3d,int>(p3D,idxs);
@@ -1310,20 +1316,20 @@ void FeatureTracker::opticalFlow()
 
     prePnts.reduce<uchar>(inliers);
     pnts.reduce<uchar>(inliers);
-    reduceVectorTemp<float,uchar>(err,inliers);
+    // reduceVectorTemp<float,uchar>(err,inliers);
 
-    const float minErrValue {20.0f};
+    // const float minErrValue {20.0f};
 
-    prePnts.reduceWithValue<float>(err, minErrValue);
-    pnts.reduceWithValue<float>(err, minErrValue);
+    // prePnts.reduceWithValue<float>(err, minErrValue);
+    // pnts.reduceWithValue<float>(err, minErrValue);
 
     // cv::cornerSubPix(lIm.im,pnts.left,cv::Size(5,5),cv::Size(-1,-1),criteria);
 
-    cv::findFundamentalMat(prePnts.left, pnts.left, inliers, cv::FM_RANSAC, 3, 0.99);
+    // cv::findFundamentalMat(prePnts.left, pnts.left, inliers, cv::FM_RANSAC, 3, 0.99);
 
 
-    prePnts.reduce<uchar>(inliers);
-    pnts.reduce<uchar>(inliers);
+    // prePnts.reduce<uchar>(inliers);
+    // pnts.reduce<uchar>(inliers);
 
     // const size_t end{pnts.left.size()};
     // std::vector<bool> check;
@@ -1390,6 +1396,8 @@ void FeatureTracker::changeOptRes(std::vector <uchar>&  inliers, std::vector<cv:
     {
         if ( pnts1[i].x > w || pnts1[i].x < -off || pnts1[i].y > h || pnts1[i].y < -off )
             inliers[i] = false;
+        // if ( !inliers[i] || pnts1[i].x > w || pnts1[i].x < -off || pnts1[i].y > h || pnts1[i].y < -off )
+        //     pnts2[i] = pnts1[i];
     }
 }
 

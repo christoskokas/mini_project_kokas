@@ -92,6 +92,7 @@ class FeatureExtractor
     const int maxFastThreshold;
     const int minFastThreshold;
     const bool nonMaxSuppression;
+    const int mnContr {200};
 
 #if KITTI_DATASET
     const int gridRows {30};
@@ -136,6 +137,7 @@ class FeatureExtractor
 
         void extractFeatures(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
         void extractFeaturesClose(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
+        void extractFeaturesCloseMask(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints, const cv::Mat& mask);
         void extractFeaturesMask(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints, const cv::Mat& mask);
         void extractFeaturesPop(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints, const std::vector<int>& pop);
         void extractORB(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
@@ -147,6 +149,7 @@ class FeatureExtractor
         void findFAST(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc);
         void findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findFASTGridsClose(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
+        void findFASTGridsCloseMask(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, const cv::Mat& mask);
         void findFASTGridsMask(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, const cv::Mat& mask);
         void findFASTGridsPop(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, const std::vector<int>& pop);
 
