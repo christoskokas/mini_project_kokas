@@ -983,7 +983,7 @@ void FeatureMatcher::matchPoints(const StereoDescriptors& desc, const std::vecto
                 // }
             }
         }
-        if (bestDist > 75)
+        if (bestDist > thDist)
             continue;
             // if (bestDist < 0.8f*secDist)
             // {

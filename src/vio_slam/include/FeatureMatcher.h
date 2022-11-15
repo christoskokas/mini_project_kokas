@@ -39,6 +39,7 @@ class FeatureMatcher
         const int maxMatches {1000};
         const int mnDisp;
         const int closeNumber {40};
+        const int thDist {30};
 
         const Zed_Camera* zedptr;
 

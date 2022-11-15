@@ -184,8 +184,8 @@ class FeatureTracker
         void checkKeyDestrib(std::vector<cv::Point2d>& p2Dclose);
 
         void get3dPointsforPose(std::vector<cv::Point3d>& p3D);
-        void get3dPointsforPoseAll(std::vector<cv::Point3d>& p3D);
-        void get3dPointsforPoseTrial(std::vector<cv::Point3d>& p3D);
+        void get3dPointsforPoseAll(std::vector<cv::Point3d>& p3D, std::vector<cv::Point2f>& p2D);
+        void reprojError();
         void poseEstKal(cv::Mat& Rvec, cv::Mat& tvec, const size_t p3dsize);
         void essForMonoPose(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Point3d>& p3D);
         void pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Point3d>& p3D);

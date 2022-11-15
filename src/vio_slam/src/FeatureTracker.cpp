@@ -825,8 +825,9 @@ void FeatureTracker::getPoseCeres()
 {
 
     std::vector<cv::Point3d> p3D;
+    std::vector<cv::Point2f> p2D;
 
-    get3dPointsforPoseAll(p3D);
+    get3dPointsforPoseAll(p3D, p2D);
 
     cv::Mat Rvec = cv::Mat::zeros(3,1, CV_64F);
     cv::Mat tvec = cv::Mat::zeros(3,1, CV_64F);
@@ -846,8 +847,14 @@ void FeatureTracker::getPoseCeresNew()
 {
 
     std::vector<cv::Point3d> p3D;
+    std::vector<cv::Point2f> p2D;
 
-    get3dPointsforPoseAll(p3D);
+    get3dPointsforPoseAll(p3D, p2D);
+    // std::vector<uchar>err;
+    // cv::findFundamentalMat(p2D,pnts.left,err,cv::FM_RANSAC,3,0.99);
+    // reduceVectorTemp<cv::Point3d,uchar>(p3D, err);
+    // pnts.reduce<uchar>(err);
+    // prePnts.reduce<uchar>(err);
 
     cv::Mat Rvec = pRvec.clone();
     cv::Mat tvec = pTvec.clone();
@@ -1061,6 +1068,8 @@ void FeatureTracker::ceresClose(std::vector<cv::Point3d>& p3Dclose, std::vector<
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
     
     options.max_num_iterations = 100;
+    options.max_solver_time_in_seconds = 0.05;
+
     // options.trust_region_strategy_type = ceres::DOGLEG;
     options.minimizer_progress_to_stdout = false;
     ceres::Solver::Summary summary;
@@ -1099,13 +1108,14 @@ void FeatureTracker::ceresMO(std::vector<cv::Point3d>& p3Dclose, std::vector<cv:
     for (size_t i{0}; i < end; i++)
     {
         ceres::CostFunction* costf = ReprojectionErrorMO::Create(p3Dclose[i],p2Dclose[i]);
-        problem.AddResidualBlock(costf, new ceres::HuberLoss(5.991) /* squared loss */, camera);
+        problem.AddResidualBlock(costf, new ceres::HuberLoss(1.0) /* squared loss */, camera);
     }
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
     
     options.max_num_iterations = 100;
     // options.trust_region_strategy_type = ceres::DOGLEG;
+    options.max_solver_time_in_seconds = 0.1;
     options.minimizer_progress_to_stdout = false;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
@@ -1224,6 +1234,8 @@ void FeatureTracker::pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Poi
     std::vector<int>idxs;
     // Logging("Rvecbef", Rvec,3);
     // Logging("Tvecbef", tvec,3);
+
+
     cv::solvePnPRansac(p3D, pnts.left,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true,100, 8.0f, 0.99, idxs);
     // Logging("Rvecaft", Rvec,3);
     // Logging("Tvecaft", tvec,3);
@@ -1235,10 +1247,27 @@ void FeatureTracker::pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Poi
     reduceVectorInliersTemp<cv::Point2f,int>(prePnts.left,idxs);
     reduceVectorInliersTemp<float,int>(prePnts.depth,idxs);
     reduceVectorInliersTemp<cv::Point2f,int>(pnts.left,idxs);
+
+    // std::vector<cv::Point3d> p3dclose;
+    // std::vector<cv::Point2d> p2dclose;
+    // p2dclose.reserve(pnts.left.size());
+    // p3dclose.reserve(pnts.left.size());
+    // for (size_t i {0}; i < pnts.left.size(); i++)
+    // {
+    //     if ( prePnts.useable[i] )
+    //     {
+    //         p3dclose.emplace_back(p3D[i]);
+    //         p2dclose.emplace_back((double)pnts.left[i].x, (double)pnts.left[i].y);
+    //     }
+    // }
+
+    // ceresClose(p3dclose,p2dclose,Rvec, tvec);
+
     // reduceVectorInliersTemp<cv::Point2d,int>(p2Ddepth,idxs);
     // reduceVectorInliersTemp<cv::Point3d,int>(p3Ddepth,idxs);
+    // cv::solvePnP(p3D, pnts.left,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true);
 
-    uStereo = p3D.size();
+    // uStereo = p3D.size();
 
 
 #if PROJECTIM
@@ -1327,12 +1356,13 @@ void FeatureTracker::get3dPointsforPose(std::vector<cv::Point3d>& p3D)
     pnts.reduce<bool>(inliers);
 }
 
-void FeatureTracker::get3dPointsforPoseAll(std::vector<cv::Point3d>& p3D)
+void FeatureTracker::get3dPointsforPoseAll(std::vector<cv::Point3d>& p3D, std::vector<cv::Point2f>& p2D)
 {
     std::vector<bool> inliers;
     const size_t end {prePnts.points3D.size()};
     inliers.resize(end);
     p3D.reserve(end);
+    p2D.reserve(end);
     for (size_t i {0};i < end;i++)
     {
         cv::Point3d point = prePnts.points3D[i];
@@ -1341,29 +1371,40 @@ void FeatureTracker::get3dPointsforPoseAll(std::vector<cv::Point3d>& p3D)
         {
             inliers[i] = true;
             p3D.emplace_back(point);
+            p2D.emplace_back((float)p2dtemp.x, (float)p2dtemp.y);
         }
     }
     prePnts.reduce<bool>(inliers);
     pnts.reduce<bool>(inliers);
 }
 
-void FeatureTracker::get3dPointsforPoseTrial(std::vector<cv::Point3d>& p3D)
+void FeatureTracker::reprojError()
 {
     std::vector<bool> inliers;
     const size_t end {prePnts.points3D.size()};
     inliers.resize(end);
-    p3D.reserve(end);
+    double err {0.0};
+    int errC {0};
     for (size_t i {0};i < end;i++)
     {
         cv::Point3d point = prePnts.points3D[i];
         cv::Point2d p2dtemp;
         if (checkProjection3D(point,p2dtemp))
         {
-            inliers[i] = true;
-            p3D.emplace_back(point);
-            prePnts.left[i] = cv::Point2f((float)p2dtemp.x, (float)p2dtemp.y);
+            cv::Point2f ptr = cv::Point2f((float)p2dtemp.x, (float)p2dtemp.y);
+            err += sqrt(pointsDist(ptr, prePnts.left[i]));
+            errC ++;
         }
     }
+    if (errC > 0)
+    {
+        const double avErr = err/errC;
+        for (size_t i {0};i < end;i++)
+        {
+            // if ( )
+        }
+    }
+
     prePnts.reduce<bool>(inliers);
     pnts.reduce<bool>(inliers);
 }
@@ -1495,9 +1536,9 @@ void FeatureTracker::opticalFlowPredict()
 {
     std::vector<float> err, err1;
     std::vector <uchar>  inliers, inliers2;
-    // std::vector<cv::Point3d> p3D;
+    std::vector<cv::Point3d> p3D;
 
-    // get3dPointsforPoseTrial(p3D);
+    // reprojError();
 
     calculateNextPnts();
     // std::vector<cv::Point2f> predPnts = pnts.left;
@@ -1512,16 +1553,14 @@ void FeatureTracker::opticalFlowPredict()
     // reduceVectorTemp<cv::Point2f,uchar>(temp,inliers);
 
     // inliers.clear();
-    std::vector<bool>check;
-    check.resize(pnts.left.size());
     for (size_t i {0}; i < pnts.left.size(); i ++)
     {
         if ( inliers[i] && inliers2[i] && pointsDist(temp[i],prePnts.left[i]) <= 0.25)
-            check[i] = true;
+            inliers[i] = true;
     }
 
-    prePnts.reduce<bool>(check);
-    pnts.reduce<bool>(check);
+    prePnts.reduce<uchar>(inliers);
+    pnts.reduce<uchar>(inliers);
 
     // reduceVectorTemp<cv::Point2f,bool>(predPnts, check);
 
