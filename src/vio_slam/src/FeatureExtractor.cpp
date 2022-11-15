@@ -175,8 +175,15 @@ void FeatureExtractor::extractFeaturesMask(cv::Mat& leftImage, cv::Mat& rightIma
     findFASTGridsMask(leftImage,keypoints.left, mask);
     findFASTGrids(rightImage,keypoints.right);
     cv::Ptr<cv::ORB> detector {cv::ORB::create(2000,imScale,nLevels,edgeThreshold,0,2,cv::ORB::FAST_SCORE,patchSize,maxFastThreshold)};
-    detector->compute(leftImage, keypoints.left, desc.left);
-    detector->compute(rightImage, keypoints.right, desc.right);
+
+    cv::Mat leftim = leftImage.clone();
+    cv::Mat rightim = rightImage.clone();
+
+    cv::GaussianBlur(leftim, leftim, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
+    cv::GaussianBlur(rightim, rightim, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
+
+    detector->compute(leftim, keypoints.left, desc.left);
+    detector->compute(rightim, keypoints.right, desc.right);
 
     // updatePoints(leftKeys, rightKeys,points);
     
@@ -187,9 +194,16 @@ void FeatureExtractor::extractFeatures(cv::Mat& leftImage, cv::Mat& rightImage, 
 
     findFASTGrids(leftImage,keypoints.left);
     findFASTGrids(rightImage,keypoints.right);
+
+    cv::Mat leftim = leftImage.clone();
+    cv::Mat rightim = rightImage.clone();
+
+    cv::GaussianBlur(leftim, leftim, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
+    cv::GaussianBlur(rightim, rightim, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
+
     cv::Ptr<cv::ORB> detector {cv::ORB::create(2000,imScale,nLevels,edgeThreshold,0,2,cv::ORB::FAST_SCORE,patchSize,maxFastThreshold)};
-    detector->compute(leftImage, keypoints.left, desc.left);
-    detector->compute(rightImage, keypoints.right, desc.right);
+    detector->compute(leftim, keypoints.left, desc.left);
+    detector->compute(rightim, keypoints.right, desc.right);
 
     // updatePoints(leftKeys, rightKeys,points);
     
@@ -200,9 +214,16 @@ void FeatureExtractor::extractFeaturesClose(cv::Mat& leftImage, cv::Mat& rightIm
 
     findFASTGridsClose(leftImage,keypoints.left);
     findFASTGridsClose(rightImage,keypoints.right);
+
+    cv::Mat leftim = leftImage.clone();
+    cv::Mat rightim = rightImage.clone();
+
+    cv::GaussianBlur(leftim, leftim, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
+    cv::GaussianBlur(rightim, rightim, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
+
     cv::Ptr<cv::ORB> detector {cv::ORB::create(2000,imScale,nLevels,edgeThreshold,0,2,cv::ORB::FAST_SCORE,patchSize,maxFastThreshold)};
-    detector->compute(leftImage, keypoints.left, desc.left);
-    detector->compute(rightImage, keypoints.right, desc.right);
+    detector->compute(leftim, keypoints.left, desc.left);
+    detector->compute(rightim, keypoints.right, desc.right);
 
     // updatePoints(leftKeys, rightKeys,points);
     
@@ -306,27 +327,36 @@ void FeatureExtractor::findFASTGridsMask(cv::Mat& image, std::vector <cv::KeyPoi
 
     const int mnNKey {numberPerCell/2};
     // fastEdge is the Edge Threshold of FAST Keypoints, it does not search for keypoints for a border of 3 pixels around image.
-    const int rowJump = (croppedImage.rows - 2 * fastEdge) / gridRows;
-    const int colJump = (croppedImage.cols - 2 * fastEdge) / gridCols;
+    const int rowJump = (croppedImage.rows) / gridRows;
+    const int colJump = (croppedImage.cols) / gridCols;
 
     int count {-1};
     int gridFoundCount {0};
     for (int32_t row = 0; row < gridRows + 1; row++)
     {
         
-        const int imRowStart = row * rowJump;
-        int imRowEnd = (row + 1) * rowJump + 2 * fastEdge;
+        int imRowStart = row * rowJump - fastEdge;
+        int imRowEnd = (row + 1) * rowJump + fastEdge;
         if ( imRowEnd > croppedImage.rows )
             imRowEnd = croppedImage.rows;
+        if ( imRowStart < 0)
+            imRowStart = 0;
 
         for (int32_t col = 0; col < gridCols + 1; col++)
         {
             count++;
 
-            const int imColStart = col * colJump;
-            int  imColEnd = (col + 1) * colJump + 2 * fastEdge;
+            int imColStart = col * colJump - fastEdge;
+            int  imColEnd = (col + 1) * colJump + fastEdge;
             if ( imColEnd > croppedImage.cols )
                 imColEnd = croppedImage.cols;
+            if ( imColStart < 0 )
+                imColStart = 0;
+
+            // Logging("imcolstart",imColStart,3);
+            // Logging("imColEnd",imColEnd,3);
+            // Logging("imRowStart",imRowStart,3);
+            // Logging("imRowEnd",imRowEnd,3);
 
             std::vector < cv::KeyPoint > temp;
 
@@ -350,7 +380,7 @@ void FeatureExtractor::findFASTGridsMask(cv::Mat& image, std::vector <cv::KeyPoi
             }
             if (!temp.empty())
             {
-                gridFoundCount ++;
+                
                 // cv::KeyPointsFilter::retainBest(temp,numberPerCell);
                 std::vector < cv::KeyPoint>::iterator it;
                 std::vector < cv::KeyPoint>::const_iterator end(temp.end());
@@ -367,12 +397,16 @@ void FeatureExtractor::findFASTGridsMask(cv::Mat& image, std::vector <cv::KeyPoi
                     (*it).class_id = count;
                     // fastKeys.emplace_back(cv::Point2f((*it).pt.x,(*it).pt.y), (*it).size,(*it).angle,(*it).response,(*it).octave,(*it).class_id);
                 }
-                allKeys.emplace_back(temp);
+                if (!temp.empty())
+                {
+                    gridFoundCount ++;
+                    allKeys.emplace_back(temp);
+                }
             }
         }
     }
 
-    const int featuresCell {nFeatures/gridFoundCount + 1};
+    const int featuresCell {(int)nFeatures/gridFoundCount + 1};
 
     for (size_t i {0}; i < allKeys.size(); i ++)
     {
@@ -412,27 +446,31 @@ void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>&
     const int mnNKey {numberPerCell/2};
     // fastEdge is the Edge Threshold of FAST Keypoints, it does not search for keypoints for a border of 3 pixels around image.
 
-    const int rowJump = (croppedImage.rows - 2 * fastEdge) / gridRows;
-    const int colJump = (croppedImage.cols - 2 * fastEdge) / gridCols;
+    const int rowJump = (croppedImage.rows) / gridRows;
+    const int colJump = (croppedImage.cols ) / gridCols;
 
     int count {-1};
     int gridFoundCount {0};
     for (int32_t row = 0; row < gridRows + 1; row++)
     {
         
-        const int imRowStart = row * rowJump;
-        int imRowEnd = (row + 1) * rowJump + 2 * fastEdge;
+        int imRowStart = row * rowJump - fastEdge;
+        int imRowEnd = (row + 1) * rowJump + fastEdge;
         if ( imRowEnd > croppedImage.rows )
             imRowEnd = croppedImage.rows;
+        if ( imRowStart < 0)
+            imRowStart = 0;
 
         for (int32_t col = 0; col < gridCols + 1; col++)
         {
             count++;
 
-            const int imColStart = col * colJump;
-            int  imColEnd = (col + 1) * colJump + 2 * fastEdge;
+            int imColStart = col * colJump - fastEdge;
+            int  imColEnd = (col + 1) * colJump + fastEdge;
             if ( imColEnd > croppedImage.cols )
                 imColEnd = croppedImage.cols;
+            if ( imColStart < 0 )
+                imColStart = 0;
             // Logging("imRowStart",imRowStart,3);
             // Logging("imRowEnd",imRowEnd,3);
             // Logging("imColStart",imColStart,3);
@@ -475,7 +513,7 @@ void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>&
         }
     }
 
-    const int featuresCell {nFeatures/gridFoundCount + 1};
+    const int featuresCell {(int)nFeatures/gridFoundCount + 1};
 
     for (size_t i {0}; i < allKeys.size(); i ++)
     {

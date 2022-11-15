@@ -901,11 +901,22 @@ void FeatureMatcher::matchPoints(const StereoDescriptors& desc, const std::vecto
     int leftRow {0};
     tempMatches.reserve(keypoints.left.size());
     int matchesCount {0};
+
+    const float minZ = zedptr->mBaseline;
+    const float minD = 0;
+    const float maxD = zedptr->mBaseline * zedptr->cameraLeft.fx/minZ;
+
     std::vector < cv::KeyPoint >::const_iterator it,end(keypoints.left.end());
     for (it = keypoints.left.begin(); it != end; it++, leftRow++)
     {
         const int yKey = cvRound(it->pt.y);
         const float uL {it->pt.y};
+
+        const float minU = uL-maxD;
+        const float maxU = uL-minD;
+
+        if(maxU<0)
+            continue;
 
         int bestDist = 256;
         int bestIdx = -1;
@@ -939,7 +950,7 @@ void FeatureMatcher::matchPoints(const StereoDescriptors& desc, const std::vecto
                     //     continue;
                     // checkedIdxes.push_back(idx);
                     const float uR {keypoints.right[idx].pt.y};
-                    if (uL < uR)
+                    if(!(uR>=minU && uR<=maxU))
                         continue;
 
                     // int maxDif {0};
@@ -976,28 +987,28 @@ void FeatureMatcher::matchPoints(const StereoDescriptors& desc, const std::vecto
             continue;
             // if (bestDist < 0.8f*secDist)
             // {
-        // if (matchedDist[bestIdx] != 256)
-        // {
-        //     if (bestDist < matchedDist[bestIdx])
-        //     {
-        //         points.left[matchedLIdx[bestIdx]] = it->pt;
-        //         points.right[matchedLIdx[bestIdx]] = keypoints.right[bestIdx].pt;
-        //         tempMatches[matchedLIdx[bestIdx]] = cv::DMatch(matchedLIdx[bestIdx],matchedLIdx[bestIdx],bestDist);
-        //         matchedDist[bestIdx] = bestDist;
-        //         // matchedKeys.lIdx[bestIdx] = matchesCount;
+        if (matchedDist[bestIdx] != 256)
+        {
+            if (bestDist < matchedDist[bestIdx])
+            {
+                points.left[matchedLIdx[bestIdx]] = it->pt;
+                points.right[matchedLIdx[bestIdx]] = keypoints.right[bestIdx].pt;
+                tempMatches[matchedLIdx[bestIdx]] = cv::DMatch(matchedLIdx[bestIdx],matchedLIdx[bestIdx],bestDist);
+                matchedDist[bestIdx] = bestDist;
+                // matchedKeys.lIdx[bestIdx] = matchesCount;
 
-        //     }
-        //     continue;
-        // }
-        // else
-        // {
+            }
+            continue;
+        }
+        else
+        {
             matchedLIdx[bestIdx] = matchesCount;
             matchedDist[bestIdx] = bestDist;
             points.left.emplace_back(it->pt);
             points.right.emplace_back(keypoints.right[bestIdx].pt);
             tempMatches.emplace_back(matchedLIdx[bestIdx],matchedLIdx[bestIdx],bestDist);
             matchesCount ++;
-        // }
+        }
 
             // }
     }
@@ -1239,7 +1250,7 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
         const int lKeyY {(int)points.left[it->queryIdx].y};
 
         std::vector < float > allDists;
-        allDists.reserve(2*windowMovementX);
+        allDists.resize(2*windowMovementX + 1);
 
         const cv::Mat lWin = leftImage.rowRange(lKeyY - windowRadius, lKeyY + windowRadius + 1).colRange(lKeyX - windowRadius, lKeyX + windowRadius + 1);
         for (int32_t xMov {-windowMovementX}; xMov < windowMovementX + 1; xMov++)
@@ -1254,7 +1265,7 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
                     bestX = xMov;
                     bestDist = dist;
                 }
-                allDists.emplace_back(dist);
+                allDists[xMov + windowMovementX] = dist;
         }
         if ((bestX == -windowMovementX) || (bestX == windowMovementX))
         {
@@ -1282,7 +1293,7 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
         
 
 
-        points.right[it->trainIdx].x += bestX + delta;
+        points.right[it->trainIdx].x = round(points.right[it->trainIdx].x) +  bestX + delta;
 
         // calculate depth
         const float disparity {points.left[it->queryIdx].x - points.right[it->trainIdx].x};
@@ -1326,6 +1337,130 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
     // Logging("matches size", matches.size(),2);
 }
 
+void FeatureMatcher::slWinGF(const cv::Mat& leftImage, const cv::Mat& rightImage, SubPixelPoints& points)
+{
+    // Timer("sliding Window took");
+    // Because we use FAST to detect Features the sliding window will get a window of side 11 pixels (5 (3 + 2offset) pixels radius + 1 which is the feature)
+    const int windowRadius {5};
+    // Because of the EdgeThreshold used around the image we dont need to check out of bounds
+
+    const int windowMovementX {5};
+
+    std::vector<bool> goodDist;
+    std::vector < std::pair<int,int> > allBestDists;
+    const size_t tsize {points.left.size()};
+    allBestDists.reserve(tsize);
+    goodDist.reserve(tsize);
+    points.depth.reserve(tsize);
+    points.useable.reserve(tsize);
+    // newMatches.reserve(matches.size());
+    int matchesCount {0};
+    {
+    for (size_t iP {0}; iP < tsize; iP ++)
+    {
+        int bestDist {INT_MAX};
+        int bestX {0};
+        const int lKeyX {(int)points.left[iP].x};
+        const int lKeyY {(int)points.left[iP].y};
+        const int rKeyX {(int)points.right[iP].x};
+        const int rKeyY {(int)points.right[iP].y};
+
+        std::vector < float > allDists;
+        allDists.resize(2*windowMovementX + 1);
+
+        const int lRowStart {lKeyY - windowRadius};
+        const int lRowEnd {lKeyY + windowRadius + 1};
+        const int lColStart {lKeyX - windowRadius};
+        const int lColEnd {lKeyX + windowRadius + 1};
+
+        if ((lRowStart < 0) || (lRowEnd >= leftImage.rows) || (lColStart < 0) || (lColEnd >= leftImage.cols))
+            continue;
+
+        const cv::Mat lWin = leftImage.rowRange(lRowStart, lRowEnd).colRange(lColStart, lColEnd);
+
+        for (int32_t xMov {-windowMovementX}; xMov < windowMovementX + 1; xMov++)
+        {
+                const int rRowStart {rKeyY - windowRadius};
+                const int rRowEnd {rKeyY + windowRadius + 1};
+                const int rColStart {rKeyX + xMov - windowRadius};
+                const int rColEnd {rKeyX + xMov + windowRadius + 1};
+
+                if ((rRowStart < 0) || (rRowEnd >= rightImage.rows) || (rColStart < 0) || (rColEnd >= rightImage.cols))
+                    continue;
+
+                const cv::Mat rWin = rightImage.rowRange(rRowStart, rRowEnd).colRange(rKeyX + xMov - windowRadius, rColEnd);
+
+                float dist = cv::norm(lWin,rWin, cv::NORM_L1);
+                if (bestDist > dist)
+                {
+                    bestX = xMov;
+                    bestDist = dist;
+                }
+                allDists[xMov + windowMovementX] = dist;
+        }
+        if ((bestX == -windowMovementX) || (bestX == windowMovementX))
+        {
+            goodDist.push_back(false);
+            continue;
+        }
+        // const int bestDistIdx {bestX + windowMovementX};
+        // float delta = (2*allDists[bestDistIdx] - allDists[bestDistIdx-1] - allDists[bestDistIdx+1])/(2*(allDists[bestDistIdx-1] - allDists[bestDistIdx+1]));
+
+        // Linear Interpolation for sub pixel accuracy
+        const float dist1 = allDists[windowMovementX + bestX-1];
+        const float dist2 = allDists[windowMovementX + bestX];
+        const float dist3 = allDists[windowMovementX + bestX+1];
+        // if (dist1 == 0.0f || dist2 == 0.0f || dist3 == 0.0f);
+        // {
+        //     goodDist.push_back(false);
+        //     continue;
+        // }
+        const float delta = (dist1-dist3)/(2.0f*(dist1+dist3-2.0f*dist2));
+
+        if (delta > 1 || delta < -1)
+        {
+            goodDist.push_back(false);
+            continue;
+        }
+        // Logging("delta ",delta,2);
+        allBestDists.emplace_back(std::make_pair(matchesCount,bestDist));
+        matchesCount++;
+        
+
+
+        points.right[iP].x += bestX + delta;
+
+        // calculate depth
+        const float disparity {points.left[iP].x - points.right[iP].x};
+        if (disparity > 0.0f)
+        {
+            goodDist.push_back(true);
+
+            const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
+            // if false depth is unusable
+            points.depth.emplace_back(depth);
+            if (depth < zedptr->mBaseline * 40)
+            {
+                points.useable.emplace_back(true);
+                continue;
+            }
+            points.useable.emplace_back(false);
+
+            // Logging("depth",depth,2);
+        }
+        else
+        {
+            goodDist.push_back(false);
+        }
+    }
+    }
+
+    reduceVectorTemp<cv::Point2f,bool>(points.left,goodDist);
+    reduceVectorTemp<cv::Point2f,bool>(points.right,goodDist);
+
+    // Logging("matches size", matches.size(),2);
+}
+
 void FeatureMatcher::slidingWindowOptimizationClose(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector <cv::DMatch>& matches, const std::vector <cv::DMatch>& tempMatches, SubPixelPoints& points)
 {
     // Timer("sliding Window took");
@@ -1352,7 +1487,7 @@ void FeatureMatcher::slidingWindowOptimizationClose(const cv::Mat& leftImage, co
         const int lKeyY {(int)points.left[it->queryIdx].y};
 
         std::vector < float > allDists;
-        allDists.reserve(2*windowMovementX);
+        allDists.resize(2*windowMovementX + 1);
 
         const cv::Mat lWin = leftImage.rowRange(lKeyY - windowRadius, lKeyY + windowRadius + 1).colRange(lKeyX - windowRadius, lKeyX + windowRadius + 1);
         for (int32_t xMov {-windowMovementX}; xMov < windowMovementX + 1; xMov++)
@@ -1367,7 +1502,7 @@ void FeatureMatcher::slidingWindowOptimizationClose(const cv::Mat& leftImage, co
                     bestX = xMov;
                     bestDist = dist;
                 }
-                allDists.emplace_back(dist);
+                allDists[xMov + windowMovementX] = dist;
         }
         if ((bestX == -windowMovementX) || (bestX == windowMovementX))
         {
@@ -1393,7 +1528,7 @@ void FeatureMatcher::slidingWindowOptimizationClose(const cv::Mat& leftImage, co
         
 
 
-        points.right[it->trainIdx].x += bestX + delta;
+        points.right[it->trainIdx].x = round(points.right[it->trainIdx].x) + bestX + delta;
 
         // calculate depth
         const float disparity {points.left[it->queryIdx].x - points.right[it->trainIdx].x};
@@ -1450,14 +1585,14 @@ void FeatureMatcher::checkDepthChange(const cv::Mat& leftImage, const cv::Mat& r
         const int xStart {- windowMovementX};
         const int xEnd {windowMovementX + 1};
         int bestDist {INT_MAX};
-        int bestX {windowMovementX + 1};
+        int bestX {0};
         const int lKeyX {(int)points.left[i].x};
         const int lKeyY {(int)points.left[i].y};
         const int rKeyX {(int)points.left[i].x - pDisp};
         const int rKeyY {(int)points.left[i].y};
 
         std::vector < float > allDists;
-        allDists.reserve(2*windowMovementX);
+        allDists.resize(2*windowMovementX + 1);
 
         const int lRowStart {lKeyY - windowRadius};
         const int lRowEnd {lKeyY + windowRadius + 1};
@@ -1487,17 +1622,17 @@ void FeatureMatcher::checkDepthChange(const cv::Mat& leftImage, const cv::Mat& r
                 bestX = xMov;
                 bestDist = dist;
             }
-            allDists.emplace_back(dist);
+            allDists[xMov + windowMovementX] = dist;
 
         }
-        if ((bestX == -windowMovementX) || (bestX == windowMovementX) || (bestX == (windowMovementX + 1)))
+        if ((bestX == -windowMovementX) || (bestX == windowMovementX))
             continue;
 
         const float dist1 = allDists[windowMovementX + bestX-1];
         const float dist2 = allDists[windowMovementX + bestX];
         const float dist3 = allDists[windowMovementX + bestX+1];
-        if ( dist1 == 0.0f || dist2 == 0.0f || dist3 == 0.0f )
-            continue;
+        // if ( dist1 == 0.0f || dist2 == 0.0f || dist3 == 0.0f )
+        //     continue;
         const float delta = (dist1-dist3)/(2.0f*(dist1+dist3-2.0f*dist2));
 
         if (delta > 1 || delta < -1)

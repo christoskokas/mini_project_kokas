@@ -2004,10 +2004,12 @@ void RobustMatcher2::testOpticalReDo()
     std::chrono::duration<float> duration;
     Timer all("all");
     SubPixelPoints points, prevPoints;
+    // ft.initializeTrackingGoodFeatures();
     ft.initializeTracking();
 
     // ft.beginTracking(times);
     // ft.beginTrackingTrial(times);
+    // ft.beginTrackingGoodFeatures(times);
     ft.beginTrackingTrialClose(times);
 
     

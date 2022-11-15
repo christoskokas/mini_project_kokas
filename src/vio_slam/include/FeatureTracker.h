@@ -89,13 +89,17 @@ class FeatureTracker
         const int waitImMat {1};
         const int waitImOpt {1};
         const int waitImPro {1};
-        const int mnSize {100};
+        const int mnSize {200};
         const int mxSize {400};
         const int highSpeed {15};
         const int mxMonoSize {300};
         const int mnInKal {30};
         const int sampleSize {15};
         const int gridVelNumb {10};
+        const int maskRadius {3};
+
+        const size_t gfmxCount {400};
+        const double gfmnDist {30.0f};
 
         // Optimization Parameters
         const size_t mxIter {25};
@@ -140,14 +144,18 @@ class FeatureTracker
         FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr);
 
         void initializeTracking();
+        void initializeTrackingGoodFeatures();
         void beginTracking(const int frames);
         void beginTrackingTrial(const int frames);
         void beginTrackingTrialClose(const int frames);
+        void beginTrackingGoodFeatures(const int frames);
 
         void updateKeys(const int frame);
+        void updateKeysGoodFeatures(const int frame);
         void updateKeysClose(const int frame);
 
         void stereoFeatures(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts);
+        void stereoFeaturesGoodFeatures(cv::Mat& lIm, cv::Mat& rIm, SubPixelPoints& pnts, const SubPixelPoints& prePnts);
         void stereoFeaturesMask(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts, const SubPixelPoints& prePnts);
         void stereoFeaturesClose(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts);
         void stereoFeaturesPop(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts, const SubPixelPoints& prePnts);
@@ -177,6 +185,7 @@ class FeatureTracker
 
         void get3dPointsforPose(std::vector<cv::Point3d>& p3D);
         void get3dPointsforPoseAll(std::vector<cv::Point3d>& p3D);
+        void get3dPointsforPoseTrial(std::vector<cv::Point3d>& p3D);
         void poseEstKal(cv::Mat& Rvec, cv::Mat& tvec, const size_t p3dsize);
         void essForMonoPose(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Point3d>& p3D);
         void pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Point3d>& p3D);
@@ -207,6 +216,7 @@ class FeatureTracker
 
         void drawKeys(const char* com, cv::Mat& im, std::vector<cv::KeyPoint>& keys);
         void drawMatches(const cv::Mat& lIm, const SubPixelPoints& pnts, const std::vector<cv::DMatch> matches);
+        void drawMatchesGoodFeatures(const cv::Mat& lIm, const SubPixelPoints& pnts);
         void drawMatchesKeys(const cv::Mat& lIm, const std::vector<cv::Point2f>& keys1, const std::vector<cv::Point2f>& keys2, const std::vector<cv::DMatch> matches);
         void drawOptical(const char* com, const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts);
         void drawPoints(const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts, const char* str);
@@ -229,6 +239,7 @@ class FeatureTracker
         void convertToEigen(cv::Mat& Rvec, cv::Mat& tvec, Eigen::Matrix4d& tr);
         void publishPose();
         void publishPoseTrial();
+        void refine3DPnts();
 
 };
 
