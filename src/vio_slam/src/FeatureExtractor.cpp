@@ -323,7 +323,6 @@ void FeatureExtractor::findFASTGridsMask(cv::Mat& image, std::vector <cv::KeyPoi
     const int fastEdge = 3;
     const int edgeWFast = edgeThreshold - fastEdge;
     cv::Mat croppedImage = image.colRange(edgeWFast,image.cols - edgeWFast).rowRange(edgeWFast, image.rows - edgeWFast);
-    cv::Mat croppedMask = mask.colRange(edgeWFast,image.cols - edgeWFast).rowRange(edgeWFast, image.rows - edgeWFast);
 
     const int mnNKey {numberPerCell/2};
     // fastEdge is the Edge Threshold of FAST Keypoints, it does not search for keypoints for a border of 3 pixels around image.
@@ -360,7 +359,7 @@ void FeatureExtractor::findFASTGridsMask(cv::Mat& image, std::vector <cv::KeyPoi
 
             std::vector < cv::KeyPoint > temp;
 
-            const cv::Mat& im = croppedImage.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd));
+            const cv::Mat& im = croppedImage.colRange(imColStart, imColEnd).rowRange(imRowStart, imRowEnd);
 
             cv::Mat fl;
             cv::flip(im, fl,-1);
@@ -376,7 +375,7 @@ void FeatureExtractor::findFASTGridsMask(cv::Mat& image, std::vector <cv::KeyPoi
 
             if (temp.empty())
             {
-                cv::FAST(croppedImage.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd)),temp,minFastThreshold,true);
+                cv::FAST(croppedImage.colRange(imColStart, imColEnd).rowRange(imRowStart, imRowEnd),temp,minFastThreshold,true);
             }
             if (!temp.empty())
             {
@@ -478,7 +477,7 @@ void FeatureExtractor::findFASTGrids(cv::Mat& image, std::vector <cv::KeyPoint>&
 
             std::vector < cv::KeyPoint > temp;
 
-            const cv::Mat& im = croppedImage.colRange(cv::Range(imColStart, imColEnd)).rowRange(cv::Range(imRowStart, imRowEnd));
+            const cv::Mat& im = croppedImage.colRange(imColStart, imColEnd).rowRange(imRowStart, imRowEnd);
 
             cv::Mat fl;
             cv::flip(im, fl,-1);

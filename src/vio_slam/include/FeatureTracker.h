@@ -88,7 +88,7 @@ class FeatureTracker
         const int waitImKey {1};
         const int waitImMat {1};
         const int waitImOpt {1};
-        const int waitImPro {1};
+        const int waitImPro {0};
         const int mnSize {200};
         const int mxSize {400};
         const int highSpeed {15};

@@ -1236,7 +1236,7 @@ void FeatureTracker::pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Poi
     // Logging("Tvecbef", tvec,3);
 
 
-    cv::solvePnPRansac(p3D, pnts.left,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true,100, 8.0f, 0.99, idxs);
+    cv::solvePnPRansac(p3D, pnts.left,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true,100, 8.0f, 0.95, idxs);
     // Logging("Rvecaft", Rvec,3);
     // Logging("Tvecaft", tvec,3);
     // prePnts.reduceWithInliers<int>(idxs);

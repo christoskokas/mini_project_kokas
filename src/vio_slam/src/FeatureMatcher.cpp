@@ -1246,8 +1246,8 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
     {
         int bestDist {INT_MAX};
         int bestX {0};
-        const int lKeyX {(int)points.left[it->queryIdx].x};
-        const int lKeyY {(int)points.left[it->queryIdx].y};
+        const float lKeyX {round(points.left[it->queryIdx].x)};
+        const float lKeyY {round(points.left[it->queryIdx].y)};
 
         std::vector < float > allDists;
         allDists.resize(2*windowMovementX + 1);
@@ -1255,9 +1255,9 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
         const cv::Mat lWin = leftImage.rowRange(lKeyY - windowRadius, lKeyY + windowRadius + 1).colRange(lKeyX - windowRadius, lKeyX + windowRadius + 1);
         for (int32_t xMov {-windowMovementX}; xMov < windowMovementX + 1; xMov++)
         {
-                const int rKeyX {(int)points.right[it->trainIdx].x};
-                const int rKeyY {(int)points.right[it->trainIdx].y};
-                const cv::Mat rWin = rightImage.rowRange(rKeyY - windowRadius, rKeyY + windowRadius + 1).colRange(rKeyX + xMov - windowRadius, rKeyX + xMov + windowRadius + 1);
+                const float rKeyX {round(points.right[it->trainIdx].x)};
+                // const float rKeyY {round(points.right[it->trainIdx].y)};
+                const cv::Mat rWin = rightImage.rowRange(lKeyY - windowRadius, lKeyY + windowRadius + 1).colRange(rKeyX + xMov - windowRadius, rKeyX + xMov + windowRadius + 1);
 
                 float dist = cv::norm(lWin,rWin, cv::NORM_L1);
                 if (bestDist > dist)
@@ -1292,19 +1292,19 @@ void FeatureMatcher::slidingWindowOptimization(const cv::Mat& leftImage, const c
         matchesCount++;
         
 
-
+        points.right[it->trainIdx].y = points.left[it->queryIdx].y;
         points.right[it->trainIdx].x = round(points.right[it->trainIdx].x) +  bestX + delta;
 
         // calculate depth
         const float disparity {points.left[it->queryIdx].x - points.right[it->trainIdx].x};
-        if (disparity > 0.0f)
+        if (disparity > 0.0f && disparity < zedptr->cameraLeft.fx)
         {
             goodDist.push_back(true);
 
             const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
             // if false depth is unusable
             points.depth.emplace_back(depth);
-            if (depth < zedptr->mBaseline * 40)
+            if (depth < zedptr->mBaseline * closeNumber)
             {
                 points.useable.emplace_back(true);
                 continue;
@@ -1483,8 +1483,8 @@ void FeatureMatcher::slidingWindowOptimizationClose(const cv::Mat& leftImage, co
     {
         int bestDist {INT_MAX};
         int bestX {0};
-        const int lKeyX {(int)points.left[it->queryIdx].x};
-        const int lKeyY {(int)points.left[it->queryIdx].y};
+        const float lKeyX {round(points.left[it->queryIdx].x)};
+        const float lKeyY {round(points.left[it->queryIdx].y)};
 
         std::vector < float > allDists;
         allDists.resize(2*windowMovementX + 1);
@@ -1492,9 +1492,9 @@ void FeatureMatcher::slidingWindowOptimizationClose(const cv::Mat& leftImage, co
         const cv::Mat lWin = leftImage.rowRange(lKeyY - windowRadius, lKeyY + windowRadius + 1).colRange(lKeyX - windowRadius, lKeyX + windowRadius + 1);
         for (int32_t xMov {-windowMovementX}; xMov < windowMovementX + 1; xMov++)
         {
-                const int rKeyX {(int)points.right[it->trainIdx].x};
-                const int rKeyY {(int)points.right[it->trainIdx].y};
-                const cv::Mat rWin = rightImage.rowRange(rKeyY - windowRadius, rKeyY + windowRadius + 1).colRange(rKeyX + xMov - windowRadius, rKeyX + xMov + windowRadius + 1);
+                const float rKeyX {round(points.right[it->trainIdx].x)};
+                // const int rKeyY {(int)points.right[it->trainIdx].y};
+                const cv::Mat rWin = rightImage.rowRange(lKeyY - windowRadius, lKeyY + windowRadius + 1).colRange(rKeyX + xMov - windowRadius, rKeyX + xMov + windowRadius + 1);
 
                 float dist = cv::norm(lWin,rWin, cv::NORM_L1);
                 if (bestDist > dist)
@@ -1528,11 +1528,12 @@ void FeatureMatcher::slidingWindowOptimizationClose(const cv::Mat& leftImage, co
         
 
 
+        points.right[it->trainIdx].y = points.left[it->queryIdx].y;
         points.right[it->trainIdx].x = round(points.right[it->trainIdx].x) + bestX + delta;
 
         // calculate depth
         const float disparity {points.left[it->queryIdx].x - points.right[it->trainIdx].x};
-        if (disparity > 0.0f)
+        if (disparity > 0.0f && disparity < zedptr->cameraLeft.fx)
         {
 
             const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};

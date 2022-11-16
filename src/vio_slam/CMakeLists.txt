@@ -70,6 +70,7 @@ include/PoseEstimator.h
 include/FeatureManager.h
 include/KeyFrame.h
 include/FeatureTracker.h
+include/Map.h
 )
 
 add_subdirectory(Thirdparty/Sophus)
