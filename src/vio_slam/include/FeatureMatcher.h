@@ -39,7 +39,7 @@ class FeatureMatcher
         const int maxMatches {1000};
         const int mnDisp;
         const int closeNumber {40};
-        const int thDist {30};
+        const int thDist {75};
 
         const Zed_Camera* zedptr;
 
@@ -53,7 +53,7 @@ class FeatureMatcher
         int DescriptorDistance(const cv::Mat &a, const cv::Mat &b);
         
     public:
-        FeatureMatcher(const Zed_Camera* _zed, const int _imageHeight = 360, const int _gridRows = 5, const int _gridCols = 5, const int _stereoYSpan = 1);
+        FeatureMatcher(const Zed_Camera* _zed, const int _imageHeight = 360, const int _gridRows = 5, const int _gridCols = 5, const int _stereoYSpan = 2);
 
         void stereoMatch(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector<cv::KeyPoint>& leftKeys, std::vector<cv::KeyPoint>& rightKeys, const cv::Mat& leftDesc, const cv::Mat& rightDesc, std::vector <cv::DMatch>& matches, SubPixelPoints& points);
 
@@ -66,6 +66,7 @@ class FeatureMatcher
         void slWinGF(const cv::Mat& leftImage, const cv::Mat& rightImage, SubPixelPoints& points);
         void slidingWindowOptimizationClose(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector <cv::DMatch>& matches, const std::vector <cv::DMatch>& tempMatches, SubPixelPoints& points);
         void checkDepthChange(const cv::Mat& leftImage, const cv::Mat& rightImage, SubPixelPoints& points);
+        void pointUpdate(const cv::Mat& leftImage, const cv::Mat& rightImage, cv::Point2f& p1,  float& depth, bool& useable, cv::Point3d& p3d);
 
         void computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, SubPixelPoints& prevPoints, SubPixelPoints& newPoints);
         void computeOpticalFlowWithSliding(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, SubPixelPoints& prevPoints, SubPixelPoints& newPoints);

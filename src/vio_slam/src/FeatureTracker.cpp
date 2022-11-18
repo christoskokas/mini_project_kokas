@@ -74,7 +74,7 @@ void FeatureData::compute3DPoints(SubPixelPoints& prePnts, const int keyNumb)
     }
 }
 
-FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr) : zedPtr(_zedPtr),fe(nFeatures), fm(zedPtr, zedPtr->mHeight, fe.getGridRows(), fe.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1/zedPtr->mFps), lkal(dt), datafile(filepath)
+FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr) : zedPtr(_zedPtr),fe(nFeatures), fm(zedPtr, zedPtr->mHeight, fe.getGridRows(), fe.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1/zedPtr->mFps), lkal(dt), datafile(filepath), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy)
 {
     rmap[0][0] = _rmap[0][0];
     rmap[0][1] = _rmap[0][1];
@@ -376,19 +376,28 @@ void FeatureTracker::beginTrackingTrialClose(const int frames)
             keyNumb ++;
             
         }
+        // std::vector<cv::Point3d> p3D;
+        // pointsInFrame(p3D);
         
-        // opticalFlow();
+
+        // std::vector<cv::Point2f> pPnts, curPnts;
+
+        // optFlow(p3D, pPnts, curPnts);
+
+        // estimatePose(p3D,curPnts);
+
         if ( curFrame == 1 )
             opticalFlow();
         else
             opticalFlowPredict();
+        getPoseCeresNew();
+
 
         // Logging("addf", addFeatures,3);
 
         // getSolvePnPPoseWithEss();
 
         // getPoseCeres();
-        getPoseCeresNew();
 
         setPreTrial();
 
@@ -856,7 +865,7 @@ void FeatureTracker::getPoseCeresNew()
     // pnts.reduce<uchar>(err);
     // prePnts.reduce<uchar>(err);
 
-    cv::Mat Rvec = pRvec.clone();
+    cv::Mat Rvec = cv::Mat::zeros(3,1, CV_64F);
     cv::Mat tvec = pTvec.clone();
 
 
@@ -873,6 +882,130 @@ void FeatureTracker::getPoseCeresNew()
     //     bigRot = false;
     // uStereo = p3D.size();
     poseEstKal(Rvec, tvec, uStereo);
+
+}
+
+void FeatureTracker::estimatePose(std::vector<cv::Point3d>& p3D, std::vector<cv::Point2f>& curPnts)
+{
+    cv::Mat Rvec = pRvec.clone();
+    cv::Mat tvec = pTvec.clone();
+    std::vector<cv::Point3d> close3D;
+    std::vector<cv::Point2d> curPntsd;
+    if (p3D.size() > 10)
+    {
+        curPntsd.reserve(curPnts.size());
+        std::vector<cv::Point2f>::const_iterator it, end(curPnts.end());
+        for (it = curPnts.begin(); it != end; it++)
+            curPntsd.emplace_back((double)it->x, (double)it->y);
+
+
+        std::vector<int>idxs;
+        cv::solvePnPRansac(p3D, curPntsd,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true,100, 8.0f, 0.99, idxs);
+        reduceVectorInliersTemp<cv::Point3d,int>(p3D, idxs);
+        reduceVectorInliersTemp<cv::Point2d,int>(curPntsd, idxs);
+        reduceVectorInliersTemp<int,int>(reprojIdxs, idxs);
+
+        // ceresClose(p3D, curPntsd,Rvec,tvec);
+
+        std::vector<cv::Point3d>::const_iterator p, pend(p3D.end());
+        uStereo = 0;
+        for (p = p3D.begin(); p != pend; p++)
+            if ( p->z < zedPtr->mBaseline * 40)
+                uStereo ++;
+        uMono = p3D.size() - uStereo;
+#if PROJECTIM
+        std::vector<cv::Point2d> p2D, pn2D;
+
+        compute2Dfrom3D(p3D, p2D, pn2D);
+
+        drawPointsTemp<cv::Point2d, cv::Point2d>("solvepnp",pLIm.rIm,p2D,curPntsd);
+#endif
+    }
+    poseEstKal(Rvec, tvec, uStereo);
+
+    removeOutliers(curPntsd);
+    
+
+}
+
+void FeatureTracker::removeOutliers(const std::vector<cv::Point2d>& curPntsd)
+{
+    std::vector<bool>in;
+    const size_t endre {prePnts.left.size()};
+    const int w {zedPtr->mWidth};
+    const int h {zedPtr->mHeight};
+    in.resize(endre,true);
+    std::vector<cv::Point2d>rep, repnew;
+
+    int count {0};
+    for ( size_t i {0}; i < endre; i++)
+    {
+        cv::Point2d p2calc;
+        cv::Point3d p3cam;
+        bool inFr {wPntToCamPose(prePnts.points3D[i],p2calc, p3cam)};
+        if ( i == reprojIdxs[count] )
+        {
+            if ( inFr ) 
+            {
+                if ( pointsDistTemp<cv::Point2d>(p2calc, curPntsd[count]) > 64 )
+                    in[i] = false;
+                else
+                {
+                    if ( !(curPntsd[count].x > w || curPntsd[count].x < 0 || curPntsd[count].y > h || curPntsd[count].y < 0) )
+                    {
+                        prePnts.left[i] = cv::Point2f((float)curPntsd[count].x,(float)curPntsd[count].y);
+                        rep.emplace_back(p2calc);
+                        repnew.emplace_back(curPntsd[count]);
+                    }
+                    else
+                        in[i] = false;
+                }
+            }
+            else
+                in[i] = false;
+            count ++;
+        }
+        else
+        {
+            if ( inFr )
+                prePnts.left[i] = cv::Point2f((float)p2calc.x,(float)p2calc.y);
+            else
+                in[i] = false;
+        }
+    }
+
+    // for ( auto& idx:reprojIdxs )
+    // {
+    //     cv::Point2d p2calc;
+    //     wPntToCamPose(prePnts.points3D[idx],p2calc);
+    //     // rep.emplace_back(p2calc);
+    //     if ( pointsDistTemp<cv::Point2d>(p2calc, curPntsd[count]) > 64 || p2calc.x > zedPtr->mWidth || p2calc.x < 0 || p2calc.y > zedPtr->mHeight || p2calc.y < 0)
+    //         in[idx] = false;
+    //     else
+    //     {
+    //         prePnts.left[idx] = cv::Point2f((float)curPntsd[count].x,(float)curPntsd[count].y);
+    //         rep.emplace_back(p2calc);
+    //         repnew.emplace_back(curPntsd[count]);
+    //     }
+    //     count ++;
+    // }
+#if PROJECTIM
+    drawPointsTemp<cv::Point2d, cv::Point2d>("reproj error",lIm.rIm,rep,repnew);
+#endif
+    prePnts.reduce<bool>(in);
+
+}
+
+void FeatureTracker::setTrackedLeft(std::vector<cv::Point2d>& curPntsd)
+{
+    const size_t endre {prePnts.points3D.size()};
+
+    int count {0};
+    for ( auto& idx:reprojIdxs )
+    {
+        prePnts.left[idx] = cv::Point2f((float)curPntsd[count].x,(float)curPntsd[count].y);
+        count ++;
+    }
 
 }
 
@@ -1236,7 +1369,7 @@ void FeatureTracker::pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Poi
     // Logging("Tvecbef", tvec,3);
 
 
-    cv::solvePnPRansac(p3D, pnts.left,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true,100, 8.0f, 0.95, idxs);
+    cv::solvePnPRansac(p3D, pnts.left,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true,100, 8.0f, 0.99, idxs);
     // Logging("Rvecaft", Rvec,3);
     // Logging("Tvecaft", tvec,3);
     // prePnts.reduceWithInliers<int>(idxs);
@@ -1378,6 +1511,73 @@ void FeatureTracker::get3dPointsforPoseAll(std::vector<cv::Point3d>& p3D, std::v
     pnts.reduce<bool>(inliers);
 }
 
+void FeatureTracker::pointsInFrame(std::vector<cv::Point3d>& p3D)
+{
+    std::vector<bool> inliers;
+    const size_t end {prePnts.points3D.size()};
+    inliers.resize(end);
+    p3D.reserve(end);
+    reprojIdxs.clear();
+    reprojIdxs.reserve(end);
+    uStereo = 0;
+    int countIdx {0};
+    for (size_t i {0};i < end;i++)
+    {
+        cv::Point3d point = prePnts.points3D[i];
+        cv::Point2d p2dtemp;
+        if (checkProjection3D(point,p2dtemp))
+        {
+            // if (p2dtemp.x > zedPtr->mWidth || p2dtemp.x < 0 || p2dtemp.y > zedPtr->mHeight || p2dtemp.y < 0)
+            //     continue;
+            reprojIdxs.emplace_back(countIdx++);
+            inliers[i] = true;
+            p3D.emplace_back(point);
+            // prePnts.left[i] = cv::Point2f((float)p2dtemp.x, (float)p2dtemp.y);
+            // if ( prePnts.useable[i] )
+            //     uStereo ++;
+        }
+    }
+    prePnts.reduce<bool>(inliers);
+    // uMono = prePnts.points3D.size() - uStereo;
+}
+
+bool FeatureTracker::wPntToCamPose(const cv::Point3d& p3, cv::Point2d& p2, cv::Point3d& p3cam)
+{
+    Eigen::Vector4d point(p3.x, p3.y, p3.z, 1);
+    // Logging("point",point,3);
+    point = zedPtr->cameraPose.poseInverse * point;
+    // point = poseEstFrameInv * point;
+
+    const double pointX = point(0);
+    const double pointY = point(1);
+    const double pointZ = point(2);
+
+    if (pointZ <= 0.0f)
+        return false;
+    
+    const double invZ = 1.0f/pointZ;
+
+
+    double u {fx*pointX*invZ + cx};
+    double v {fy*pointY*invZ + cy};
+
+    const int min {0};
+    const int maxW {zedPtr->mWidth};
+    const int maxH {zedPtr->mHeight};
+
+    if (u < min || u > maxW)
+        return false;
+    if (v < min || v > maxH)
+        return false;
+
+    p2 = cv::Point2d(u,v);
+    
+    p3cam = cv::Point3d(pointX, pointY, pointZ);
+
+    return true;
+
+}
+
 void FeatureTracker::reprojError()
 {
     std::vector<bool> inliers;
@@ -1453,14 +1653,29 @@ void FeatureTracker::calculateNextPnts()
 {
     const size_t end {prePnts.points3D.size()};
     pnts.left.reserve(end);
+    std::vector<bool> in;
+    in.resize(end,true);
     for (size_t i{0}; i < end; i++)
     {
         cv::Point2d pd((double)prePnts.left[i].x, (double)prePnts.left[i].y);
-        cv::Point2d pf = pd;
+        if ( predictProjection3D(prePnts.points3D[i],pd) )
+            pnts.left.emplace_back((float)pd.x, (float)pd.y);
+        else
+            in[i] = false;
+
+    }
+    prePnts.reduce<bool>(in);
+}
+
+void FeatureTracker::predictPts(std::vector<cv::Point2f>& curPnts)
+{
+    const size_t end {prePnts.points3D.size()};
+    curPnts.reserve(end);
+    for (size_t i{0}; i < end; i++)
+    {
+        cv::Point2d pd((double)prePnts.left[i].x, (double)prePnts.left[i].y);
         predictProjection3D(prePnts.points3D[i],pd);
-        pf.x = pf.x + (pd.x - pf.x)/2;
-        pf.y = pf.y + (pd.y - pf.y)/2;
-        pnts.left.emplace_back((float)pd.x, (float)pd.y);
+        curPnts.emplace_back((float)pd.x, (float)pd.y);
     }
 }
 
@@ -1541,7 +1756,10 @@ void FeatureTracker::opticalFlowPredict()
     // reprojError();
 
     calculateNextPnts();
-    // std::vector<cv::Point2f> predPnts = pnts.left;
+#if OPTICALIM
+    drawOptical("before", pLIm.rIm,prePnts.left, pnts.left);
+#endif
+    std::vector<cv::Point2f> predPnts = pnts.left;
     cv::calcOpticalFlowPyrLK(pLIm.im, lIm.im, prePnts.left, pnts.left, inliers, err,cv::Size(21,21),1, criteria, cv::OPTFLOW_USE_INITIAL_FLOW);
     // prePnts.reduce<uchar>(inliers);
     // pnts.reduce<uchar>(inliers);
@@ -1557,14 +1775,18 @@ void FeatureTracker::opticalFlowPredict()
     {
         if ( inliers[i] && inliers2[i] && pointsDist(temp[i],prePnts.left[i]) <= 0.25)
             inliers[i] = true;
+        else
+            inliers[i] = false;
     }
+    // changeOptRes(inliers, predPnts, pnts.left);
 
     prePnts.reduce<uchar>(inliers);
     pnts.reduce<uchar>(inliers);
 
+    // cv::cornerSubPix(pLIm.im, prePnts.left, cv::Size(5,5),cv::Size(-1,-1),criteria);
+    // cv::cornerSubPix(lIm.im, pnts.left, cv::Size(5,5),cv::Size(-1,-1),criteria);
     // reduceVectorTemp<cv::Point2f,bool>(predPnts, check);
 
-    // changeOptRes(inliers, predPnts, pnts.left);
 
 // #if OPTICALIM
 //     drawOptical("before", pLIm.rIm,prePnts.left, pnts.left);
@@ -1587,6 +1809,45 @@ void FeatureTracker::opticalFlowPredict()
 
 }
 
+void FeatureTracker::optFlow(std::vector<cv::Point3d>& p3D, std::vector<cv::Point2f>& pPnts, std::vector<cv::Point2f>& curPnts)
+{
+    std::vector<float> err, err1;
+    std::vector <uchar>  inliers, inliers2;
+    pPnts = prePnts.left;
+    std::vector<cv::Point2f> temp = pPnts;
+    // reprojError();
+    if (curFrame == 1)
+    {
+        cv::calcOpticalFlowPyrLK(pLIm.im, lIm.im, pPnts, curPnts, inliers, err,cv::Size(21,21),3, criteria);
+
+        cv::calcOpticalFlowPyrLK(lIm.im, pLIm.im, curPnts, temp, inliers2, err1,cv::Size(21,21),3, criteria, cv::OPTFLOW_USE_INITIAL_FLOW);
+    }
+    else
+    {
+        predictPts(curPnts);
+        cv::calcOpticalFlowPyrLK(pLIm.im, lIm.im, pPnts, curPnts, inliers, err,cv::Size(21,21),1, criteria, cv::OPTFLOW_USE_INITIAL_FLOW);
+        cv::calcOpticalFlowPyrLK(lIm.im, pLIm.im, curPnts, temp, inliers2, err1,cv::Size(21,21),1, criteria, cv::OPTFLOW_USE_INITIAL_FLOW);
+    }
+
+    for (size_t i {0}; i < curPnts.size(); i ++)
+    {
+        if ( inliers[i] && inliers2[i] && pointsDist(temp[i],pPnts[i]) <= 0.25)
+            inliers[i] = true;
+        else
+            inliers[i] = false;
+    }
+
+    reduceVectorTemp<cv::Point2f,uchar>(pPnts,inliers);
+    reduceVectorTemp<cv::Point2f,uchar>(curPnts,inliers);
+    reduceVectorTemp<cv::Point3d,uchar>(p3D,inliers);
+    reduceVectorTemp<int,uchar>(reprojIdxs,inliers);
+
+#if OPTICALIM
+    drawOptical("after", pLIm.rIm,pPnts, curPnts);
+#endif
+
+}
+
 void FeatureTracker::changeOptRes(std::vector <uchar>&  inliers, std::vector<cv::Point2f>& pnts1, std::vector<cv::Point2f>& pnts2)
 {
     const size_t end {pnts1.size()};
@@ -1598,8 +1859,14 @@ void FeatureTracker::changeOptRes(std::vector <uchar>&  inliers, std::vector<cv:
     {
         // if ( pnts1[i].x > w || pnts1[i].x < -off || pnts1[i].y > h || pnts1[i].y < -off )
         //     inliers[i] = false;
-        if (pnts1[i].x > w || pnts1[i].x < -off || pnts1[i].y > h || pnts1[i].y < -off )
+        // if (pnts1[i].x > w || pnts1[i].x < -off || pnts1[i].y > h || pnts1[i].y < -off )
+        //     pnts2[i] = pnts1[i];
+        if ( !inliers[i] && (pnts1[i].x > w || pnts1[i].x < -off || pnts1[i].y > h || pnts1[i].y < -off) )
+        {
             pnts2[i] = pnts1[i];
+            inliers[i] = true;
+        }
+            
     }
 }
 
@@ -2003,7 +2270,7 @@ bool FeatureTracker::checkProjection3D(cv::Point3d& point3D, cv::Point2d& point2
 
 }
 
-void FeatureTracker::predictProjection3D(const cv::Point3d& point3D, cv::Point2d& point2d)
+bool FeatureTracker::predictProjection3D(const cv::Point3d& point3D, cv::Point2d& point2d)
 {
     
     // Logging("key",keyFrameNumb,3);
@@ -2020,7 +2287,7 @@ void FeatureTracker::predictProjection3D(const cv::Point3d& point3D, cv::Point2d
     const double pointZ = point(2);
 
     if (pointZ <= 0.0f)
-        return;
+        return false;
 
     const double invZ = 1.0f/pointZ;
     const double fx = zedPtr->cameraLeft.fx;
@@ -2043,15 +2310,16 @@ void FeatureTracker::predictProjection3D(const cv::Point3d& point3D, cv::Point2d
     // if ( u < min )
     //     u = min;
     // else if ( u > maxW )
-    //     u = maxW - 1;
+    //     u = maxW ;
 
     // if ( v < min )
     //     v = min;
     // else if ( v > maxH )
-    //     v = maxH - 1;
+    //     v = maxH ;
 
 
     point2d = cv::Point2d(u,v);
+    return true;
 
 }
 

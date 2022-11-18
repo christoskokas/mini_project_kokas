@@ -92,11 +92,11 @@ class FeatureExtractor
     const int maxFastThreshold;
     const int minFastThreshold;
     const bool nonMaxSuppression;
-    const int mnContr {100};
+    const int mnContr {300};
 
 #if KITTI_DATASET
-    const int gridRows {40};
-    const int gridCols {40};
+    const int gridRows {30};
+    const int gridCols {30};
 #elif ZED_DATASET
     const int gridRows {10};
     const int gridCols {10};
@@ -110,12 +110,21 @@ class FeatureExtractor
     std::vector <cv::Mat> imagePyramid;
     std::vector < float > scalePyramid;
     std::vector < float > scaleInvPyramid;
+    std::vector<cv::Point> pattern;
+    
+    std::vector<int> umax;
 
+    cv::Ptr<cv::ORB> detector;
 
 
     public:
+    
+        std::vector<std::vector<int>> KeyDestrib;
+        std::vector<std::vector<int>> KeyDestribRight;
         
         const int numberPerCell = nFeatures/(gridRows * gridCols);
+
+
         enum FeatureChoice
         {
             ORB,
@@ -124,10 +133,12 @@ class FeatureExtractor
 
         FeatureChoice choice;
         
-        FeatureExtractor(const int _nfeatures = 2000, const int _nLevels = 5, const float _imScale = 1.3f, const int _edgeThreshold = 10, const int _patchSize = 31, const int _maxFastThreshold = 20, const int _minFastThreshold = 7, const bool _nonMaxSuppression = true);
+        FeatureExtractor(const int _nfeatures = 2000, const int _nLevels = 0, const float _imScale = 1.3f, const int _edgeThreshold = 20, const int _patchSize = 31, const int _maxFastThreshold = 20, const int _minFastThreshold = 7, const bool _nonMaxSuppression = true);
         
         int getGridRows();
         int getGridCols();
+
+        void computeKeypoints(cv::Mat& image, std::vector <cv::KeyPoint>& keypoints, cv::Mat& desc, const bool right);
 
         void findFeatures(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
@@ -155,6 +166,7 @@ class FeatureExtractor
 
         void computePyramid(cv::Mat& image);
         float computeOrientation(const cv::Mat& image, const cv::Point2f& point);
+        // static void computeOrbDescriptor(const cv::KeyPoint& kpt,const cv::Mat& img, const cv::Point* pattern, uchar* desc);
     
         void separateImage(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void separateImageSubPixel(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
