@@ -399,12 +399,15 @@ float FeatureExtractor::computeOrientation(const cv::Mat& image, const cv::Point
     const int step {(int)image.step1()};
     const uchar* center = &image.at<uchar> (cvRound(point.y), cvRound(point.x));
 
-    for (int32_t row = 0; row < halfPatchSize; row++)
+    for (int u = -halfPatchSize; u <= halfPatchSize; ++u)
+        m10 += u * center[u];
+
+    for (int32_t row = 1; row < halfPatchSize; row++)
     {
         int sumIntensities {0};
         int d = umax[row];
 
-        for (int32_t col = -d; col < d; col++)
+        for (int32_t col = -d; col <= d; col++)
         {
             const int centerP {center[col + row*step]}, centerM {center[col - row*step]};
             sumIntensities += centerP - centerM;
@@ -417,23 +420,29 @@ float FeatureExtractor::computeOrientation(const cv::Mat& image, const cv::Point
 
 }
 
-void FeatureExtractor::computePyramid(cv::Mat& image)
+void FeatureExtractor::computePyramid(const cv::Mat& image)
 {
-    const int fastEdge = 3;
-    imagePyramid[0] = image.colRange(edgeThreshold - fastEdge,image.cols - edgeThreshold + fastEdge).rowRange(edgeThreshold - fastEdge, image.rows - edgeThreshold + fastEdge);
-    for (int32_t i = 0; i < nLevels - 1; i++)
+    for (int level = 0; level < nLevels; ++level)
     {
-        const int mult = 10;
-        const int width = (((int)(imagePyramid[i].cols / imScale) + mult/2) / mult) * mult + 2 * fastEdge;
-        const int height = (((int)(imagePyramid[i].rows / imScale) + mult/2) / mult) * mult + 2 * fastEdge;
+        float scale = scaleInvPyramid[level];
+        cv::Size sz(cvRound((float)image.cols*scale), cvRound((float)image.rows*scale));
+        cv::Size wholeSize(sz.width + edgeThreshold*2, sz.height + edgeThreshold*2);
+        cv::Mat temp(wholeSize, image.type()), masktemp;
+        imagePyramid[level] = temp(cv::Rect(edgeThreshold, edgeThreshold, sz.width, sz.height));
 
-        cv::Size cz(width,height);
+        // Compute the resized image
+        if( level != 0 )
+        {
+            resize(imagePyramid[level-1], imagePyramid[level], sz, 0, 0, cv::INTER_LINEAR);
 
-        cv::resize(imagePyramid[i],imagePyramid[i + 1],cz, 0, 0, cv::INTER_LINEAR);
-        const float imageScaleCols = imagePyramid[i].cols/(float)imagePyramid[i + 1].cols;
-        const float imageScaleRows = imagePyramid[i].rows/(float)imagePyramid[i + 1].rows;
-        scalePyramid[i + 1] = scalePyramid[i] * ((imageScaleCols + imageScaleRows)/2);
-        scaleInvPyramid[i + 1] = scaleInvPyramid[i] / ((imageScaleCols + imageScaleRows)/2);
+            copyMakeBorder(imagePyramid[level], temp, edgeThreshold, edgeThreshold, edgeThreshold, edgeThreshold,
+                            cv::BORDER_REFLECT_101+cv::BORDER_ISOLATED);
+        }
+        else
+        {
+            copyMakeBorder(image, temp, edgeThreshold, edgeThreshold, edgeThreshold, edgeThreshold,
+                            cv::BORDER_REFLECT_101);
+        }
     }
 }
 
@@ -481,7 +490,7 @@ void FeatureExtractor::extractFeaturesPop(cv::Mat& leftImage, cv::Mat& rightImag
 
 void FeatureExtractor::extractFeaturesMask(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints, const cv::Mat& mask)
 {
-
+    
     // computeKeypoints(leftImage,keypoints.left, desc.left, 0);
     // computeKeypoints(rightImage,keypoints.right, desc.right, 1);
 
@@ -592,107 +601,314 @@ void FeatureExtractor::extractFeaturesCloseMask(cv::Mat& leftImage, cv::Mat& rig
     
 }
 
-void FeatureExtractor::computeKeypoints(cv::Mat& image, std::vector <cv::KeyPoint>& keypoints, cv::Mat& desc, const bool right)
+void FeatureExtractor::computeKeypoints(cv::Mat& image, std::vector < std::vector<cv::KeyPoint> >& allKeypoints, const bool right)
 {
+    computePyramid(image);
+
     const int fastEdge = 3;
 
-    const int minX = edgeThreshold;
-    const int maxX = image.cols - edgeThreshold;
-    const int minY = edgeThreshold;
-    const int maxY = image.rows - edgeThreshold;
-
-    const int wid = maxX - minX;
-    const int hig = maxY - minY;
-
-    const int gridW = cvRound((float)wid/gridCols);
-    const int gridH = cvRound((float)hig/gridRows);
-
-    const int nGrids = gridCols * gridRows;
-
-    const int featuresGrid = (int)ceil((float)5.0f * nFeatures/nGrids);
-
-
-
-    float rowJump = gridH + 2 * fastEdge;
-
-
-    std::vector< std::vector< bool>> mnContrast (gridRows, std::vector<bool>(gridCols));
-    std::vector< std::vector< std::vector<cv::KeyPoint>>> cellKeys (gridRows, std::vector<std::vector<cv::KeyPoint>>(gridCols, std::vector<cv::KeyPoint>()));
-    std::vector<std::vector<int>> keysPerCell(gridRows, std::vector<int>(gridCols));
-
-
     int gridsWKeys {0};
+    std::vector < std::vector<cv::KeyPoint> > allKeypoints(nLevels, std::vector<cv::KeyPoint>());
 
-    for (size_t iR = 0; iR < gridRows; iR++)
+    std::vector< std::vector< std::vector<cv::KeyPoint>>> cellKeys (gridRows, std::vector<std::vector<cv::KeyPoint>>(gridCols, std::vector<cv::KeyPoint>()));
+
+    for (size_t level {0}; level < nLevels; level ++)
     {
+        const int minX = edgeThreshold;
+        const int maxX = imagePyramid[level].cols - edgeThreshold;
+        const int minY = edgeThreshold;
+        const int maxY = imagePyramid[level].rows - edgeThreshold;
 
-        const float rStart = minY + iR * gridH - fastEdge;
+        const int wid = maxX - minX;
+        const int hig = maxY - minY;
 
-        if ( rStart >= maxY)
-            continue;
+        const int gridW = cvRound((float)wid/gridCols);
+        const int gridH = cvRound((float)hig/gridRows);
 
-        if ( iR == gridRows - 1)
+        const int nGrids = gridCols * gridRows;
+        allKeypoints[level].reserve(5 * nFeatures / nGrids);
+
+        const int featuresGrid = (int)ceil((float)5.0f * nFeatures/nGrids);
+
+
+
+        float rowJump = gridH + 2 * fastEdge;
+
+
+        std::vector< std::vector< bool>> mnContrast (gridRows, std::vector<bool>(gridCols));
+        
+        std::vector<std::vector<int>> keysPerCell(gridRows, std::vector<int>(gridCols));
+
+
+        
+
+        for (size_t iR = 0; iR < gridRows; iR++)
         {
-            rowJump = maxY + fastEdge - rStart;
-            if ( rowJump <= 0 )
-                continue;
-        }
 
-        float colJump = gridW + 2 * fastEdge;
+            const float rStart = minY + iR * gridH - fastEdge;
 
-        for (size_t iC = 0; iC < gridCols; iC++)
-        {
-
-            float cStart = minX + iC * gridW - fastEdge;
-
-            if ( cStart >= maxX)
+            if ( rStart >= maxY)
                 continue;
 
-            if ( iC == gridCols - 1 )
+            if ( iR == gridRows - 1)
             {
-                colJump = maxX + fastEdge - cStart;
-                if ( colJump <= 0 )
+                rowJump = maxY + fastEdge - rStart;
+                if ( rowJump <= 0 )
                     continue;
             }
 
-            Logging("rows", rStart,3);
-            Logging("roweeeee", rStart + rowJump,3);
-            Logging("cols", cStart,3);
-            Logging("coleeeee", cStart + colJump,3);
-            Logging("iR", iR, 3);
-            Logging("iC", iC, 3);
+            float colJump = gridW + 2 * fastEdge;
 
-            const cv::Mat& cellIm = image.rowRange(rStart, rStart + rowJump).colRange(cStart, cStart + colJump);
-
-            cv::Mat fl;
-            cv::flip(cellIm, fl,-1);
-            // Logging("fl",cv::norm(im,fl),3);
-            if ( cv::norm(cellIm,fl) < mnContr)
+            for (size_t iC = 0; iC < gridCols; iC++)
             {
-                keysPerCell[iR][iC] = 0;
-                continue;
-            }
 
-            mnContrast[iR][iC] = true;
+                float cStart = minX + iC * gridW - fastEdge;
 
+                if ( cStart >= maxX)
+                    continue;
 
-            cv::FAST(cellIm, cellKeys[iR][iC], maxFastThreshold,true);
-            if (cellKeys[iR][iC].empty())
-                cv::FAST(cellIm, cellKeys[iR][iC], minFastThreshold,true);
-            if (!cellKeys[iR][iC].empty())
-            {
-                std::vector<cv::KeyPoint>::iterator it;
-                std::vector<cv::KeyPoint>::const_iterator end(cellKeys[iR][iC].end());
-                for (it = cellKeys[iR][iC].begin(); it != end; it++)
+                if ( iC == gridCols - 1 )
                 {
-                    it->pt.x += cStart;
-                    it->pt.y += rStart;
-                    gridsWKeys++;
+                    colJump = maxX + fastEdge - cStart;
+                    if ( colJump <= 0 )
+                        continue;
                 }
-                keysPerCell[iR][iC] = cellKeys[iR][iC].size();
+
+                // Logging("rows", rStart,3);
+                // Logging("roweeeee", rStart + rowJump,3);
+                // Logging("cols", cStart,3);
+                // Logging("coleeeee", cStart + colJump,3);
+                // Logging("iR", iR, 3);
+                // Logging("iC", iC, 3);
+
+                const cv::Mat& cellIm = imagePyramid[level].rowRange(rStart, rStart + rowJump).colRange(cStart, cStart + colJump);
+
+                cv::Mat fl;
+                cv::flip(cellIm, fl,-1);
+                // Logging("fl",cv::norm(im,fl),3);
+                if ( cv::norm(cellIm,fl) < mnContr)
+                {
+                    keysPerCell[iR][iC] = 0;
+                    continue;
+                }
+
+                mnContrast[iR][iC] = true;
+
+                std::vector<cv::KeyPoint> temp;
+
+                cv::FAST(cellIm, temp, maxFastThreshold,true);
+                if (temp.empty())
+                    cv::FAST(cellIm, temp, minFastThreshold,true);
+                if (!temp.empty())
+                {
+                    std::vector<cv::KeyPoint>::iterator it;
+                    std::vector<cv::KeyPoint>::const_iterator end(temp.end());
+                    for (it = temp.begin(); it != end; it++)
+                    {
+                        it->pt.x += cStart;
+                        it->pt.y += rStart;
+                        it->octave = level;
+                        cellKeys[iR][iC].emplace_back(*it);
+                    }
+                    if ( level == 0 )
+                        gridsWKeys++;
+
+                }
+                else
+                    keysPerCell[iR][iC] = 0;
             }
+
+        }
+    }
+
+
+    const int desiredFeaturesGrid = (int)floor((float)nFeatures/gridsWKeys) + 1;
+
+
+    for (size_t iR = 0; iR < gridRows; iR++)
+    {
+        for (size_t iC = 0; iC < gridCols; iC++)
+        {
+            const size_t keyCellSize = cellKeys[iR][iC].size();
+            int desired;
+            if ( !right )
+                desired = desiredFeaturesGrid - KeyDestrib[iR][iC];
             else
-                keysPerCell[iR][iC] = 0;
+                desired = desiredFeaturesGrid - KeyDestribRight[iR][iC];
+            if ( keyCellSize == 0 || desired <= 0 )
+                continue;
+            if (keyCellSize > desired)
+            {
+                cv::KeyPointsFilter::retainBest(cellKeys[iR][iC], desired);
+                cellKeys[iR][iC].resize(desired);
+            }
+            std::vector<cv::KeyPoint>::iterator it;
+            std::vector<cv::KeyPoint>::const_iterator end(cellKeys[iR][iC].end());
+            for (it = cellKeys[iR][iC].begin(); it != end; it++)
+            {
+                it->angle = computeOrientation(imagePyramid[it->octave], it->pt);
+                allKeypoints[it->octave].emplace_back(*it);
+            }
+            if ( !right )
+                KeyDestrib[iR][iC] += cellKeys[iR][iC].size();
+            else
+                KeyDestribRight[iR][iC] += cellKeys[iR][iC].size();
+        }
+    }
+
+
+    for (size_t level {0}; level < nLevels; level++)
+    {
+        cv::Mat im = imagePyramid[level].clone();
+        cv::Mat desc = cv::Mat(allKeypoints[level].size(), 32, CV_8U);
+
+        cv::GaussianBlur(im, im, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
+        computeDescriptors(im, allKeypoints[level], desc, pattern);
+
+    }
+    //     std::vector<cv::KeyPoint>::iterator it;
+    //     std::vector<cv::KeyPoint>::const_iterator end(allKeypoints[level].end());
+    //     for ( it = allKeypoints[level].begin(); it != end; it++)
+    //         it->angle = computeOrientation(imagePyramid[level], it->pt);
+
+    // for (size_t iR = 0; iR < gridRows; iR++)
+    // {
+    //     for (size_t iC = 0; iC < gridCols; iC++)
+    //     {
+    //         std::vector<cv::KeyPoint>::iterator it;
+    //         std::vector<cv::KeyPoint>::const_iterator end(cellKeys[iR][iC].end());
+    //         for ( it = cellKeys[iR][iC].begin(); it != end; it++)
+    //         {
+    //             it->angle = computeOrientation(imagePyramid[it->octave], it->pt);
+    //             allKeypoints[it->octave].emplace_back(*it);
+    //         }
+    //     }
+    // }
+
+
+
+
+    // detector->compute(leftim, keypoints, desc.left);
+    // detector->compute(im, keypoints, desc);
+
+    // Logging("Keypoints size", keypoints.size(),3);
+
+}
+
+void FeatureExtractor::computeKeypointsOld(cv::Mat& image, std::vector <cv::KeyPoint>& keypoints, cv::Mat& desc, const bool right)
+{
+    const int fastEdge = 3;
+
+    int gridsWKeys {0};
+
+
+    std::vector< std::vector< std::vector<cv::KeyPoint>>> cellKeys (gridRows, std::vector<std::vector<cv::KeyPoint>>(gridCols, std::vector<cv::KeyPoint>()));
+
+    for (size_t level {0}; level < nLevels; level ++)
+    {
+
+        const int minX = edgeThreshold;
+        const int maxX = image.cols - edgeThreshold;
+        const int minY = edgeThreshold;
+        const int maxY = image.rows - edgeThreshold;
+
+        const int wid = maxX - minX;
+        const int hig = maxY - minY;
+
+        const int gridW = cvRound((float)wid/gridCols);
+        const int gridH = cvRound((float)hig/gridRows);
+
+        const int nGrids = gridCols * gridRows;
+
+        const int featuresGrid = (int)ceil((float)5.0f * nFeatures/nGrids);
+
+
+
+        float rowJump = gridH + 2 * fastEdge;
+
+
+        std::vector< std::vector< bool>> mnContrast (gridRows, std::vector<bool>(gridCols));
+        
+        std::vector<std::vector<int>> keysPerCell(gridRows, std::vector<int>(gridCols));
+
+
+        
+
+        for (size_t iR = 0; iR < gridRows; iR++)
+        {
+
+            const float rStart = minY + iR * gridH - fastEdge;
+
+            if ( rStart >= maxY)
+                continue;
+
+            if ( iR == gridRows - 1)
+            {
+                rowJump = maxY + fastEdge - rStart;
+                if ( rowJump <= 0 )
+                    continue;
+            }
+
+            float colJump = gridW + 2 * fastEdge;
+
+            for (size_t iC = 0; iC < gridCols; iC++)
+            {
+
+                float cStart = minX + iC * gridW - fastEdge;
+
+                if ( cStart >= maxX)
+                    continue;
+
+                if ( iC == gridCols - 1 )
+                {
+                    colJump = maxX + fastEdge - cStart;
+                    if ( colJump <= 0 )
+                        continue;
+                }
+
+                Logging("rows", rStart,3);
+                Logging("roweeeee", rStart + rowJump,3);
+                Logging("cols", cStart,3);
+                Logging("coleeeee", cStart + colJump,3);
+                Logging("iR", iR, 3);
+                Logging("iC", iC, 3);
+
+                const cv::Mat& cellIm = image.rowRange(rStart, rStart + rowJump).colRange(cStart, cStart + colJump);
+
+                cv::Mat fl;
+                cv::flip(cellIm, fl,-1);
+                // Logging("fl",cv::norm(im,fl),3);
+                if ( cv::norm(cellIm,fl) < mnContr)
+                {
+                    keysPerCell[iR][iC] = 0;
+                    continue;
+                }
+
+                mnContrast[iR][iC] = true;
+
+                std::vector<cv::KeyPoint> temp;
+
+                cv::FAST(cellIm, temp, maxFastThreshold,true);
+                if (temp.empty())
+                    cv::FAST(cellIm, temp, minFastThreshold,true);
+                if (!temp.empty())
+                {
+                    std::vector<cv::KeyPoint>::iterator it;
+                    std::vector<cv::KeyPoint>::const_iterator end(temp.end());
+                    for (it = temp.begin(); it != end; it++)
+                    {
+                        it->pt.x += cStart;
+                        it->pt.y += rStart;
+                        cellKeys[iR][iC].emplace_back(*it);
+                    }
+
+                    gridsWKeys++;
+
+                }
+                else
+                    keysPerCell[iR][iC] = 0;
+            }
+
         }
 
     }
@@ -737,7 +953,7 @@ void FeatureExtractor::computeKeypoints(cv::Mat& image, std::vector <cv::KeyPoin
     computeDescriptors(im, keypoints, desc, pattern);
     // detector->compute(leftim, keypoints, desc.left);
     // detector->compute(im, keypoints, desc);
-
+    Logging("Keypoints size", keypoints.size(),3);
 
 }
 
@@ -1688,15 +1904,40 @@ FeatureExtractor::FeatureExtractor(const int _nfeatures, const int _nLevels, con
 {
     KeyDestrib = std::vector<std::vector<int>>(gridRows, std::vector<int>(gridCols));
     KeyDestribRight = std::vector<std::vector<int>>(gridRows, std::vector<int>(gridCols));
-    // Different Implementation, instead of downsampling the image 8 times (making it smaller)
-    // because this project consists of 2 cameras 1 facing backwards and 1 facing forwards, the pyramid will contain both upsampled and downsampled images.
-    // 5 scale downsampled 2 scales upsampled
-    // imagePyramid.resize(nLevels);
-    // scalePyramid.resize(nLevels);
-    // scaleInvPyramid.resize(nLevels);
-    // scalePyramid[0] = 1.0f;
-    // scaleInvPyramid[0] = 1.0f;
+
+    scalePyramid.resize(nLevels);
+    scaleInvPyramid.resize(nLevels);
+    scalePyramid[0] = 1.0f;
+    scaleInvPyramid[0] = 1.0f;
     
+    for(int i=1; i<nLevels; i++)
+    {
+        scalePyramid[i]=scalePyramid[i-1]*imScale;
+    }
+
+    scaleInvPyramid.resize(nLevels);
+
+    for(int i=0; i<nLevels; i++)
+    {
+        scaleInvPyramid[i]=1.0f/scalePyramid[i];
+    }
+
+    imagePyramid.resize(nLevels);
+
+    featurePerLevel.resize(nLevels);
+    float factor = 1.0f / imScale;
+    float nDesiredFeaturesPerScale = nFeatures*(1 - factor)/(1 - (float)pow((double)factor, (double)nLevels));
+
+    int sumFeatures = 0;
+    for( int level = 0; level < nLevels-1; level++ )
+    {
+        featurePerLevel[level] = cvRound(nDesiredFeaturesPerScale);
+        sumFeatures += featurePerLevel[level];
+        nDesiredFeaturesPerScale *= factor;
+    }
+    featurePerLevel[nLevels-1] = std::max(nFeatures - sumFeatures, 0);
+
+
     const int npoints = 512;
     const cv::Point* pattern0 = (const cv::Point*)bit_pattern_31_;
     std::copy(pattern0, pattern0 + npoints, std::back_inserter(pattern));

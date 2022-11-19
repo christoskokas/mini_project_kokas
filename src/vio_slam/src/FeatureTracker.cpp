@@ -196,6 +196,9 @@ void FeatureTracker::stereoFeatures(cv::Mat& leftIm, cv::Mat& rightIm, std::vect
     StereoDescriptors desc;
     StereoKeypoints keys;
     fe.extractFeatures(leftIm, rightIm, desc, keys);
+    drawKeys("left", lIm.rIm, keys.left);
+    drawKeys("right", rIm.rIm, keys.right);
+    cv::waitKey(0);
     fm.computeStereoMatches(leftIm, rightIm, desc, matches, pnts, keys);
     std::vector<uchar> inliers;
     // cv::findFundamentalMat(pnts.left, pnts.right, inliers, cv::FM_RANSAC, 3, 0.99);
