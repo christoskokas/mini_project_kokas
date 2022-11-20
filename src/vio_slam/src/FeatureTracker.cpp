@@ -74,7 +74,7 @@ void FeatureData::compute3DPoints(SubPixelPoints& prePnts, const int keyNumb)
     }
 }
 
-FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr) : zedPtr(_zedPtr),fe(nFeatures), fm(zedPtr, zedPtr->mHeight, fe.getGridRows(), fe.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1/zedPtr->mFps), lkal(dt), datafile(filepath), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy)
+FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr) : zedPtr(_zedPtr), fm(zedPtr, &feLeft, &feRight, zedPtr->mHeight,feLeft.getGridRows(), feLeft.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1/zedPtr->mFps), lkal(dt), datafile(filepath), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy)
 {
     rmap[0][0] = _rmap[0][0];
     rmap[0][1] = _rmap[0][1];
@@ -149,8 +149,9 @@ void FeatureTracker::stereoFeaturesMask(cv::Mat& leftIm, cv::Mat& rightIm, std::
     StereoKeypoints keys;
     cv::Mat mask;
     setMask(prePnts, mask);
-    fe.extractFeaturesMask(leftIm, rightIm, desc, keys, mask);
-    fm.computeStereoMatches(leftIm, rightIm, desc, matches, pnts, keys);
+    extractORB(leftIm, rightIm, keys, desc);
+    fm.findStereoMatches(desc,pnts, keys);
+    // fm.computeStereoMatches(leftIm, rightIm, desc, matches, pnts, keys);
 
     // std::vector<uchar> inliers;
     // cv::Mat F = cv::findFundamentalMat(pnts.left, pnts.right, inliers, cv::FM_RANSAC, 3, 0.99);
@@ -166,7 +167,7 @@ void FeatureTracker::stereoFeaturesMask(cv::Mat& leftIm, cv::Mat& rightIm, std::
 
     Logging("matches size", matches.size(),3);
 #if MATCHESIM
-    drawMatches(pLIm.rIm, pnts, matches);
+    drawPointsTemp<cv::Point2f,cv::Point2f>("Matches",pLIm.rIm,pnts.left, pnts.right);
 #endif
 }
 
@@ -191,15 +192,24 @@ void FeatureTracker::stereoFeaturesClose(cv::Mat& leftIm, cv::Mat& rightIm, std:
 #endif
 }
 
+void FeatureTracker::extractORB(cv::Mat& leftIm, cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc)
+{
+    std::thread extractLeft(&FeatureExtractor::computeKeypoints, std::ref(feLeft), std::ref(leftIm), std::ref(keys.left), std::ref(desc.left), 0);
+    std::thread extractRight(&FeatureExtractor::computeKeypoints, std::ref(feRight), std::ref(rightIm), std::ref(keys.right), std::ref(desc.right), 1);
+    extractLeft.join();
+    extractRight.join();
+}
+
 void FeatureTracker::stereoFeatures(cv::Mat& leftIm, cv::Mat& rightIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts)
 {
     StereoDescriptors desc;
     StereoKeypoints keys;
-    fe.extractFeatures(leftIm, rightIm, desc, keys);
+    extractORB(leftIm, rightIm, keys, desc);
     drawKeys("left", lIm.rIm, keys.left);
     drawKeys("right", rIm.rIm, keys.right);
     cv::waitKey(0);
-    fm.computeStereoMatches(leftIm, rightIm, desc, matches, pnts, keys);
+    fm.findStereoMatches(desc,pnts, keys);
+    // fm.computeStereoMatches(leftIm, rightIm, desc, matches, pnts, keys);
     std::vector<uchar> inliers;
     // cv::findFundamentalMat(pnts.left, pnts.right, inliers, cv::FM_RANSAC, 3, 0.99);
 
@@ -207,7 +217,7 @@ void FeatureTracker::stereoFeatures(cv::Mat& leftIm, cv::Mat& rightIm, std::vect
     // reduceVectorTemp<cv::DMatch,uchar>(matches, inliers);
     Logging("matches size", matches.size(),1);
 #if MATCHESIM
-    drawMatches(lIm.rIm, pnts, matches);
+    drawPointsTemp<cv::Point2f,cv::Point2f>("Matches",lIm.rIm,pnts.left, pnts.right);
 #endif
 }
 

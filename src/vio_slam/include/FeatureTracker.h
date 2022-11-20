@@ -129,6 +129,8 @@ class FeatureTracker
         cv::Mat rmap[2][2];
         Zed_Camera* zedPtr;
         FeatureExtractor fe;
+        FeatureExtractor feLeft;
+        FeatureExtractor feRight;
         FeatureMatcher fm;
         SubPixelPoints pnts,prePnts;
         PoseEstimator pE;
@@ -157,6 +159,7 @@ class FeatureTracker
         void beginTrackingTrialClose(const int frames);
         void beginTrackingGoodFeatures(const int frames);
 
+        void extractORB(cv::Mat& leftIm, cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc);
         void updateKeys(const int frame);
         void updateKeysGoodFeatures(const int frame);
         void updateKeysClose(const int frame);

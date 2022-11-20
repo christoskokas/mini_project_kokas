@@ -107,10 +107,6 @@ class FeatureExtractor
 
     const int gridsNumber {gridCols * gridRows};
 
-    std::vector <cv::Mat> imagePyramid;
-    std::vector < float > scalePyramid;
-    std::vector < float > scaleInvPyramid;
-    std::vector < int > featurePerLevel;
     std::vector<cv::Point> pattern;
     
     std::vector<int> umax;
@@ -120,8 +116,12 @@ class FeatureExtractor
 
     public:
     
+        std::vector <cv::Mat> imagePyramid;
+        std::vector < float > scalePyramid;
+        std::vector < float > scaleInvPyramid;
+        std::vector < int > featurePerLevel;
         std::vector<std::vector<int>> KeyDestrib;
-        std::vector<std::vector<int>> KeyDestribRight;
+        // std::vector<std::vector<int>> KeyDestribRight;
         
         const int numberPerCell = nFeatures/(gridRows * gridCols);
 
@@ -139,10 +139,10 @@ class FeatureExtractor
         int getGridRows();
         int getGridCols();
 
-        
+
 
         void computeKeypointsOld(cv::Mat& image, std::vector <cv::KeyPoint>& keypoints, cv::Mat& desc, const bool right);
-        void computeKeypoints(std::vector < std::vector<cv::KeyPoint> >& allKeypoints, const bool right);
+        void computeKeypoints(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors, const bool right);
 
         void findFeatures(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);

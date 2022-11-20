@@ -1432,7 +1432,8 @@ void RobustMatcher2::testFeatureExtractorClass()
 {
     
     FeatureExtractor trial;
-    FeatureMatcher matcher(zedcamera, zedcamera->mHeight, trial.getGridRows(), trial.getGridCols());
+    FeatureMatcher matcher(zedcamera, &trial, &trial, zedcamera->mHeight, trial.getGridRows(), trial.getGridCols());
+
     // FeatureExtractor trial(FeatureExtractor::FeatureChoice::ORB,1000,8,1.2f,10, 20, 6, true);
     int i {0};
     const int times {600};
@@ -1490,7 +1491,7 @@ void RobustMatcher2::testFeatureMatcherOptical()
     const int sizeThreshold {150};
     const int maxSizeThreshold {500};
     FeatureExtractor featureExtractor;
-    FeatureMatcher matcher(zedcamera, zedcamera->mHeight, featureExtractor.getGridRows(), featureExtractor.getGridCols());
+    FeatureMatcher matcher(zedcamera, &featureExtractor, &featureExtractor, zedcamera->mHeight, featureExtractor.getGridRows(), featureExtractor.getGridCols());
     FeatureManager featureM;
     PoseEstimator poseEst(zedcamera);
     
@@ -1669,7 +1670,7 @@ void RobustMatcher2::testFeatureMatcherStable3D()
     const int maxSizeThreshold {500};
     std::vector<KeyFrame> keyFrames;
     FeatureExtractor featureExtractor;
-    FeatureMatcher matcher(zedcamera, zedcamera->mHeight, featureExtractor.getGridRows(), featureExtractor.getGridCols());
+    FeatureMatcher matcher(zedcamera, &featureExtractor, &featureExtractor, zedcamera->mHeight, featureExtractor.getGridRows(), featureExtractor.getGridCols());
     FeatureManager featureM;
     PoseEstimator poseEst(zedcamera);
     bool in {true};
@@ -1991,7 +1992,6 @@ void RobustMatcher2::testOpticalReDo()
     const int maxSizeThreshold {500};
     std::vector<KeyFrame> keyFrames;
     FeatureExtractor featureExtractor;
-    FeatureMatcher matcher(zedcamera, zedcamera->mHeight, featureExtractor.getGridRows(), featureExtractor.getGridCols());
     FeatureManager featureM;
     PoseEstimator poseEst(zedcamera);
     FeatureTracker ft(rmap,zedcamera);
