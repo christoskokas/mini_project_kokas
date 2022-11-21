@@ -494,10 +494,10 @@ void FeatureExtractor::extractFeaturesMask(cv::Mat& leftImage, cv::Mat& rightIma
     // computeKeypoints(leftImage,keypoints.left, desc.left, 0);
     // computeKeypoints(rightImage,keypoints.right, desc.right, 1);
 
-    std::thread extractLeft(&FeatureExtractor::computeKeypoints, this, std::ref(leftImage), std::ref(keypoints.left), std::ref(desc.left), 0);
-    std::thread extractRight(&FeatureExtractor::computeKeypoints, this, std::ref(rightImage), std::ref(keypoints.right), std::ref(desc.right), 1);
-    extractLeft.join();
-    extractRight.join();
+    // std::thread extractLeft(&FeatureExtractor::computeKeypoints, this, std::ref(leftImage), std::ref(keypoints.left), std::ref(desc.left), 0);
+    // std::thread extractRight(&FeatureExtractor::computeKeypoints, this, std::ref(rightImage), std::ref(keypoints.right), std::ref(desc.right), 1);
+    // extractLeft.join();
+    // extractRight.join();
 
     // findFASTGridsMask(leftImage,keypoints.left, mask);
     // findFASTGrids(rightImage,keypoints.right);
@@ -531,10 +531,10 @@ void FeatureExtractor::extractFeatures(cv::Mat& leftImage, cv::Mat& rightImage, 
 {
 
     // findFASTGrids(leftImage,keypoints.left);
-    std::thread extractLeft(&FeatureExtractor::computeKeypoints, this, std::ref(leftImage), std::ref(keypoints.left), std::ref(desc.left), 0);
-    std::thread extractRight(&FeatureExtractor::computeKeypoints, this, std::ref(rightImage), std::ref(keypoints.right), std::ref(desc.right), 1);
-    extractLeft.join();
-    extractRight.join();
+    // std::thread extractLeft(&FeatureExtractor::computeKeypoints, this, std::ref(leftImage), std::ref(keypoints.left), std::ref(desc.left), 0);
+    // std::thread extractRight(&FeatureExtractor::computeKeypoints, this, std::ref(rightImage), std::ref(keypoints.right), std::ref(desc.right), 1);
+    // extractLeft.join();
+    // extractRight.join();
     // computeKeypoints(leftImage,keypoints.left, desc.left, 0);
     // computeKeypoints(rightImage,keypoints.right, desc.right, 1);
     // cv::Mat outIm = leftImage.clone();
@@ -601,9 +601,26 @@ void FeatureExtractor::extractFeaturesCloseMask(cv::Mat& leftImage, cv::Mat& rig
     
 }
 
-void FeatureExtractor::computeKeypoints(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors, const bool right)
+void FeatureExtractor::populateKeyDestrib(const std::vector<cv::Point2f>& pnts, std::vector<std::vector<int>>& keyDestribution)
+{
+
+    const int wid = imagePyramid[0].cols;
+    const int hig = imagePyramid[0].rows;
+
+    const float multW = (float)gridCols/(float)wid;
+    const float multH = (float)gridRows/(float)hig;
+    const size_t end(pnts.size());
+    for (size_t i{0}; i < end; i ++)
+    {
+        keyDestribution[cvRound(pnts[i].y * multH)][cvRound(pnts[i].x * multW)] ++;
+    }
+}
+
+void FeatureExtractor::computeKeypoints(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts, cv::Mat& descriptors, const bool right)
 {
     Timer key;
+    std::vector<std::vector<int>> keyDestribution = std::vector<std::vector<int>>(gridRows, std::vector<int>(gridCols));
+    populateKeyDestrib(pnts,keyDestribution);
     computePyramid(image);
     keypoints.reserve(2*nFeatures);
     std::vector<int>scaledPatchSize;
@@ -738,7 +755,7 @@ void FeatureExtractor::computeKeypoints(cv::Mat& image, std::vector<cv::KeyPoint
         {
             const size_t keyCellSize = cellKeys[iR][iC].size();
             int desired;
-            desired = desiredFeaturesGrid - KeyDestrib[iR][iC];
+            desired = desiredFeaturesGrid - keyDestribution[iR][iC];
             if ( keyCellSize == 0 || desired <= 0 )
                 continue;
             if (keyCellSize > desired)
@@ -754,7 +771,6 @@ void FeatureExtractor::computeKeypoints(cv::Mat& image, std::vector<cv::KeyPoint
                 it->angle = computeOrientation(imagePyramid[it->octave], it->pt);
                 allKeypoints[it->octave].emplace_back(*it);
             }
-            KeyDestrib[iR][iC] += cellKeys[iR][iC].size();
         }
     }
     descriptors = cv::Mat(2*nFeatures, 32, CV_8U);

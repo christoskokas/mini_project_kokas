@@ -143,14 +143,19 @@ void FeatureTracker::stereoFeaturesPop(cv::Mat& leftIm, cv::Mat& rightIm, std::v
 #endif
 }
 
+
+
 void FeatureTracker::stereoFeaturesMask(cv::Mat& leftIm, cv::Mat& rightIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts, const SubPixelPoints& prePnts)
 {
     StereoDescriptors desc;
-    StereoKeypoints keys;
-    cv::Mat mask;
-    setMask(prePnts, mask);
-    extractORB(leftIm, rightIm, keys, desc);
-    fm.findStereoMatches(desc,pnts, keys);
+    stereoKeys.left.clear();
+    stereoKeys.right.clear();
+    stereoKeys.depth.clear();
+    stereoKeys.closeFar.clear();
+    extractORB(leftIm, rightIm, stereoKeys, desc);
+    std::vector<bool> inliersL, inliersR;
+    fm.findStereoMatches(desc,pnts, stereoKeys, inliersL, inliersR);
+    // reduceStereoKeys<bool>(stereoKeys, inliersL, inliersR);
     // fm.computeStereoMatches(leftIm, rightIm, desc, matches, pnts, keys);
 
     // std::vector<uchar> inliers;
@@ -161,8 +166,8 @@ void FeatureTracker::stereoFeaturesMask(cv::Mat& leftIm, cv::Mat& rightIm, std::
     // reduceVectorTemp<cv::DMatch,uchar>(matches, inliers);
 
 #if KEYSIM
-    drawKeys("left", pLIm.rIm, keys.left);
-    drawKeys("right", pRIm.rIm, keys.right);
+    drawKeys("left", pLIm.rIm, stereoKeys.left);
+    drawKeys("right", pRIm.rIm, stereoKeys.right);
 #endif
 
     Logging("matches size", matches.size(),3);
@@ -186,7 +191,6 @@ void FeatureTracker::stereoFeaturesClose(cv::Mat& leftIm, cv::Mat& rightIm, std:
 
     // pnts.reduce<uchar>(inliers);
     // reduceVectorTemp<cv::DMatch,uchar>(matches, inliers);
-    Logging("matches size", matches.size(),3);
 #if MATCHESIM
     drawMatches(pLIm.rIm, pnts, matches);
 #endif
@@ -194,8 +198,8 @@ void FeatureTracker::stereoFeaturesClose(cv::Mat& leftIm, cv::Mat& rightIm, std:
 
 void FeatureTracker::extractORB(cv::Mat& leftIm, cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc)
 {
-    std::thread extractLeft(&FeatureExtractor::computeKeypoints, std::ref(feLeft), std::ref(leftIm), std::ref(keys.left), std::ref(desc.left), 0);
-    std::thread extractRight(&FeatureExtractor::computeKeypoints, std::ref(feRight), std::ref(rightIm), std::ref(keys.right), std::ref(desc.right), 1);
+    std::thread extractLeft(&FeatureExtractor::computeKeypoints, std::ref(feLeft), std::ref(leftIm), std::ref(keys.left), std::ref(prePnts.left), std::ref(desc.left), 0);
+    std::thread extractRight(&FeatureExtractor::computeKeypoints, std::ref(feRight), std::ref(rightIm), std::ref(keys.right), std::ref(prePnts.left),std::ref(desc.right), 1);
     extractLeft.join();
     extractRight.join();
 }
@@ -203,14 +207,16 @@ void FeatureTracker::extractORB(cv::Mat& leftIm, cv::Mat& rightIm, StereoKeypoin
 void FeatureTracker::stereoFeatures(cv::Mat& leftIm, cv::Mat& rightIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts)
 {
     StereoDescriptors desc;
-    StereoKeypoints keys;
-    extractORB(leftIm, rightIm, keys, desc);
-    drawKeys("left", lIm.rIm, keys.left);
-    drawKeys("right", rIm.rIm, keys.right);
-    cv::waitKey(0);
-    fm.findStereoMatches(desc,pnts, keys);
+    stereoKeys.left.clear();
+    stereoKeys.right.clear();
+    stereoKeys.depth.clear();
+    stereoKeys.closeFar.clear();
+    extractORB(leftIm, rightIm, stereoKeys, desc);
+    std::vector<bool> inliersL, inliersR;
+    fm.findStereoMatches(desc,pnts, stereoKeys, inliersL, inliersR);
+    // reduceStereoKeys<bool>(stereoKeys, inliersL, inliersR);
     // fm.computeStereoMatches(leftIm, rightIm, desc, matches, pnts, keys);
-    std::vector<uchar> inliers;
+    // std::vector<uchar> inliers;
     // cv::findFundamentalMat(pnts.left, pnts.right, inliers, cv::FM_RANSAC, 3, 0.99);
 
     // pnts.reduce<uchar>(inliers);
@@ -373,16 +379,16 @@ void FeatureTracker::beginTrackingTrialClose(const int frames)
     {
         curFrame = frame;
         setLRImages(frame);
-        fm.checkDepthChange(pLIm.im,pRIm.im,prePnts);
+        // fm.checkDepthChange(pLIm.im,pRIm.im,prePnts);
         if ( (addFeatures || uStereo < mnSize || cv::norm(pTvec)*zedPtr->mFps > highSpeed) && ( uStereo < mxSize) )
         {
             // Logging("ptvec",pTvec,3);
             // Logging("cv::norm(pTvec)",cv::norm(pTvec),3);
 
             zedPtr->addKeyFrame = true;
-            if ( uMono > mxMonoSize )
-                updateKeysClose(frame);
-            else
+            // if ( uMono > mxMonoSize )
+            //     updateKeysClose(frame);
+            // else
                 updateKeys(frame);
             fd.compute3DPoints(prePnts, keyNumb);
             keyframes.emplace_back(zedPtr->cameraPose.pose,prePnts.points3D,keyNumb);
@@ -1387,6 +1393,7 @@ void FeatureTracker::pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Poi
     // Logging("Tvecaft", tvec,3);
     // prePnts.reduceWithInliers<int>(idxs);
     // pnts.reduceWithInliers<int>(idxs);
+    // reduceStereoKeysIdx<int,cv::Point2f>(stereoKeys,idxs, pnts.left,pnts.left);
     reduceVectorInliersTemp<cv::Point3d,int>(p3D,idxs);
     reduceVectorInliersTemp<cv::Point3d,int>(prePnts.points3D,idxs);
     reduceVectorInliersTemp<bool,int>(prePnts.useable,idxs);
@@ -1522,6 +1529,7 @@ void FeatureTracker::get3dPointsforPoseAll(std::vector<cv::Point3d>& p3D, std::v
     }
     prePnts.reduce<bool>(inliers);
     pnts.reduce<bool>(inliers);
+    reduceStereoKeys<bool>(stereoKeys, inliers, inliers);
 }
 
 void FeatureTracker::pointsInFrame(std::vector<cv::Point3d>& p3D)
@@ -1719,6 +1727,7 @@ void FeatureTracker::opticalFlow()
 
     prePnts.reduce<uchar>(inliers);
     pnts.reduce<uchar>(inliers);
+    reduceStereoKeys<uchar>(stereoKeys, inliers, inliers);
     // reduceVectorTemp<float,uchar>(err,inliers);
 
     // const float minErrValue {20.0f};
@@ -1795,7 +1804,7 @@ void FeatureTracker::opticalFlowPredict()
 
     prePnts.reduce<uchar>(inliers);
     pnts.reduce<uchar>(inliers);
-
+    // reduceStereoKeys<uchar>(stereoKeys, inliers, inliers);
     // cv::cornerSubPix(pLIm.im, prePnts.left, cv::Size(5,5),cv::Size(-1,-1),criteria);
     // cv::cornerSubPix(lIm.im, pnts.left, cv::Size(5,5),cv::Size(-1,-1),criteria);
     // reduceVectorTemp<cv::Point2f,bool>(predPnts, check);
@@ -2164,7 +2173,7 @@ void FeatureTracker::drawOptical(const char* com,const cv::Mat& im, const std::v
         cv::circle(outIm, pnts[i],2,cv::Scalar(255,0,0));
     }
     cv::imshow(com, outIm);
-    cv::waitKey(waitImOpt);
+     cv::waitKey(waitImOpt);
 }
 
 void FeatureTracker::drawPoints(const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts, const char* str)

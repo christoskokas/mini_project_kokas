@@ -70,6 +70,8 @@ struct StereoKeypoints
 {
     std::vector <cv::KeyPoint> left;
     std::vector <cv::KeyPoint> right;
+    std::vector <float> depth;
+    std::vector <bool> closeFar;
 };
 
 struct StereoDescriptors
@@ -142,13 +144,15 @@ class FeatureExtractor
 
 
         void computeKeypointsOld(cv::Mat& image, std::vector <cv::KeyPoint>& keypoints, cv::Mat& desc, const bool right);
-        void computeKeypoints(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors, const bool right);
+        void computeKeypoints(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts, cv::Mat& descriptors, const bool right);
 
         void findFeatures(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findORB(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc);
         void findORBWithCV(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findORBGrids(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys, cv::Mat& Desc);
+
+        void populateKeyDestrib(const std::vector<cv::Point2f>& pnts, std::vector<std::vector<int>>& keyDestrib);
 
         void extractFeatures(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
         void extractFeaturesClose(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);

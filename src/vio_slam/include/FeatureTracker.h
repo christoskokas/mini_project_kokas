@@ -89,8 +89,8 @@ class FeatureTracker
         cv::Mat pRvec = cv::Mat::zeros(3,1, CV_64F);
         const int waitImKey {1};
         const int waitImMat {1};
-        const int waitImOpt {1};
-        const int waitImPro {0};
+        const int waitImOpt {0};
+        const int waitImPro {1};
         const int waitImRep {1};
         const int mnSize {100};
         const int mxSize {400};
@@ -135,6 +135,8 @@ class FeatureTracker
         SubPixelPoints pnts,prePnts;
         PoseEstimator pE;
         FeatureData fd;
+
+        StereoKeypoints stereoKeys;
 
         const double dt;
         LKalmanFilter lkal;
@@ -279,6 +281,85 @@ class FeatureTracker
         double pointsDistTemp(const T& p1, const T& p2)
         {
                 return pow(p1.x - p2.x,2) + pow(p1.y - p2.y,2);
+        }
+
+        template <typename T>
+        void reduceStereoKeys(StereoKeypoints& keypoints, std::vector<T>& inliersL, std::vector<T>& inliersR)
+        {
+                const int grdC = feLeft.getGridCols();
+                const int grdR = feLeft.getGridRows();
+                const int wid = zedPtr->mWidth;
+                const int hig = zedPtr->mHeight;
+
+                const float multW = (float)grdC/(float)wid;
+                const float multH = (float)grdR/(float)hig;
+
+                int j {0};
+                for (int i = 0; i < int(keypoints.left.size()); i++)
+                {
+                        const cv::KeyPoint& kp = keypoints.left[i];
+                        if (inliersL[i])
+                                keypoints.left[j++] = keypoints.left[i];
+                        else
+                                feLeft.KeyDestrib[cvRound(kp.pt.y * multH)][cvRound(kp.pt.x * multW)] -= 1;
+
+                }
+                keypoints.left.resize(j);
+
+                j = 0;
+                for (int i = 0; i < int(keypoints.right.size()); i++)
+                {
+                        const cv::KeyPoint& kp = keypoints.right[i];
+                        if (inliersR[i])
+                                keypoints.right[j++] = keypoints.right[i];
+                        else
+                                feRight.KeyDestrib[cvRound(kp.pt.y * multH)][cvRound(kp.pt.x * multW)] -= 1;
+                }
+                keypoints.right.resize(j);
+        }
+
+        template <typename T, typename U>
+        void reduceStereoKeysIdx(StereoKeypoints& keypoints, std::vector<T>& idxs, std::vector<U>& nxtsPntsL, std::vector<U>& nxtsPntsR)
+        {
+                const int grdC = feLeft.getGridCols();
+                const int grdR = feLeft.getGridRows();
+                const int wid = zedPtr->mWidth;
+                const int hig = zedPtr->mHeight;
+
+                const float multW = (float)grdC/(float)wid;
+                const float multH = (float)grdR/(float)hig;
+                int count {0};
+                int j {0};
+                for (int i = 0; i < int(keypoints.left.size()); i++)
+                {
+                        const cv::KeyPoint& kp = keypoints.left[i];
+                        if ( i == idxs[count])
+                        {
+                                feLeft.KeyDestrib[cvRound(nxtsPntsL[i].y * multH)][cvRound(nxtsPntsL[i].x * multW)] += 1;
+                                feLeft.KeyDestrib[cvRound(kp.pt.y * multH)][cvRound(kp.pt.x * multW)] -= 1;
+                                count ++;
+                                keypoints.left[j++] = keypoints.left[i];
+                        }
+                        feLeft.KeyDestrib[cvRound(kp.pt.y * multH)][cvRound(kp.pt.x * multW)] -= 1;
+
+                }
+                keypoints.left.resize(j);
+                count = 0;
+                j = 0;
+                for (int i = 0; i < int(keypoints.right.size()); i++)
+                {
+                        const cv::KeyPoint& kp = keypoints.right[i];
+                        if ( i == idxs[count])
+                        {
+                                feRight.KeyDestrib[cvRound(nxtsPntsR[i].y * multH)][cvRound(nxtsPntsR[i].x * multW)] += 1;
+                                feRight.KeyDestrib[cvRound(kp.pt.y * multH)][cvRound(kp.pt.x * multW)] -= 1;
+                                count ++;
+                                keypoints.right[j++] = keypoints.right[i];
+                        }
+                        feRight.KeyDestrib[cvRound(kp.pt.y * multH)][cvRound(kp.pt.x * multW)] -= 1;
+
+                }
+                keypoints.right.resize(j);
         }
 
 };

@@ -876,10 +876,17 @@ void FeatureMatcher::computeStereoMatchesClose(const cv::Mat& leftImage, const c
 
 }
 
-void FeatureMatcher::findStereoMatches(const StereoDescriptors& desc, SubPixelPoints& points, StereoKeypoints& keypoints)
+void FeatureMatcher::findStereoMatches(const StereoDescriptors& desc, SubPixelPoints& points, StereoKeypoints& keypoints, std::vector<bool>& inliersL, std::vector<bool>& inliersR)
 {
     std::vector<std::vector < int > > indexes;
     destributeRightKeys(keypoints.right, indexes);
+
+    const size_t leftEnd {keypoints.left.size()};
+
+    keypoints.depth.resize(leftEnd);
+    keypoints.closeFar.resize(leftEnd);
+    inliersL.resize(leftEnd);
+    inliersR.resize(leftEnd);
 
     points.left.reserve(keypoints.left.size());
     points.right.reserve(keypoints.right.size());
@@ -889,6 +896,8 @@ void FeatureMatcher::findStereoMatches(const StereoDescriptors& desc, SubPixelPo
     const float minZ = zedptr->mBaseline;
     const float minD = 0;
     const float maxD = zedptr->mBaseline * zedptr->cameraLeft.fx/minZ;
+    std::vector<int> checkedIdxs;
+    checkedIdxs.reserve(leftEnd);
 
     // Because we use FAST to detect Features the sliding window will get a window of side 11 pixels (5 (3 + 2offset) pixels radius + 1 which is the feature)
     const int windowRadius {5};
@@ -922,6 +931,18 @@ void FeatureMatcher::findStereoMatches(const StereoDescriptors& desc, SubPixelPo
         for (size_t allIdx {0};allIdx < endCount; allIdx++)
         {
             const int idx {indexes[yKey][allIdx]};
+            bool out = false;
+            for (size_t idxR {0}; idxR < checkedIdxs.size(); idxR++)
+            {
+                if ( idx == checkedIdxs[idxR] )
+                {
+                    out = true;
+                    break;
+                }
+
+            }
+            if ( out )
+                continue;
             const float uR {keypoints.right[idx].pt.y};
             const int octR {keypoints.right[idx].octave};
 
@@ -995,20 +1016,24 @@ void FeatureMatcher::findStereoMatches(const StereoDescriptors& desc, SubPixelPo
 
         kR.pt.x = feLeft->scalePyramid[octL] * ((float)scuR + (float)bestX + delta);
 
-        points.left.emplace_back(it->pt);
-        points.right.emplace_back(kR.pt);
-        matchesCount ++;
 
         // calculate depth
         const float disparity {it->pt.x - kR.pt.x};
         if (disparity > 0.0f && disparity < zedptr->cameraLeft.fx)
         {
-
+            checkedIdxs.emplace_back(bestIdx);
+            points.left.emplace_back(it->pt);
+            points.right.emplace_back(kR.pt);
+            matchesCount ++;
             const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
             // if false depth is unusable
+            keypoints.depth[leftRow] = depth;
+            inliersL[leftRow] = true;
+            inliersR[bestIdx] = true;
             points.depth.emplace_back(depth);
             if (depth < zedptr->mBaseline * closeNumber)
             {
+                keypoints.closeFar[leftRow] = true;
                 points.useable.emplace_back(true);
                 continue;
             }
