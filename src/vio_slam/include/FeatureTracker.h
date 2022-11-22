@@ -89,7 +89,7 @@ class FeatureTracker
         cv::Mat pRvec = cv::Mat::zeros(3,1, CV_64F);
         const int waitImKey {1};
         const int waitImMat {1};
-        const int waitImOpt {0};
+        const int waitImOpt {1};
         const int waitImPro {1};
         const int waitImRep {1};
         const int mnSize {100};
@@ -136,7 +136,6 @@ class FeatureTracker
         PoseEstimator pE;
         FeatureData fd;
 
-        StereoKeypoints stereoKeys;
 
         const double dt;
         LKalmanFilter lkal;
@@ -162,6 +161,7 @@ class FeatureTracker
         void beginTrackingGoodFeatures(const int frames);
 
         void extractORB(cv::Mat& leftIm, cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc);
+        void extractFAST(cv::Mat& leftIm, cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc);
         void updateKeys(const int frame);
         void updateKeysGoodFeatures(const int frame);
         void updateKeysClose(const int frame);
@@ -205,11 +205,11 @@ class FeatureTracker
         void checkKeyDestrib(std::vector<cv::Point2d>& p2Dclose);
 
         void get3dPointsforPose(std::vector<cv::Point3d>& p3D);
-        void get3dPointsforPoseAll(std::vector<cv::Point3d>& p3D, std::vector<cv::Point2f>& p2D);
+        void get3dPointsforPoseAll(std::vector<cv::Point3d>& p3D, std::vector<cv::Point2d>& p2D);
         void reprojError();
         void poseEstKal(cv::Mat& Rvec, cv::Mat& tvec, const size_t p3dsize);
         void essForMonoPose(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Point3d>& p3D);
-        void pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Point3d>& p3D);
+        void pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Point3d>& p3D, std::vector<cv::Point2d>& p2D);
         void compute2Dfrom3D(std::vector<cv::Point3d>& p3D, std::vector<cv::Point2d>& p2D, std::vector<cv::Point2d>& pn2D);
         int calcNumberOfStereo();
         float norm_pdf(float x, float mu, float sigma);
