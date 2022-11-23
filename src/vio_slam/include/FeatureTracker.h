@@ -83,6 +83,7 @@ class FeatureTracker
         Eigen::Matrix4d prevWPose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d prevWPoseInv = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d predNPose = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d predNPoseInv = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d prevposeEstFrame = Eigen::Matrix4d::Identity();
         cv::Mat prevR = (cv::Mat_<double>(3,3) << 1,0,0,0, 1,0,0,0,1);
         cv::Mat pTvec = cv::Mat::zeros(3,1, CV_64F);
@@ -155,13 +156,14 @@ class FeatureTracker
 
         void initializeTracking();
         void initializeTrackingGoodFeatures();
+        void Track(const int frames);
         void beginTracking(const int frames);
         void beginTrackingTrial(const int frames);
         void beginTrackingTrialClose(const int frames);
         void beginTrackingGoodFeatures(const int frames);
 
         void extractORB(cv::Mat& leftIm, cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc);
-        void extractFAST(cv::Mat& leftIm, cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc);
+        void extractFAST(cv::Mat& leftIm, cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc, const std::vector<cv::Point2f>& prevPnts);
         void updateKeys(const int frame);
         void updateKeysGoodFeatures(const int frame);
         void updateKeysClose(const int frame);
@@ -172,6 +174,15 @@ class FeatureTracker
 
         void pointsInFrame(std::vector<cv::Point3d>& p3D);
 
+        bool inBorder(const cv::Point3d& p3d, cv::Point2d& p2d);
+        void checkInBorder(SubPixelPoints& pnts);
+        bool predProj(const cv::Point3d& p3d, cv::Point2d& p2d, const bool new3D);
+        void predictNewPnts(SubPixelPoints& pnts, const bool new3D);
+        void calcOptical(SubPixelPoints& pnts, const bool new3D);
+        void setPre3DPnts(SubPixelPoints& prePnts, SubPixelPoints& pnts);
+        void setPreviousValues();
+        void triangulate3DPoints(SubPixelPoints& pnts);
+        void findStereoFeatures(cv::Mat& leftIm, cv::Mat& rightIm, SubPixelPoints& pnts);
         void stereoFeatures(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts);
         void stereoFeaturesGoodFeatures(cv::Mat& lIm, cv::Mat& rIm, SubPixelPoints& pnts, const SubPixelPoints& prePnts);
         void stereoFeaturesMask(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts, const SubPixelPoints& prePnts);

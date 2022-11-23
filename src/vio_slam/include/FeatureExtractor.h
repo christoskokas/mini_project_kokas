@@ -21,6 +21,7 @@ struct SubPixelPoints
 {
     std::vector<cv::Point3d> points3D;
     std::vector<cv::Point2f> left;
+    std::vector<cv::Point2f> newPnts;
     std::vector<cv::Point2d> points2D;
     std::vector<cv::Point2f> right;
     std::vector<int> indexes3D;
@@ -40,6 +41,7 @@ struct SubPixelPoints
         reduceVectorTemp<cv::Point2d,T>(points2D,check);
         reduceVectorTemp<cv::Point2f,T>(left,check);
         reduceVectorTemp<cv::Point2f,T>(right,check);
+        reduceVectorTemp<cv::Point2f,T>(newPnts,check);
         reduceVectorTemp<float,T>(depth,check);
         reduceVectorTemp<bool,T>(useable,check);
     }

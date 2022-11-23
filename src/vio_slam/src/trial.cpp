@@ -2005,12 +2005,15 @@ void RobustMatcher2::testOpticalReDo()
     Timer all("all");
     SubPixelPoints points, prevPoints;
     // ft.initializeTrackingGoodFeatures();
-    ft.initializeTracking();
+
+    // ft.initializeTracking();
+    // ft.beginTrackingTrialClose(times);
+
+    ft.Track(times);
 
     // ft.beginTracking(times);
     // ft.beginTrackingTrial(times);
     // ft.beginTrackingGoodFeatures(times);
-    ft.beginTrackingTrialClose(times);
 
     
 

@@ -636,8 +636,8 @@ void FeatureExtractor::populateKeyDestribFAST(const cv::Mat& image, const std::v
     const size_t end(pnts.size());
     for (size_t i{0}; i < end; i ++)
     {
-        int iR = cvRound(pnts[i].y * multH);
-        int iC = cvRound(pnts[i].x * multW);
+        int iR = cvRound((pnts[i].y - edgeThreshold) * multH);
+        int iC = cvRound((pnts[i].x - edgeThreshold) * multW);
         if ( iR >= gridRows)
         {
             iR = gridRows - 1;
@@ -758,7 +758,8 @@ void FeatureExtractor::computeKeypointsFAST(cv::Mat& image, std::vector<cv::KeyP
             // Logging("fl",cv::norm(im,fl),3);
             if ( cv::norm(cellIm,fl) < mnContr)
                 continue;
-            cellKeys[iR][iC].reserve(5 * featuresPerCell);
+
+            cellKeys[iR][iC].reserve(featuresPerCell);
             cv::FAST(cellIm, cellKeys[iR][iC], maxFastThreshold,true);
             if (cellKeys[iR][iC].empty())
                 cv::FAST(cellIm, cellKeys[iR][iC], minFastThreshold,true);
@@ -2217,6 +2218,8 @@ void SubPixelPoints::clear()
     useable.clear();
     depth.clear();
     points2D.clear();
+    points3D.clear();
+    newPnts.clear();
 }
 
 int FeatureExtractor::getGridRows()
