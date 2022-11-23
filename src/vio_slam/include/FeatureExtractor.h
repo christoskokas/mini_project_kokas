@@ -20,6 +20,7 @@ namespace vio_slam
 struct SubPixelPoints
 {
     std::vector<cv::Point3d> points3D;
+    std::vector<cv::Point3d> points3DCurr;
     std::vector<cv::Point2f> left;
     std::vector<cv::Point2f> newPnts;
     std::vector<cv::Point2d> points2D;
@@ -38,6 +39,7 @@ struct SubPixelPoints
     void reduce(std::vector<T>& check)
     {
         reduceVectorTemp<cv::Point3d,T>(points3D,check);
+        reduceVectorTemp<cv::Point3d,T>(points3DCurr,check);
         reduceVectorTemp<cv::Point2d,T>(points2D,check);
         reduceVectorTemp<cv::Point2f,T>(left,check);
         reduceVectorTemp<cv::Point2f,T>(right,check);
@@ -50,9 +52,11 @@ struct SubPixelPoints
     void reduceWithInliers(std::vector<T>& check)
     {
         reduceVectorInliersTemp<cv::Point3d,T>(points3D,check);
+        reduceVectorInliersTemp<cv::Point3d,T>(points3DCurr,check);
         reduceVectorInliersTemp<cv::Point2f,T>(left,check);
-        reduceVectorInliersTemp<float,T>(depth,check);
-        reduceVectorInliersTemp<bool,T>(useable,check);
+        reduceVectorInliersTemp<cv::Point2f,T>(newPnts,check);
+        // reduceVectorInliersTemp<float,T>(depth,check);
+        // reduceVectorInliersTemp<bool,T>(useable,check);
     }
 
     template <typename T>

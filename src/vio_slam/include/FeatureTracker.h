@@ -174,13 +174,18 @@ class FeatureTracker
 
         void pointsInFrame(std::vector<cv::Point3d>& p3D);
 
-        bool inBorder(const cv::Point3d& p3d, cv::Point2d& p2d);
+        void checkRotTra(cv::Mat& Rvec, cv::Mat& tvec,cv::Mat& RvecN, cv::Mat& tvecN);
+        void estimatePoseN();
+        void optWithSolve(SubPixelPoints& pnts, cv::Mat& Rvec, cv::Mat& tvec, const bool new3D);
+        void solvePnPIni(SubPixelPoints& pnts, cv::Mat& Rvec, cv::Mat& tvec, const bool new3D);
+        bool inBorder(cv::Point3d& p3d, cv::Point2d& p2d);
         void checkInBorder(SubPixelPoints& pnts);
         bool predProj(const cv::Point3d& p3d, cv::Point2d& p2d, const bool new3D);
         void predictNewPnts(SubPixelPoints& pnts, const bool new3D);
         void calcOptical(SubPixelPoints& pnts, const bool new3D);
         void setPre3DPnts(SubPixelPoints& prePnts, SubPixelPoints& pnts);
         void setPreviousValues();
+        void setPreviousValuesIni();
         void triangulate3DPoints(SubPixelPoints& pnts);
         void findStereoFeatures(cv::Mat& leftIm, cv::Mat& rightIm, SubPixelPoints& pnts);
         void stereoFeatures(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts);

@@ -994,18 +994,18 @@ void FeatureMatcher::findStereoMatchesFAST(const cv::Mat& lImage, const cv::Mat&
         const float disparity {it->pt.x - kR.pt.x};
         if (disparity > 0.0f && disparity < zedptr->cameraLeft.fx)
         {
-            points.left.emplace_back(it->pt);
-            points.right.emplace_back(kR.pt);
-            matchesCount ++;
             const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
             // if false depth is unusable
-            points.depth.emplace_back(depth);
             if (depth < zedptr->mBaseline * closeNumber)
             {
+                points.left.emplace_back(it->pt);
+                points.right.emplace_back(kR.pt);
+                matchesCount ++;
+                points.depth.emplace_back(depth);
                 points.useable.emplace_back(true);
                 continue;
             }
-            points.useable.emplace_back(false);
+            // points.useable.emplace_back(false);
 
             // Logging("depth",depth,2);
         }

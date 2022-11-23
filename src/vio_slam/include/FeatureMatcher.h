@@ -38,7 +38,7 @@ class FeatureMatcher
         const int gridRows, gridCols;
         const int maxMatches {1000};
         const int mnDisp;
-        const int closeNumber {40};
+        const int closeNumber {80};
         const int thDist {75};
 
 
