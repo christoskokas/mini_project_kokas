@@ -16,6 +16,7 @@
 #include <iostream>
 #include <random>
 
+
 #define KEYSIM true
 #define MATCHESIM true
 #define OPTICALIM true
@@ -100,7 +101,7 @@ class FeatureTracker
         const int mnInKal {30};
         const int sampleSize {15};
         const int gridVelNumb {10};
-        const int maskRadius {3};
+        const int maskRadius {10};
 
         const double fx,fy,cx,cy;
 
@@ -174,6 +175,7 @@ class FeatureTracker
 
         void pointsInFrame(std::vector<cv::Point3d>& p3D);
 
+        void optimizePose(SubPixelPoints& prePnts, SubPixelPoints& pnts, cv::Mat& Rvec, cv::Mat& tvec);
         void checkRotTra(cv::Mat& Rvec, cv::Mat& tvec,cv::Mat& RvecN, cv::Mat& tvecN);
         void estimatePoseN();
         void optWithSolve(SubPixelPoints& pnts, cv::Mat& Rvec, cv::Mat& tvec, const bool new3D);

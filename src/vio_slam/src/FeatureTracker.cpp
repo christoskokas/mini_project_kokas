@@ -468,11 +468,18 @@ void FeatureTracker::setPre3DPnts(SubPixelPoints& prePnts, SubPixelPoints& pnts)
     const size_t end {pnts.points3D.size()};
     const size_t res { end + prePnts.points3D.size()};
 
+    cv::Mat mask;
+    setMask(prePnts, mask);
+
     prePnts.points3D.reserve(end);
     prePnts.left.reserve(end);
 
     for ( size_t iP = 0; iP < end; iP++ )
     {
+        if (mask.at<uchar>(pnts.left[iP]) == 0)
+        {
+            continue;
+        }
         const double x = pnts.points3D[iP].x;
         const double y = pnts.points3D[iP].y;
         const double z = pnts.points3D[iP].z;
@@ -546,10 +553,10 @@ void FeatureTracker::checkInBorder(SubPixelPoints& pnts)
         cv::Point2d pd((double)pnts.left[i].x, (double)pnts.left[i].y);
         if ( inBorder(pnts.points3DCurr[i], pd) )
         {
-            // cv::Point2f pf((float)pd.x, (float)pd.y);
-            // if ( pointsDist(pf,pnts.left[i]) <= 64 )
+            cv::Point2f pf((float)pd.x, (float)pd.y);
+            // if ( pointsDist(pf,pnts.left[i]) <= 4.0 )
             // {
-            //     pnts.left[i] = pf;
+                // pnts.left[i] = pf;
                 in[i] = true;
             // }
         }
@@ -587,7 +594,12 @@ void FeatureTracker::calcOptical(SubPixelPoints& pnts, const bool new3D)
     else
     {
         predictNewPnts(pnts, new3D);
-
+// #if OPTICALIM
+//     if ( new3D )
+//         drawOptical("pred new", pLIm.rIm,pnts.left, pnts.newPnts);
+//     else
+//         drawOptical("pred old", pLIm.rIm,pnts.left, pnts.newPnts);
+// #endif
         cv::calcOpticalFlowPyrLK(fIm, sIm, pnts.left, pnts.newPnts, inliers, err,cv::Size(21,21),1, criteria, cv::OPTFLOW_USE_INITIAL_FLOW);
 
     }
@@ -604,12 +616,12 @@ void FeatureTracker::calcOptical(SubPixelPoints& pnts, const bool new3D)
 
     pnts.reduce<uchar>(inliers);
 
-#if OPTICALIM
-    if ( new3D )
-        drawOptical("new", pLIm.rIm,pnts.left, pnts.newPnts);
-    else
-        drawOptical("old", pLIm.rIm,pnts.left, pnts.newPnts);
-#endif
+    // inliers.clear();
+    // cv::findFundamentalMat(pnts.left, pnts.newPnts,inliers, cv::FM_RANSAC, 2, 0.99);
+
+    // pnts.reduce<uchar>(inliers);
+
+
 }
 
 bool FeatureTracker::predProj(const cv::Point3d& p3d, cv::Point2d& p2d, const bool new3D)
@@ -675,7 +687,8 @@ void FeatureTracker::solvePnPIni(SubPixelPoints& pnts, cv::Mat& Rvec, cv::Mat& t
     std::vector<int>idxs;
 
 
-    cv::solvePnPRansac(pnts.points3DCurr, pnts.newPnts ,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true,100, 8.0f, 0.99, idxs);
+    cv::solvePnPRansac(pnts.points3DCurr, pnts.newPnts ,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true,100, 4.0f, 0.99, idxs);
+    // cv::solvePnP(pnts.points3DCurr, pnts.newPnts ,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true);
 
     pnts.reduceWithInliers<int>(idxs);
 
@@ -745,11 +758,85 @@ void FeatureTracker::estimatePoseN()
     prevPntsThread.join();
     pntsThread.join();
 
+#if OPTICALIM
+    drawOptical("new", pLIm.rIm,pnts.left, pnts.newPnts);
+    drawOptical("old", pLIm.rIm,prePnts.left, prePnts.newPnts);
+#endif
+
     checkRotTra(Rvec, tvec, RvecN, tvecN);
 
+    // optimizePose(prePnts, pnts, Rvec, tvec);
 
     poseEstKal(Rvec, tvec, uStereo);
 
+}
+
+void FeatureTracker::optimizePose(SubPixelPoints& prePnts, SubPixelPoints& pnts, cv::Mat& Rvec, cv::Mat& tvec)
+{
+    ceres::Problem problem;
+    // make initial guess
+
+
+    // double camera[6] {Rvec.at<double>(0), Rvec.at<double>(1), Rvec.at<double>(2), tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2)};
+    float roll = Rvec.at<double>(0), pitch = Rvec.at<double>(1), yaw = Rvec.at<double>(2);
+    Eigen::Quaterniond q;
+    q = Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX())
+    * Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY())
+    * Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ());
+std::cout << "Quaternion" << std::endl << q.coeffs() << std::endl;
+    std::cout << roll << " " << pitch << " " << yaw << std::endl;
+    std::cout << q.toRotationMatrix().transpose() << std::endl;
+    std::cout << q.toRotationMatrix() << std::endl;
+
+    double cameraR[4] {q.w(),q.x(), q.y(), q.z()};
+    double cameraT[3] {tvec.at<double>(0), tvec.at<double>(1), tvec.at<double>(2)};
+    // Logging("R", Rvec.at<double>(0),3);
+    // Logging("cam", camera[0],3);
+    
+    problem.AddParameterBlock(cameraR,4);
+    problem.AddParameterBlock(cameraT,3);
+    for (size_t i{0}, end{prePnts.points3DCurr.size()}; i < end; i++)
+    {
+        ceres::CostFunction* costf = OptimizePose::Create(prePnts.points3DCurr[i],cv::Point2d((double)prePnts.newPnts[i].x,(double)prePnts.newPnts[i].y), false);
+        
+        problem.AddResidualBlock(costf, new ceres::HuberLoss(2.44765) /* squared loss */, cameraR, cameraT);
+    }
+    // for (size_t i{0}, end{pnts.points3DCurr.size()}; i < end; i++)
+    // {
+    //     ceres::CostFunction* costf = OptimizePose::Create(pnts.points3DCurr[i],cv::Point2d((double)pnts.newPnts[i].x,(double)pnts.newPnts[i].y), true);
+        
+    //     problem.AddResidualBlock(costf, new ceres::HuberLoss(2.44765) /* squared loss */, cameraR, cameraT);
+    // }
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::SPARSE_SCHUR;
+    options.use_explicit_schur_complement = true;
+    
+    options.max_num_iterations = 100;
+    // options.max_solver_time_in_seconds = 0.05;
+
+    // options.trust_region_strategy_type = ceres::DOGLEG;
+    options.minimizer_progress_to_stdout = false;
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+    Logging("sum",summary.FullReport(),3);
+    q = Eigen::Quaterniond(cameraR[0],cameraR[1],cameraR[2],cameraR[3]);
+    auto euler = q.toRotationMatrix().eulerAngles(0,1,2);
+    // options.gradient_tolerance = 1e-16;
+    // options.function_tolerance = 1e-16;
+    // options.parameter_tolerance = 1e-16;
+    // double cost {0.0};
+    // problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, NULL, NULL, NULL);
+    // Logging("cost ", summary.final_cost,3);
+    // Logging("R bef", Rvec,3);
+    // Logging("T bef", tvec,3);
+    Rvec.at<double>(0) = euler[0];
+    Rvec.at<double>(1) = euler[1];
+    Rvec.at<double>(2) = euler[2];
+    tvec.at<double>(0) = cameraT[0];
+    tvec.at<double>(1) = cameraT[1];
+    tvec.at<double>(2) = cameraT[2];
+    // Logging("R after", Rvec,3);
+    // Logging("T after", tvec,3);
 }
 
 void FeatureTracker::optWithSolve(SubPixelPoints& pnts, cv::Mat& Rvec, cv::Mat& tvec, const bool new3D)
@@ -779,6 +866,7 @@ void FeatureTracker::Track(const int frames)
 
         estimatePoseN();
 
+        setPreviousValues();
 
         // calcOptical(pnts, true);
         // calcOptical(prePnts, false);
@@ -789,7 +877,6 @@ void FeatureTracker::Track(const int frames)
 
 
 
-        setPreviousValues();
         // if ( curFrame == 1 )
         //     opticalFlow();
         // else
@@ -1590,7 +1677,7 @@ void FeatureTracker::ceresClose(std::vector<cv::Point3d>& p3Dclose, std::vector<
     {
         ceres::CostFunction* costf = ReprojectionErrorMono::Create(p3Dclose[i],p2Dclose[i]);
         
-        problem.AddResidualBlock(costf, new ceres::HuberLoss(1.35) /* squared loss */, cameraR, cameraT);
+        problem.AddResidualBlock(costf, new ceres::HuberLoss(2.44765) /* squared loss */, cameraR, cameraT);
     }
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
@@ -1813,25 +1900,25 @@ void FeatureTracker::poseEstKal(cv::Mat& Rvec, cv::Mat& tvec, const size_t p3dsi
 {
     cv::Mat measurements = cv::Mat::zeros(6,1, CV_64F);
 
-    Logging("tvec", cv::norm(tvec,pTvec), 3);
-    Logging("Rvec", cv::norm(Rvec,pRvec), 3);
+    // Logging("tvec", cv::norm(tvec,pTvec), 3);
+    // Logging("Rvec", cv::norm(Rvec,pRvec), 3);
 
-    // Logging("tvec", tvec, 3);
-    // Logging("pTvec", pTvec, 3);
+    // // Logging("tvec", tvec, 3);
+    // // Logging("pTvec", pTvec, 3);
 
-    // Logging("Rvec", Rvec, 3);
-    // Logging("pRvec", pRvec, 3);
+    // // Logging("Rvec", Rvec, 3);
+    // // Logging("pRvec", pRvec, 3);
 
-    if ((cv::norm(tvec,pTvec) > 1.0f || cv::norm(Rvec,pRvec) > 0.5f) && curFrame != 1)
-    {
-        tvec = pTvec.clone();
-        Rvec = pRvec.clone();
-    }
-    else
-    {
-        pTvec = tvec.clone();
-        pRvec = Rvec.clone();
-    }
+    // if ((cv::norm(tvec,pTvec) > 1.0f || cv::norm(Rvec,pRvec) > 0.5f) && curFrame != 1)
+    // {
+    //     tvec = pTvec.clone();
+    //     Rvec = pRvec.clone();
+    // }
+    // else
+    // {
+    //     pTvec = tvec.clone();
+    //     pRvec = Rvec.clone();
+    // }
     lkal.fillMeasurements(measurements, tvec, Rvec);
 
 

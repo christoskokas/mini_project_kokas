@@ -7,6 +7,7 @@
 #include <ceres/ceres.h>
 #include <ceres/rotation.h>
 #include <sophus/se3.hpp>
+#include "opencv2/core.hpp"
 
 namespace vio_slam
 {
@@ -320,6 +321,95 @@ private:
     // double K[4] = {265.795, 265.6975, 338.7225, 186.95575}; // fx,fy,cx,cy
 
 };
+
+class OptimizePose
+{
+public:
+
+    OptimizePose(const cv::Point3d& point, const cv::Point2d& obs, const bool new3D)
+        : point(point), obs(obs), new3D(new3D)
+    {
+    }
+
+    template<typename T>
+    bool operator()(const T* const cameraR, const T* const cameraT, T* residuals) const
+    {
+        T pt1[3];
+        pt1[0] = T(point.x);
+        pt1[1] = T(point.y);
+        pt1[2] = T(point.z);
+
+        T p[3];
+
+        // if ( new3D )
+        // {
+        //     cv::Mat Rvec = cv::Mat::zeros(3,1, CV_64F);
+        //     Rvec.at<double>(0) = T(cameraR[0]);
+        //     Rvec.at<double>(1) = T(cameraR[1]);
+        //     Rvec.at<double>(2) = T(cameraR[2]);
+            
+        //     cv::Mat Rot;
+        //     cv::Rodrigues(Rvec,Rot);
+        //     cv::transpose(Rot, Rot);
+        //     cv::Rodrigues(Rot,Rvec);
+
+        //     T Trot[3];
+
+        //     Trot[0] = T(Rvec.at<double>(0));
+        //     Trot[1] = T(Rvec.at<double>(1));
+        //     Trot[2] = T(Rvec.at<double>(2));
+
+        //     ceres::AngleAxisRotatePoint(Trot, pt1, p);
+
+        //     p[0] -= cameraT[0];
+        //     p[1] -= cameraT[1];
+        //     p[2] -= cameraT[2];
+        // }
+        // else
+        // {
+
+        //     ceres::AngleAxisRotatePoint(cameraR, pt1, p);
+
+        //     p[0] += cameraT[0];
+        //     p[1] += cameraT[1];
+        //     p[2] += cameraT[2];
+        // }
+        ceres::QuaternionRotatePoint(cameraR, pt1, p);
+        // ceres::AngleAxisRotatePoint(cameraR, pt1, p);
+
+            p[0] += cameraT[0];
+            p[1] += cameraT[1];
+            p[2] += cameraT[2];
+
+        T predicted_x;
+        T predicted_y;
+        predicted_x = T(p[0]*K[0]/p[2] + K[2]);
+        predicted_y = T(p[1]*K[1]/p[2] + K[3]);
+
+        residuals[0] = predicted_x - T(obs.x);
+        residuals[1] = predicted_y - T(obs.y);
+
+
+        return true;
+    }
+
+    static ceres::CostFunction* Create(const cv::Point3d& point, const cv::Point2d& obs, const bool new3D)
+    {
+        return (new ceres::AutoDiffCostFunction<OptimizePose, 2, 4, 3>(
+                        new OptimizePose(point, obs, new3D)));
+    }
+
+private:
+    cv::Point3d point;
+    cv::Point2d obs;
+    bool new3D;
+    double observed_x;
+    double observed_y;
+    // Camera intrinsics
+    double K[4] = {718.856, 718.856, 607.1928, 185.2157}; // fx,fy,cx,cy
+
+};
+
 
 } // namespace vio_slam
 
