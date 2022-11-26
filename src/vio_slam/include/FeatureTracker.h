@@ -101,7 +101,7 @@ class FeatureTracker
         const int mnInKal {30};
         const int sampleSize {15};
         const int gridVelNumb {10};
-        const int maskRadius {10};
+        const int maskRadius {20};
 
         const double fx,fy,cx,cy;
 
@@ -175,6 +175,8 @@ class FeatureTracker
 
         void pointsInFrame(std::vector<cv::Point3d>& p3D);
 
+        bool checkOutlier(const Eigen::Matrix4d& estimatedP, const cv::Point3d& p3d, const cv::Point2f& obs, const double thres);
+        int checkOutliers(const Eigen::Matrix4d& estimatedP, const std::vector<cv::Point3d>& p3d, const std::vector<cv::Point2f>& obs, std::vector<bool>& inliers, const double thres);
         void optimizePose(SubPixelPoints& prePnts, SubPixelPoints& pnts, cv::Mat& Rvec, cv::Mat& tvec);
         void checkRotTra(cv::Mat& Rvec, cv::Mat& tvec,cv::Mat& RvecN, cv::Mat& tvecN);
         void estimatePoseN();

@@ -12,6 +12,7 @@
 #include "opencv2/core.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include <future>
+#include <numeric>
 
 namespace vio_slam
 {
@@ -96,7 +97,7 @@ class FeatureExtractor
     const int maxFastThreshold;
     const int minFastThreshold;
     const bool nonMaxSuppression;
-    const int mnContr {-100};
+    const int mnContr {0};
 
 #if KITTI_DATASET
     const int gridRows {30};
@@ -138,14 +139,16 @@ class FeatureExtractor
 
         FeatureChoice choice;
         
-        FeatureExtractor(const int _nfeatures = 2000, const int _nLevels = 1, const float _imScale = 1.3f, const int _edgeThreshold = 20, const int _patchSize = 31, const int _maxFastThreshold = 20, const int _minFastThreshold = 7, const bool _nonMaxSuppression = true);
+        FeatureExtractor(const int _nfeatures = 2000, const int _nLevels = 8, const float _imScale = 1.2f, const int _edgeThreshold = 20, const int _patchSize = 31, const int _maxFastThreshold = 20, const int _minFastThreshold = 7, const bool _nonMaxSuppression = true);
         
         int getGridRows();
         int getGridCols();
 
-
+        std::vector<cv::KeyPoint> ssc(std::vector<cv::KeyPoint> keyPoints, int numRetPoints,
+                         float tolerance, int cols, int rows);
 
         void computeKeypointsOld(cv::Mat& image, std::vector <cv::KeyPoint>& keypoints, cv::Mat& desc, const bool right);
+        void computeKeypointsOld2(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts, cv::Mat& descriptors, const bool right);
         void computeKeypoints(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts, cv::Mat& descriptors, const bool right);
         void computeKeypointsFAST(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts);
         void computeDescriptorsFAST(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors);

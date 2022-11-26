@@ -8,3 +8,5 @@ src/Plotting/.vscode
 src/vio_slam/Thirdparty/Sophus/build
 src/vio_slam/Thirdparty/Sophus/examples
 src/vio_slam/Thirdparty/Sophus/py
+src/vio_slam/Thirdparty/ceres-solver-2.1.0/build
+src/vio_slam/Thirdparty/ceres-solver-2.1.0/data

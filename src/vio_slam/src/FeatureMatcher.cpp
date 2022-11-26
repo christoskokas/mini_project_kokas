@@ -883,10 +883,9 @@ void FeatureMatcher::findStereoMatchesFAST(const cv::Mat& lImage, const cv::Mat&
 
     const size_t leftEnd {keypoints.left.size()};
 
-    points.left.reserve(keypoints.left.size());
-    points.right.reserve(keypoints.right.size());
+    points.left.reserve(leftEnd);
+    points.right.reserve(leftEnd);
     int leftRow {0};
-    int matchesCount {0};
 
     const float minZ = zedptr->mBaseline;
     const float minD = 0;
@@ -984,7 +983,6 @@ void FeatureMatcher::findStereoMatchesFAST(const cv::Mat& lImage, const cv::Mat&
         if (delta > 1 || delta < -1)
             continue;
 
-        matchesCount++;
         
 
         kR.pt.x = ((float)xRKey + (float)bestX + delta);
@@ -996,16 +994,15 @@ void FeatureMatcher::findStereoMatchesFAST(const cv::Mat& lImage, const cv::Mat&
         {
             const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
             // if false depth is unusable
+            points.left.emplace_back(it->pt);
+            points.right.emplace_back(kR.pt);
+            points.depth.emplace_back(depth);
             if (depth < zedptr->mBaseline * closeNumber)
             {
-                points.left.emplace_back(it->pt);
-                points.right.emplace_back(kR.pt);
-                matchesCount ++;
-                points.depth.emplace_back(depth);
                 points.useable.emplace_back(true);
                 continue;
             }
-            // points.useable.emplace_back(false);
+            points.useable.emplace_back(false);
 
             // Logging("depth",depth,2);
         }
@@ -2004,9 +2001,10 @@ void FeatureMatcher::checkDepthChange(const cv::Mat& leftImage, const cv::Mat& r
     const size_t end{points.left.size()};
     for (size_t i{0}; i < end; i ++)
     {
-        if ( points.useable[i] )
-            continue;
-        const int pDisp {cvRound(((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/points.depth[i])};
+        // if ( points.useable[i] )
+        //     continue;
+        const float de = points.points3D[i].z;
+        const int pDisp {cvRound(((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/de)};
         const int xStart {- windowMovementX};
         const int xEnd {windowMovementX + 1};
         int bestDist {INT_MAX};
@@ -2074,19 +2072,19 @@ void FeatureMatcher::checkDepthChange(const cv::Mat& leftImage, const cv::Mat& r
             // if false depth is unusable
             if (depth < zedptr->mBaseline * closeNumber)
             {
-                points.depth[i] = depth;
+                // points.depth[i] = depth;
                 const double fx {zedptr->cameraLeft.fx};
                 const double fy {zedptr->cameraLeft.fy};
                 const double cx {zedptr->cameraLeft.cx};
                 const double cy {zedptr->cameraLeft.cy};
 
-                const double zp = (double)points.depth[i];
+                const double zp = (double)depth;
                 const double xp = (double)(((double)points.left[i].x-cx)*zp/fx);
                 const double yp = (double)(((double)points.left[i].y-cy)*zp/fy);
                 Eigen::Vector4d p4d(xp,yp,zp,1);
                 p4d = zedptr->cameraPose.pose * p4d;
                 points.points3D[i] = cv::Point3d(p4d(0),p4d(1),p4d(2));
-                points.useable[i] = true;
+                // points.useable[i] = true;
                 continue;
             }
         }
@@ -2225,9 +2223,8 @@ void FeatureMatcher::destributeRightKeys(const std::vector < cv::KeyPoint >& rig
     for (it = rightKeys.begin(); it != end; it++, count ++)
     {
         const int yKey = cvRound((*it).pt.y);
-        const float rad = 2.0f * feLeft->scalePyramid[it->octave];
-        const int mn = cvFloor(yKey - rad);
-        const int mx = cvCeil(yKey + rad);
+        const int mn = yKey - stereoYSpan;
+        const int mx = yKey + stereoYSpan;
         
 
         for (int32_t pos = mn; pos <= mx; pos++)

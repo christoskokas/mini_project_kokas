@@ -3,7 +3,11 @@ set(CMAKE_CXX_STANDARD 17)
 project(vio_slam)
 
 
-
+# set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_CXX_FLAGS "-std=c++11")
+#-DEIGEN_USE_MKL_ALL")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
+# set(CMAKE_BUILD_TYPE Debug)
 find_package(OpenCV 4.2.0)
 if(NOT OpenCV_FOUND)
   find_package(OpenCV 3.2)
