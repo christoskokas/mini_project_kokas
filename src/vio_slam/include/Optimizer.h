@@ -326,8 +326,8 @@ class OptimizePose
 {
 public:
 
-    OptimizePose(const Eigen::Matrix3d& K, const Eigen::Vector3d& point, const Eigen::Vector2d& observation, const bool new3D)
-        : K_(K), point_(point), observation_(observation), new3D(new3D)
+    OptimizePose(const Eigen::Matrix3d& K, const Eigen::Vector3d& point, const Eigen::Vector2d& observation, const float weight)
+        : K_(K), point_(point), observation_(observation), weight_(weight)
     {
     }
 
@@ -357,69 +357,24 @@ public:
         residuals[1] =
             observation_.template cast<T>()[1] - projected[1] / projected[2];
 
-        // if ( new3D )
-        // {
-        //     cv::Mat Rvec = cv::Mat::zeros(3,1, CV_64F);
-        //     Rvec.at<double>(0) = T(cameraR[0]);
-        //     Rvec.at<double>(1) = T(cameraR[1]);
-        //     Rvec.at<double>(2) = T(cameraR[2]);
-            
-        //     cv::Mat Rot;
-        //     cv::Rodrigues(Rvec,Rot);
-        //     cv::transpose(Rot, Rot);
-        //     cv::Rodrigues(Rot,Rvec);
 
-        //     T Trot[3];
-
-        //     Trot[0] = T(Rvec.at<double>(0));
-        //     Trot[1] = T(Rvec.at<double>(1));
-        //     Trot[2] = T(Rvec.at<double>(2));
-
-        //     ceres::AngleAxisRotatePoint(Trot, pt1, p);
-
-        //     p[0] -= cameraT[0];
-        //     p[1] -= cameraT[1];
-        //     p[2] -= cameraT[2];
-        // }
-        // else
-        // {
-
-        //     ceres::AngleAxisRotatePoint(cameraR, pt1, p);
-
-        //     p[0] += cameraT[0];
-        //     p[1] += cameraT[1];
-        //     p[2] += cameraT[2];
-        // }
-        // ceres::QuaternionRotatePoint(cameraR, pt1, p);
-        // // ceres::AngleAxisRotatePoint(cameraR, pt1, p);
-
-        //     p[0] += cameraT[0];
-        //     p[1] += cameraT[1];
-        //     p[2] += cameraT[2];
-
-        // T predicted_x;
-        // T predicted_y;
-        // predicted_x = T(p[0]*K[0]/p[2] + K[2]);
-        // predicted_y = T(p[1]*K[1]/p[2] + K[3]);
-
-        // residuals[0] = predicted_x - T(obs.x);
-        // residuals[1] = predicted_y - T(obs.y);
-
+        residuals[0] = T(weight_) * residuals[0];
+        residuals[1] = T(weight_) * residuals[1];
 
         return true;
     }
 
-    static ceres::CostFunction* Create(const Eigen::Matrix3d& K, const Eigen::Vector3d& point, const Eigen::Vector2d& observation, const bool new3D)
+    static ceres::CostFunction* Create(const Eigen::Matrix3d& K, const Eigen::Vector3d& point, const Eigen::Vector2d& observation, const float weight)
     {
         return (new ceres::AutoDiffCostFunction<OptimizePose, 2, 3, 4>(
-                        new OptimizePose(K, point, observation, new3D)));
+                        new OptimizePose(K, point, observation, weight)));
     }
 
 private:
     const Eigen::Vector2d observation_;
     const Eigen::Vector3d point_;
     const Eigen::Matrix3d& K_;
-    bool new3D;
+    const float weight_;
     double observed_x;
     double observed_y;
     // Camera intrinsics

@@ -808,8 +808,8 @@ void FeatureExtractor::computeKeypointsFAST(cv::Mat& image, std::vector<cv::KeyP
 
     const int desiredFeaturesGridL = cvRound((float)(nFeatures)/(2*gridsWKeysL));
     const int desiredFeaturesGridR = cvRound((float)(nFeatures)/(2*gridsWKeysR));
-    Logging("left bef", nKeysLeft,3);
-    Logging("Right bef", nKeysRight,3);
+    // Logging("left bef", nKeysLeft,3);
+    // Logging("Right bef", nKeysRight,3);
     nKeysLeft = 0;
     nKeysRight = 0;
 
@@ -847,9 +847,9 @@ void FeatureExtractor::computeKeypointsFAST(cv::Mat& image, std::vector<cv::KeyP
             }
         }
     }
-    Logging("left", nKeysLeft,3);
-    Logging("Right", nKeysRight,3);
-    Logging("keys size", keypoints.size(),3);
+    // Logging("left", nKeysLeft,3);
+    // Logging("Right", nKeysRight,3);
+    // Logging("keys size", keypoints.size(),3);
     // std::vector<float> responseVector;
     // for (unsigned int i = 0; i < keypoints.size(); i++)
     //     responseVector.push_back(keypoints[i].response);

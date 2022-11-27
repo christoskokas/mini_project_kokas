@@ -110,8 +110,8 @@ void PoseEstimator::convertToEigenMat(cv::Mat& Rvec, cv::Mat& tvec, Eigen::Matri
 
     Eigen::Matrix3d Reig;
     Eigen::Vector3d teig;
-    cv::cv2eigen(Rvec.t(),Reig);
-    cv::cv2eigen(-tvec,teig);
+    cv::cv2eigen(Rvec,Reig);
+    cv::cv2eigen(tvec,teig);
 
     transform.setIdentity();
     transform.block<3,3>(0,0) = Reig;

@@ -117,6 +117,8 @@ class FeatureTracker
         int keyNumb {0};
         int curFrame {0};
 
+        float leftRight {0};
+
         bool addFeatures {false};
         bool bigRot {false};
         bool redo {false};
@@ -138,6 +140,7 @@ class FeatureTracker
         PoseEstimator pE;
         FeatureData fd;
 
+        
 
         const double dt;
         LKalmanFilter lkal;
@@ -175,6 +178,8 @@ class FeatureTracker
 
         void pointsInFrame(std::vector<cv::Point3d>& p3D);
 
+
+        void calcWeights(const SubPixelPoints& pnts, std::vector<float>& weights);
         bool checkOutlier(const Eigen::Matrix4d& estimatedP, const cv::Point3d& p3d, const cv::Point2f& obs, const double thres);
         int checkOutliers(const Eigen::Matrix4d& estimatedP, const std::vector<cv::Point3d>& p3d, const std::vector<cv::Point2f>& obs, std::vector<bool>& inliers, const double thres);
         void optimizePose(SubPixelPoints& prePnts, SubPixelPoints& pnts, cv::Mat& Rvec, cv::Mat& tvec);
