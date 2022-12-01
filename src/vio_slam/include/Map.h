@@ -15,9 +15,17 @@
 #include <string>
 #include <iostream>
 #include <random>
+#include <unordered_map>
 
 namespace vio_slam
 {
+
+struct Observation
+{
+    int frameId {};
+
+    cv::KeyPoint obs;
+};
 
 class MapPoint
 {
@@ -25,9 +33,29 @@ class MapPoint
 
     public:
 
-        Eigen::Vector4d point;
+        Eigen::Vector4d wp;
         int trackCnt {0};
-        bool inFrame {false};
+        std::vector<Observation> obs;
+        cv::Mat desc;
+
+        bool inFrame {true};
+        bool isOutlier {false};
+
+        int keyFrameNb {0};
+        const int idx;
+        const int kdx;
+
+        bool getPosInFrame();
+        void SetInFrame(bool infr);
+        void SetIsOutlier(bool isOut);
+        bool GetIsOutlier();
+        bool GetInFrame();
+        MapPoint(Eigen::Vector4d& p, const int _kdx, const int _iddx);
+
+
+        void addTCnt();
+
+        Eigen::Vector4d getWordPose();
 };
 
 class Map
@@ -35,8 +63,13 @@ class Map
     private:
 
     public:
-
-        std::vector<MapPoint> Points;
+        std::unordered_map<unsigned long, KeyFrame*> keyFrames;
+        std::unordered_map<unsigned long, MapPoint*> mapPoints;
+        unsigned long kIdx {0};
+        unsigned long pIdx {0};
+        Map(){};
+        void addMapPoint(Eigen::Vector4d& p);
+        void addKeyFrame(Eigen::Matrix4d _pose, const int _numb);
 };
 
 } // namespace vio_slam

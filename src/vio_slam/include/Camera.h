@@ -99,7 +99,7 @@ class Zed_Camera
         
         cv::Mat sensorsTranslate {};
         cv::Mat sensorsRotate {};
-        Zed_Camera(ConfigFile& yamlFile);
+        Zed_Camera(ConfigFile* yamlFile);
         ~Zed_Camera();
         void setCameraMatrices();
         void setCameraValues();

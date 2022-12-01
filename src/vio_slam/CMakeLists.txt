@@ -63,6 +63,8 @@ src/PoseEstimator.cpp
 src/FeatureManager.cpp
 src/KeyFrame.cpp
 src/FeatureTracker.cpp
+src/System.cpp
+src/Map.cpp
 include/Camera.h
 include/FeatureDrawer.h
 include/Frame.h
@@ -75,6 +77,7 @@ include/FeatureManager.h
 include/KeyFrame.h
 include/FeatureTracker.h
 include/Map.h
+include/System.h
 )
 
 add_subdirectory(Thirdparty/Sophus)

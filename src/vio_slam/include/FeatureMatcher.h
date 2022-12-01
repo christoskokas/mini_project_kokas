@@ -60,6 +60,9 @@ class FeatureMatcher
 
         void stereoMatch(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector<cv::KeyPoint>& leftKeys, std::vector<cv::KeyPoint>& rightKeys, const cv::Mat& leftDesc, const cv::Mat& rightDesc, std::vector <cv::DMatch>& matches, SubPixelPoints& points);
 
+        void findStereoMatchesCloseFar(const cv::Mat& lImage, const cv::Mat& rImage, const cv::Mat& rightDesc,  std::vector<cv::KeyPoint>& rightKeys, TrackedKeys& keysLeft);
+
+        void findMatchesWD(const cv::Mat& lImage, const cv::Mat& rImage, const StereoDescriptors& desc, PointsWD& points, StereoKeypoints& keypoints);
         void findStereoMatchesFAST(const cv::Mat& lImage, const cv::Mat& rImage, const StereoDescriptors& desc, SubPixelPoints& points, StereoKeypoints& keypoints);
         void findStereoMatches(const StereoDescriptors& desc, SubPixelPoints& points, StereoKeypoints& keypoints);
         void findStereoMatchesClose(const StereoDescriptors& desc, SubPixelPoints& points, StereoKeypoints& keypoints);

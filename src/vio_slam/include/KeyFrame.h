@@ -18,15 +18,28 @@ class KeyFrame
 
     public:
         CameraPose pose;
+        cv::Mat leftIm, rightIm;
         std::vector<cv::Point3d> points3D;
         Eigen::MatrixXd homoPoints3D;
         const int numb;
 
         KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, const int _numb = 0);
         KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, Eigen::MatrixXd _homoPoints3D, const int _numb = 0);
+        KeyFrame(Eigen::Matrix4d _pose, const int _numb);
         Eigen::Vector4d getWorldPosition(int idx);
 
         Eigen::Matrix4d getPose();
+};
+
+class AllKeyFrames
+{
+    private:
+
+    public:
+
+        std::vector<KeyFrame*> allKeyFrames;
+
+
 };
 
 } // namespace vio_slam

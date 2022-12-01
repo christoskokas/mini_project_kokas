@@ -37,9 +37,9 @@ void CameraPose::setInvPose(Eigen::Matrix4d poseT)
     poseInverse = poseT;
 }
 
-Zed_Camera::Zed_Camera(ConfigFile& yamlFile)
+Zed_Camera::Zed_Camera(ConfigFile* yamlFile)
 {
-    confFile = &yamlFile;
+    confFile = yamlFile;
     this->rectified = confFile->getValue<bool>("rectified");
     numOfFrames = confFile->getValue<int>("numOfFrames");
 #if KITTI_DATASET

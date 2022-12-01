@@ -17,11 +17,41 @@
 namespace vio_slam
 {
 
+struct TrackedKeys
+{
+    std::vector<cv::KeyPoint> keyPoints;
+    std::vector<int> rightIdxs;
+    std::vector<float> estimatedDepth;
+    std::vector<bool> close;
+    std::vector<bool> opticalStatus;
+    std::vector<int> trackCnt;
+    cv::Mat Desc;
+};
+
+struct PointsWD
+{
+    std::vector<cv::Point2f> left;
+    std::vector<cv::Point2f> predLeft;
+    std::vector<cv::Point3d> points3D;
+    std::vector<cv::Point3d> prevPoints3D;
+    std::vector<double> depth;
+
+    template <typename T>
+    void reduce(std::vector<T>& check)
+    {
+        reduceVectorTemp<cv::Point3d,T>(points3D,check);
+        reduceVectorTemp<cv::Point3d,T>(prevPoints3D,check);
+        reduceVectorTemp<cv::Point2f,T>(left,check);
+        reduceVectorTemp<cv::Point2f,T>(predLeft,check);
+        reduceVectorTemp<double,T>(depth,check);
+    }
+};
 
 struct SubPixelPoints
 {
     std::vector<cv::Point3d> points3D;
     std::vector<cv::Point3d> points3DCurr;
+    std::vector<cv::Point3d> points3DStereo;
     std::vector<cv::Point2f> left;
     std::vector<cv::Point2f> newPnts;
     std::vector<cv::Point2d> points2D;
@@ -120,6 +150,8 @@ class FeatureExtractor
 
 
     public:
+
+        int maskRadius {5};
     
         std::vector <cv::Mat> imagePyramid;
         std::vector < float > scalePyramid;
@@ -150,9 +182,9 @@ class FeatureExtractor
         void computeKeypointsOld(cv::Mat& image, std::vector <cv::KeyPoint>& keypoints, cv::Mat& desc, const bool right);
         void computeKeypointsOld2(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts, cv::Mat& descriptors, const bool right);
         void computeKeypoints(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts, cv::Mat& descriptors, const bool right);
-        void computeKeypointsFAST(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts);
+        void computeKeypointsFAST(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
         void computeDescriptorsFAST(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors);
-        void computeFASTandDesc(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts, cv::Mat& descriptors);
+        void computeFASTandDesc(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts, cv::Mat& descriptors);
 
         void findFeatures(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
@@ -163,7 +195,9 @@ class FeatureExtractor
         void populateKeyDestrib(const std::vector<cv::Point2f>& pnts, std::vector<std::vector<int>>& keyDestrib);
         void populateKeyDestribFAST(const cv::Mat& image, const std::vector<cv::Point2f>& pnts, std::vector<std::vector<int>>& keyDestribution);
 
-
+        void computeKeypointsFASTLeft(const cv::Mat& image, const cv::Mat& mask, std::vector<cv::KeyPoint>& keypoints);
+        void setMask(const std::vector<cv::KeyPoint>& prevKeys, cv::Mat& mask);
+        void extractLeftFeatures(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& desc, const std::vector<cv::KeyPoint>& prevKeys);
         void extractFeatures(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
         void extractFeaturesClose(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
         void extractFeaturesCloseMask(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints, const cv::Mat& mask);

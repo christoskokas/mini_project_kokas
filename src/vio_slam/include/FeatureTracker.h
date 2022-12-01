@@ -5,6 +5,7 @@
 
 #include "Camera.h"
 #include "KeyFrame.h"
+#include "Map.h"
 #include "PoseEstimator.h"
 #include "FeatureManager.h"
 #include "FeatureExtractor.h"
@@ -94,6 +95,8 @@ class FeatureTracker
         const int waitImOpt {1};
         const int waitImPro {1};
         const int waitImRep {1};
+        const int waitImClo {1};
+        const int waitTrials {1};
         const int mnSize {100};
         const int mxSize {400};
         const int highSpeed {15};
@@ -101,7 +104,7 @@ class FeatureTracker
         const int mnInKal {30};
         const int sampleSize {15};
         const int gridVelNumb {10};
-        const int maskRadius {20};
+        const int maskRadius {15};
 
         const double fx,fy,cx,cy;
 
@@ -140,7 +143,9 @@ class FeatureTracker
         PoseEstimator pE;
         FeatureData fd;
 
-        
+        Map* map;
+
+        TrackedKeys prevLeftPnts;
 
         const double dt;
         LKalmanFilter lkal;
@@ -156,18 +161,21 @@ class FeatureTracker
 
     public :
 
-        FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr);
+        
+
+        FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map);
 
         void initializeTracking();
         void initializeTrackingGoodFeatures();
         void Track(const int frames);
+        void Track2(const int frames);
         void beginTracking(const int frames);
         void beginTrackingTrial(const int frames);
         void beginTrackingTrialClose(const int frames);
         void beginTrackingGoodFeatures(const int frames);
 
         void extractORB(cv::Mat& leftIm, cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc);
-        void extractFAST(cv::Mat& leftIm, cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc, const std::vector<cv::Point2f>& prevPnts);
+        void extractFAST(const cv::Mat& leftIm, const cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc, const std::vector<cv::Point2f>& prevPnts);
         void updateKeys(const int frame);
         void updateKeysGoodFeatures(const int frame);
         void updateKeysClose(const int frame);
@@ -178,10 +186,24 @@ class FeatureTracker
 
         void pointsInFrame(std::vector<cv::Point3d>& p3D);
 
+        void computeOpticalLeft(TrackedKeys& keysLeft);
+        void computeStereoMatches(TrackedKeys& keysLeft, std::vector<cv::KeyPoint>& prevLeftKeys);
 
+        void findFeaturesTh(const cv::Mat& lim, const cv::Mat& rim, const cv::Mat& pLim, const cv::Mat& pRim, PointsWD& pnts);
+
+        void addNewPoints(PointsWD& pntsWD);
+
+        void calcOpticalFlowPrev(SubPixelPoints& pnts);
+
+        void predictPntsWD(PointsWD& pnts);
+        bool predictProjWD(const float depth, const cv::Point2f& p2f, cv::Point3d& p3d, cv::Point2f& p2fOut);
+
+        void estimatePoseWD(const PointsWD& pnts);
+        void opticalLeft(const cv::Mat& lim, const cv::Mat& pLim, const cv::Mat& pRim, PointsWD& leftP);
+        void findFastF(const cv::Mat& im, std::vector<cv::Point2f>& pnts);
         void calcWeights(const SubPixelPoints& pnts, std::vector<float>& weights);
-        bool checkOutlier(const Eigen::Matrix4d& estimatedP, const cv::Point3d& p3d, const cv::Point2f& obs, const double thres);
-        int checkOutliers(const Eigen::Matrix4d& estimatedP, const std::vector<cv::Point3d>& p3d, const std::vector<cv::Point2f>& obs, std::vector<bool>& inliers, const double thres);
+        bool checkOutlier(const Eigen::Matrix4d& estimatedP, const cv::Point3d& p3d, const cv::Point2f& obs, const double thres, const float weight, cv::Point2f& out2d);
+        int checkOutliers(const Eigen::Matrix4d& estimatedP, const std::vector<cv::Point3d>& p3d, const std::vector<cv::Point2f>& obs, std::vector<bool>& inliers, const double thres, const std::vector<float>& weights);
         void optimizePose(SubPixelPoints& prePnts, SubPixelPoints& pnts, cv::Mat& Rvec, cv::Mat& tvec);
         void checkRotTra(cv::Mat& Rvec, cv::Mat& tvec,cv::Mat& RvecN, cv::Mat& tvecN);
         void estimatePoseN();
@@ -192,10 +214,12 @@ class FeatureTracker
         bool predProj(const cv::Point3d& p3d, cv::Point2d& p2d, const bool new3D);
         void predictNewPnts(SubPixelPoints& pnts, const bool new3D);
         void calcOptical(SubPixelPoints& pnts, const bool new3D);
+        void calcOpticalFlow(SubPixelPoints& pnts);
         void setPre3DPnts(SubPixelPoints& prePnts, SubPixelPoints& pnts);
         void setPreviousValues();
         void setPreviousValuesIni();
         void triangulate3DPoints(SubPixelPoints& pnts);
+        void findFeaturesWD(const cv::Mat& leftIm, const cv::Mat& rightIm, PointsWD& pnts);
         void findStereoFeatures(cv::Mat& leftIm, cv::Mat& rightIm, SubPixelPoints& pnts);
         void stereoFeatures(cv::Mat& lIm, cv::Mat& rIm, std::vector<cv::DMatch>& matches, SubPixelPoints& pnts);
         void stereoFeaturesGoodFeatures(cv::Mat& lIm, cv::Mat& rIm, SubPixelPoints& pnts, const SubPixelPoints& prePnts);
@@ -282,6 +306,8 @@ class FeatureTracker
                 cv::waitKey(waitImRep);
 
         }
+
+        void drawKeyPointsCloseFar(const char* com, const cv::Mat& im, const TrackedKeys& keysLeft, const std::vector<cv::KeyPoint>& right);
 
         void calcGridVel();
         bool checkProjection3D(cv::Point3d& point3D, cv::Point2d& point2d);

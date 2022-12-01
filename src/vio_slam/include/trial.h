@@ -5,6 +5,7 @@
 
 #include "Camera.h"
 #include "KeyFrame.h"
+#include "Map.h"
 #include "PoseEstimator.h"
 #include "FeatureManager.h"
 #include "FeatureExtractor.h"
@@ -184,7 +185,7 @@ class RobustMatcher2 {
 
     }
 
-    void beginTest();
+    void beginTest(Map* map);
 
     void ImagesCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
 
@@ -246,7 +247,7 @@ class RobustMatcher2 {
     void testFeatureExtractorClass();
     void testFeatureMatcherOptical();
     void testFeatureMatcherStable3D();
-    void testOpticalReDo();
+    void testOpticalReDo(Map* map);
     
 };
 

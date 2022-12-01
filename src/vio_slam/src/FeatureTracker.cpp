@@ -74,7 +74,7 @@ void FeatureData::compute3DPoints(SubPixelPoints& prePnts, const int keyNumb)
     }
 }
 
-FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr) : zedPtr(_zedPtr), fm(zedPtr, &feLeft, &feRight, zedPtr->mHeight,feLeft.getGridRows(), feLeft.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1.0f/(double)zedPtr->mFps), lkal(dt), datafile(filepath), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy)
+FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map) : zedPtr(_zedPtr), map(_map), fm(zedPtr, &feLeft, &feRight, zedPtr->mHeight,feLeft.getGridRows(), feLeft.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1.0f/(double)zedPtr->mFps), lkal(dt), datafile(filepath), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy)
 {
     rmap[0][0] = _rmap[0][0];
     rmap[0][1] = _rmap[0][1];
@@ -193,7 +193,7 @@ void FeatureTracker::extractORB(cv::Mat& leftIm, cv::Mat& rightIm, StereoKeypoin
     extractRight.join();
 }
 
-void FeatureTracker::extractFAST(cv::Mat& leftIm, cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc, const std::vector<cv::Point2f>& prevPnts)
+void FeatureTracker::extractFAST(const cv::Mat& leftIm, const cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc, const std::vector<cv::Point2f>& prevPnts)
 {
     Timer fast("FAST");
     std::thread extractLeft(&FeatureExtractor::computeFASTandDesc, std::ref(feLeft), std::ref(leftIm), std::ref(keys.left), std::ref(prevPnts), std::ref(desc.left));
@@ -472,7 +472,7 @@ void FeatureTracker::findStereoFeatures(cv::Mat& leftIm, cv::Mat& rightIm, SubPi
     // }
     // pnts.reduce<bool>(inBox);
 
-    Logging("matches size", pnts.left.size(),1);
+    Logging("matches size", pnts.left.size(),3);
 #if MATCHESIM
     drawPointsTemp<cv::Point2f,cv::Point2f>("Matches",lIm.rIm,pnts.left, pnts.right);
 #endif
@@ -505,8 +505,8 @@ void FeatureTracker::setPre3DPnts(SubPixelPoints& prePnts, SubPixelPoints& pnts)
     cv::Mat mask;
     setMask(prePnts, mask);
 
-    prePnts.points3D.reserve(end);
-    prePnts.left.reserve(end);
+    prePnts.points3D.reserve(res);
+    prePnts.left.reserve(res);
 
     for ( size_t iP = 0; iP < end; iP++ )
     {
@@ -587,15 +587,94 @@ void FeatureTracker::checkInBorder(SubPixelPoints& pnts)
         if ( inBorder(pnts.points3DCurr[i], pd) )
         {
             cv::Point2f pf((float)pd.x, (float)pd.y);
-            if ( pointsDist(pf,pnts.left[i]) <= 4.0 )
-            {
+            // if ( pointsDist(pf,pnts.left[i]) <= 16.0 )
+            // {
                 // pnts.left[i] = pf;
                 in[i] = true;
-            }
+            // }
         }
 
     }
     pnts.reduce<bool>(in);
+}
+
+void FeatureTracker::calcOpticalFlow(SubPixelPoints& pnts)
+{
+    Timer optical("optical");
+    std::vector<float> err, err1;
+    std::vector <uchar>  inliers, inliers2;
+    std::vector<cv::Point3d> p3D;
+    cv::Mat fIm, sIm, rightIm;
+    fIm = pLIm.im;
+    sIm = lIm.im;
+    rightIm = rIm.im;
+    checkInBorder(pnts);
+
+
+
+    if ( curFrame == 1 )
+    {
+        cv::calcOpticalFlowPyrLK(fIm, sIm, pnts.left, pnts.newPnts, inliers, err1,cv::Size(21,21),3, criteria);
+    }
+    else
+    {
+        predictNewPnts(pnts, false);
+// #if OPTICALIM
+//     if ( new3D )
+//         drawOptical("pred new", pLIm.rIm,pnts.left, pnts.newPnts);
+//     else
+//         drawOptical("pred old", pLIm.rIm,pnts.left, pnts.newPnts);
+// #endif
+        cv::calcOpticalFlowPyrLK(fIm, sIm, pnts.left, pnts.newPnts, inliers, err,cv::Size(21,21),3, criteria, cv::OPTFLOW_USE_INITIAL_FLOW);
+
+    }
+    std::vector<cv::Point2f> temp = pnts.left;
+    cv::calcOpticalFlowPyrLK(sIm, fIm, pnts.newPnts, temp, inliers2, err,cv::Size(21,21),3, criteria, cv::OPTFLOW_USE_INITIAL_FLOW);
+
+    for (size_t i {0}; i < pnts.left.size(); i ++)
+    {
+        if ( inliers[i] && inliers2[i] && pointsDist(temp[i],pnts.left[i]) <= 0.25)
+            inliers[i] = true;
+        else
+            inliers[i] = false;
+    }
+
+    pnts.reduce<uchar>(inliers);
+
+    inliers.clear();
+    inliers2.clear();
+
+    cv::calcOpticalFlowPyrLK(lIm.im, rightIm, pnts.newPnts, pnts.right, inliers, err,cv::Size(21,21),3, criteria);
+
+    temp = pnts.newPnts;
+    cv::calcOpticalFlowPyrLK(rightIm, lIm.im, pnts.right, temp, inliers2, err,cv::Size(21,21),3, criteria);
+
+    pnts.depth = std::vector<float>(pnts.newPnts.size(),-1.0f);
+    pnts.points3DStereo = std::vector<cv::Point3d>(pnts.newPnts.size(),cv::Point3d(0,0,-1.0f));
+
+    for (size_t i {0}; i < pnts.newPnts.size(); i ++)
+    {
+        if ( inliers[i] && inliers2[i] && pointsDist(temp[i],pnts.newPnts[i]) <= 0.25 && abs(pnts.newPnts[i].y - pnts.right[i].y) < 2.0f)
+        {
+            const double zp = fx * zedPtr->mBaseline/((double)pnts.newPnts[i].x - (double)pnts.right[i].x);
+            if ( zp > 0.0f )
+            {
+                const double xp = (double)(((double)pnts.newPnts[i].x-cx)*zp/fx);
+                const double yp = (double)(((double)pnts.newPnts[i].y-cy)*zp/fy);
+                pnts.points3DStereo[i] = cv::Point3d(xp, yp, zp);
+            }
+        }
+            // pnts.depth[i] = pnts.newPnts[i].x - pnts.right[i].x;
+    }
+
+
+
+    // inliers.clear();
+    // cv::findFundamentalMat(pnts.left, pnts.newPnts,inliers, cv::FM_RANSAC, 2, 0.99);
+
+    // pnts.reduce<uchar>(inliers);
+
+
 }
 
 void FeatureTracker::calcOptical(SubPixelPoints& pnts, const bool new3D)
@@ -722,8 +801,8 @@ void FeatureTracker::solvePnPIni(SubPixelPoints& pnts, cv::Mat& Rvec, cv::Mat& t
     std::vector<int>idxs;
 
 
-    // cv::solvePnPRansac(pnts.points3DCurr, pnts.newPnts ,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true,100, 4.0f, 0.99, idxs);
-    cv::solvePnP(pnts.points3DCurr, pnts.newPnts ,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true);
+    cv::solvePnPRansac(pnts.points3DCurr, pnts.newPnts ,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true,100, 4.0f, 0.99, idxs);
+    // cv::solvePnP(pnts.points3DCurr, pnts.newPnts ,zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F),Rvec,tvec,true);
 
     // pnts.reduceWithInliers<int>(idxs);
 
@@ -789,7 +868,8 @@ void FeatureTracker::estimatePoseN()
 
     // optWithSolve(prePnts, Rvec, tvec, false);
 
-    calcOptical(prePnts, false);
+    // calcOptical(prePnts, false);
+    calcOpticalFlow(prePnts);
 
     if (curFrame == 1)
     {
@@ -825,7 +905,7 @@ void FeatureTracker::estimatePoseN()
 
 }
 
-bool FeatureTracker::checkOutlier(const Eigen::Matrix4d& estimatedP, const cv::Point3d& p3d, const cv::Point2f& obs, const double thres)
+bool FeatureTracker::checkOutlier(const Eigen::Matrix4d& estimatedP, const cv::Point3d& p3d, const cv::Point2f& obs, const double thres, const float weight, cv::Point2f& out2d)
 {
     Eigen::Vector4d p4d(p3d.x, p3d.y, p3d.z,1);
     p4d = estimatedP * p4d;
@@ -838,29 +918,39 @@ bool FeatureTracker::checkOutlier(const Eigen::Matrix4d& estimatedP, const cv::P
     const double u {fx*p4d(0)*invZ + cx};
     const double v {fy*p4d(1)*invZ + cy};
 
-    const double errorU = (double)obs.x - u;
-    const double errorV = (double)obs.y - v;
+    const double errorU = weight * ((double)obs.x - u);
+    const double errorV = weight * ((double)obs.y - v);
 
     const double error = (errorU * errorU + errorV * errorV);
+    out2d = cv::Point2f((float)u, (float)v);
     if (error > thres)
         return false;
     else
         return true;
 }
 
-int FeatureTracker::checkOutliers(const Eigen::Matrix4d& estimatedP, const std::vector<cv::Point3d>& p3d, const std::vector<cv::Point2f>& obs, std::vector<bool>& inliers, const double thres)
+int FeatureTracker::checkOutliers(const Eigen::Matrix4d& estimatedP, const std::vector<cv::Point3d>& p3d, const std::vector<cv::Point2f>& obs, std::vector<bool>& inliers, const double thres, const std::vector<float>& weights)
 {
+    // std::vector<cv::Point2f>out2d;
     int nOut = 0;
     for (size_t i {0}; i < p3d.size(); i++)
     {
-        if ( !checkOutlier(estimatedP, p3d[i],obs[i], thres))
+        cv::Point2f out;
+        if ( !checkOutlier(estimatedP, p3d[i],obs[i], thres, weights[i],out))
         {
             nOut++;
             inliers[i] = false;
         }
         else
             inliers[i] = true;
+        // out2d.push_back(out);
     }
+
+// #if PROJECTIM
+//     // drawOptical("new", pLIm.rIm,pnts.left, pnts.newPnts);
+//     drawOptical("reproj", pLIm.rIm,obs, out2d);
+//     cv::waitKey(waitTrials);
+// #endif
     return nOut;
 }
 
@@ -868,35 +958,51 @@ void FeatureTracker::calcWeights(const SubPixelPoints& pnts, std::vector<float>&
 {
     const size_t end {pnts.points3DCurr.size()};
     weights.resize(end, 1.0f);
-    int leftN {0};
-    int rightN {0};
-    const int off {10};
-    const float midL {(float)zedPtr->mWidth/2.0f - (float)off};
-    const float midR {(float)zedPtr->mWidth/2.0f + (float)off};
-    for (size_t i {0}; i < end; i++)
-    {
-        if ( pnts.newPnts[i].x < midL )
-            leftN ++;
-        else if ( pnts.newPnts[i].x > midR )
-            rightN ++;
-    }
-    const float multL {(float)rightN/(float)leftN};
-    const float multR {(float)leftN/(float)rightN};
-    const float vd {zedPtr->mBaseline * 40};
-    const float sig {vd};
-    for (size_t i {0}; i < end; i++)
-    {
-        if ( pnts.newPnts[i].x < midL )
-            weights[i] *= multL;
-        else if ( pnts.newPnts[i].x > midR )
-            weights[i] *= multR;
-        const float& depth  = (float)pnts.points3DCurr[i].z;
-        if ( depth > vd)
-        {
-            float prob = norm_pdf(depth, vd, sig);
-            weights[i] *= 2 * prob * vd;
-        }
-    }
+    // float leftN {0};
+    // float rightN {0};
+    // const int off {10};
+    // const float mid {(float)zedPtr->mWidth/2.0f};
+    // for (size_t i {0}; i < end; i++)
+    // {
+    //     const float& px = pnts.newPnts[i].x;
+    //     if ( px < mid )
+    //         leftN += mid - px;
+    //     else if ( px > mid )
+    //         rightN += px - mid;
+    // }
+    // Logging("LeftN", leftN,3);
+    // Logging("rightN", rightN,3);
+    // const float multL {(float)rightN/(float)leftN};
+    // const float multR {(float)leftN/(float)rightN};
+    // float sum {0};
+    // const float vd {zedPtr->mBaseline * 40};
+    // const float sig {vd};
+    // for (size_t i {0}; i < end; i++)
+    // {
+    //     // const float& px = pnts.newPnts[i].x;
+    //     // if ( px < mid )
+    //     //     weights[i] *= multL;
+    //     // else if ( px > mid )
+    //     //     weights[i] *= multR;
+    //     const float& depth  = (float)pnts.points3DCurr[i].z;
+    //     if ( depth > vd)
+    //     {
+    //         float prob = norm_pdf(depth, vd, sig);
+    //         weights[i] *= 2 * prob * vd;
+    //     }
+    //     // sum += weights[i];
+    // }
+
+    // float aver {sum/(float)end};
+    // float xd {0};
+    // for (size_t i {0}; i < end; i++)
+    // {
+    //     weights[i] /= aver;
+    //     xd += weights[i];
+    // }
+
+    // Logging("summm", xd/end,3);
+
 
 }
 
@@ -909,9 +1015,10 @@ void FeatureTracker::optimizePose(SubPixelPoints& prePnts, SubPixelPoints& pnts,
     std::vector<float> weights;
     calcWeights(prePnts, weights);
 
-    std::vector<double>thresholds = {4.0, 3.0, 2.0, 0.5};
-
+    std::vector<double>thresholds = {15.6f,9.8f,7.815f,7.815f};
+    // bool rerun {false};
     int nIn = prePnts.points3DCurr.size();
+    bool rerun = true;
 
     Eigen::Matrix4d prevCalcPose = poseEstFrame;
 
@@ -934,7 +1041,7 @@ void FeatureTracker::optimizePose(SubPixelPoints& prePnts, SubPixelPoints& pnts,
         K(0,2) = cx;
         K(1,2) = cy;
         ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
-        ceres::LossFunction* loss_function = new ceres::HuberLoss(sqrt(7.815));
+        ceres::LossFunction* loss_function = new ceres::HuberLoss(1.0);
         // problem.AddParameterBlock(cameraR,4);
         // problem.AddParameterBlock(cameraT,3);
         for (size_t i{0}, end{prePnts.points3DCurr.size()}; i < end; i++)
@@ -972,29 +1079,58 @@ void FeatureTracker::optimizePose(SubPixelPoints& prePnts, SubPixelPoints& pnts,
 
         poseEstFrame = pose;
         Eigen::Matrix4d pFInv = pose.inverse();
-        int nOut = checkOutliers(pFInv, prePnts.points3DCurr, prePnts.newPnts, inliers, thresholds[times]);
+        int nOut = checkOutliers(pFInv, prePnts.points3DCurr, prePnts.newPnts, inliers, thresholds[times], weights);
         int nInAfter = nIn - nOut;
 
-        if ( nInAfter < (nIn / 2))
-        {
-            // if more than half then keep the other bunch
-            // that means that we take for granted that more than half are right.
+        // if ( nInAfter < (nIn / 2))
+        // {
+        //     // if more than half then keep the other bunch
+        //     // that means that we take for granted that more than half are right.
 
-            // You can change all the inliers to the opposite (false = true, true = false)
-            // And rerun the last loop with the new inliers
-            poseEstFrame = prevCalcPose;
-            inliers = prevInliers;
-            break;
-        }
-        else
-        {
+        //     // You can change all the inliers to the opposite (false = true, true = false)
+        //     // And rerun the last loop with the new inliers
+
+
+        //     if ( rerun )
+        //     {
+        //         for (size_t i{0}, end{prePnts.points3DCurr.size()}; i < end; i++)
+        //         {
+        //             if ( inliers[i] )
+        //                 inliers[i] = false;
+        //             else
+        //                 inliers[i] = true;
+        //         }
+        //         times = times - 1;
+        //         poseEstFrame = prevCalcPose;
+        //         prevInliers = inliers;
+        //         rerun = false;
+        //         continue;
+
+        //     }
+        //     else
+        //     {
+        //         poseEstFrame = prevCalcPose;
+        //         inliers = prevInliers;
+        //     }
+            
+
+        //     break;
+        // }
+        // else
+        // {
             prevCalcPose = poseEstFrame;
             prevInliers = inliers;
-        }
+        // }
 
     }
 
     prePnts.reduce<bool>(prevInliers);
+
+#if PROJECTIM
+    // drawOptical("new", pLIm.rIm,pnts.left, pnts.newPnts);
+    drawOptical("optimization", pLIm.rIm,prePnts.left, prePnts.newPnts);
+    // cv::waitKey(waitTrials);
+#endif
 
     publishPose();
     // float sum {0};
@@ -1054,12 +1190,56 @@ void FeatureTracker::optWithSolve(SubPixelPoints& pnts, cv::Mat& Rvec, cv::Mat& 
 
 }
 
+void FeatureTracker::computeStereoMatches(TrackedKeys& keysLeft, std::vector<cv::KeyPoint>& prevLeftKeys)
+{
+    std::vector<cv::Point2f> tobeRemoved;
+
+    std::vector<cv::KeyPoint> rightKeys;
+    cv::Mat rightDesc;
+
+    Timer fast("FAST");
+    std::thread extractLeft(&FeatureExtractor::extractLeftFeatures, std::ref(feLeft), std::ref(lIm.im), std::ref(keysLeft.keyPoints), std::ref(keysLeft.Desc), std::ref(prevLeftKeys));
+    std::thread extractRight(&FeatureExtractor::computeFASTandDesc, std::ref(feRight), std::ref(rIm.im), std::ref(rightKeys), std::ref(tobeRemoved),std::ref(rightDesc));
+
+    extractLeft.join();
+    extractRight.join();
+
+    fm.findStereoMatchesCloseFar(lIm.im, rIm.im, rightDesc, rightKeys, keysLeft);
+
+    drawKeyPointsCloseFar("new method", lIm.rIm, keysLeft, rightKeys);
+}
+
+void FeatureTracker::drawKeyPointsCloseFar(const char* com, const cv::Mat& im, const TrackedKeys& keysLeft, const std::vector<cv::KeyPoint>& right)
+{
+        cv::Mat outIm = im.clone();
+        const size_t end {keysLeft.keyPoints.size()};
+        for (size_t i{0};i < end; i ++ )
+        {
+            if ( keysLeft.estimatedDepth[i] > 0)
+            {
+                cv::circle(outIm, keysLeft.keyPoints[i].pt,2,cv::Scalar(0,255,0));
+                cv::line(outIm, keysLeft.keyPoints[i].pt, right[keysLeft.rightIdxs[i]].pt,cv::Scalar(0,0,255));
+                cv::circle(outIm, right[keysLeft.rightIdxs[i]].pt,2,cv::Scalar(255,0,0));
+            }
+        }
+        cv::imshow(com, outIm);
+        cv::waitKey(waitImClo);
+
+}
+
 void FeatureTracker::Track(const int frames)
 {
     for (curFrame = 0; curFrame < frames; curFrame++)
     {
+
         zedPtr->addKeyFrame = true;
         setLRImages(curFrame);
+
+    //     Eigen::Vector4d p(0,0,0,1);
+    // map->addMapPoint(p);
+
+    // Eigen::Vector4d p2(500,432,5234,3211);
+    // map->addMapPoint(p2);
 
         findStereoFeatures(lIm.im, rIm.im, pnts);
 
@@ -1098,6 +1278,76 @@ void FeatureTracker::Track(const int frames)
     }
     datafile.close();
 }
+
+void FeatureTracker::computeOpticalLeft(TrackedKeys& keysLeft)
+{
+    const size_t keysLeftSize {keysLeft.keyPoints.size()};
+
+    keysLeft.opticalStatus.resize(keysLeftSize, true);
+
+
+}
+
+void FeatureTracker::Track2(const int frames)
+{
+    for (curFrame = 0; curFrame < frames; curFrame++)
+    {
+        zedPtr->addKeyFrame = true;
+        setLRImages(curFrame);
+
+        TrackedKeys keysLeft;
+
+        computeStereoMatches(keysLeft, prevLeftPnts.keyPoints);
+
+        computeOpticalLeft(keysLeft);
+
+        // zedPtr->addKeyFrame = true;
+    //     setLRImages(curFrame);
+
+    // //     Eigen::Vector4d p(0,0,0,1);
+    // // map->addMapPoint(p);
+
+    // // Eigen::Vector4d p2(500,432,5234,3211);
+    // // map->addMapPoint(p2);
+
+    //     findStereoFeatures(lIm.im, rIm.im, pnts);
+
+    //     triangulate3DPoints(pnts);
+
+    //     if ( curFrame == 0 )
+    //     {
+    //         setPreviousValuesIni();
+    //         continue;
+    //     }
+
+
+    //     estimatePoseN();
+
+    //     setPreviousValues();
+
+        // calcOptical(pnts, true);
+        // calcOptical(prePnts, false);
+
+        // solvePnPIni(prePnts, Rvec, tvec, false);
+        // solvePnPIni(pnts, Rvec, tvec, true);
+
+
+
+
+        // if ( curFrame == 1 )
+        //     opticalFlow();
+        // else
+        //     opticalFlowPredict();
+        // getPoseCeresNew();
+
+        // setPreTrial();
+
+        // Logging("ustereo", uStereo,3);
+        // Logging("umono", uMono,3);
+    }
+    datafile.close();
+}
+
 
 void FeatureTracker::beginTrackingGoodFeatures(const int frames)
 {

@@ -1358,7 +1358,7 @@ float RobustMatcher2::getDistanceOfPoints(ImageFrame& first, ImageFrame& second,
     return sqrt(pow(y2-y1,2) + pow(x2-x1,2));
 }
 
-void RobustMatcher2::beginTest()
+void RobustMatcher2::beginTest(Map* map)
 {
     // testImageRectify();
     // testFeatureExtraction();
@@ -1370,7 +1370,7 @@ void RobustMatcher2::beginTest()
     // testFeatureExtractorClass();
     // testFeatureMatcherOptical();
     // testFeatureMatcherStable3D();
-    testOpticalReDo();
+    testOpticalReDo(map);
 
 }
 
@@ -1986,7 +1986,7 @@ void RobustMatcher2::testFeatureMatcherStable3D()
     
 }
 
-void RobustMatcher2::testOpticalReDo()
+void RobustMatcher2::testOpticalReDo(Map* map)
 {
     const int sizeThreshold {80};
     const int maxSizeThreshold {500};
@@ -1994,7 +1994,7 @@ void RobustMatcher2::testOpticalReDo()
     FeatureExtractor featureExtractor;
     FeatureManager featureM;
     PoseEstimator poseEst(zedcamera);
-    FeatureTracker ft(rmap,zedcamera);
+    FeatureTracker ft(rmap,zedcamera, map);
     bool in {true};
     int loopI {0};
     int keyframeNumb {0};
@@ -2009,7 +2009,8 @@ void RobustMatcher2::testOpticalReDo()
     // ft.initializeTracking();
     // ft.beginTrackingTrialClose(times);
 
-    ft.Track(times);
+    // ft.Track(times);
+    ft.Track2(times);
 
     // ft.beginTracking(times);
     // ft.beginTrackingTrial(times);

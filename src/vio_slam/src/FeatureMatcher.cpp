@@ -1010,6 +1010,265 @@ void FeatureMatcher::findStereoMatchesFAST(const cv::Mat& lImage, const cv::Mat&
     }
 }
 
+void FeatureMatcher::findStereoMatchesCloseFar(const cv::Mat& lImage, const cv::Mat& rImage, const cv::Mat& rightDesc,  std::vector<cv::KeyPoint>& rightKeys, TrackedKeys& keysLeft)
+{
+    std::vector<std::vector < int > > indexes;
+    destributeRightKeys(rightKeys, indexes);
+
+    const size_t leftEnd {keysLeft.keyPoints.size()};
+
+    keysLeft.estimatedDepth.resize(leftEnd, -1.0f);
+    keysLeft.trackCnt.resize(leftEnd, 0);
+    keysLeft.close.resize(leftEnd, false);
+    keysLeft.rightIdxs.resize(leftEnd, -1);
+    int leftRow {0};
+
+    const float minZ = zedptr->mBaseline;
+    const float minD = 0;
+    const float maxD = zedptr->mBaseline * zedptr->cameraLeft.fx/minZ;
+
+    // Because we use FAST to detect Features the sliding window will get a window of side 11 pixels (5 (3 + 2offset) pixels radius + 1 which is the feature)
+    const int windowRadius {5};
+    // Because of the EdgeThreshold used around the image we dont need to check out of bounds
+
+    const int windowMovementX {5};
+
+    std::vector < cv::KeyPoint >::const_iterator it,end(keysLeft.keyPoints.end());
+    for (it = keysLeft.keyPoints.begin(); it != end; it++, leftRow++)
+    {
+        const int xKey = cvRound(it->pt.x);
+        const int yKey = cvRound(it->pt.y);
+        const float uL {it->pt.y};
+
+
+        const float minU = uL-maxD;
+        const float maxU = uL-minD;
+
+        if(maxU<0)
+            continue;
+
+        int bestDist = 256;
+        int bestIdx = -1;
+
+
+
+        int count {0};
+        const size_t endCount {indexes[yKey].size()};
+        if (endCount == 0)
+            continue;
+        for (size_t allIdx {0};allIdx < endCount; allIdx++)
+        {
+            const int idx {indexes[yKey][allIdx]};
+            const float uR {rightKeys[idx].pt.y};
+
+            if(!(uR>=minU && uR<=maxU))
+                continue;
+
+            int dist {DescriptorDistance(keysLeft.Desc.row(leftRow),rightDesc.row(idx))};
+
+            if (bestDist > dist)
+            {
+                bestDist = dist;
+                bestIdx = idx;
+            }
+        }
+        if (bestDist > thDist)
+            continue;
+
+        cv::KeyPoint& kR = rightKeys[bestIdx];
+
+        const int xRKey = cvRound(kR.pt.x);
+
+        const cv::Mat lWin = lImage.rowRange(yKey - windowRadius, yKey + windowRadius + 1).colRange(xKey - windowRadius, xKey + windowRadius + 1);
+
+        int bestDistW {INT_MAX};
+        int bestX {0};
+
+        std::vector < float > allDists;
+        allDists.resize(2*windowMovementX + 1);
+
+        const float startW = xRKey + windowRadius - windowMovementX;
+        const float endW = xRKey + windowRadius + windowMovementX + 1;
+        if ( startW < 0 || endW >= rImage.cols)
+            continue;
+
+
+
+        for (int32_t xMov {-windowMovementX}; xMov <= windowMovementX ; xMov++)
+        {
+            // const float rKeyY {round(points.right[it->trainIdx].y)};
+            const cv::Mat rWin = rImage.rowRange(yKey - windowRadius, yKey + windowRadius + 1).colRange(xRKey + xMov - windowRadius, xRKey + xMov + windowRadius + 1);
+
+            float dist = cv::norm(lWin,rWin, cv::NORM_L1);
+            if (bestDistW > dist)
+            {
+                bestX = xMov;
+                bestDistW = dist;
+            }
+            allDists[xMov + windowMovementX] = dist;
+        }
+        if ((bestX == -windowMovementX) || (bestX == windowMovementX))
+            continue;
+
+        const float dist1 = allDists[windowMovementX + bestX-1];
+        const float dist2 = allDists[windowMovementX + bestX];
+        const float dist3 = allDists[windowMovementX + bestX+1];
+
+        const float delta = (dist1-dist3)/(2.0f*(dist1+dist3-2.0f*dist2));
+
+        if (delta > 1 || delta < -1)
+            continue;
+
+        
+
+        kR.pt.x = ((float)xRKey + (float)bestX + delta);
+
+
+        // calculate depth
+        const float disparity {it->pt.x - kR.pt.x};
+        if (disparity > 0.0f && disparity < zedptr->cameraLeft.fx)
+        {
+            const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
+            // if false depth is unusable
+            keysLeft.rightIdxs[leftRow] = bestIdx;
+            keysLeft.estimatedDepth[leftRow] = depth;
+            if (depth < zedptr->mBaseline * closeNumber)
+            {
+                keysLeft.close[leftRow] = true;
+            }
+        }
+
+    }
+}
+
+void FeatureMatcher::findMatchesWD(const cv::Mat& lImage, const cv::Mat& rImage, const StereoDescriptors& desc, PointsWD& points, StereoKeypoints& keypoints)
+{
+    std::vector<std::vector < int > > indexes;
+    destributeRightKeys(keypoints.right, indexes);
+
+    const size_t leftEnd {keypoints.left.size()};
+
+    cv::KeyPoint::convert(keypoints.left, points.left, std::vector<int>());
+
+    points.depth.resize(leftEnd, -1.0f);
+
+    int leftRow {0};
+
+    const float minZ = zedptr->mBaseline;
+    const float minD = 0;
+    const float maxD = zedptr->mBaseline * zedptr->cameraLeft.fx/minZ;
+
+    // Because we use FAST to detect Features the sliding window will get a window of side 11 pixels (5 (3 + 2offset) pixels radius + 1 which is the feature)
+    const int windowRadius {5};
+    // Because of the EdgeThreshold used around the image we dont need to check out of bounds
+
+    const int windowMovementX {5};
+
+    std::vector < cv::KeyPoint >::const_iterator it,end(keypoints.left.end());
+    for (it = keypoints.left.begin(); it != end; it++, leftRow++)
+    {
+        const int xKey = cvRound(it->pt.x);
+        const int yKey = cvRound(it->pt.y);
+        const float uL {it->pt.y};
+
+
+        const float minU = uL-maxD;
+        const float maxU = uL-minD;
+
+        if(maxU<0)
+            continue;
+
+        int bestDist = 256;
+        int bestIdx = -1;
+
+
+
+        int count {0};
+        const size_t endCount {indexes[yKey].size()};
+        if (endCount == 0)
+            continue;
+        for (size_t allIdx {0};allIdx < endCount; allIdx++)
+        {
+            const int idx {indexes[yKey][allIdx]};
+            const float uR {keypoints.right[idx].pt.y};
+
+            if(!(uR>=minU && uR<=maxU))
+                continue;
+
+            int dist {DescriptorDistance(desc.left.row(leftRow),desc.right.row(idx))};
+
+            if (bestDist > dist)
+            {
+                bestDist = dist;
+                bestIdx = idx;
+            }
+        }
+        if (bestDist > thDist)
+            continue;
+
+        cv::KeyPoint& kR = keypoints.right[bestIdx];
+
+        const int xRKey = cvRound(kR.pt.x);
+
+        const cv::Mat lWin = lImage.rowRange(yKey - windowRadius, yKey + windowRadius + 1).colRange(xKey - windowRadius, xKey + windowRadius + 1);
+
+        int bestDistW {INT_MAX};
+        int bestX {0};
+
+        std::vector < float > allDists;
+        allDists.resize(2*windowMovementX + 1);
+
+        const float startW = xRKey + windowRadius - windowMovementX;
+        const float endW = xRKey + windowRadius + windowMovementX + 1;
+        if ( startW < 0 || endW >= rImage.cols)
+            continue;
+
+
+
+        for (int32_t xMov {-windowMovementX}; xMov <= windowMovementX ; xMov++)
+        {
+            // const float rKeyY {round(points.right[it->trainIdx].y)};
+            const cv::Mat rWin = rImage.rowRange(yKey - windowRadius, yKey + windowRadius + 1).colRange(xRKey + xMov - windowRadius, xRKey + xMov + windowRadius + 1);
+
+            float dist = cv::norm(lWin,rWin, cv::NORM_L1);
+            if (bestDistW > dist)
+            {
+                bestX = xMov;
+                bestDistW = dist;
+            }
+            allDists[xMov + windowMovementX] = dist;
+        }
+        if ((bestX == -windowMovementX) || (bestX == windowMovementX))
+            continue;
+
+        const float dist1 = allDists[windowMovementX + bestX-1];
+        const float dist2 = allDists[windowMovementX + bestX];
+        const float dist3 = allDists[windowMovementX + bestX+1];
+
+        const float delta = (dist1-dist3)/(2.0f*(dist1+dist3-2.0f*dist2));
+
+        if (delta > 1 || delta < -1)
+            continue;
+
+        
+
+        kR.pt.x = ((float)xRKey + (float)bestX + delta);
+
+
+        // calculate depth
+        const float disparity {it->pt.x - kR.pt.x};
+        if (disparity > 0.0f && disparity < zedptr->cameraLeft.fx)
+        {
+            const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
+            // if false depth is unusable
+            points.depth[leftRow] = (double)depth;
+
+            // Logging("depth",depth,2);
+        }
+
+    }
+}
+
 void FeatureMatcher::findStereoMatches(const StereoDescriptors& desc, SubPixelPoints& points, StereoKeypoints& keypoints)
 {
     std::vector<std::vector < int > > indexes;

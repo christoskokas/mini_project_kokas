@@ -10,6 +10,11 @@ KeyFrame::KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, Eigen
     homoPoints3D = _homoPoints3D;
 }
 
+KeyFrame::KeyFrame(Eigen::Matrix4d _pose, const int _numb) : numb(_numb)
+{
+    pose.setPose(_pose);
+}
+
 KeyFrame::KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, const int _numb) : numb(_numb)
 {
     points3D = points;

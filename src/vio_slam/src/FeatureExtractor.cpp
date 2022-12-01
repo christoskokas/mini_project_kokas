@@ -658,38 +658,38 @@ void FeatureExtractor::populateKeyDestribFAST(const cv::Mat& image, const std::v
     }
 }
 
-void FeatureExtractor::computeFASTandDesc(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts, cv::Mat& descriptors)
+void FeatureExtractor::setMask(const std::vector<cv::KeyPoint>& prevKeys, cv::Mat& mask)
 {
-    Timer both("both");
-    computeKeypointsFAST(image, keypoints, pnts);
-
-    // cv::Mat im = image.clone();
-    
-    // cv::GaussianBlur(im, im, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
-
-    detector->compute(image, keypoints, descriptors);
-    // computeDescriptorsFAST(image, keypoints, descriptors);
+    std::vector<cv::KeyPoint>::const_iterator it, end{prevKeys.end()};
+    for (it = prevKeys.begin();it != end; it++)
+    {
+        if (mask.at<uchar>(it->pt) == 255)
+        {
+            cv::circle(mask, it->pt, maskRadius, 0, cv::FILLED);
+        }
+    }
 }
 
-void FeatureExtractor::computeDescriptorsFAST(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
+void FeatureExtractor::extractLeftFeatures(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& desc, const std::vector<cv::KeyPoint>& prevKeys)
 {
-    descriptors = cv::Mat(keypoints.size(), 32, CV_8U);
-    int descriptorIdx {0};
-    cv::Mat im = image.clone();
+    cv::Mat mask = cv::Mat(image.rows , image.cols , CV_8UC1, cv::Scalar(255));
+    setMask(prevKeys, mask);
+    computeKeypointsFASTLeft(image, mask, keypoints);
 
-    cv::GaussianBlur(im, im, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
-    computeDescriptors(im, keypoints, descriptors, pattern);
 
-    Logging("keys", keypoints.size(),3);
+    std::vector<cv::KeyPoint>::const_iterator it, end(prevKeys.end());
+    for (it = prevKeys.begin(); it != end; it++)
+    {
+        float angle = computeOrientation(image, it->pt);
+        keypoints.emplace_back(it->pt,it->size, angle, it->response, it->octave, it->class_id);
+    }
+    detector->compute(image, keypoints, desc);
 }
 
-void FeatureExtractor::computeKeypointsFAST(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts)
+void FeatureExtractor::computeKeypointsFASTLeft(const cv::Mat& image, const cv::Mat& mask, std::vector<cv::KeyPoint>& keypoints)
 {
-    std::vector<std::vector<int>> keyDestribution = std::vector<std::vector<int>>(gridRows, std::vector<int>(gridCols));
-    populateKeyDestribFAST(image, pnts, keyDestribution);
     keypoints.reserve(2*nFeatures);
-    std::vector<int>scaledPatchSize;
-    const size_t prevPntsSize = pnts.size();
+    
 
     const int fastEdge = 3;
 
@@ -785,19 +785,177 @@ void FeatureExtractor::computeKeypointsFAST(cv::Mat& image, std::vector<cv::KeyP
                     gridsWKeysR ++;
                     nKeysRight += cellKeys[iR][iC].size();
                 }
-                // if ( cellKeys[iR][iC].size() > featuresPerCell)
-                // {
-                //     cv::KeyPointsFilter::retainBest(cellKeys[iR][iC],featuresPerCell);
-                //     cellKeys[iR][iC].resize(featuresPerCell);
-                // }
-                // std::vector<cv::KeyPoint>::iterator it;
-                // std::vector<cv::KeyPoint>::const_iterator end(cellKeys[iR][iC].end());
-                // for (it = cellKeys[iR][iC].begin(); it != end; it++)
-                // {
-                //     it->pt.x += cStart;
-                //     it->pt.y += rStart;
-                //     allKeypoints.emplace_back(*it);
-                // }
+            }
+        }
+
+    }
+
+
+
+    const int desiredFeaturesGridL = cvRound((float)(nFeatures)/(2*gridsWKeysL));
+    const int desiredFeaturesGridR = cvRound((float)(nFeatures)/(2*gridsWKeysR));
+    // Logging("left bef", nKeysLeft,3);
+    // Logging("Right bef", nKeysRight,3);
+    nKeysLeft = 0;
+    nKeysRight = 0;
+
+    for (size_t iR = 0; iR < gridRows; iR++)
+    {
+        for (size_t iC = 0; iC < gridCols; iC++)
+        {
+            const size_t keyCellSize = cellKeys[iR][iC].size();
+            int desired;
+            if ( iR < midRow)
+                desired = desiredFeaturesGridL;
+            else
+                desired = desiredFeaturesGridR;
+
+            if ( keyCellSize == 0 || desired <= 0)
+                continue;
+            if (keyCellSize > desired)
+            {
+                cv::KeyPointsFilter::retainBest(cellKeys[iR][iC], desired);
+                cellKeys[iR][iC].resize(desired);
+            }
+            if ( iR < midRow)
+                nKeysLeft += cellKeys[iR][iC].size();
+            else
+                nKeysRight += cellKeys[iR][iC].size();
+            std::vector<cv::KeyPoint>::iterator it;
+            std::vector<cv::KeyPoint>::const_iterator end(cellKeys[iR][iC].end());
+            for (it = cellKeys[iR][iC].begin(); it != end; it++)
+            {
+                it->pt.x += addX[iR][iC];
+                it->pt.y += addY[iR][iC];
+                if ( mask.at<uchar>(it->pt) == 0 )
+                    continue;
+                it->size = patchSize;
+                it->angle = computeOrientation(image, it->pt);
+                keypoints.emplace_back(*it);
+            }
+        }
+    }
+}
+
+void FeatureExtractor::computeFASTandDesc(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts, cv::Mat& descriptors)
+{
+    Timer both("both");
+    computeKeypointsFAST(image, keypoints);
+
+    detector->compute(image, keypoints, descriptors);
+}
+
+void FeatureExtractor::computeDescriptorsFAST(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
+{
+    descriptors = cv::Mat(keypoints.size(), 32, CV_8U);
+    int descriptorIdx {0};
+    cv::Mat im = image.clone();
+
+    cv::GaussianBlur(im, im, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
+    computeDescriptors(im, keypoints, descriptors, pattern);
+
+    Logging("keys", keypoints.size(),3);
+}
+
+void FeatureExtractor::computeKeypointsFAST(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints)
+{
+    keypoints.reserve(2*nFeatures);
+    
+
+    const int fastEdge = 3;
+
+    int gridsWKeysR {0};
+    int gridsWKeysL {0};
+
+    std::vector< std::vector< std::vector<cv::KeyPoint>>> cellKeys (gridRows, std::vector<std::vector<cv::KeyPoint>>(gridCols, std::vector<cv::KeyPoint>()));
+    std::vector< std::vector<int>> addX(gridRows, std::vector<int>(gridCols));
+    std::vector< std::vector<int>> addY(gridRows, std::vector<int>(gridCols));
+        
+
+    const int minX = edgeThreshold;
+    const int maxX = image.cols - edgeThreshold;
+    const int minY = edgeThreshold;
+    const int maxY = image.rows - edgeThreshold;
+
+    const int wid = maxX - minX;
+    const int hig = maxY - minY;
+
+    const int gridW = cvFloor((float)wid/gridCols);
+    const int gridH = cvFloor((float)hig/gridRows);
+
+    const int nGrids = gridCols * gridRows;
+    const int featuresPerCell = cvCeil(10 * (float)nFeatures/nGrids);
+
+    int rowJump = gridH + 2 * fastEdge;
+    
+
+    int nKeysLeft {0};
+    int nKeysRight {0};
+
+    const int midRow {gridRows/2};
+
+
+    for (size_t iR = 0; iR < gridRows; iR++)
+    {
+        const int rStart = minY + iR * gridH - fastEdge;
+        if ( rStart >= maxY)
+            continue;
+
+        if ( iR == gridRows - 1)
+        {
+            rowJump = maxY + fastEdge - rStart;
+            if ( rowJump <= 0 )
+                continue;
+        }
+
+        int colJump = gridW + 2 * fastEdge;
+
+        for (size_t iC = 0; iC < gridCols; iC++)
+        {
+            cellKeys[iR][iC].reserve(100);
+
+            const int cStart = minX + iC * gridW - fastEdge;
+
+            if ( cStart >= maxX)
+                continue;
+
+            if ( iC == gridCols - 1 )
+            {
+                colJump = maxX + fastEdge - cStart;
+                if ( colJump <= 0 )
+                    continue;
+            }
+
+            addY[iR][iC] = rStart;
+            addX[iR][iC] = cStart;
+
+            const cv::Mat& cellIm = image.rowRange(rStart, rStart + rowJump).colRange(cStart, cStart + colJump);
+
+            cv::Mat fl;
+            cv::flip(cellIm, fl,-1);
+            // Logging("fl",cv::norm(im,fl),3);
+            if ( cv::norm(cellIm,fl) <= mnContr)
+                continue;
+
+            cellKeys[iR][iC].reserve(featuresPerCell);
+            cv::FAST(cellIm, cellKeys[iR][iC], maxFastThreshold,true);
+            if (cellKeys[iR][iC].size() < 3)
+            {
+                cellKeys[iR][iC].clear();
+                cv::FAST(cellIm, cellKeys[iR][iC], minFastThreshold,true);
+            }
+            if (!cellKeys[iR][iC].empty())
+            {
+                if ( iR < midRow)
+                {
+                    gridsWKeysL ++;
+                    nKeysLeft += cellKeys[iR][iC].size();
+                }
+                else
+                {
+                    gridsWKeysR ++;
+                    nKeysRight += cellKeys[iR][iC].size();
+                }
 
             }
         }
@@ -820,9 +978,9 @@ void FeatureExtractor::computeKeypointsFAST(cv::Mat& image, std::vector<cv::KeyP
             const size_t keyCellSize = cellKeys[iR][iC].size();
             int desired;
             if ( iR < midRow)
-                desired = desiredFeaturesGridL - keyDestribution[iR][iC];
+                desired = desiredFeaturesGridL;
             else
-                desired = desiredFeaturesGridR - keyDestribution[iR][iC];
+                desired = desiredFeaturesGridR;
 
             if ( keyCellSize == 0 || desired <= 0)
                 continue;
@@ -847,24 +1005,6 @@ void FeatureExtractor::computeKeypointsFAST(cv::Mat& image, std::vector<cv::KeyP
             }
         }
     }
-    // Logging("left", nKeysLeft,3);
-    // Logging("Right", nKeysRight,3);
-    // Logging("keys size", keypoints.size(),3);
-    // std::vector<float> responseVector;
-    // for (unsigned int i = 0; i < keypoints.size(); i++)
-    //     responseVector.push_back(keypoints[i].response);
-    // std::vector<int> Indx(responseVector.size());
-    // std::iota(std::begin(Indx), std::end(Indx), 0);
-
-    // cv::sortIdx(responseVector, Indx, cv::SORT_DESCENDING);
-
-    // std::vector<cv::KeyPoint> keyPointsSorted;
-    // for (unsigned int i = 0; i < keypoints.size(); i++)
-    //     keyPointsSorted.push_back(keypoints[Indx[i]]);
-
-    // keypoints = ssc(keyPointsSorted, 1500, 0.1, image.cols, image.rows);
-    
-
 }
 
 std::vector<cv::KeyPoint> FeatureExtractor::ssc(std::vector<cv::KeyPoint> keyPoints, int numRetPoints,
