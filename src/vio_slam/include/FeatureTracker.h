@@ -191,7 +191,16 @@ class FeatureTracker
 
         void findFeaturesTh(const cv::Mat& lim, const cv::Mat& rim, const cv::Mat& pLim, const cv::Mat& pRim, PointsWD& pnts);
 
+        void optimizePoseCeres(TrackedKeys& prevKeys, TrackedKeys& newKeys);
+        void getNewMatchedPoints(TrackedKeys& keysMatched, TrackedKeys& newPnts);
         void addNewPoints(PointsWD& pntsWD);
+        void addMapPnts(TrackedKeys& keysLeft);
+        void addMonoPnts(TrackedKeys& keysLeft);
+        void addStereoPnts();
+        bool getPoseInFrame(const Eigen::Matrix4d& pose, const Eigen::Matrix4d& predPose, MapPoint* mp, cv::Point2f& pnt, cv::Point2f& predPnt);
+        bool getPredInFrame(const Eigen::Matrix4d& predPose, MapPoint* mp, cv::Point2f& predPnt);
+        void setMaskOfIdxs(cv::Mat& mask, const TrackedKeys& keysLeft);
+        void predictPntsLeft(TrackedKeys& keysLeft);
 
         void calcOpticalFlowPrev(SubPixelPoints& pnts);
 

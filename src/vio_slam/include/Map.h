@@ -34,28 +34,33 @@ class MapPoint
     public:
 
         Eigen::Vector4d wp;
+        Eigen::Vector3d wp3d;
         int trackCnt {0};
-        std::vector<Observation> obs;
+        // std::vector<Observation> obs;
+        std::vector<cv::KeyPoint> obs;
         cv::Mat desc;
 
         bool inFrame {true};
         bool isOutlier {false};
+        bool close {true};
 
         int keyFrameNb {0};
         const int idx;
         const int kdx;
 
-        bool getPosInFrame();
         void SetInFrame(bool infr);
         void SetIsOutlier(bool isOut);
         bool GetIsOutlier();
         bool GetInFrame();
-        MapPoint(Eigen::Vector4d& p, const int _kdx, const int _iddx);
+        MapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _close, const int _kdx, const int _idx);
 
 
         void addTCnt();
 
-        Eigen::Vector4d getWordPose();
+        Eigen::Vector4d getWordPose4d();
+        Eigen::Vector3d getWordPose3d();
+        void setWordPose4d(Eigen::Vector4d& p);
+        void updateMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& _obs);
 };
 
 class Map
@@ -68,8 +73,8 @@ class Map
         unsigned long kIdx {0};
         unsigned long pIdx {0};
         Map(){};
-        void addMapPoint(Eigen::Vector4d& p);
-        void addKeyFrame(Eigen::Matrix4d _pose, const int _numb);
+        void addMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _useable);
+        void addKeyFrame(Eigen::Matrix4d _pose);
 };
 
 } // namespace vio_slam

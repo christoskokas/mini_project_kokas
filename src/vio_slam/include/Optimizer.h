@@ -382,6 +382,66 @@ private:
 
 };
 
+class OptimizePoseICP
+{
+public:
+
+    OptimizePoseICP(const Eigen::Matrix3d& K, const Eigen::Vector3d& point, const Eigen::Vector3d& observation, const float weight)
+        : K_(K), point_(point), observation_(observation), weight_(weight)
+    {
+    }
+
+    template<typename T>
+    bool operator()(const T* const cameraT, const T* const cameraR, T* residuals_ptr) const
+    {
+        // T pt1[3];
+        // pt1[0] = T(point.x);
+        // pt1[1] = T(point.y);
+        // pt1[2] = T(point.z);
+
+        // T p[3];
+
+        Eigen::Map<const Eigen::Matrix<T, 3, 1>> p_frame(cameraT);
+        Eigen::Map<const Eigen::Quaternion<T>> q_frame(cameraR);
+
+        Eigen::Matrix<T, 3, 1> p_cp =
+        q_frame * point_.template cast<T>() + p_frame;
+
+        // Compute the residuals.
+        // [ undistorted - projected ]
+        Eigen::Map<Eigen::Matrix<T, 3, 1>> residuals(residuals_ptr);
+        residuals[0] =
+            observation_.template cast<T>()[0] - p_cp[0];
+        residuals[1] =
+            observation_.template cast<T>()[1] - p_cp[1];
+            observation_.template cast<T>()[2] - p_cp[2];
+
+
+        residuals[0] = T(weight_) * residuals[0];
+        residuals[1] = T(weight_) * residuals[1];
+        residuals[2] = T(weight_) * residuals[2];
+
+        return true;
+    }
+
+    static ceres::CostFunction* Create(const Eigen::Matrix3d& K, const Eigen::Vector3d& point, const Eigen::Vector3d& observation, const float weight)
+    {
+        return (new ceres::AutoDiffCostFunction<OptimizePoseICP, 3, 3, 4>(
+                        new OptimizePoseICP(K, point, observation, weight)));
+    }
+
+private:
+    const Eigen::Vector3d observation_;
+    const Eigen::Vector3d point_;
+    const Eigen::Matrix3d& K_;
+    const float weight_;
+    double observed_x;
+    double observed_y;
+    // Camera intrinsics
+    // double K[4] = {718.856, 718.856, 607.1928, 185.2157}; // fx,fy,cx,cy
+
+};
+
 
 } // namespace vio_slam
 

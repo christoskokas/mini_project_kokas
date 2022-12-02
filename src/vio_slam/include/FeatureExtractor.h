@@ -20,12 +20,73 @@ namespace vio_slam
 struct TrackedKeys
 {
     std::vector<cv::KeyPoint> keyPoints;
+    std::vector<cv::KeyPoint> predKeyPoints;
     std::vector<int> rightIdxs;
+    std::vector<int> mapPointIdx;
     std::vector<float> estimatedDepth;
     std::vector<bool> close;
-    std::vector<bool> opticalStatus;
+    std::vector<bool> inliers;
     std::vector<int> trackCnt;
     cv::Mat Desc;
+
+    template <typename T>
+    void reduce(std::vector<T>& check)
+    {
+        reduceVectorTemp<cv::KeyPoint,T>(keyPoints,check);
+        reduceVectorTemp<cv::KeyPoint,T>(predKeyPoints,check);
+        reduceVectorTemp<float,T>(estimatedDepth,check);
+        reduceVectorTemp<int,T>(mapPointIdx,check);
+        reduceVectorTemp<int,T>(trackCnt,check);
+        reduceVectorTemp<bool,T>(close,check);
+    }
+
+    void add(cv::KeyPoint& kp, int mapIdx, float _depth, bool _close, int _trackCnt)
+    {
+        keyPoints.emplace_back(kp);
+        mapPointIdx.emplace_back(mapIdx);
+        estimatedDepth.emplace_back(_depth);
+        close.emplace_back(_close);
+        trackCnt.emplace_back(_trackCnt);
+    }
+
+    void reserve(size_t size)
+    {
+        keyPoints.reserve(size);
+        predKeyPoints.reserve(size);
+        rightIdxs.reserve(size);
+        mapPointIdx.reserve(size);
+        estimatedDepth.reserve(size);
+        close.reserve(size);
+        trackCnt.reserve(size);
+    }
+
+    void clear()
+    {
+        keyPoints.clear();
+        predKeyPoints.clear();
+        rightIdxs.clear();
+        mapPointIdx.clear();
+        estimatedDepth.clear();
+        close.clear();
+        trackCnt.clear();
+    }
+
+    void resize(size_t size)
+    {
+        estimatedDepth.resize(size, -1.0f);
+        mapPointIdx.resize(size, -1);
+        close.resize(size, false);
+        trackCnt.resize(size, 0);
+    }
+
+    void clone(TrackedKeys& keysToClone)
+    {
+        keyPoints = keysToClone.keyPoints;
+        rightIdxs = keysToClone.rightIdxs;
+        estimatedDepth = keysToClone.estimatedDepth;
+        close = keysToClone.close;
+        trackCnt = keysToClone.trackCnt;
+    }
 };
 
 struct PointsWD
