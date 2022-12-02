@@ -2010,7 +2010,8 @@ void RobustMatcher2::testOpticalReDo(Map* map)
     // ft.beginTrackingTrialClose(times);
 
     // ft.Track(times);
-    ft.Track2(times);
+    // ft.Track2(times);
+    ft.Track3(times);
 
     // ft.beginTracking(times);
     // ft.beginTrackingTrial(times);

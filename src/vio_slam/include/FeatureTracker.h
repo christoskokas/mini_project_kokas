@@ -169,12 +169,17 @@ class FeatureTracker
         void initializeTrackingGoodFeatures();
         void Track(const int frames);
         void Track2(const int frames);
+
+        void computeStereoMatchesORB(TrackedKeys& keysLeft, TrackedKeys& prevLeftKeys);
+
+        void Track3(const int frames);
         void beginTracking(const int frames);
         void beginTrackingTrial(const int frames);
         void beginTrackingTrialClose(const int frames);
         void beginTrackingGoodFeatures(const int frames);
 
         void extractORB(cv::Mat& leftIm, cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc);
+        void extractORBStereoMatch(cv::Mat& leftIm, cv::Mat& rightIm, TrackedKeys& keysLeft);
         void extractFAST(const cv::Mat& leftIm, const cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc, const std::vector<cv::Point2f>& prevPnts);
         void updateKeys(const int frame);
         void updateKeysGoodFeatures(const int frame);
@@ -187,9 +192,13 @@ class FeatureTracker
         void pointsInFrame(std::vector<cv::Point3d>& p3D);
 
         void computeOpticalLeft(TrackedKeys& keysLeft);
-        void computeStereoMatches(TrackedKeys& keysLeft, std::vector<cv::KeyPoint>& prevLeftKeys);
+        void computeStereoMatches(TrackedKeys& keysLeft, TrackedKeys& prevLeftKeys);
 
         void findFeaturesTh(const cv::Mat& lim, const cv::Mat& rim, const cv::Mat& pLim, const cv::Mat& pRim, PointsWD& pnts);
+
+
+        bool checkOutlierMap(const Eigen::Matrix4d& estimatedP, Eigen::Vector4d& p4d, const cv::Point2f& obs, const double thres, const float weight, cv::Point2f& out2d);
+        int checkOutliersMap(const Eigen::Matrix4d& estimatedP, TrackedKeys& prevKeysLeft, std::vector<bool>& inliers, const double thres, const std::vector<float>& weights);
 
         void optimizePoseCeres(TrackedKeys& prevKeys, TrackedKeys& newKeys);
         void getNewMatchedPoints(TrackedKeys& keysMatched, TrackedKeys& newPnts);
@@ -334,6 +343,7 @@ class FeatureTracker
 
         void convertToEigen(cv::Mat& Rvec, cv::Mat& tvec, Eigen::Matrix4d& tr);
         void publishPose();
+        void publishPoseCeres();
         void publishPoseTrial();
         void refine3DPnts();
 

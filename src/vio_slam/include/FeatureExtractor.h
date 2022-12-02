@@ -240,12 +240,18 @@ class FeatureExtractor
         std::vector<cv::KeyPoint> ssc(std::vector<cv::KeyPoint> keyPoints, int numRetPoints,
                          float tolerance, int cols, int rows);
 
+        void extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::KeyPoint>& pnts, cv::Mat& descriptors);
+
         void computeKeypointsOld(cv::Mat& image, std::vector <cv::KeyPoint>& keypoints, cv::Mat& desc, const bool right);
         void computeKeypointsOld2(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts, cv::Mat& descriptors, const bool right);
         void computeKeypoints(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts, cv::Mat& descriptors, const bool right);
+        void computeKeypointsORBNew(cv::Mat& image, std::vector<std::vector<cv::KeyPoint>>& allKeys);
         void computeKeypointsFAST(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
+        void computeKeypointsORB(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
         void computeDescriptorsFAST(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors);
         void computeFASTandDesc(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts, cv::Mat& descriptors);
+        void computeORBandDesc(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors);
+        void computeORBandDescNoGrids(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors);
 
         void findFeatures(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
         void findFast(cv::Mat& image, std::vector <cv::KeyPoint>& fastKeys);
@@ -256,9 +262,12 @@ class FeatureExtractor
         void populateKeyDestrib(const std::vector<cv::Point2f>& pnts, std::vector<std::vector<int>>& keyDestrib);
         void populateKeyDestribFAST(const cv::Mat& image, const std::vector<cv::Point2f>& pnts, std::vector<std::vector<int>>& keyDestribution);
 
+        void computeKeypointsORBLeft(const cv::Mat& image, const cv::Mat& mask, std::vector<cv::KeyPoint>& keypoints);
         void computeKeypointsFASTLeft(const cv::Mat& image, const cv::Mat& mask, std::vector<cv::KeyPoint>& keypoints);
         void setMask(const std::vector<cv::KeyPoint>& prevKeys, cv::Mat& mask);
-        void extractLeftFeatures(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& desc, const std::vector<cv::KeyPoint>& prevKeys);
+        void extractLeftFeaturesORB(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& desc, TrackedKeys& prevKeys);
+        void extractLeftFeaturesORBNoGrids(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& desc, TrackedKeys& prevKeys);
+        void extractLeftFeatures(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& desc, TrackedKeys& prevKeys);
         void extractFeatures(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
         void extractFeaturesClose(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints);
         void extractFeaturesCloseMask(cv::Mat& leftImage, cv::Mat& rightImage, StereoDescriptors& desc, StereoKeypoints& keypoints, const cv::Mat& mask);
