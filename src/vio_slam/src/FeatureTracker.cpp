@@ -998,13 +998,36 @@ bool FeatureTracker::checkOutlierMap(const Eigen::Matrix4d& estimatedP, Eigen::V
         return true;
 }
 
-int FeatureTracker::checkOutliersMap(const Eigen::Matrix4d& estimatedP, TrackedKeys& prevKeysLeft, std::vector<bool>& inliers, const double thres, const std::vector<float>& weights)
+bool FeatureTracker::checkOutlierMap3d(const Eigen::Matrix4d& estimatedP, Eigen::Vector4d& p4d, const double thres, const float weight,  Eigen::Vector4d& obs)
+{
+    p4d = estimatedP * p4d;
+    const double invZ = 1.0f/p4d(2);
+
+    const double invfx = 1.0f/fx;
+    const double invfy = 1.0f/fy;
+
+
+    const double u {fx*p4d(0)*invZ + cx};
+    const double v {fy*p4d(1)*invZ + cy};
+
+    const double errorX = weight * ((double)obs(0) - p4d(0));
+    const double errorY = weight * ((double)obs(1) - p4d(1));
+    const double errorZ = weight * ((double)obs(2) - p4d(2));
+
+    const double error = (errorX * errorX + errorY * errorY + errorZ * errorZ);
+    if (error > thres)
+        return false;
+    else
+        return true;
+}
+
+int FeatureTracker::checkOutliersMap(const Eigen::Matrix4d& estimatedP, TrackedKeys& prevKeysLeft, TrackedKeys& newKeys, std::vector<bool>& inliers, const double thres, const std::vector<float>& weights)
 {
     // std::vector<cv::Point2f>out2d;
     int nOut = 0;
     for (size_t i {0}, end{prevKeysLeft.keyPoints.size()}; i < end; i++)
     {
-        if (prevKeysLeft.mapPointIdx[i] < 0)
+        if (prevKeysLeft.mapPointIdx[i] < 0 || prevKeysLeft.matchedIdxs[i] < 0)
             continue;
         MapPoint* mp = map->mapPoints[prevKeysLeft.mapPointIdx[i]];
         if ( !mp->GetInFrame() || mp->GetIsOutlier())
@@ -1014,14 +1037,33 @@ int FeatureTracker::checkOutliersMap(const Eigen::Matrix4d& estimatedP, TrackedK
         }
         cv::Point2f out;
         Eigen::Vector4d p4d = mp->getWordPose4d();
-        if ( !checkOutlierMap(estimatedP, p4d, prevKeysLeft.predKeyPoints[i].pt, thres, weights[i],out))
+        p4d = zedPtr->cameraPose.poseInverse * p4d;
+        if ( newKeys.estimatedDepth[prevKeysLeft.matchedIdxs[i]] <= 0)
         {
-            nOut++;
-            inliers[i] = false;
+            if ( !checkOutlierMap(estimatedP, p4d, prevKeysLeft.predKeyPoints[i].pt, thres, weights[i],out))
+            {
+                nOut++;
+                inliers[i] = false;
+            }
+            else
+                inliers[i] = true;
+
         }
         else
-            inliers[i] = true;
+        {
+            Eigen::Vector4d np4d;
+            get3dFromKey(np4d, newKeys.keyPoints[prevKeysLeft.matchedIdxs[i]], newKeys.estimatedDepth[prevKeysLeft.matchedIdxs[i]]);
+            if ( !checkOutlierMap3d(estimatedP, p4d, thres, weights[i],np4d))
+            {
+                nOut++;
+                inliers[i] = false;
+            }
+            else
+                inliers[i] = true;
+
+        }
         // out2d.push_back(out);
+
     }
 
 // #if PROJECTIM
@@ -1289,26 +1331,26 @@ void FeatureTracker::optimizePoseCeres(TrackedKeys& prevKeys, TrackedKeys& newKe
     int nIn = prevS;
     bool rerun = true;
 
-    Eigen::Matrix4d prevCalcPose = poseEstFrame;
-
-    for (size_t times = 0; times < 3; times++)
+    Eigen::Matrix3d K = Eigen::Matrix3d::Identity();
+    K(0,0) = fx;
+    K(1,1) = fy;
+    K(0,2) = cx;
+    K(1,2) = cy;
+    Eigen::Matrix4d prevCalcPose = poseEstFrameInv;
+    std::vector<cv::Point2f> calc, predictedd;
+    for (size_t times = 0; times < 4; times++)
     {
         std::vector<cv::Point2f> found, observ;
         ceres::Problem problem;
         Eigen::Vector3d frame_tcw;
         Eigen::Quaterniond frame_qcw;
 
-        Eigen::Matrix4d frame_pose = poseEstFrame;
+        Eigen::Matrix4d frame_pose = poseEstFrameInv;
         Eigen::Matrix3d frame_R;
         frame_R = frame_pose.block<3, 3>(0, 0);
         frame_tcw = frame_pose.block<3, 1>(0, 3);
         frame_qcw = Eigen::Quaterniond(frame_R);
         
-        Eigen::Matrix3d K = Eigen::Matrix3d::Identity();
-        K(0,0) = fx;
-        K(1,1) = fy;
-        K(0,2) = cx;
-        K(1,2) = cy;
         ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
         ceres::LossFunction* loss_function = new ceres::HuberLoss(sqrt(7.815f));
         int count {0};
@@ -1329,9 +1371,9 @@ void FeatureTracker::optimizePoseCeres(TrackedKeys& prevKeys, TrackedKeys& newKe
             Eigen::Vector4d point = mp->getWordPose4d();
             point = zedPtr->cameraPose.poseInverse * point;
             Eigen::Vector3d point3d(point(0), point(1),point(2));
-            ceres::CostFunction* costf = OptimizePose::Create(K, point3d, obs, weights[i]);
-            Eigen::Vector3d pmoved = frame_R * point3d + frame_tcw;
-            pmoved = K * pmoved;
+            ceres::CostFunction* costf = OptimizePose::Create(K, point3d, obs, (double)weights[i]);
+            Eigen::Vector3d pmoved;
+            pmoved = K * point3d;
             found.push_back(cv::Point2f((float)pmoved(0)/(float)pmoved(2), (float)pmoved(1)/(float)pmoved(2)));
             
             problem.AddResidualBlock(costf, loss_function /* squared loss */,frame_tcw.data(), frame_qcw.coeffs().data());
@@ -1355,15 +1397,15 @@ void FeatureTracker::optimizePoseCeres(TrackedKeys& prevKeys, TrackedKeys& newKe
 
             Eigen::Vector4d np4d;
             get3dFromKey(np4d, newKeys.keyPoints[prevKeys.matchedIdxs[i]], newKeys.estimatedDepth[prevKeys.matchedIdxs[i]]);
-            observ.push_back(prevKeys.predKeyPoints[i].pt);
+            observ.push_back(newKeys.keyPoints[prevKeys.matchedIdxs[i]].pt);
             // np4d = zedPtr->cameraPose.pose * np4d;
             Eigen::Vector3d obs(np4d(0), np4d(1),np4d(2));
             Eigen::Vector4d point = mp->getWordPose4d();
             point = zedPtr->cameraPose.poseInverse * point;
             Eigen::Vector3d point3d(point(0), point(1),point(2));
-            ceres::CostFunction* costf = OptimizePoseICP::Create(K, point3d, obs, weights[i]);
-            Eigen::Vector3d pmoved = frame_R * point3d + frame_tcw;
-            pmoved = K * pmoved;
+            ceres::CostFunction* costf = OptimizePoseICP::Create(K, point3d, obs, (double)weights[i]);
+            Eigen::Vector3d pmoved;
+            pmoved = K * point3d;
             found.push_back(cv::Point2f((float)pmoved(0)/(float)pmoved(2), (float)pmoved(1)/(float)pmoved(2)));
             
             problem.AddResidualBlock(costf, loss_function /* squared loss */,frame_tcw.data(), frame_qcw.coeffs().data());
@@ -1386,16 +1428,45 @@ void FeatureTracker::optimizePoseCeres(TrackedKeys& prevKeys, TrackedKeys& newKe
         pose.block<3, 1>(0, 3) = - frame_tcw;
 
         Eigen::Matrix4d pFInv = pose.inverse();
-        int nOut = checkOutliersMap(pFInv, prevKeys, inliers, thresholds[times], weights);
+        int nOut = checkOutliersMap(pFInv, prevKeys, newKeys, inliers, thresholds[times], weights);
         // int nInAfter = nIn - nOut;
         Logging("POSE EST", pose,3);
         prevCalcPose = pose;
         prevInliers = inliers;
         drawOptical("optimization", pLIm.rIm, observ, found);
-        cv::waitKey(0);
+        cv::waitKey(1);
 
     }
     poseEstFrame = prevCalcPose;
+    for ( size_t i {0}; i < inliers.size(); i++)
+    {
+        if ( !inliers[i] )
+        {
+            if (prevKeys.mapPointIdx[i] < 0)
+                    continue;
+            MapPoint* mp = map->mapPoints[prevKeys.mapPointIdx[i]];
+            mp->SetIsOutlier(true);
+            
+            newKeys.close[prevKeys.matchedIdxs[i]] = false;
+        }
+        else
+            if ( prevKeys.mapPointIdx[i] >= 0)
+            {
+                if ( prevKeys.matchedIdxs[i] >= 0)
+                {
+                    MapPoint* mp = map->mapPoints[prevKeys.mapPointIdx[i]];
+                    Eigen::Vector4d point = mp->getWordPose4d();
+                    point = zedPtr->cameraPose.poseInverse * point;
+                    point = poseEstFrame.inverse() * point;
+                    Eigen::Vector3d point3d(point(0), point(1),point(2));
+                    point3d = K * point3d;
+                    calc.push_back(cv::Point2f((float)point3d(0)/(float)point3d(2), (float)point3d(1)/(float)point3d(2)));
+                    predictedd.push_back(newKeys.keyPoints[prevKeys.matchedIdxs[i]].pt);
+                }
+            }
+    }
+    drawOptical("reproj erro", pLIm.rIm, predictedd, calc);
+    cv::waitKey(1);
     // prevKeys.reduce<bool>(prevInliers);
     // prePnts.reduce<bool>(prevInliers);
 
@@ -1499,7 +1570,7 @@ void FeatureTracker::optimizePoseORB(TrackedKeys& prevKeys, TrackedKeys& newKeys
 
         poseEst = pose;
         Eigen::Matrix4d pFInv = pose.inverse();
-        int nOut = checkOutliersMap(pFInv, prevKeys, inliers, thresholds[times], weights);
+        int nOut = checkOutliersMap(pFInv, prevKeys, newKeys, inliers, thresholds[times], weights);
         int nInAfter = nIn - nOut;
         Logging("POSE EST", pose,3);
         prevCalcPose = poseEst;
@@ -2216,91 +2287,16 @@ void FeatureTracker::Track3(const int frames)
         // prevLeftPnts.inliers.clear();
         // cv::findFundamentalMat(ppnts, pntsn,prevLeftPnts.inliers2);
         drawLeftMatches("left Matches", pLIm.rIm, prevLeftPnts, keysLeft);
-        cv::waitKey(waitTrials);
+        cv::waitKey(1);
         optimizePoseCeres(prevLeftPnts, keysLeft);
 
         cloneTrackedKeys(prevLeftPnts, keysLeft);
         updateMapPoints(prevLeftPnts);
 
 
-
-        // prevLeftPnts.clone(keysLeft);
-
-        // prevLeftPnts.clone(keysLeft);
-        // addMapPnts(keysLeft);
         setPreLImage();
         setPreRImage();
 
-        // add the projected mappoint here that are in frame 
-        // addStereoPnts();
-
-        // computeOpticalLeft(prevLeftPnts);
-
-        // // here check size of predKeysPoints and start from end of new keypoints - size (it is the first predKeyPoint)
-        // computeStereoMatches(keysLeft, prevLeftPnts);
-
-        // // getNewMatchedPoints(keysLeft, prevLeftPnts);
-        // // optimization goes here
-        // optimizePoseCeres(prevLeftPnts, keysLeft);
-
-        // addMapPnts(keysLeft);
-
-        // // prevLeftPnts.clear();
-        // const size_t s {prevLeftPnts.keyPoints.size()};
-        // const size_t s4 {prevLeftPnts.estimatedDepth.size()};
-        // const size_t s5 {prevLeftPnts.predKeyPoints.size()};
-        // const size_t s6 {prevLeftPnts.mapPointIdx.size()};
-        // const size_t s7 {prevLeftPnts.trackCnt.size()};
-        // const size_t s2 {keysLeft.keyPoints.size()};
-        // const size_t s3 {keysLeft.keyPoints.size()};
-
-
-        setPreLImage();
-        setPreRImage();
-
-        // zedPtr->addKeyFrame = true;
-    //     setLRImages(curFrame);
-
-    // //     Eigen::Vector4d p(0,0,0,1);
-    // // map->addMapPoint(p);
-
-    // // Eigen::Vector4d p2(500,432,5234,3211);
-    // // map->addMapPoint(p2);
-
-    //     findStereoFeatures(lIm.im, rIm.im, pnts);
-
-    //     triangulate3DPoints(pnts);
-
-    //     if ( curFrame == 0 )
-    //     {
-            // setPreviousValuesIni();
-    //         continue;
-    //     }
-
-
-    //     estimatePoseN();
-
-    //     setPreviousValues();
-
-        // calcOptical(pnts, true);
-        // calcOptical(prePnts, false);
-
-        // solvePnPIni(prePnts, Rvec, tvec, false);
-        // solvePnPIni(pnts, Rvec, tvec, true);
-
-
-
-
-        // if ( curFrame == 1 )
-        //     opticalFlow();
-        // else
-        //     opticalFlowPredict();
-        // getPoseCeresNew();
-
-        // setPreTrial();
-
-        // Logging("ustereo", uStereo,3);
-        // Logging("umono", uMono,3);
     }
     datafile.close();
 }

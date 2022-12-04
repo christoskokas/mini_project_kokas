@@ -1460,6 +1460,9 @@ void FeatureMatcher::matchORBPoints(TrackedKeys& prevLeftKeys, TrackedKeys& keys
                 rIdxs[bestIdx] = bestDist;
                 lIdxs[bestIdx] = i;
             }
+            // prevLeftKeys.matchedIdxs[i] = bestIdx;
+            // prevLeftKeys.predKeyPoints[i] = keysLeft.keyPoints[bestIdx];
+
         }
     }
     for ( size_t i {0}; i < newE; i++)
@@ -1476,7 +1479,7 @@ void FeatureMatcher::matchORBPoints(TrackedKeys& prevLeftKeys, TrackedKeys& keys
 
 void FeatureMatcher::destributeLeftKeys(TrackedKeys& keysLeft, std::vector<std::vector<std::vector<int>>>& leftIdxs, const int lnGrids, const int rnGrids)
 {
-    const int off {1};
+    const int off {2};
     const float lMult = (float)lnGrids/(float)zedptr->mWidth;
     const float rMult = (float)rnGrids/(float)zedptr->mHeight;
     std::vector<cv::KeyPoint>::const_iterator it, end(keysLeft.keyPoints.end());
@@ -2859,8 +2862,10 @@ void FeatureMatcher::destributeRightKeys(const std::vector < cv::KeyPoint >& rig
     for (it = rightKeys.begin(); it != end; it++, count ++)
     {
         const int yKey = cvRound((*it).pt.y);
-        const int mn = yKey - stereoYSpan;
-        const int mx = yKey + stereoYSpan;
+        const float r = 2.0f*feRight->scalePyramid[it->octave];
+        const int mn = cvFloor(yKey - r);
+        const int mx = cvCeil(yKey + r);
+
         
 
         for (int32_t pos = mn; pos <= mx; pos++)

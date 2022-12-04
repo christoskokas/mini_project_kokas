@@ -203,9 +203,10 @@ class FeatureTracker
 
         void findFeaturesTh(const cv::Mat& lim, const cv::Mat& rim, const cv::Mat& pLim, const cv::Mat& pRim, PointsWD& pnts);
 
-
+        bool checkOutlierMap3d(const Eigen::Matrix4d& estimatedP, Eigen::Vector4d& p4d, const double thres, const float weight,  Eigen::Vector4d& obs);
+        
         bool checkOutlierMap(const Eigen::Matrix4d& estimatedP, Eigen::Vector4d& p4d, const cv::Point2f& obs, const double thres, const float weight, cv::Point2f& out2d);
-        int checkOutliersMap(const Eigen::Matrix4d& estimatedP, TrackedKeys& prevKeysLeft, std::vector<bool>& inliers, const double thres, const std::vector<float>& weights);
+        int checkOutliersMap(const Eigen::Matrix4d& estimatedP, TrackedKeys& prevKeysLeft, TrackedKeys& newKeys, std::vector<bool>& inliers, const double thres, const std::vector<float>& weights);
 
         void optimizePoseCeres(TrackedKeys& prevKeys, TrackedKeys& newKeys);
         void optimizePoseORB(TrackedKeys& prevKeys, TrackedKeys& newKeys);
