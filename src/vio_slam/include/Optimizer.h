@@ -414,7 +414,8 @@ public:
             observation_.template cast<T>()[0] - p_cp[0];
         residuals[1] =
             observation_.template cast<T>()[1] - p_cp[1];
-            observation_.template cast<T>()[2] - p_cp[2];
+
+        residuals[2] = observation_.template cast<T>()[2] - p_cp[2];
 
 
         residuals[0] = T(weight_) * residuals[0];

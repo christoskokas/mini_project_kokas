@@ -23,9 +23,13 @@ struct TrackedKeys
     std::vector<cv::KeyPoint> predKeyPoints;
     std::vector<int> rightIdxs;
     std::vector<int> mapPointIdx;
+    std::vector<int> matchedIdxs;
     std::vector<float> estimatedDepth;
+    // std::vector<float> estimatedDepthNew;
     std::vector<bool> close;
+    std::vector<bool> hasPrediction;
     std::vector<bool> inliers;
+    std::vector<uchar> inliers2;
     std::vector<int> trackCnt;
     cv::Mat Desc;
 
@@ -82,7 +86,8 @@ struct TrackedKeys
     void clone(TrackedKeys& keysToClone)
     {
         keyPoints = keysToClone.keyPoints;
-        rightIdxs = keysToClone.rightIdxs;
+        Desc = keysToClone.Desc.clone();
+        mapPointIdx = keysToClone.mapPointIdx;
         estimatedDepth = keysToClone.estimatedDepth;
         close = keysToClone.close;
         trackCnt = keysToClone.trackCnt;
@@ -215,6 +220,7 @@ class FeatureExtractor
         int maskRadius {5};
     
         std::vector <cv::Mat> imagePyramid;
+        std::vector<int>scaledPatchSize;
         std::vector < float > scalePyramid;
         std::vector < float > scaleInvPyramid;
         std::vector < int > featurePerLevel;
@@ -240,12 +246,13 @@ class FeatureExtractor
         std::vector<cv::KeyPoint> ssc(std::vector<cv::KeyPoint> keyPoints, int numRetPoints,
                          float tolerance, int cols, int rows);
 
-        void extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::KeyPoint>& pnts, cv::Mat& descriptors);
+        void extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors);
 
         void computeKeypointsOld(cv::Mat& image, std::vector <cv::KeyPoint>& keypoints, cv::Mat& desc, const bool right);
         void computeKeypointsOld2(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts, cv::Mat& descriptors, const bool right);
         void computeKeypoints(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<cv::Point2f>& pnts, cv::Mat& descriptors, const bool right);
         void computeKeypointsORBNew(cv::Mat& image, std::vector<std::vector<cv::KeyPoint>>& allKeys);
+        void computeKeypointsORBNewRight(cv::Mat& image, std::vector<std::vector<cv::KeyPoint>>& allKeys);
         void computeKeypointsFAST(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
         void computeKeypointsORB(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints);
         void computeDescriptorsFAST(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors);

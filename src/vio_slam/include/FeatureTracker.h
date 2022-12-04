@@ -170,6 +170,7 @@ class FeatureTracker
         void Track(const int frames);
         void Track2(const int frames);
 
+        void get3dFromKey(Eigen::Vector4d& pnt4d, const cv::KeyPoint& pnt, const float depth);
         void computeStereoMatchesORB(TrackedKeys& keysLeft, TrackedKeys& prevLeftKeys);
 
         void Track3(const int frames);
@@ -177,6 +178,12 @@ class FeatureTracker
         void beginTrackingTrial(const int frames);
         void beginTrackingTrialClose(const int frames);
         void beginTrackingGoodFeatures(const int frames);
+
+        void cloneTrackedKeys(TrackedKeys& prevLeftKeys, TrackedKeys& leftKeys);
+        void reduceTrackedKeysMatches(TrackedKeys& prevLeftKeys, TrackedKeys& leftKeys);
+        void reduceTrackedKeys(TrackedKeys& leftKeys, std::vector<bool>& inliers);
+        void updateMapPoints(TrackedKeys& prevLeftKeys);
+        void predictORBPoints(TrackedKeys& prevLeftKeys);
 
         void extractORB(cv::Mat& leftIm, cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc);
         void extractORBStereoMatch(cv::Mat& leftIm, cv::Mat& rightIm, TrackedKeys& keysLeft);
@@ -201,6 +208,7 @@ class FeatureTracker
         int checkOutliersMap(const Eigen::Matrix4d& estimatedP, TrackedKeys& prevKeysLeft, std::vector<bool>& inliers, const double thres, const std::vector<float>& weights);
 
         void optimizePoseCeres(TrackedKeys& prevKeys, TrackedKeys& newKeys);
+        void optimizePoseORB(TrackedKeys& prevKeys, TrackedKeys& newKeys);
         void getNewMatchedPoints(TrackedKeys& keysMatched, TrackedKeys& newPnts);
         void addNewPoints(PointsWD& pntsWD);
         void addMapPnts(TrackedKeys& keysLeft);
@@ -326,6 +334,7 @@ class FeatureTracker
         }
 
         void drawKeyPointsCloseFar(const char* com, const cv::Mat& im, const TrackedKeys& keysLeft, const std::vector<cv::KeyPoint>& right);
+        void drawLeftMatches(const char* com, const cv::Mat& im, const TrackedKeys& prevKeysLeft, const TrackedKeys& keysLeft);
 
         void calcGridVel();
         bool checkProjection3D(cv::Point3d& point3D, cv::Point2d& point2d);
