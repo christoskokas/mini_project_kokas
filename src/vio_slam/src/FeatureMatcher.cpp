@@ -1453,7 +1453,7 @@ void FeatureMatcher::matchORBPoints(TrackedKeys& prevLeftKeys, TrackedKeys& keys
             if ( dist < secDist)
                 secDist = dist;
         }
-        if ( bestDist < thDist && bestDist < 0.8* secDist)
+        if ( bestDist < matchDist && bestDist < 0.8* secDist)
         {
             if (rIdxs[bestIdx] > bestDist)
             {
@@ -1474,12 +1474,223 @@ void FeatureMatcher::matchORBPoints(TrackedKeys& prevLeftKeys, TrackedKeys& keys
         }
     }
     
+    leftIdxs = std::vector<std::vector<std::vector<int>>>(rnGrids, std::vector<std::vector<int>>(lnGrids,std::vector<int>()));
+
+}
+
+int FeatureMatcher::matchByProjection(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB)
+{
+    const float imageRatio = (float)zedptr->mWidth/(float)zedptr->mHeight;
+    const int lnGrids = gridCols;
+    const int rnGrids = cvCeil(lnGrids/imageRatio);
+    const float lMult = (float)lnGrids/(float)zedptr->mWidth;
+    const float rMult = (float)rnGrids/(float)zedptr->mHeight;
+    std::vector<std::vector<std::vector<int>>> leftIdxs(rnGrids, std::vector<std::vector<int>>(lnGrids,std::vector<int>()));
+    destributeLeftKeys(keysLeft, leftIdxs, lnGrids, rnGrids);
+
+
+    const size_t prevE {activeMapPoints.size()};
+    const size_t newE {keysLeft.keyPoints.size()};
+    
+    std::vector<int> rIdxs(newE, 256);
+    for ( size_t i {0}; i < prevE; i++)
+    {
+        int gCol {cvRound(activeMapPoints[i]->obs[0].pt.x*lMult)};
+        int gRow {cvRound(activeMapPoints[i]->obs[0].pt.y*rMult)};
+        if (gRow >= rnGrids)
+            gRow = rnGrids - 1;
+        if (gCol >= lnGrids)
+            gCol = lnGrids - 1;
+        std::vector<int>& idxs = leftIdxs[gRow][gCol];
+
+        int bestDist = 256;
+        int bestIdx = -1;
+        int secDist = 256;
+        if ( idxs.empty() )
+            continue;
+        for (auto& idx : idxs)
+        {
+            
+            int dist = DescriptorDistance(activeMapPoints[i]->desc.row(0), keysLeft.Desc.row(idx));
+            if ( dist < bestDist)
+            {
+                // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
+                secDist = bestDist;
+                bestDist = dist;
+                bestIdx = idx;
+                continue;
+            }
+            if ( dist < secDist)
+                secDist = dist;
+        }
+        if ( bestDist < matchDist && bestDist < 0.8* secDist)
+        {
+            if (rIdxs[bestIdx] > bestDist)
+            {
+                rIdxs[bestIdx] = bestDist;
+                matchedIdxsN[bestIdx] = i;
+            }
+            // prevLeftKeys.matchedIdxs[i] = bestIdx;
+            // prevLeftKeys.predKeyPoints[i] = keysLeft.keyPoints[bestIdx];
+
+        }
+    }
+    int nMatches {0};
+    for ( size_t i {0}; i < newE; i++)
+    {
+        if ( matchedIdxsN[i] >= 0)
+        {
+            matchedIdxsB[matchedIdxsN[i]] = i;
+            nMatches ++;
+        }
+    }
+    return nMatches;
+}
+
+int FeatureMatcher::matchByProjectionConVel(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const int timesGrid)
+{
+    const float imageRatio = (float)zedptr->mWidth/(float)zedptr->mHeight;
+    const int lnGrids = gridCols * timesGrid;
+    const int rnGrids = cvCeil(lnGrids/imageRatio);
+    const float lMult = (float)lnGrids/(float)zedptr->mWidth;
+    const float rMult = (float)rnGrids/(float)zedptr->mHeight;
+    std::vector<std::vector<std::vector<int>>> leftIdxs(rnGrids, std::vector<std::vector<int>>(lnGrids,std::vector<int>()));
+    destributeLeftKeys(keysLeft, leftIdxs, lnGrids, rnGrids);
+
+
+    const size_t prevE {activeMapPoints.size()};
+    const size_t newE {keysLeft.keyPoints.size()};
+    
+    std::vector<int> rIdxs(newE, 256);
+    for ( size_t i {0}; i < prevE; i++)
+    {
+        if ( projectedPoints[i].pt.x <= 0 )
+                continue;
+        int gCol {cvRound(projectedPoints[i].pt.x*lMult)};
+        int gRow {cvRound(projectedPoints[i].pt.y*rMult)};
+        if (gRow >= rnGrids)
+            gRow = rnGrids - 1;
+        if (gCol >= lnGrids)
+            gCol = lnGrids - 1;
+        std::vector<int>& idxs = leftIdxs[gRow][gCol];
+
+        int bestDist = 256;
+        int bestIdx = -1;
+        int secDist = 256;
+        if ( idxs.empty() )
+            continue;
+        for (auto& idx : idxs)
+        {
+            
+            int dist = DescriptorDistance(activeMapPoints[i]->desc.row(0), keysLeft.Desc.row(idx));
+            if ( dist < bestDist)
+            {
+                // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
+                secDist = bestDist;
+                bestDist = dist;
+                bestIdx = idx;
+                continue;
+            }
+            if ( dist < secDist)
+                secDist = dist;
+        }
+        if ( bestDist < matchDist && bestDist < 0.8* secDist)
+        {
+            if (rIdxs[bestIdx] > bestDist)
+            {
+                rIdxs[bestIdx] = bestDist;
+                matchedIdxsN[bestIdx] = i;
+            }
+            // prevLeftKeys.matchedIdxs[i] = bestIdx;
+            // prevLeftKeys.predKeyPoints[i] = keysLeft.keyPoints[bestIdx];
+
+        }
+    }
+    int nMatches {0};
+    for ( size_t i {0}; i < newE; i++)
+    {
+        if ( matchedIdxsN[i] >= 0)
+        {
+            matchedIdxsB[matchedIdxsN[i]] = i;
+            nMatches ++;
+        }
+    }
+    return nMatches;
+}
+
+int FeatureMatcher::matchByProjectionPred(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const int timesGrid)
+{
+    const float imageRatio = (float)zedptr->mWidth/(float)zedptr->mHeight;
+    // smaller window because these points have predicted positions
+    const int lnGrids = gridCols * timesGrid;
+    const int rnGrids = cvCeil(lnGrids/imageRatio);
+    const float lMult = (float)lnGrids/(float)zedptr->mWidth;
+    const float rMult = (float)rnGrids/(float)zedptr->mHeight;
+    std::vector<std::vector<std::vector<int>>> leftIdxs(rnGrids, std::vector<std::vector<int>>(lnGrids,std::vector<int>()));
+    destributeLeftKeys(keysLeft, leftIdxs, lnGrids, rnGrids);
+
+    const size_t prevE {activeMapPoints.size()};
+    const size_t newE {keysLeft.keyPoints.size()};
+    
+    std::vector<int> rIdxs(newE, 256);
+    for ( size_t i {0}; i < prevE; i++)
+    {
+        if ( matchedIdxsB[i] >= 0 || projectedPoints[i].pt.x <= 0)
+                continue;
+        int gCol {cvRound(projectedPoints[i].pt.x*lMult)};
+        int gRow {cvRound(projectedPoints[i].pt.y*rMult)};
+        if (gRow >= rnGrids)
+            gRow = rnGrids - 1;
+        if (gCol >= lnGrids)
+            gCol = lnGrids - 1;
+        std::vector<int>& idxs = leftIdxs[gRow][gCol];
+
+        int bestDist = 256;
+        int bestIdx = -1;
+        int secDist = 256;
+        if ( idxs.empty() )
+            continue;
+        for (auto& idx : idxs)
+        {
+            if ( matchedIdxsN[idx] >= 0 )
+                continue;
+            int dist = DescriptorDistance(activeMapPoints[i]->desc.row(0), keysLeft.Desc.row(idx));
+            if ( dist < bestDist)
+            {
+                // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
+                secDist = bestDist;
+                bestDist = dist;
+                bestIdx = idx;
+                continue;
+            }
+            if ( dist < secDist)
+                secDist = dist;
+        }
+        if ( bestDist < matchDist && bestDist < 0.8* secDist)
+        {
+            if (rIdxs[bestIdx] > bestDist)
+            {
+                rIdxs[bestIdx] = bestDist;
+                matchedIdxsN[bestIdx] = i;
+            }
+        }
+    }
+    int nMatches {0};
+    for ( size_t i {0}; i < newE; i++)
+    {
+        if ( matchedIdxsN[i] >= 0)
+        {
+            matchedIdxsB[matchedIdxsN[i]] = i;
+            nMatches ++;
+        }
+    }
+    return nMatches;
 
 }
 
 void FeatureMatcher::destributeLeftKeys(TrackedKeys& keysLeft, std::vector<std::vector<std::vector<int>>>& leftIdxs, const int lnGrids, const int rnGrids)
 {
-    const int off {2};
+    const int off {1};
     const float lMult = (float)lnGrids/(float)zedptr->mWidth;
     const float rMult = (float)rnGrids/(float)zedptr->mHeight;
     std::vector<cv::KeyPoint>::const_iterator it, end(keysLeft.keyPoints.end());

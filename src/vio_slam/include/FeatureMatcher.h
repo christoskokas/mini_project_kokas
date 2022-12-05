@@ -5,6 +5,7 @@
 
 #include "Settings.h"
 #include "Camera.h"
+#include "Map.h"
 #include "FeatureExtractor.h"
 #include <opencv2/calib3d.hpp>
 #include "opencv2/highgui.hpp"
@@ -38,8 +39,11 @@ class FeatureMatcher
         const int gridRows, gridCols;
         const int maxMatches {1000};
         const int mnDisp;
-        const int closeNumber {100};
+        const int closeNumber {50};
         const int thDist {75};
+        const int matchDist {40};
+
+        // std::vector<std::vector<std::vector<int>>> leftIdxs;
 
 
         const Zed_Camera* zedptr;
@@ -57,6 +61,11 @@ class FeatureMatcher
         const FeatureExtractor* feLeft, *feRight;
 
         FeatureMatcher(const Zed_Camera* _zed, const FeatureExtractor* _feLeft, const FeatureExtractor* _feRight, const int _imageHeight = 360, const int _gridRows = 5, const int _gridCols = 5, const int _stereoYSpan = 2);
+
+        int matchByProjection(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB);
+        
+        int matchByProjectionPred(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const int timesGrid);
+        int matchByProjectionConVel(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const int timesGrid);
 
         void stereoMatch(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector<cv::KeyPoint>& leftKeys, std::vector<cv::KeyPoint>& rightKeys, const cv::Mat& leftDesc, const cv::Mat& rightDesc, std::vector <cv::DMatch>& matches, SubPixelPoints& points);
 

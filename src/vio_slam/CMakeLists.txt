@@ -65,6 +65,7 @@ src/KeyFrame.cpp
 src/FeatureTracker.cpp
 src/System.cpp
 src/Map.cpp
+src/Conversions.cpp
 include/Camera.h
 include/FeatureDrawer.h
 include/Frame.h
@@ -78,6 +79,7 @@ include/KeyFrame.h
 include/FeatureTracker.h
 include/Map.h
 include/System.h
+include/Conversions.h
 )
 
 add_subdirectory(Thirdparty/Sophus)

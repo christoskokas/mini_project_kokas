@@ -69,6 +69,12 @@ void Map::addMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& ob
     pIdx++;
 }
 
+void Map::addMapPoint(MapPoint* mp)
+{
+    mapPoints.insert(std::pair<unsigned long, MapPoint*>(pIdx, mp));
+    pIdx++;
+}
+
 void Map::addKeyFrame(Eigen::Matrix4d _pose)
 {
     KeyFrame* kF = new KeyFrame(_pose, kIdx);

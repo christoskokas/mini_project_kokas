@@ -7,8 +7,6 @@
 #include "KeyFrame.h"
 #include "PoseEstimator.h"
 #include "FeatureManager.h"
-#include "FeatureExtractor.h"
-#include "FeatureMatcher.h"
 #include "Settings.h"
 #include "Optimizer.h"
 #include <fstream>
@@ -74,6 +72,7 @@ class Map
         unsigned long pIdx {0};
         Map(){};
         void addMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _useable);
+        void addMapPoint(MapPoint* mp);
         void addKeyFrame(Eigen::Matrix4d _pose);
 };
 

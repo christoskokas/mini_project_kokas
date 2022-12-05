@@ -10,6 +10,7 @@
 #include "FeatureManager.h"
 #include "FeatureExtractor.h"
 #include "FeatureMatcher.h"
+#include "Conversions.h"
 #include "Settings.h"
 #include "Optimizer.h"
 #include <fstream>
@@ -76,6 +77,10 @@ class FeatureTracker
 
         std::vector<KeyFrame> keyframes;
 
+        std::vector<MapPoint*> activeMapPoints;
+        // std::vector<int> activeMapPointsCorr;
+        std::vector<int> mPPerKeyFrame;
+
         std::vector<int> reprojIdxs;
 
         Eigen::Matrix4d poseEst = Eigen::Matrix4d::Identity();
@@ -87,6 +92,8 @@ class FeatureTracker
         Eigen::Matrix4d predNPose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d predNPoseInv = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d prevposeEstFrame = Eigen::Matrix4d::Identity();
+        Eigen::Matrix3d K = Eigen::Matrix3d::Identity();
+
         cv::Mat prevR = (cv::Mat_<double>(3,3) << 1,0,0,0, 1,0,0,0,1);
         cv::Mat pTvec = cv::Mat::zeros(3,1, CV_64F);
         cv::Mat pRvec = cv::Mat::zeros(3,1, CV_64F);
@@ -165,6 +172,18 @@ class FeatureTracker
 
         FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map);
 
+        void removeMapPointOut(std::vector<MapPoint*>& activeMapPoints);
+        void addKeyFrame(TrackedKeys& keysLeft);
+        bool check2dError(Eigen::Vector4d& p4d, const cv::Point2f& obs, const double thres, const float weight);
+        bool check3dError(const Eigen::Vector4d& p4d, const Eigen::Vector4d& obs, const double thres, const float weight);
+        int OutliersReprojErr(const Eigen::Matrix4d& estimatedP, std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsB, const double thres, const std::vector<float>& weights, int& nInliers);
+        std::pair<int,int> refinePose(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsB, Eigen::Matrix4d& estimPose);
+        void publishPoseNew();
+        void removePnPOut(std::vector<int>& idxs, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB);
+        void worldToImg(std::vector<MapPoint*>& MapPointsVec, std::vector<cv::KeyPoint>& projectedPoints);
+        void worldToImg(std::vector<MapPoint*>& MapPointsVec, std::vector<cv::KeyPoint>& projectedPoints, const Eigen::Matrix4d& currPoseInv);
+        void getPoints3dFromMapPoints(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<cv::Point3d>& points3d, std::vector<cv::Point2d>& points2d, std::vector<int>& matchedIdxs);
+
         void initializeTracking();
         void initializeTrackingGoodFeatures();
         void Track(const int frames);
@@ -173,6 +192,8 @@ class FeatureTracker
         void get3dFromKey(Eigen::Vector4d& pnt4d, const cv::KeyPoint& pnt, const float depth);
         void computeStereoMatchesORB(TrackedKeys& keysLeft, TrackedKeys& prevLeftKeys);
 
+        void initializeMap(TrackedKeys& keysLeft);
+        void Track4(const int frames);
         void Track3(const int frames);
         void beginTracking(const int frames);
         void beginTrackingTrial(const int frames);
