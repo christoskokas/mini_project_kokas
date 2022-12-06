@@ -173,7 +173,7 @@ class FeatureTracker
         FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map);
 
         void removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, const Eigen::Matrix4d& estimPose);
-        void addKeyFrame(TrackedKeys& keysLeft);
+        void addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN);
         bool check2dError(Eigen::Vector4d& p4d, const cv::Point2f& obs, const double thres, const float weight);
         bool check3dError(const Eigen::Vector4d& p4d, const Eigen::Vector4d& obs, const double thres, const float weight);
         int OutliersReprojErr(const Eigen::Matrix4d& estimatedP, std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsB, const double thres, const std::vector<float>& weights, int& nInliers);
