@@ -2310,6 +2310,7 @@ void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
 {
     activeMapPoints.reserve(keysLeft.keyPoints.size());
     mPPerKeyFrame.reserve(1000);
+    std::lock_guard<std::mutex> lock(map->mapMutex);
     for (size_t i{0}, end{keysLeft.keyPoints.size()}; i < end; i++)
     {
         if ( keysLeft.estimatedDepth[i] > 0 )
@@ -2625,6 +2626,7 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
 {
     activeMapPoints.reserve(activeMapPoints.size() + keysLeft.keyPoints.size());
     mPPerKeyFrame.reserve(1000);
+    std::lock_guard<std::mutex> lock(map->mapMutex);
     for (size_t i{0}, end{keysLeft.keyPoints.size()}; i < end; i++)
     {
         // if ( keysLeft.close[i] >  )

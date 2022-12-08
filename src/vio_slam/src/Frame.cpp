@@ -212,6 +212,8 @@ void CameraFrame::Render(const pangolin::RenderParams&)
 void CameraFrame::drawPoints()
 {
     glColor3f(1.0f,1.0f,1.0f);
+    std::lock_guard<std::mutex> lock(map->mapMutex);
+    // std::unique_lock<std::mutex> lock(map->mapMutex);
     glBegin(GL_POINTS);
 
     // here we need mutexes to avoid adding mappoints and at the same time getting the pIdx (while it is changing)

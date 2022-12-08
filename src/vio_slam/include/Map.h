@@ -66,6 +66,7 @@ class Map
     private:
 
     public:
+
         std::unordered_map<unsigned long, KeyFrame*> keyFrames;
         std::unordered_map<unsigned long, MapPoint*> mapPoints;
         unsigned long kIdx {0};
@@ -74,6 +75,9 @@ class Map
         void addMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _useable);
         void addMapPoint(MapPoint* mp);
         void addKeyFrame(Eigen::Matrix4d _pose);
+        mutable std::mutex mapMutex;
+
+    protected:
 };
 
 } // namespace vio_slam
