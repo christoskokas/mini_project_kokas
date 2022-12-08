@@ -78,7 +78,7 @@ class FeatureTracker
 
         std::vector<KeyFrame> keyframes;
 
-        std::vector<MapPoint*> activeMapPoints;
+        std::vector<MapPoint*>& activeMapPoints;
         // std::vector<int> activeMapPointsCorr;
         std::vector<int> mPPerKeyFrame;
 

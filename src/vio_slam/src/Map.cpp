@@ -20,6 +20,11 @@ bool MapPoint::GetIsOutlier() const
     return isOutlier;
 }
 
+bool MapPoint::getActive() const
+{
+    return isActive;
+}
+
 void MapPoint::SetInFrame(bool infr)
 {
     inFrame = infr;
@@ -28,6 +33,11 @@ void MapPoint::SetInFrame(bool infr)
 void MapPoint::SetIsOutlier(bool isOut)
 {
     isOutlier = isOut;
+}
+
+void MapPoint::setActive(bool act)
+{
+    isActive = act;
 }
 
 Eigen::Vector4d MapPoint::getWordPose4d()

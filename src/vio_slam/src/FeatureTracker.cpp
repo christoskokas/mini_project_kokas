@@ -74,8 +74,10 @@ void FeatureData::compute3DPoints(SubPixelPoints& prePnts, const int keyNumb)
     }
 }
 
-FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map) : zedPtr(_zedPtr), map(_map), fm(zedPtr, &feLeft, &feRight, zedPtr->mHeight,feLeft.getGridRows(), feLeft.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1.0f/(double)zedPtr->mFps), lkal(dt), datafile(filepath), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy)
+FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map) : zedPtr(_zedPtr), map(_map), fm(zedPtr, &feLeft, &feRight, zedPtr->mHeight,feLeft.getGridRows(), feLeft.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1.0f/(double)zedPtr->mFps), lkal(dt), datafile(filepath), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy), activeMapPoints(_map->activeMapPoints)
 {
+    // std::vector<MapPoint*>& temp = map->activeMapPoints;
+    // activeMapPoints = map->activeMapPoints;
     rmap[0][0] = _rmap[0][0];
     rmap[0][1] = _rmap[0][1];
     rmap[1][0] = _rmap[1][0];
@@ -2657,12 +2659,16 @@ void FeatureTracker::removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, 
     for ( size_t i {0}; i < end; i++)
     {
         if ( activeMapPoints[i]->GetIsOutlier() || !activeMapPoints[i]->GetInFrame())
+        {
+            activeMapPoints[i]->setActive(false);
             continue;
+        }
         Eigen::Vector4d point = activeMapPoints[i]->getWordPose4d();
         point = estimPose * point;
 
         if ( point(2) <= 0.0 )
         {
+            activeMapPoints[i]->setActive(false);
             activeMapPoints[i]->SetInFrame(false);
             continue;
         }
@@ -2676,6 +2682,7 @@ void FeatureTracker::removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, 
 
         if ( u < 0 || v < 0 || u >= w || v >= h)
         {
+            activeMapPoints[i]->setActive(false);
             activeMapPoints[i]->SetInFrame(false);
             continue;
         }

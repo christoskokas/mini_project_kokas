@@ -221,10 +221,24 @@ void CameraFrame::drawPoints()
     for ( size_t i {0}; i < map->pIdx; i ++)
     {
         const MapPoint* mp = map->mapPoints.at(i);
-        if ( !mp->GetIsOutlier())
+        if ( !mp->GetIsOutlier() && !mp->getActive())
             glVertex3d(mp->wp3d(0),mp->wp3d(1),mp->wp3d(2));
     }
     glEnd();
+
+    glColor3f(0.0f,1.0f,0.0f);
+    // std::unique_lock<std::mutex> lock(map->mapMutex);
+    glBegin(GL_POINTS);
+
+    // here we need mutexes to avoid adding mappoints and at the same time getting the pIdx (while it is changing)
+    std::vector<MapPoint*>::const_iterator it, end(map->activeMapPoints.end());
+    for ( it = map->activeMapPoints.begin(); it != end; it++)
+    {
+        if ( !(*it)->GetIsOutlier() && (*it)->getActive())
+            glVertex3d((*it)->wp3d(0),(*it)->wp3d(1),(*it)->wp3d(2));
+    }
+    glEnd();
+
     mapPntsDrawn = map->pIdx;
     glColor3f(0.0f,1.0f,0.0f);
 }

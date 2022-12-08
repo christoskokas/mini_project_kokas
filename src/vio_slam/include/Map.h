@@ -38,6 +38,8 @@ class MapPoint
         std::vector<cv::KeyPoint> obs;
         cv::Mat desc;
 
+        bool isActive {true};
+
         bool inFrame {true};
         bool isOutlier {false};
         bool close {true};
@@ -46,8 +48,10 @@ class MapPoint
         const int idx;
         const int kdx;
 
+        void setActive(bool act);
         void SetInFrame(bool infr);
         void SetIsOutlier(bool isOut);
+        bool getActive() const;
         bool GetIsOutlier() const;
         bool GetInFrame() const;
         MapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _close, const int _kdx, const int _idx);
@@ -69,6 +73,7 @@ class Map
 
         std::unordered_map<unsigned long, KeyFrame*> keyFrames;
         std::unordered_map<unsigned long, MapPoint*> mapPoints;
+        std::vector<MapPoint*> activeMapPoints;
         unsigned long kIdx {0};
         unsigned long pIdx {0};
         Map(){};
