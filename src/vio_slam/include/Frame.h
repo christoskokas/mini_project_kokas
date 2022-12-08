@@ -5,6 +5,7 @@
 
 #include "Settings.h"
 #include "Camera.h"
+#include "Map.h"
 #include "pangolin/pangolin.h"
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
@@ -47,7 +48,7 @@ class Frame
     public:
         Frame();
         std::list< KeyFrameVars > keyFrames;
-        void pangoQuit(Zed_Camera* zedPtr);                    
+        void pangoQuit(Zed_Camera* zedPtr, const Map* _map);                    
 
 
 };
@@ -71,9 +72,13 @@ struct CameraFrame : public pangolin::Renderable
     std::string mGroundTruthPath, mPointCloudPath;
     const char *color;
 
+    int mapPntsDrawn {0};
+
     const float cameraWidth = 0.0575f;
 
     Zed_Camera* zedCamera;
+
+    const Map* map;
 
     std::vector < pcl::PointXYZ > mPointCloud;
     ros::Subscriber groundSub;
@@ -85,6 +90,7 @@ struct CameraFrame : public pangolin::Renderable
     void lineFromKeyFrameToCamera(std::vector < pangolin::GLprecision >& mT);
     void Render(const pangolin::RenderParams&) override;
     void drawCamera();
+    void drawPoints();
     void getOpenGLMatrix(pangolin::OpenGlMatrix &MOw);
 };
 

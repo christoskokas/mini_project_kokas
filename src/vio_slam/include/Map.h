@@ -48,8 +48,8 @@ class MapPoint
 
         void SetInFrame(bool infr);
         void SetIsOutlier(bool isOut);
-        bool GetIsOutlier();
-        bool GetInFrame();
+        bool GetIsOutlier() const;
+        bool GetInFrame() const;
         MapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _close, const int _kdx, const int _idx);
 
 

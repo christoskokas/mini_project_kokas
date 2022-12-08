@@ -28,7 +28,7 @@ System::System(std::string& confFile)
 
 void System::SLAM()
 {
-    Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera);
+    Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera, map);
 
     Tracking = new std::thread(&vio_slam::RobustMatcher2::beginTest, mRb, map);
 

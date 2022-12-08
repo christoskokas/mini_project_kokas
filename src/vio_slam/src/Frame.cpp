@@ -9,7 +9,7 @@ Frame::Frame()
     
 }
 
-void Frame::pangoQuit(Zed_Camera* zedPtr)
+void Frame::pangoQuit(Zed_Camera* zedPtr, const Map* _map)
 {
     using namespace std::literals::chrono_literals;
 
@@ -30,6 +30,7 @@ void Frame::pangoQuit(Zed_Camera* zedPtr)
     camera->color = "G";
     // camera->Subscribers(nh);
     camera->zedCamera = zedPtr;
+    camera->map = _map;
     KeyFrameVars temp;
     for (size_t i = 0; i < 16; i++)
     {
@@ -86,6 +87,7 @@ void Frame::pangoQuit(Zed_Camera* zedPtr)
                 view.Activate(s_cam);
                 renders.Render();
                 camera->lineFromKeyFrameToCamera(temp.mT);
+                camera->drawPoints();
             });
 
             
@@ -205,6 +207,24 @@ void CameraFrame::Render(const pangolin::RenderParams&)
     glEnd();
 
     glPopMatrix();
+}
+
+void CameraFrame::drawPoints()
+{
+    glColor3f(1.0f,1.0f,1.0f);
+    glBegin(GL_POINTS);
+
+    // here we need mutexes to avoid adding mappoints and at the same time getting the pIdx (while it is changing)
+
+    for ( size_t i {0}; i < map->pIdx; i ++)
+    {
+        const MapPoint* mp = map->mapPoints.at(i);
+        if ( !mp->GetIsOutlier())
+            glVertex3d(mp->wp3d(0),mp->wp3d(1),mp->wp3d(2));
+    }
+    glEnd();
+    mapPntsDrawn = map->pIdx;
+    glColor3f(0.0f,1.0f,0.0f);
 }
 
 void CameraFrame::getOpenGLMatrix(pangolin::OpenGlMatrix &MOw)

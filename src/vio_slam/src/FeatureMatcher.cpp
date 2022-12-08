@@ -1678,6 +1678,8 @@ int FeatureMatcher::matchByProjectionPred(std::vector<MapPoint*>& activeMapPoint
     int nMatches {0};
     for ( size_t i {0}; i < newE; i++)
     {
+        if (matchedIdxsB[matchedIdxsN[i]] >= 0)
+            continue;
         if ( matchedIdxsN[i] >= 0)
         {
             matchedIdxsB[matchedIdxsN[i]] = i;

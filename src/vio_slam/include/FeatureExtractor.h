@@ -193,17 +193,17 @@ class FeatureExtractor
     const int maxFastThreshold;
     const int minFastThreshold;
     const bool nonMaxSuppression;
-    const int mnContr {0};
+    const int mnContr {100};
 
 #if KITTI_DATASET
+    const int gridRows {40};
+    const int gridCols {40};
+#elif ZED_DATASET
     const int gridRows {30};
     const int gridCols {30};
-#elif ZED_DATASET
-    const int gridRows {10};
-    const int gridCols {10};
 #else
-    const int gridRows {5};
-    const int gridCols {5};
+    const int gridRows {20};
+    const int gridCols {20};
 #endif
 
     const int gridsNumber {gridCols * gridRows};

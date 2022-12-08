@@ -1660,18 +1660,55 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
 
     int descriptorIdx {0};
     Timer desc("desc");
+
+    // std::vector<cv::KeyPoint>lel;
+    // for (size_t level {0}; level < nLevels; level++)
+    // {
+    //     std::vector<cv::KeyPoint>::const_iterator it, end(allKeys[level].end());
+    //     for (it = allKeys[level].begin(); it != end; it++) 
+    //     {
+    //         lel.push_back(*it);
+    //     }
+    // }
+
+    // std::vector<cv::KeyPoint> ye = ssc(lel, nFeatures, 0.01, image.cols, image.rows);
+
+    // cv::Mat outIm = image.clone();
+    // for (auto& key:ye)
+    // {
+    //     cv::circle(outIm, key.pt,2,cv::Scalar(0,255,0));
+
+    // }
+    // cv::imshow("xdddd", outIm);
+    // cv::waitKey(0);
+
+
     // Timer after("afterprocess");
+    // int nF {0};
+    // for (size_t level {0}; level < nLevels; level++)
+    // {
+    //     const int fPLevel = featurePerLevel[level];
+    //     if ( allKeys[level].size() > fPLevel )
+    //     {
+    //         cv::KeyPointsFilter::retainBest(allKeys[level],fPLevel);
+    //         allKeys[level].resize(fPLevel);
+    //     }
+    //     nF += allKeys[level].size();
+    // }
+
     int nF {0};
     for (size_t level {0}; level < nLevels; level++)
     {
         const int fPLevel = featurePerLevel[level];
         if ( allKeys[level].size() > fPLevel )
         {
-            cv::KeyPointsFilter::retainBest(allKeys[level],fPLevel);
-            allKeys[level].resize(fPLevel);
+            allKeys[level] = ssc(allKeys[level], fPLevel, 0.01, imagePyramid[level].cols, imagePyramid[level].rows);
         }
         nF += allKeys[level].size();
     }
+
+
+
     keypoints = std::vector<cv::KeyPoint>(nF);
     descriptors = cv::Mat(nF, 32, CV_8U);
     for (size_t level {0}; level < nLevels; level++)
@@ -1765,22 +1802,21 @@ void FeatureExtractor::computeKeypointsORBNew(cv::Mat& image, std::vector<std::v
                 if ( cEnd > maxX)
                     cEnd = maxX;
 
-                // const cv::Mat& cellIm = imagePyramid[level].rowRange(rStart, rEnd).colRange(cStart, cEnd);
+                const cv::Mat& cellIm = imagePyramid[level].rowRange(rStart, rEnd).colRange(cStart, cEnd);
 
-                // cv::Mat fl;
-                // cv::flip(cellIm, fl,-1);
-                // // Logging("fl",cv::norm(im,fl),3);
-                // if ( cv::norm(cellIm,fl) < mnContr)
-                //     continue;
+                cv::Mat fl;
+                cv::flip(cellIm, fl,-1);
+                // Logging("fl",cv::norm(im,fl),3);
+                if ( cv::norm(cellIm,fl) < mnContr)
+                    continue;
 
                 std::vector<cv::KeyPoint> temp;
                 temp.reserve(2 * featuresPerCell);
-                cv::FAST(imagePyramid[level].rowRange(rStart, rEnd).colRange(cStart, cEnd), temp, maxFastThreshold,true);
+                cv::FAST(cellIm, temp, maxFastThreshold,true);
                 if (temp.empty())
-                    cv::FAST(imagePyramid[level].rowRange(rStart, rEnd).colRange(cStart, cEnd), temp, minFastThreshold,true);
+                    cv::FAST(cellIm, temp, minFastThreshold,true);
                 if (!temp.empty())
                 {
-                    // Timer tempempty("!tempempty");
                     if ( temp.size() > featuresPerCell)
                     {
                         cv::KeyPointsFilter::retainBest(temp,featuresPerCell);
@@ -1788,7 +1824,6 @@ void FeatureExtractor::computeKeypointsORBNew(cv::Mat& image, std::vector<std::v
                     }
                     std::vector<cv::KeyPoint>::iterator it;
                     std::vector<cv::KeyPoint>::const_iterator end(temp.end());
-                    // Timer tempempty2("give keys");
                     for (it = temp.begin(); it != end; it++)
                     {
                         it->pt.x += cStart;

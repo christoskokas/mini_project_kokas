@@ -10,12 +10,12 @@ MapPoint::MapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK,
     desc.push_back(_desc);
 }
 
-bool MapPoint::GetInFrame()
+bool MapPoint::GetInFrame() const
 {
     return inFrame;
 }
 
-bool MapPoint::GetIsOutlier()
+bool MapPoint::GetIsOutlier() const
 {
     return isOutlier;
 }

@@ -62,14 +62,15 @@ class FeatureTracker
 #if SAVEODOMETRYDATA
 #if KITTI_DATASET
         std::string filepath {KITTI_SEQ + std::string(".txt")};
+        const int nFeatures {2000};
 #else
+        const int nFeatures {1000};
         std::string filepath {"zedPoses.txt"};
 #endif
 #else
+        const int nFeatures {1000};
         std::string filepath {"empty.txt"};
 #endif
-
-        const int nFeatures {2000};
 
         std::ofstream datafile;
         std::chrono::_V2::system_clock::time_point startTime, endTime;
@@ -172,6 +173,7 @@ class FeatureTracker
 
         FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map);
 
+        bool checkDisplacement(const Eigen::Matrix4d& currPose, Eigen::Matrix4d& estimPose, const double threshold);
         void removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, const Eigen::Matrix4d& estimPose);
         void addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN);
         bool check2dError(Eigen::Vector4d& p4d, const cv::Point2f& obs, const double thres, const float weight);
