@@ -43,6 +43,7 @@ class MapPoint
         bool inFrame {true};
         bool isOutlier {false};
         bool close {true};
+        bool added {false};
 
         int keyFrameNb {0};
         const int idx;

@@ -75,12 +75,14 @@ void MapPoint::updateMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyP
 void Map::addMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _useable)
 {
     MapPoint* mp = new MapPoint(p, _desc, obsK, _useable, kIdx, pIdx);
+    mp->added = true;
     mapPoints.insert(std::pair<unsigned long, MapPoint*>(pIdx, mp));
     pIdx++;
 }
 
 void Map::addMapPoint(MapPoint* mp)
 {
+    mp->added = true;
     mapPoints.insert(std::pair<unsigned long, MapPoint*>(pIdx, mp));
     pIdx++;
 }

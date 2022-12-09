@@ -213,12 +213,10 @@ void CameraFrame::drawPoints()
 {
     glColor3f(1.0f,1.0f,1.0f);
     std::lock_guard<std::mutex> lock(map->mapMutex);
-    // std::unique_lock<std::mutex> lock(map->mapMutex);
     glBegin(GL_POINTS);
 
-    // here we need mutexes to avoid adding mappoints and at the same time getting the pIdx (while it is changing)
 
-    for ( size_t i {0}; i < map->pIdx; i ++)
+    for ( size_t i {0}; i < map->mapPoints.size(); i ++)
     {
         const MapPoint* mp = map->mapPoints.at(i);
         if ( !mp->GetIsOutlier() && !mp->getActive())
@@ -227,10 +225,8 @@ void CameraFrame::drawPoints()
     glEnd();
 
     glColor3f(0.0f,1.0f,0.0f);
-    // std::unique_lock<std::mutex> lock(map->mapMutex);
     glBegin(GL_POINTS);
 
-    // here we need mutexes to avoid adding mappoints and at the same time getting the pIdx (while it is changing)
     std::vector<MapPoint*>::const_iterator it, end(map->activeMapPoints.end());
     for ( it = map->activeMapPoints.begin(); it != end; it++)
     {
