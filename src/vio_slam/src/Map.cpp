@@ -87,9 +87,20 @@ void Map::addMapPoint(MapPoint* mp)
     pIdx++;
 }
 
+void Map::removeKeyFrame(int idx)
+{
+    keyFrames.erase((unsigned long) idx);
+}
+
 void Map::addKeyFrame(Eigen::Matrix4d _pose)
 {
     KeyFrame* kF = new KeyFrame(_pose, kIdx);
+    keyFrames.insert(std::pair<unsigned long, KeyFrame*>(kIdx, kF));
+    kIdx ++;
+}
+
+void Map::addKeyFrame(KeyFrame* kF)
+{
     keyFrames.insert(std::pair<unsigned long, KeyFrame*>(kIdx, kF));
     kIdx ++;
 }

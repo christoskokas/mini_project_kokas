@@ -62,14 +62,17 @@ class FeatureTracker
 #if SAVEODOMETRYDATA
 #if KITTI_DATASET
         std::string filepath {KITTI_SEQ + std::string(".txt")};
-        const int nFeatures {2000};
 #else
-        const int nFeatures {1000};
         std::string filepath {"zedPoses.txt"};
 #endif
 #else
-        const int nFeatures {1000};
         std::string filepath {"empty.txt"};
+#endif
+
+#if KITTI_DATASET
+        const int nFeatures {2000};
+#else
+        const int nFeatures {1000};
 #endif
 
         std::ofstream datafile;
@@ -113,6 +116,7 @@ class FeatureTracker
         const int sampleSize {15};
         const int gridVelNumb {10};
         const int maskRadius {15};
+        const int keyFrameConThresh {100};
 
         const double fx,fy,cx,cy;
 

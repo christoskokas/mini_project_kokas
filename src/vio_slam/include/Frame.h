@@ -87,10 +87,11 @@ struct CameraFrame : public pangolin::Renderable
     // void Subscribers(ros::NodeHandle *nh);
     // void groundCallback(const nav_msgs::Odometry& msg);
     // void pointCallback(const PointCloud::ConstPtr& msg);
-    void lineFromKeyFrameToCamera(std::vector < pangolin::GLprecision >& mT);
+    void lineFromKeyFrameToCamera();
     void Render(const pangolin::RenderParams&) override;
     void drawCamera();
     void drawPoints();
+    void drawKeyFrames();
     void getOpenGLMatrix(pangolin::OpenGlMatrix &MOw);
 };
 

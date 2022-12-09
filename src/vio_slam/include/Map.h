@@ -81,6 +81,8 @@ class Map
         void addMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _useable);
         void addMapPoint(MapPoint* mp);
         void addKeyFrame(Eigen::Matrix4d _pose);
+        void addKeyFrame(KeyFrame* kF);
+        void removeKeyFrame(int idx);
         mutable std::mutex mapMutex;
 
     protected:
