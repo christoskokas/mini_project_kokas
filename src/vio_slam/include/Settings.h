@@ -9,7 +9,7 @@
 #include <chrono>
 
 #define KITTI_DATASET true
-#define KITTI_SEQ "05"
+#define KITTI_SEQ "00"
 #define ZED_DATASET false
 
 #define SAVEODOMETRYDATA false

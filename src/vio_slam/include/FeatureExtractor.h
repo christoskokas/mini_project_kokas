@@ -92,6 +92,14 @@ struct TrackedKeys
         close = keysToClone.close;
         trackCnt = keysToClone.trackCnt;
     }
+
+    void getKeys(const TrackedKeys& keysToClone)
+    {
+        keyPoints = keysToClone.keyPoints;
+        Desc = keysToClone.Desc.clone();
+        close = keysToClone.close;
+        estimatedDepth = keysToClone.estimatedDepth;
+    }
 };
 
 struct PointsWD

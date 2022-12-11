@@ -59,43 +59,53 @@ void Frame::pangoQuit(Zed_Camera* zedPtr, const Map* _map)
     while(!pangolin::ShouldQuit() )
     {
         // Clear screen and activate view to render into
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        // glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
-        auto lines = std::make_shared<Lines>();    
-        lines->getValues(temp.mT,camera->T_pc.m);
-        if (zedPtr->addKeyFrame)
-        {
-            {
-                zedPtr->addKeyFrame = false;
-                auto keyframe = std::make_shared<CameraFrame>();
-                keyframe->T_pc = camera->T_pc;
-                // keyframe->mPointCloud = camera->mPointCloud;
-                keyframe->color = "B";
-                // renders.Add(keyframe);
-            }
-            renders.Add(lines);
-            temp.clear();
-            for (size_t i = 0; i < 16; i++)
-            {
-                temp.mT.push_back(camera->T_pc.m[i]);
-            }
-            // temp.pointCloud.push_back(keyframe->mPointCloud);
-            keyFrames.push_back(temp);
+        // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // // glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+        // auto lines = std::make_shared<Lines>();    
+        // lines->getValues(temp.mT,camera->T_pc.m);
+        // if (zedPtr->addKeyFrame)
+        // {
+        //     {
+        //         zedPtr->addKeyFrame = false;
+        //         auto keyframe = std::make_shared<CameraFrame>();
+        //         keyframe->T_pc = camera->T_pc;
+        //         // keyframe->mPointCloud = camera->mPointCloud;
+        //         keyframe->color = "B";
+        //         // renders.Add(keyframe);
+        //     }
+        //     renders.Add(lines);
+        //     temp.clear();
+        //     for (size_t i = 0; i < 16; i++)
+        //     {
+        //         temp.mT.push_back(camera->T_pc.m[i]);
+        //     }
+        //     // temp.pointCloud.push_back(keyframe->mPointCloud);
+        //     keyFrames.push_back(temp);
             
-            d_cam.Activate(s_cam);
-            d_cam.SetDrawFunction([&](pangolin::View& view){
-                view.Activate(s_cam);
-                renders.Render();
-                camera->lineFromKeyFrameToCamera();
-                camera->drawPoints();
-            });
+        //     d_cam.Activate(s_cam);
+        //     d_cam.SetDrawFunction([&](pangolin::View& view){
+        //         view.Activate(s_cam);
+        //         renders.Render();
+        //         camera->lineFromKeyFrameToCamera();
+        //         camera->drawPoints();
+        //     });
 
             
-        }
+        // }
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // d_cam.Activate(s_cam);
+        // d_cam.SetDrawFunction([&](pangolin::View& view){
+        //     view.Activate(s_cam);
+        //     renders.Render();
+        //     camera->lineFromKeyFrameToCamera();
+        //     camera->drawPoints();
+        // });
         d_cam.Activate(s_cam);
         camera->getOpenGLMatrix(Ow);
         camera->drawCamera();
         camera->drawKeyFrames();
+        camera->lineFromKeyFrameToCamera();
+        camera->drawPoints();
         s_cam.Follow(Ow);
 
 
@@ -168,12 +178,19 @@ void CameraFrame::drawPoints()
     glBegin(GL_POINTS);
 
 
-    for ( size_t i {0}, end{map->mapPoints.size()}; i < end; i ++)
+    std::unordered_map<unsigned long, MapPoint*>::const_iterator itw, endw(map->mapPoints.end());
+    for ( itw = map->mapPoints.begin(); itw != endw; itw ++)
     {
-        const MapPoint* mp = map->mapPoints.at(i);
-        if ( !mp->GetIsOutlier() && !mp->getActive())
-            glVertex3d(mp->wp3d(0),mp->wp3d(1),mp->wp3d(2));
+        if ( !(*itw).second->GetIsOutlier() && !(*itw).second->getActive())
+            glVertex3d((*itw).second->wp3d(0),(*itw).second->wp3d(1),(*itw).second->wp3d(2));
     }
+
+    // for ( size_t i {0}, end{map->mapPoints.size()}; i < end; i ++)
+    // {
+    //     const MapPoint* mp = map->mapPoints.at((unsigned long)i);
+    //     if ( !mp->GetIsOutlier() && !mp->getActive())
+    //         glVertex3d(mp->wp3d(0),mp->wp3d(1),mp->wp3d(2));
+    // }
 
     glColor3f(0.0f,1.0f,0.0f);
 

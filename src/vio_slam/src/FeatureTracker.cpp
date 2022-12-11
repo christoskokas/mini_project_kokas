@@ -2310,6 +2310,8 @@ void FeatureTracker::Track3(const int frames)
 
 void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
 {
+    KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, map->kIdx);
+    kF->unMatchedF.resize(keysLeft.keyPoints.size(), true);
     activeMapPoints.reserve(keysLeft.keyPoints.size());
     mPPerKeyFrame.reserve(1000);
     // std::lock_guard<std::mutex> lock(map->mapMutex);
@@ -2328,8 +2330,9 @@ void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
             activeMapPoints.emplace_back(mp);
         }
     }
-    map->addKeyFrame(zedPtr->cameraPose.pose);
     mPPerKeyFrame.push_back(activeMapPoints.size());
+    kF->keys.getKeys(keysLeft);
+    map->addKeyFrame(kF);
 }
 
 void FeatureTracker::worldToImg(std::vector<MapPoint*>& MapPointsVec, std::vector<cv::KeyPoint>& projectedPoints)
@@ -2576,10 +2579,6 @@ std::pair<int,int> FeatureTracker::refinePose(std::vector<MapPoint*>& activeMapP
             const double v {fy*point4d(1)/point4d(2) + cy};
             found.emplace_back((float)u, (float)v);
             observed.emplace_back(keysLeft.keyPoints[nIdx].pt);
-            if ( point4d(2) <= 0 || std::isnan(keysLeft.keyPoints[nIdx].pt.x) || std::isnan(keysLeft.keyPoints[nIdx].pt.y))
-                Logging("out", point4d,3);
-            if (u < 0 || v < 0 || v > zedPtr->mHeight || u > zedPtr->mWidth)
-                Logging("out", point4d,3);
             // Logging("obs", obs,3);
             // Logging("point", point,3);
             ceres::CostFunction* costf = OptimizePoseICP::Create(K, point, obs, (double)weights[i]);
@@ -2598,10 +2597,10 @@ std::pair<int,int> FeatureTracker::refinePose(std::vector<MapPoint*>& activeMapP
             const double v {fy*point4d(1)/point4d(2) + cy};
             found.emplace_back((float)u, (float)v);
             observed.emplace_back(keysLeft.keyPoints[nIdx].pt);
-            if ( point4d(2) <= 0 || std::isnan(keysLeft.keyPoints[nIdx].pt.x) || std::isnan(keysLeft.keyPoints[nIdx].pt.y))
-                Logging("out", point4d,3);
-            if (u < 0 || v < 0 || v > zedPtr->mHeight || u > zedPtr->mWidth)
-                Logging("out", point4d,3);
+            // if ( point4d(2) <= 0 || std::isnan(keysLeft.keyPoints[nIdx].pt.x) || std::isnan(keysLeft.keyPoints[nIdx].pt.y))
+            //     Logging("out", point4d,3);
+            // if (u < 0 || v < 0 || v > zedPtr->mHeight || u > zedPtr->mWidth)
+            //     Logging("out", point4d,3);
             
             ceres::CostFunction* costf = OptimizePose::Create(K, point, obs, (double)weights[i]);
             // Logging("obs", obs,3);
@@ -2653,7 +2652,7 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
         }
     }
     
-
+    kF->unMatchedF.resize(keysLeft.keyPoints.size(), false);
     activeMapPoints.reserve(activeMapPoints.size() + keysLeft.keyPoints.size());
     mPPerKeyFrame.reserve(1000);
     // std::lock_guard<std::mutex> lock(map->mapMutex);
@@ -2672,7 +2671,9 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
             MapPoint* mp = new MapPoint(p, keysLeft.Desc.row(i), keysLeft.keyPoints[i], keysLeft.close[i], map->kIdx, map->pIdx);
             activeMapPoints.emplace_back(mp);
         }
+        kF->unMatchedF[i] = true;
     }
+    kF->keys.getKeys(keysLeft);
     mPPerKeyFrame.push_back(activeMapPoints.size());
     map->addKeyFrame(kF);
 
@@ -2681,7 +2682,6 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
 void FeatureTracker::removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, const Eigen::Matrix4d& estimPose)
 {
     const size_t end{activeMapPoints.size()};
-    std::vector<int> inliers(end, true);
     int j {0};
     for ( size_t i {0}; i < end; i++)
     {
@@ -2746,7 +2746,6 @@ void FeatureTracker::Track4(const int frames)
 {
     for (curFrame = 0; curFrame < frames; curFrame++)
     {
-        zedPtr->addKeyFrame = true;
         setLRImages(curFrame);
 
         TrackedKeys keysLeft;

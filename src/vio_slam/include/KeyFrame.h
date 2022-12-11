@@ -22,6 +22,8 @@ class KeyFrame
         std::vector<cv::Point3d> points3D;
         std::vector<int> connections;
         std::vector<int> connectionWeights;
+        std::vector<bool> unMatchedF;
+        TrackedKeys keys;
         Eigen::MatrixXd homoPoints3D;
         const int numb;
         bool visualize {true};
