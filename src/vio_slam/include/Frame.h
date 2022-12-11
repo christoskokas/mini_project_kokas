@@ -87,6 +87,7 @@ struct CameraFrame : public pangolin::Renderable
     // void Subscribers(ros::NodeHandle *nh);
     // void groundCallback(const nav_msgs::Odometry& msg);
     // void pointCallback(const PointCloud::ConstPtr& msg);
+    void drawCameraFrame(const float w, const float h, const float z);
     void lineFromKeyFrameToCamera();
     void Render(const pangolin::RenderParams&) override;
     void drawCamera();

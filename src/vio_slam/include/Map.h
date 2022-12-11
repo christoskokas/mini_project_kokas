@@ -75,6 +75,7 @@ class Map
         std::unordered_map<unsigned long, KeyFrame*> keyFrames;
         std::unordered_map<unsigned long, MapPoint*> mapPoints;
         std::vector<MapPoint*> activeMapPoints;
+        std::vector<KeyFrame*> activeKeyFrames;
         unsigned long kIdx {0};
         unsigned long pIdx {0};
         Map(){};

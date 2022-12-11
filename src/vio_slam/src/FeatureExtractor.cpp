@@ -1702,7 +1702,7 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
         const int fPLevel = featurePerLevel[level];
         if ( allKeys[level].size() > fPLevel )
         {
-            allKeys[level] = ssc(allKeys[level], fPLevel, 0.01, imagePyramid[level].cols, imagePyramid[level].rows);
+            allKeys[level] = ssc(allKeys[level], fPLevel, 0.1, imagePyramid[level].cols, imagePyramid[level].rows);
         }
         nF += allKeys[level].size();
     }

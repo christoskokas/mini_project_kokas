@@ -74,7 +74,7 @@ void FeatureData::compute3DPoints(SubPixelPoints& prePnts, const int keyNumb)
     }
 }
 
-FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map) : zedPtr(_zedPtr), map(_map), fm(zedPtr, &feLeft, &feRight, zedPtr->mHeight,feLeft.getGridRows(), feLeft.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1.0f/(double)zedPtr->mFps), lkal(dt), datafile(filepath), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy), activeMapPoints(_map->activeMapPoints)
+FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map) : zedPtr(_zedPtr), map(_map), fm(zedPtr, &feLeft, &feRight, zedPtr->mHeight,feLeft.getGridRows(), feLeft.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1.0f/(double)zedPtr->mFps), lkal(dt), datafile(filepath), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy), activeMapPoints(_map->activeMapPoints), activeKeyFrames(_map->activeKeyFrames)
 {
     // std::vector<MapPoint*>& temp = map->activeMapPoints;
     // activeMapPoints = map->activeMapPoints;
@@ -2313,6 +2313,7 @@ void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
     KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, map->kIdx);
     kF->unMatchedF.resize(keysLeft.keyPoints.size(), true);
     activeMapPoints.reserve(keysLeft.keyPoints.size());
+    activeKeyFrames.reserve(1000);
     mPPerKeyFrame.reserve(1000);
     // std::lock_guard<std::mutex> lock(map->mapMutex);
     for (size_t i{0}, end{keysLeft.keyPoints.size()}; i < end; i++)
@@ -2332,6 +2333,7 @@ void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
     }
     mPPerKeyFrame.push_back(activeMapPoints.size());
     kF->keys.getKeys(keysLeft);
+    activeKeyFrames.insert(activeKeyFrames.begin(),kF);
     map->addKeyFrame(kF);
 }
 
@@ -2675,7 +2677,14 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
     }
     kF->keys.getKeys(keysLeft);
     mPPerKeyFrame.push_back(activeMapPoints.size());
+    // std::lock_guard<std::mutex> lock(map->mapMutex);
     map->addKeyFrame(kF);
+    activeKeyFrames.insert(activeKeyFrames.begin(),kF);
+    if ( activeKeyFrames.size() > actvKFMaxSize )
+    {
+        activeKeyFrames.back()->active = false;
+        activeKeyFrames.resize(actvKFMaxSize);
+    }
 
 }
 

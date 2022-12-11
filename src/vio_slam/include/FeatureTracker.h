@@ -82,6 +82,9 @@ class FeatureTracker
         std::vector<KeyFrame> keyframes;
 
         std::vector<MapPoint*>& activeMapPoints;
+        std::vector<KeyFrame*>& activeKeyFrames;
+
+        const int actvKFMaxSize {10};
         // std::vector<int> activeMapPointsCorr;
         std::vector<int> mPPerKeyFrame;
 

@@ -27,6 +27,7 @@ class KeyFrame
         Eigen::MatrixXd homoPoints3D;
         const int numb;
         bool visualize {true};
+        bool active {true};
 
 
 

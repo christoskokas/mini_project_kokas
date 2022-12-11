@@ -206,47 +206,59 @@ void CameraFrame::drawPoints()
 
 void CameraFrame::drawKeyFrames()
 {
-
+    const int lastKeyFrameIdx {map->kIdx - 1};
+    if (lastKeyFrameIdx < 0)
+        return;
     const float w = cameraWidth;
     const float h = w*0.75;
     const float z = w*0.3;
 
-    glColor3f(0.0f,0.0f,1.0f);
+    glColor3f(0.0f,1.0f,0.0f);
     std::unordered_map<unsigned long,KeyFrame*>::const_iterator it, end(map->keyFrames.end());
     for ( it = map->keyFrames.begin(); it != end; it ++)
     {
+        if ((*it).second->active)
+            glColor3f(0.0f,1.0f,0.0f);
+        else
+            glColor3f(0.0f,0.0f,1.0f);
+
+        // if ( (*it).second->numb == lastActiveKeyF)
         if (!(*it).second->visualize)
             continue;
         glPushMatrix();
         Eigen::Matrix4d keyPose = (*it).second->getPose();
         glMultMatrixd((GLdouble*)keyPose.data());
-        glLineWidth(1);
-        glBegin(GL_LINES);
-        glVertex3f(0,0,0);
-        glVertex3f(w,h,z);
-        glVertex3f(0,0,0);
-        glVertex3f(w,-h,z);
-        glVertex3f(0,0,0);
-        glVertex3f(-w,-h,z);
-        glVertex3f(0,0,0);
-        glVertex3f(-w,h,z);
-
-        glVertex3f(w,h,z);
-        glVertex3f(w,-h,z);
-
-        glVertex3f(-w,h,z);
-        glVertex3f(-w,-h,z);
-
-        glVertex3f(-w,h,z);
-        glVertex3f(w,h,z);
-
-        glVertex3f(-w,-h,z);
-        glVertex3f(w,-h,z);
-        glEnd();
+        drawCameraFrame(w,h,z);
         glPopMatrix();
 
     }
+}
 
+void CameraFrame::drawCameraFrame(const float w, const float h, const float z)
+{
+    glLineWidth(1);
+    glBegin(GL_LINES);
+    glVertex3f(0,0,0);
+    glVertex3f(w,h,z);
+    glVertex3f(0,0,0);
+    glVertex3f(w,-h,z);
+    glVertex3f(0,0,0);
+    glVertex3f(-w,-h,z);
+    glVertex3f(0,0,0);
+    glVertex3f(-w,h,z);
+
+    glVertex3f(w,h,z);
+    glVertex3f(w,-h,z);
+
+    glVertex3f(-w,h,z);
+    glVertex3f(-w,-h,z);
+
+    glVertex3f(-w,h,z);
+    glVertex3f(w,h,z);
+
+    glVertex3f(-w,-h,z);
+    glVertex3f(w,-h,z);
+    glEnd();
 }
 
 void CameraFrame::getOpenGLMatrix(pangolin::OpenGlMatrix &MOw)
@@ -266,16 +278,16 @@ void CameraFrame::getOpenGLMatrix(pangolin::OpenGlMatrix &MOw)
 void CameraFrame::drawCamera()
 {
 
-    const float w = cameraWidth;
+    const float w = 2.0*cameraWidth;
     const float h = w*0.75;
     const float z = w*0.3;
 
     glPushMatrix();
-    glColor3f(0.0f,1.0f,0.0f);
+    glColor3f(1.0f,1.0f,0.0f);
 
 
     glMultMatrixd((GLdouble*)zedCamera->cameraPose.pose.data());
-    glLineWidth(1);
+    glLineWidth(2);
     glBegin(GL_LINES);
     glVertex3f(0,0,0);
     glVertex3f(w,h,z);
@@ -332,12 +344,17 @@ void CameraFrame::lineFromKeyFrameToCamera()
     if (lastKeyFrameIdx < 0)
         return;
     glPushMatrix();
-    glColor3f(1.0f,0.0f,0.0f);
     glLineWidth(1);
     std::unordered_map<unsigned long, KeyFrame*>::const_iterator it, end(map->keyFrames.end());
     glBegin(GL_LINES);
     for ( it = map->keyFrames.begin(); it != end; it ++)
     {
+        // if ( (*it).second->numb == lastActiveKeyF)
+        //     glColor3f(1.0f,0.0f,0.0f);
+        if ((*it).second->active)
+            glColor3f(0.0f,1.0f,0.0f);
+        else
+            glColor3f(1.0f,0.0f,0.0f);
         for (const auto& key:(*it).second->connections)
         {
             if (!(*it).second->visualize)
@@ -347,6 +364,7 @@ void CameraFrame::lineFromKeyFrameToCamera()
         }
     }
     glEnd();
+    glColor3f(0.0f,1.0f,0.0f);
     Eigen::Matrix4d keyPose = map->keyFrames.at(lastKeyFrameIdx)->getPose();
     Eigen::Matrix4d camPose = zedCamera->cameraPose.pose;
     glBegin(GL_LINES);
