@@ -20,6 +20,7 @@ namespace vio_slam
 struct TrackedKeys
 {
     std::vector<cv::KeyPoint> keyPoints;
+    std::vector<cv::KeyPoint> rightKeyPoints;
     std::vector<cv::KeyPoint> predKeyPoints;
     std::vector<int> rightIdxs;
     std::vector<int> mapPointIdx;
@@ -31,7 +32,7 @@ struct TrackedKeys
     std::vector<bool> inliers;
     std::vector<uchar> inliers2;
     std::vector<int> trackCnt;
-    cv::Mat Desc;
+    cv::Mat Desc, rightDesc;
 
     template <typename T>
     void reduce(std::vector<T>& check)
@@ -86,7 +87,9 @@ struct TrackedKeys
     void clone(TrackedKeys& keysToClone)
     {
         keyPoints = keysToClone.keyPoints;
+        rightKeyPoints = keysToClone.rightKeyPoints;
         Desc = keysToClone.Desc.clone();
+        rightDesc = keysToClone.rightDesc.clone();
         mapPointIdx = keysToClone.mapPointIdx;
         estimatedDepth = keysToClone.estimatedDepth;
         close = keysToClone.close;
@@ -96,7 +99,9 @@ struct TrackedKeys
     void getKeys(const TrackedKeys& keysToClone)
     {
         keyPoints = keysToClone.keyPoints;
+        rightKeyPoints = keysToClone.rightKeyPoints;
         Desc = keysToClone.Desc.clone();
+        rightDesc = keysToClone.rightDesc.clone();
         close = keysToClone.close;
         estimatedDepth = keysToClone.estimatedDepth;
     }

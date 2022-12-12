@@ -8,6 +8,13 @@ FeatureMatcher::FeatureMatcher(const Zed_Camera* _zed, const FeatureExtractor* _
 
 }
 
+void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, TrackedKeys& lastKF, TrackedKeys& otherKF)
+{
+    
+    // lastKF.estimatedDepth[0];
+    Logging("xd", lastKF.estimatedDepth[0],3);
+}
+
 void FeatureMatcher::computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, SubPixelPoints& prevPoints, SubPixelPoints& newPoints)
 {
     cv::Mat err;

@@ -89,6 +89,7 @@ void Zed_Camera::setCameraValues()
         cameraRight.setIntrinsicValuesUnR("Camera_r",confFile);
         mBaseline = confFile->getValue<float>("Camera","bl");
     }
+    extrinsics(0,3) = - (double)mBaseline;
 }
 
 float Zed_Camera::setBaseline()
@@ -156,6 +157,11 @@ void Camera::setIntrinsicValuesR(const std::string& cameraPath, ConfigFile* conf
     p1 = 0;
     p2 = 0;
     k3 = 0;
+
+    intrisics(0,0) = fx;
+    intrisics(1,1) = fy;
+    intrisics(0,2) = cx;
+    intrisics(1,2) = cy;
     // nh->getParam(cameraPath + "/fx",fx);
     // nh->getParam(cameraPath + "/fy",fy);
     // nh->getParam(cameraPath + "/cx",cx);

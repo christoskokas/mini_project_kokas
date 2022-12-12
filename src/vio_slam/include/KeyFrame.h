@@ -6,11 +6,15 @@
 #include "Settings.h"
 #include "Camera.h"
 #include "FeatureExtractor.h"
+#include "Map.h"
 #include "opencv2/core.hpp"
 
 
 namespace vio_slam
 {
+
+class Map;
+class MapPoint;
 
 class KeyFrame
 {
@@ -22,11 +26,12 @@ class KeyFrame
         std::vector<cv::Point3d> points3D;
         std::vector<int> connections;
         std::vector<int> connectionWeights;
-        std::vector<long int> unMatchedF;
+        std::vector<bool> unMatchedF;
         TrackedKeys keys;
         Eigen::MatrixXd homoPoints3D;
         const int numb;
         bool visualize {true};
+        std::vector<MapPoint*> localMapPoints;
         bool active {true};
 
 

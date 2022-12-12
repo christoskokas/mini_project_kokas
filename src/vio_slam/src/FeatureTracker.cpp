@@ -205,20 +205,20 @@ void FeatureTracker::extractORBStereoMatch(cv::Mat& leftIm, cv::Mat& rightIm, Tr
     std::vector<cv::KeyPoint> rightKeys, temp;
     cv::Mat rightDesc;
     std::thread extractLeft(&FeatureExtractor::extractKeysNew, std::ref(feLeft), std::ref(leftIm), std::ref(keysLeft.keyPoints), std::ref(keysLeft.Desc));
-    std::thread extractRight(&FeatureExtractor::extractKeysNew, std::ref(feRight), std::ref(rightIm), std::ref(rightKeys),std::ref(rightDesc));
+    std::thread extractRight(&FeatureExtractor::extractKeysNew, std::ref(feRight), std::ref(rightIm), std::ref(keysLeft.rightKeyPoints),std::ref(keysLeft.rightDesc));
     extractLeft.join();
     extractRight.join();
 
 
 
-    fm.findStereoMatchesORB2(lIm.im, rIm.im, rightDesc, rightKeys, keysLeft);
+    fm.findStereoMatchesORB2(lIm.im, rIm.im, keysLeft.rightDesc, keysLeft.rightKeyPoints, keysLeft);
 
     keysLeft.mapPointIdx.resize(keysLeft.keyPoints.size(), -1);
     keysLeft.trackCnt.resize(keysLeft.keyPoints.size(), 0);
 
     drawKeys("left Keys", lIm.rIm, keysLeft.keyPoints);
 
-    drawKeyPointsCloseFar("new method", lIm.rIm, keysLeft, rightKeys);
+    drawKeyPointsCloseFar("new method", lIm.rIm, keysLeft, keysLeft.rightKeyPoints);
 }
 
 void FeatureTracker::extractFAST(const cv::Mat& leftIm, const cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc, const std::vector<cv::Point2f>& prevPnts)
@@ -2312,6 +2312,7 @@ void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
 {
     KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, map->kIdx);
     kF->unMatchedF.resize(keysLeft.keyPoints.size(), true);
+    kF->localMapPoints.reserve(activeMapPoints.size());
     activeMapPoints.reserve(keysLeft.keyPoints.size());
     activeKeyFrames.reserve(1000);
     mPPerKeyFrame.reserve(1000);
@@ -2327,8 +2328,10 @@ void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
             p = zedPtr->cameraPose.pose * p;
             keysLeft.mapPointIdx[i] = map->pIdx;
             MapPoint* mp = new MapPoint(p, keysLeft.Desc.row(i), keysLeft.keyPoints[i], keysLeft.close[i], map->kIdx, map->pIdx);
+            mp->kFWithFIdx.insert(std::pair<KeyFrame*, size_t>(kF, i));
             map->addMapPoint(mp);
             activeMapPoints.emplace_back(mp);
+            kF->localMapPoints.emplace_back(mp);
         }
     }
     mPPerKeyFrame.push_back(activeMapPoints.size());
@@ -2659,7 +2662,8 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
         }
     }
     
-    kF->unMatchedF.resize(keysLeft.keyPoints.size(), -1);
+    kF->unMatchedF.resize(keysLeft.keyPoints.size(), true);
+    kF->localMapPoints.reserve(activeMapPoints.size());
     activeMapPoints.reserve(activeMapPoints.size() + keysLeft.keyPoints.size());
     mPPerKeyFrame.reserve(1000);
     // std::lock_guard<std::mutex> lock(map->mapMutex);
@@ -2671,7 +2675,9 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
             MapPoint* mp = activeMapPoints[matchedIdxsN[i]];
             if ( mp->GetIsOutlier() )
                 continue;
-            kF->unMatchedF[i] = mp->idx;
+            mp->kFWithFIdx.insert(std::pair<KeyFrame*, size_t>(kF, i));
+            kF->localMapPoints.emplace_back(mp);
+            kF->unMatchedF[i] = false;
             continue;
         }
         if ( keysLeft.estimatedDepth[i] > 0 )
@@ -2696,6 +2702,7 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
         activeKeyFrames.back()->active = false;
         activeKeyFrames.resize(actvKFMaxSize);
     }
+    map->keyFrameAdded = true;
 
 }
 

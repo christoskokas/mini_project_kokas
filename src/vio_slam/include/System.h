@@ -24,6 +24,12 @@ class System
 
     public:
 
+#if KITTI_DATASET
+        const int nFeatures {2000};
+#else
+        const int nFeatures {1000};
+#endif
+
         System(std::string& confFile);
 
         void SLAM();
@@ -43,6 +49,12 @@ class System
         Map* map;
 
         LocalMapper* localMap;
+
+        FeatureExtractor* feLeft;
+
+        FeatureExtractor* feRight;
+        
+        FeatureMatcher* fm;
 
 };
 

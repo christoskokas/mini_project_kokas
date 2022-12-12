@@ -14,6 +14,7 @@
 #include "Conversions.h"
 #include "Settings.h"
 #include "Optimizer.h"
+#include "Eigen/Dense"
 #include <fstream>
 #include <string>
 #include <iostream>
@@ -21,6 +22,7 @@
 
 namespace vio_slam
 {
+
 
 class LocalMapper
 {
@@ -30,10 +32,18 @@ class LocalMapper
 
         Map* map;
 
-        LocalMapper(Map* _map);
+        Zed_Camera* zedPtr;
+
+        FeatureMatcher* fm;
+
+        LocalMapper(Map* _map, Zed_Camera* _zedPtr, FeatureMatcher* _fm);
 
         void beginLocalMapping();
-
+        void computeAllMapPoints();
+        Eigen::Vector3d TriangulateMultiViewPoint(
+                const std::vector<Eigen::Matrix<double, 3, 4>>& proj_matrices,
+                const std::vector<Eigen::Vector2d>& points);
+        void calcProjMatrices(std::unordered_map<int, Eigen::Matrix<double,3,4>>& projMatrices);
 
 };
 

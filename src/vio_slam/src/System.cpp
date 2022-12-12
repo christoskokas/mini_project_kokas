@@ -16,8 +16,13 @@ System::System(std::string& confFile)
 
     map = new Map();
 
-    localMap = new LocalMapper(map);
 
+    feLeft = new FeatureExtractor(nFeatures);
+    feRight = new FeatureExtractor(nFeatures);
+
+    fm = new FeatureMatcher(mZedCamera, feLeft, feRight, mZedCamera->mHeight, feLeft->getGridRows(), feLeft->getGridCols());
+
+    localMap = new LocalMapper(map, mZedCamera, fm);
     // Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera);
 
     // Tracking = new std::thread(&vio_slam::RobustMatcher2::beginTest, mRb);

@@ -18,6 +18,8 @@
 namespace vio_slam
 {
 
+class KeyFrame;
+
 struct Observation
 {
     int frameId {};
@@ -37,6 +39,7 @@ class MapPoint
         // std::vector<Observation> obs;
         std::vector<cv::KeyPoint> obs;
         cv::Mat desc;
+        std::unordered_map<KeyFrame*, size_t> kFWithFIdx;
 
         bool isActive {true};
 
@@ -80,6 +83,7 @@ class Map
         std::vector<KeyFrame*> activeKeyFrames;
         unsigned long kIdx {0};
         unsigned long pIdx {0};
+        bool keyFrameAdded {false};
         Map(){};
         void addMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _useable);
         void addMapPoint(MapPoint* mp);

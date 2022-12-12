@@ -181,8 +181,14 @@ void CameraFrame::drawPoints()
     std::unordered_map<unsigned long, MapPoint*>::const_iterator itw, endw(map->mapPoints.end());
     for ( itw = map->mapPoints.begin(); itw != endw; itw ++)
     {
-        if ( !(*itw).second->GetIsOutlier() && !(*itw).second->getActive())
-            glVertex3d((*itw).second->wp3d(0),(*itw).second->wp3d(1),(*itw).second->wp3d(2));
+        if ( (*itw).second->GetIsOutlier() )
+            continue;
+
+        if ( (*itw).second->getActive() )
+            glColor3f(0.0f,1.0f,0.0f);
+        else
+            glColor3f(1.0f,1.0f,1.0f);
+        glVertex3d((*itw).second->wp3d(0),(*itw).second->wp3d(1),(*itw).second->wp3d(2));
     }
 
     // for ( size_t i {0}, end{map->mapPoints.size()}; i < end; i ++)
@@ -192,14 +198,14 @@ void CameraFrame::drawPoints()
     //         glVertex3d(mp->wp3d(0),mp->wp3d(1),mp->wp3d(2));
     // }
 
-    glColor3f(0.0f,1.0f,0.0f);
-
-    std::vector<MapPoint*>::const_iterator it, end(map->activeMapPoints.end());
-    for ( it = map->activeMapPoints.begin(); it != end; it++)
-    {
-        if ( !(*it)->GetIsOutlier() && (*it)->getActive())
-            glVertex3d((*it)->wp3d(0),(*it)->wp3d(1),(*it)->wp3d(2));
-    }
+    // glColor3f(0.0f,1.0f,0.0f);
+    // std::vector<MapPoint*> temp = map->activeMapPoints;
+    // std::vector<MapPoint*>::const_iterator it, end(temp.end());
+    // for ( it = temp.begin(); it != end; it++)
+    // {
+    //     if ( !(*it)->GetIsOutlier() && (*it)->getActive())
+    //         glVertex3d((*it)->wp3d(0),(*it)->wp3d(1),(*it)->wp3d(2));
+    // }
     glEnd();
 
 }

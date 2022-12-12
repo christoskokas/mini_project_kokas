@@ -65,6 +65,7 @@ class Camera
         double k1 {}, k2 {}, p1 {}, p2 {}, k3{};
         std::string path {};
         cv::Mat cameraMatrix {};
+        Eigen::Matrix<double,3,3> intrisics = Eigen::Matrix<double,3,3>::Identity();
         cv::Mat distCoeffs {};
         Camera(ros::NodeHandle *nh);
         Camera() = default;
@@ -97,7 +98,7 @@ class Zed_Camera
         CameraPose cameraPose;
 
         ConfigFile* confFile;
-        
+        Eigen::Matrix<double,4,4> extrinsics = Eigen::Matrix<double,4,4>::Identity();
         cv::Mat sensorsTranslate {};
         cv::Mat sensorsRotate {};
         Zed_Camera(ConfigFile* yamlFile);
