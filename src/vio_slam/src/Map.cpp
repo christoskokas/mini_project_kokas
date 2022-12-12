@@ -3,7 +3,7 @@
 namespace vio_slam
 {
 
-MapPoint::MapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _close, const int _kdx, const int _idx) : close(_close), wp(p), kdx(_kdx), idx(_idx)
+MapPoint::MapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _close, const unsigned long _kdx, const unsigned long _idx) : close(_close), wp(p), kdx(_kdx), idx(_idx)
 {
     wp3d = Eigen::Vector3d(p(0), p(1), p(2));
     obs.push_back(obsK);

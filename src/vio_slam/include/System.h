@@ -8,6 +8,7 @@
 #include "trial.h"
 #include "Frame.h"
 #include "Map.h"
+#include "LocalBA.h"
 #include <thread>
 #include <string>
 
@@ -29,6 +30,7 @@ class System
 
         std::thread* Visual;
         std::thread* Tracking;
+        std::thread* LocalMapping;
 
         Frame* mFrame;
 
@@ -39,6 +41,8 @@ class System
         RobustMatcher2* mRb;
 
         Map* map;
+
+        LocalMapper* localMap;
 
 };
 

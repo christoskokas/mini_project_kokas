@@ -28,6 +28,11 @@ class LocalMapper
 
     public:
 
+        Map* map;
+
+        LocalMapper(Map* _map);
+
+        void beginLocalMapping();
 
 
 };

@@ -16,6 +16,8 @@ System::System(std::string& confFile)
 
     map = new Map();
 
+    localMap = new LocalMapper(map);
+
     // Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera);
 
     // Tracking = new std::thread(&vio_slam::RobustMatcher2::beginTest, mRb);
@@ -32,8 +34,13 @@ void System::SLAM()
 
     Tracking = new std::thread(&vio_slam::RobustMatcher2::beginTest, mRb, map);
 
+    LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMapping, localMap);
+
+
+
     Visual->join();
     Tracking->join();
+    LocalMapping->join();
 }
 
 } // namespace vio_slam

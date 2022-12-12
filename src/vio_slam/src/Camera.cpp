@@ -26,6 +26,7 @@ CameraPose::CameraPose(Eigen::Matrix4d _pose, std::chrono::time_point<std::chron
 void CameraPose::setPose(Eigen::Matrix4d poseT)
 {
     pose = poseT;
+    poseInverse = poseT.inverse();
     separatePose();
     // Eigen::Matrix4d temp = poseT.inverse();
     // poseInverse = temp;

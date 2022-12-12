@@ -21,6 +21,7 @@
 #include "opencv2/core.hpp"
 #include <yaml-cpp/yaml.h>
 #include <Eigen/Core>
+#include <Eigen/LU>
 #include <chrono>
 
 

@@ -2552,6 +2552,7 @@ std::pair<int,int> FeatureTracker::refinePose(std::vector<MapPoint*>& activeMapP
     Eigen::Vector3d frame_tcw;
     Eigen::Quaterniond frame_qcw;
     // OutliersReprojErr(estimPose, activeMapPoints, keysLeft, matchedIdxsB, thresh, weights, nIn);
+    Eigen::Matrix4d prevPose = estimPose;
     Eigen::Matrix4d frame_pose = estimPose;
     Eigen::Matrix3d frame_R;
     frame_R = frame_pose.block<3, 3>(0, 0);
@@ -2627,6 +2628,10 @@ std::pair<int,int> FeatureTracker::refinePose(std::vector<MapPoint*>& activeMapP
 
     drawPointsTemp<cv::Point2f, cv::Point2f>("ceres", pLIm.rIm, found, observed);
     cv::waitKey(1);
+    
+    // if ( checkDisplacement(prevPose, estimPose) )
+    //     return std::pair<int,int>(0, nIn);
+    
     int nStereo = OutliersReprojErr(estimPose, activeMapPoints, keysLeft, matchedIdxsB, thresh, weights, nIn);
     // Logging("pose", estimPose,3);
     return std::pair<int,int>(nStereo, nIn);
@@ -2654,7 +2659,7 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
         }
     }
     
-    kF->unMatchedF.resize(keysLeft.keyPoints.size(), false);
+    kF->unMatchedF.resize(keysLeft.keyPoints.size(), -1);
     activeMapPoints.reserve(activeMapPoints.size() + keysLeft.keyPoints.size());
     mPPerKeyFrame.reserve(1000);
     // std::lock_guard<std::mutex> lock(map->mapMutex);
@@ -2662,7 +2667,13 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
     {
         // if ( keysLeft.close[i] >  )
         if ( matchedIdxsN[i] >= 0 )
+        {
+            MapPoint* mp = activeMapPoints[matchedIdxsN[i]];
+            if ( mp->GetIsOutlier() )
+                continue;
+            kF->unMatchedF[i] = mp->idx;
             continue;
+        }
         if ( keysLeft.estimatedDepth[i] > 0 )
         {
             const double zp = (double)keysLeft.estimatedDepth[i];
@@ -2672,8 +2683,8 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
             p = zedPtr->cameraPose.pose * p;
             MapPoint* mp = new MapPoint(p, keysLeft.Desc.row(i), keysLeft.keyPoints[i], keysLeft.close[i], map->kIdx, map->pIdx);
             activeMapPoints.emplace_back(mp);
+            map->addMapPoint(mp);
         }
-        kF->unMatchedF[i] = true;
     }
     kF->keys.getKeys(keysLeft);
     mPPerKeyFrame.push_back(activeMapPoints.size());
@@ -2689,6 +2700,54 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
 }
 
 void FeatureTracker::removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, const Eigen::Matrix4d& estimPose)
+{
+    const size_t end{activeMapPoints.size()};
+    int j {0};
+    for ( size_t i {0}; i < end; i++)
+    {
+        if ( activeMapPoints[i]->GetIsOutlier() )
+        {
+            continue;
+        }
+        MapPoint* mp = activeMapPoints[i];
+        if (worldToFrame(mp, estimPose, true))
+            mp->addTCnt();
+        if (!worldToFrame(mp,activeKeyFrames.back()->pose.poseInverse,false))
+            continue;
+        activeMapPoints[j++] = mp;
+    }
+    activeMapPoints.resize(j);
+}
+
+bool FeatureTracker::worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose, bool setActive)
+{
+    Eigen::Vector4d point = mp->getWordPose4d();
+    point = pose * point;
+
+    if ( point(2) <= 0.0 )
+    {
+        mp->setActive(setActive);
+        mp->SetInFrame(false);
+        return false;
+    }
+    const double invZ = 1.0f/point(2);
+
+    const double u {fx*point(0)*invZ + cx};
+    const double v {fy*point(1)*invZ + cy};
+
+    const int h {zedPtr->mHeight};
+    const int w {zedPtr->mWidth};
+
+    if ( u < 0 || v < 0 || u >= w || v >= h)
+    {
+        mp->setActive(setActive);
+        mp->SetInFrame(false);
+        return false;
+    }
+    return true;
+}
+
+void FeatureTracker::removeMapPointOutBackUp(std::vector<MapPoint*>& activeMapPoints, const Eigen::Matrix4d& estimPose)
 {
     const size_t end{activeMapPoints.size()};
     int j {0};
@@ -2734,15 +2793,13 @@ void FeatureTracker::removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, 
     activeMapPoints.resize(j);
 }
 
-bool FeatureTracker::checkDisplacement(const Eigen::Matrix4d& currPose, Eigen::Matrix4d& estimPose, const double threshold)
+bool FeatureTracker::checkDisplacement(const Eigen::Matrix4d& currPose, Eigen::Matrix4d& estimPose)
 {
     const double errorX = currPose(0,3) - estimPose(0,3);
     const double errorY = currPose(1,3) - estimPose(1,3);
     const double errorZ = currPose(2,3) - estimPose(2,3);
-
     const double error = errorX * errorX + errorY * errorY + errorZ * errorZ;
-
-    if (error > threshold)
+    if (error > 10.0)
     {
         estimPose = currPose;
         return true;
@@ -2797,7 +2854,7 @@ void FeatureTracker::Track4(const int frames)
         cv::solvePnPRansac(points3d, points2d, zedPtr->cameraLeft.cameraMatrix, cv::Mat::zeros(5,1,CV_64F), Rvec, tvec,true,100, 4.0f, 0.99, idxs);
         Eigen::Matrix4d estimPose = Converter::convertRTtoPose(Rvec, tvec);
 
-        if (!checkDisplacement(currPose, estimPose, 10.0))
+        if ( !checkDisplacement(currPose, estimPose) )
             removePnPOut(idxs, matchedIdxsN, matchedIdxsB);
         
 
@@ -2882,9 +2939,6 @@ void FeatureTracker::Track4(const int frames)
         // cv::Rodrigues(Rvec, Rvec);
         // estimPose = Converter::convertRTtoPose(Rvec, tvec);
 
-        removeMapPointOut(activeMapPoints, estimPose);
-
-
         poseEst = estimPose.inverse();
         // Logging("estimPose after inv", poseEst,3);
 
@@ -2892,6 +2946,9 @@ void FeatureTracker::Track4(const int frames)
         // if ( nStIn.first < 200 )
         // {
         addKeyFrame(keysLeft, matchedIdxsN);
+        removeMapPointOut(activeMapPoints, estimPose);
+
+
         // Logging("I AM IIIIIIIIIIN", activeMapPoints.size(),3);
         // }
 
@@ -2937,6 +2994,7 @@ void FeatureTracker::Track4(const int frames)
 
     }
     datafile.close();
+    map->endOfFrames = true;
 }
 
 void FeatureTracker::beginTrackingGoodFeatures(const int frames)
