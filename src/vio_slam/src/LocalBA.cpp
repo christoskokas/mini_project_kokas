@@ -3,7 +3,7 @@
 namespace vio_slam
 {
 
-LocalMapper::LocalMapper(Map* _map, Zed_Camera* _zedPtr, FeatureMatcher* _fm) : map(_map), zedPtr(_zedPtr), fm(_fm)
+LocalMapper::LocalMapper(Map* _map, Zed_Camera* _zedPtr, FeatureMatcher* _fm) : map(_map), zedPtr(_zedPtr), fm(_fm), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy)
 {
 
 }
@@ -46,6 +46,76 @@ void LocalMapper::calcProjMatrices(std::unordered_map<int, Eigen::Matrix<double,
     }
 }
 
+void LocalMapper::drawLBA(const char* com,std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, const KeyFrame* lastKF, const KeyFrame* otherKF)
+{
+    std::vector<cv::Point2f> last, other;
+    const int kIdx {otherKF->numb};
+    for (size_t i {0}, end{lastKF->keys.keyPoints.size()}; i < end; i ++)
+    {
+        for (size_t j{0}, jend{matchedIdxs[i].size()}; j < jend; j ++)
+        {
+            if (matchedIdxs[i][j].first == kIdx)
+            {
+                last.emplace_back(lastKF->keys.keyPoints[i].pt);
+                other.emplace_back(otherKF->keys.keyPoints[matchedIdxs[i][j].second].pt);
+            }
+        }
+    }
+    cv::Mat im = otherKF->rLeftIm.clone();
+    for ( size_t i{0}, end{last.size()}; i < end; i ++)
+    {
+        cv::circle(im, last[i],2,cv::Scalar(0,255,0));
+        cv::line(im, last[i], other[i],cv::Scalar(0,0,255));
+        cv::circle(im, other[i],2,cv::Scalar(255,0,0));
+
+    }
+    cv::imshow(com, im);
+    cv::waitKey(1);
+}
+
+void LocalMapper::predictKeysPos(TrackedKeys& keys, const Eigen::Matrix4d& curPose, const Eigen::Matrix4d& camPoseInv)
+{
+    keys.predKeyPoints = keys.keyPoints;
+    for ( size_t i {0}, end{keys.keyPoints.size()}; i < end; i ++)
+    {
+        if ( keys.estimatedDepth[i] <= 0 )
+            continue;
+        const double zp = (double)keys.estimatedDepth[i];
+        const double xp = (double)(((double)keys.keyPoints[i].pt.x-cx)*zp/fx);
+        const double yp = (double)(((double)keys.keyPoints[i].pt.y-cy)*zp/fy);
+        Eigen::Vector4d p(xp, yp, zp, 1);
+        p = curPose * p;
+        p = camPoseInv * p;
+
+        if ( p(2) <= 0.0)
+        {
+            keys.predKeyPoints[i].pt = cv::Point2f(-1,-1);
+            continue;
+        }
+
+        const double invZ = 1.0f/p(2);
+
+
+        double u {fx*p(0)*invZ + cx};
+        double v {fy*p(1)*invZ + cy};
+
+        const int w {zedPtr->mWidth};
+        const int h {zedPtr->mHeight};
+
+        if ( u < 0 )
+            u = 0.0;
+        if ( v < 0 )
+            v = 0.0;
+        if ( u >= w )
+            u = w - 1.0;
+        if ( v >= h )
+            v = h - 1.0;
+
+        keys.predKeyPoints[i].pt = cv::Point2f((float)u, (float)v);
+
+    }
+}
+
 void LocalMapper::computeAllMapPoints()
 {
     std::unordered_map<MapPoint*, Eigen::Vector3d> allMapPoints;
@@ -64,18 +134,23 @@ void LocalMapper::computeAllMapPoints()
     }
     
     Logging("size", allMapPoints.size(),3);
-
-    std::vector<std::vector<std::pair<int, int>>> matchedIdxs(map->activeKeyFrames.front()->keys.keyPoints.size(),std::vector<std::pair<int, int>>());
-
     KeyFrame* lastKF = map->activeKeyFrames.front();
+
+    const int lastKFIdx = lastKF->numb;
+
+    std::vector<std::vector<std::pair<int, int>>> matchedIdxs(lastKF->keys.keyPoints.size(),std::vector<std::pair<int, int>>());
+
 
     for ( it = map->activeKeyFrames.begin(); it != end; it++)
     {
-        if ( *it == map->activeKeyFrames.front() )
+        if ( (*it)->numb == lastKFIdx)
             continue;
-
-        fm->matchLocalBA(matchedIdxs, lastKF->keys, (*it)->keys);
+        predictKeysPos(lastKF->keys, lastKF->pose.pose, (*it)->pose.poseInverse);
+        fm->matchLocalBA(matchedIdxs, lastKF, (*it), 3);
+        // drawLBA("lel",matchedIdxs, lastKF,(*it));
     }
+
+
 
     // match only last keyframe.
 
@@ -130,13 +205,16 @@ void LocalMapper::computeAllMapPoints()
 
 void LocalMapper::beginLocalMapping()
 {
+    using namespace std::literals::chrono_literals;
     while ( !map->endOfFrames )
     {
         if ( map->keyFrameAdded )
         {
+            Timer matchingInLBA("matching LBA");
             map->keyFrameAdded = false;
             computeAllMapPoints();
         }
+        std::this_thread::sleep_for(20ms);
     }
 }
 

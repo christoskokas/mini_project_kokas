@@ -8,11 +8,74 @@ FeatureMatcher::FeatureMatcher(const Zed_Camera* _zed, const FeatureExtractor* _
 
 }
 
-void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, TrackedKeys& lastKF, TrackedKeys& otherKF)
+void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, KeyFrame* lastKF, KeyFrame* otherKF, const int timesGrid)
 {
+    const float imageRatio = (float)zedptr->mWidth/(float)zedptr->mHeight;
+    // smaller window because these points have predicted positions
+    const int lnGrids = gridCols * timesGrid;
+    const int rnGrids = cvCeil(lnGrids/imageRatio);
+    const float lMult = (float)lnGrids/(float)zedptr->mWidth;
+    const float rMult = (float)rnGrids/(float)zedptr->mHeight;
+    std::vector<std::vector<std::vector<int>>> leftIdxs(rnGrids, std::vector<std::vector<int>>(lnGrids,std::vector<int>()));
+    destributeLeftKeys(otherKF->keys, leftIdxs, lnGrids, rnGrids);
+
+    const size_t prevE {lastKF->keys.keyPoints.size()};
+    const size_t newE {otherKF->keys.keyPoints.size()};
     
-    // lastKF.estimatedDepth[0];
-    Logging("xd", lastKF.estimatedDepth[0],3);
+    std::vector<int> matchedIdxsN(newE, -1);
+    std::vector<int> rIdxs(newE, 256);
+    for ( size_t i {0}; i < prevE; i++)
+    {
+        if ( !lastKF->unMatchedF[i] )
+            continue;
+        if ( lastKF->keys.predKeyPoints[i].pt.x < 0 )
+            continue;
+        int gCol {cvRound(lastKF->keys.predKeyPoints[i].pt.x*lMult)};
+        int gRow {cvRound(lastKF->keys.predKeyPoints[i].pt.y*rMult)};
+        if (gRow >= rnGrids)
+            gRow = rnGrids - 1;
+        if (gCol >= lnGrids)
+            gCol = lnGrids - 1;
+        std::vector<int>& idxs = leftIdxs[gRow][gCol];
+
+        int bestDist = 256;
+        int bestIdx = -1;
+        int secDist = 256;
+        if ( idxs.empty() )
+            continue;
+        for (auto& idx : idxs)
+        {
+            if ( !otherKF->unMatchedF[idx] )
+                continue;
+            int dist = DescriptorDistance(lastKF->keys.Desc.row(i), otherKF->keys.Desc.row(idx));
+            if ( dist < bestDist)
+            {
+                // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
+                secDist = bestDist;
+                bestDist = dist;
+                bestIdx = idx;
+                continue;
+            }
+            if ( dist < secDist)
+                secDist = dist;
+        }
+        if ( bestDist < matchDist && bestDist < 0.8* secDist)
+        {
+            if (rIdxs[bestIdx] > bestDist)
+            {
+                rIdxs[bestIdx] = bestDist;
+                matchedIdxsN[bestIdx] = i;
+            }
+        }
+    }
+    int nMatches {0};
+    for ( size_t i {0}; i < newE; i++)
+    {
+        if ( matchedIdxsN[i] >= 0)
+        {
+            matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(otherKF->numb, i));
+        }
+    }
 }
 
 void FeatureMatcher::computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, SubPixelPoints& prevPoints, SubPixelPoints& newPoints)

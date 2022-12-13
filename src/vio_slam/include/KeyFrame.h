@@ -23,6 +23,7 @@ class KeyFrame
     public:
         CameraPose pose;
         cv::Mat leftIm, rightIm;
+        cv::Mat rLeftIm;
         std::vector<cv::Point3d> points3D;
         std::vector<int> connections;
         std::vector<int> connectionWeights;
@@ -39,6 +40,7 @@ class KeyFrame
         KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, const int _numb = 0);
         KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, Eigen::MatrixXd _homoPoints3D, const int _numb = 0);
         KeyFrame(Eigen::Matrix4d _pose, const int _numb);
+        KeyFrame(Eigen::Matrix4d _pose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb);
         Eigen::Vector4d getWorldPosition(int idx);
 
         Eigen::Matrix4d getPose();

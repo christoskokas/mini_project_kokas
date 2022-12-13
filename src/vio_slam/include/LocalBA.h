@@ -30,6 +30,8 @@ class LocalMapper
 
     public:
 
+        const double fx,fy,cx,cy;
+
         Map* map;
 
         Zed_Camera* zedPtr;
@@ -38,12 +40,15 @@ class LocalMapper
 
         LocalMapper(Map* _map, Zed_Camera* _zedPtr, FeatureMatcher* _fm);
 
+        void predictKeysPos(TrackedKeys& keys, const Eigen::Matrix4d& curPose, const Eigen::Matrix4d& camPoseInv);
         void beginLocalMapping();
         void computeAllMapPoints();
         Eigen::Vector3d TriangulateMultiViewPoint(
                 const std::vector<Eigen::Matrix<double, 3, 4>>& proj_matrices,
                 const std::vector<Eigen::Vector2d>& points);
         void calcProjMatrices(std::unordered_map<int, Eigen::Matrix<double,3,4>>& projMatrices);
+
+        void drawLBA(const char* com,std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, const KeyFrame* lastKF, const KeyFrame* otherKF);
 
 };
 

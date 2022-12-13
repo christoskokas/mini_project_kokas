@@ -3,6 +3,13 @@
 namespace vio_slam
 {
 
+KeyFrame::KeyFrame(Eigen::Matrix4d _pose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb) : numb(_numb)
+{
+    pose.setPose(_pose);
+    leftIm = _leftIm.clone();
+    rLeftIm = rLIm.clone();
+}
+
 KeyFrame::KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, Eigen::MatrixXd _homoPoints3D, const int _numb) : numb(_numb)
 {
     points3D = points;

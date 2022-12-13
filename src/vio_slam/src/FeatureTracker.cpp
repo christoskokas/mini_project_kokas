@@ -2310,7 +2310,8 @@ void FeatureTracker::Track3(const int frames)
 
 void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
 {
-    KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, map->kIdx);
+    KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx);
+    // KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, map->kIdx);
     kF->unMatchedF.resize(keysLeft.keyPoints.size(), true);
     kF->localMapPoints.reserve(activeMapPoints.size());
     activeMapPoints.reserve(keysLeft.keyPoints.size());
@@ -2642,7 +2643,7 @@ std::pair<int,int> FeatureTracker::refinePose(std::vector<MapPoint*>& activeMapP
 
 void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN)
 {
-    KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, map->kIdx);
+    KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx);
     const int minKIdx {activeMapPoints[0]->kdx};
     const int maxKIdx {activeMapPoints.back()->kdx};
     std::vector<int>kfCon(maxKIdx - minKIdx + 1,0);
