@@ -100,6 +100,7 @@ struct TrackedKeys
     {
         keyPoints = keysToClone.keyPoints;
         rightKeyPoints = keysToClone.rightKeyPoints;
+        rightIdxs = keysToClone.rightIdxs;
         Desc = keysToClone.Desc.clone();
         rightDesc = keysToClone.rightDesc.clone();
         close = keysToClone.close;

@@ -8,7 +8,7 @@ FeatureMatcher::FeatureMatcher(const Zed_Camera* _zed, const FeatureExtractor* _
 
 }
 
-void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, KeyFrame* lastKF, KeyFrame* otherKF, const int timesGrid)
+void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, KeyFrame* lastKF, KeyFrame* otherKF, const int aKFSize, const int timesGrid, bool first)
 {
     const float imageRatio = (float)zedptr->mWidth/(float)zedptr->mHeight;
     // smaller window because these points have predicted positions
@@ -18,6 +18,14 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
     const float rMult = (float)rnGrids/(float)zedptr->mHeight;
     std::vector<std::vector<std::vector<int>>> leftIdxs(rnGrids, std::vector<std::vector<int>>(lnGrids,std::vector<int>()));
     destributeLeftKeys(otherKF->keys, leftIdxs, lnGrids, rnGrids);
+
+    int lastKFnumb {lastKF->numb};
+    int otherKFnumb {otherKF->numb};
+
+    if ( lastKFnumb == 0 )
+        lastKFnumb = aKFSize;
+    if ( otherKFnumb == 0 )
+        otherKFnumb = aKFSize;
 
     const size_t prevE {lastKF->keys.keyPoints.size()};
     const size_t newE {otherKF->keys.keyPoints.size()};
@@ -30,6 +38,12 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             continue;
         if ( lastKF->keys.predKeyPoints[i].pt.x < 0 )
             continue;
+        if ( first )
+        {
+            if ( lastKF->keys.estimatedDepth[i] > 0 )
+                matchedIdxs[i].emplace_back(std::pair<int,int>(-lastKFnumb, lastKF->keys.rightIdxs[i]));
+            matchedIdxs[i].emplace_back(std::pair<int,int>(lastKFnumb, i));
+        }
         int gCol {cvRound(lastKF->keys.predKeyPoints[i].pt.x*lMult)};
         int gRow {cvRound(lastKF->keys.predKeyPoints[i].pt.y*rMult)};
         if (gRow >= rnGrids)
@@ -73,7 +87,9 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
     {
         if ( matchedIdxsN[i] >= 0)
         {
-            matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(otherKF->numb, i));
+            matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(otherKFnumb, i));
+            if ( otherKF->keys.estimatedDepth[i] > 0 )
+                matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(-otherKFnumb, otherKF->keys.rightIdxs[i]));
         }
     }
 }

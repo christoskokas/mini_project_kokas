@@ -32,6 +32,7 @@ Eigen::Vector3d LocalMapper::TriangulateMultiViewPoint(
 void LocalMapper::calcProjMatrices(std::unordered_map<int, Eigen::Matrix<double,3,4>>& projMatrices)
 {
     Eigen::Matrix<double,3,3>& K = zedPtr->cameraLeft.intrisics;
+    const int aKFsize {map->activeKeyFrames.size()};
     std::vector<KeyFrame*>::const_iterator it, end(map->activeKeyFrames.end());
     for ( it = map->activeKeyFrames.begin(); it != end; it++)
     {
@@ -40,9 +41,16 @@ void LocalMapper::calcProjMatrices(std::unordered_map<int, Eigen::Matrix<double,
         Eigen::Matrix<double,3,4> extrRight = extr * zedPtr->extrinsics;
         extr = K * extr;
         extrRight = K * extrRight;
-        projMatrices.emplace(kIdx, extr);
         if ( kIdx != 0 )
+        {
+            projMatrices.emplace(kIdx, extr);
             projMatrices.emplace( - kIdx, extrRight);
+        }
+        else
+        {
+            projMatrices.emplace(aKFsize, extr);
+            projMatrices.emplace( - aKFsize, extrRight);
+        }
     }
 }
 
@@ -116,6 +124,35 @@ void LocalMapper::predictKeysPos(TrackedKeys& keys, const Eigen::Matrix4d& curPo
     }
 }
 
+void LocalMapper::processMatches(std::vector<std::pair<int, int>>& matchesOfPoint, std::unordered_map<int, Eigen::Matrix<double,3,4>>& allProjMatrices, std::vector<Eigen::Matrix<double, 3, 4>>& proj_matrices, std::vector<Eigen::Vector2d>& points)
+{
+    proj_matrices.reserve(matchesOfPoint.size());
+    points.reserve(matchesOfPoint.size());
+    const int aKFSize = map->activeKeyFrames.size();
+    std::vector<std::pair<int, int>>::const_iterator it, end(matchesOfPoint.end());
+    for ( it = matchesOfPoint.begin(); it != end; it++)
+    {
+        proj_matrices.emplace_back(allProjMatrices.at(it->first));
+        int kFIdx = it->first;
+        if ( map->activeKeyFrames.back()->numb == 0)
+            if ( abs(it->first) == aKFSize )
+                kFIdx = 0;
+
+        if ( it->first > 0)
+        {
+            KeyFrame* kF = map->keyFrames.at(kFIdx);
+            Eigen::Vector2d vec2d((double)kF->keys.keyPoints[it->second].pt.x, (double)kF->keys.keyPoints[it->second].pt.y);
+            points.emplace_back(vec2d);
+        }
+        else
+        {
+            KeyFrame* kF = map->keyFrames.at( - kFIdx);
+            Eigen::Vector2d vec2d((double)kF->keys.rightKeyPoints[it->second].pt.x, (double)kF->keys.rightKeyPoints[it->second].pt.y);
+            points.emplace_back(vec2d);
+        }
+    }
+}
+
 void LocalMapper::computeAllMapPoints()
 {
     std::unordered_map<MapPoint*, Eigen::Vector3d> allMapPoints;
@@ -141,12 +178,15 @@ void LocalMapper::computeAllMapPoints()
     std::vector<std::vector<std::pair<int, int>>> matchedIdxs(lastKF->keys.keyPoints.size(),std::vector<std::pair<int, int>>());
 
 
+    const int aKFsize {map->activeKeyFrames.size()};
+    bool first = true;
     for ( it = map->activeKeyFrames.begin(); it != end; it++)
     {
         if ( (*it)->numb == lastKFIdx)
             continue;
         predictKeysPos(lastKF->keys, lastKF->pose.pose, (*it)->pose.poseInverse);
-        fm->matchLocalBA(matchedIdxs, lastKF, (*it), 3);
+        fm->matchLocalBA(matchedIdxs, lastKF, (*it), aKFsize, 3, first);
+        first = false;
         // drawLBA("lel",matchedIdxs, lastKF,(*it));
     }
 
@@ -173,13 +213,25 @@ void LocalMapper::computeAllMapPoints()
     // the 3d point calc is given to the first keyframe
 
     // std::vector<Eigen::Matrix<double,3,4>> projMatrices;
-    std::unordered_map<int, Eigen::Matrix<double,3,4>> projMatrices;
-    projMatrices.reserve(map->activeKeyFrames.size());
+    std::unordered_map<int, Eigen::Matrix<double,3,4>> allProjMatrices;
+    allProjMatrices.reserve(aKFsize);
 
-    calcProjMatrices(projMatrices);
+    calcProjMatrices(allProjMatrices);
+
+    for ( size_t i{0}, end {lastKF->keys.keyPoints.size()}; i < end; i ++)
+    {
+        std::vector<std::pair<int, int>>& matchesOfPoint = matchedIdxs[i];
+        if (matchesOfPoint.size() != 2)
+            continue;
+        std::vector<Eigen::Matrix<double, 3, 4>> proj_mat;
+        std::vector<Eigen::Vector2d> pointsVec;
+        processMatches(matchesOfPoint, allProjMatrices, proj_mat, pointsVec);
+        Eigen::Vector3d vec3d = TriangulateMultiViewPoint(proj_mat, pointsVec);
+        Logging("calc 3d", vec3d, 3);
+        Logging("est depth", lastKF->keys.estimatedDepth[i],3);
+        Logging("KF pose",lastKF->pose.pose,3);
+    }
     
-
-    Logging("size", allMapPoints.size(),3);
 
 
 

@@ -48,6 +48,8 @@ class LocalMapper
                 const std::vector<Eigen::Vector2d>& points);
         void calcProjMatrices(std::unordered_map<int, Eigen::Matrix<double,3,4>>& projMatrices);
 
+        void processMatches(std::vector<std::pair<int, int>>& matchesOfPoint, std::unordered_map<int, Eigen::Matrix<double,3,4>>& allProjMatrices, std::vector<Eigen::Matrix<double, 3, 4>>& proj_matrices, std::vector<Eigen::Vector2d>& points);
+
         void drawLBA(const char* com,std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, const KeyFrame* lastKF, const KeyFrame* otherKF);
 
 };
