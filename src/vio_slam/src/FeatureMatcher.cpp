@@ -22,10 +22,10 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
     int lastKFnumb {lastKF->numb};
     int otherKFnumb {otherKF->numb};
 
-    if ( lastKFnumb == 0 )
-        lastKFnumb = aKFSize;
-    if ( otherKFnumb == 0 )
-        otherKFnumb = aKFSize;
+    // if ( lastKFnumb == 0 )
+    //     lastKFnumb = aKFSize;
+    // if ( otherKFnumb == 0 )
+    //     otherKFnumb = aKFSize;
 
     const size_t prevE {lastKF->keys.keyPoints.size()};
     const size_t newE {otherKF->keys.keyPoints.size()};
@@ -88,8 +88,8 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
         if ( matchedIdxsN[i] >= 0)
         {
             matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(otherKFnumb, i));
-            if ( otherKF->keys.estimatedDepth[i] > 0 )
-                matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(-otherKFnumb, otherKF->keys.rightIdxs[i]));
+            // if ( otherKF->keys.estimatedDepth[i] > 0 )
+            //     matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(-otherKFnumb, otherKF->keys.rightIdxs[i]));
         }
     }
 }

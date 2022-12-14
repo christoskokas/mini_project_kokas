@@ -89,7 +89,7 @@ void Zed_Camera::setCameraValues()
         cameraRight.setIntrinsicValuesUnR("Camera_r",confFile);
         mBaseline = confFile->getValue<float>("Camera","bl");
     }
-    extrinsics(0,3) = - (double)mBaseline;
+    extrinsics(0,3) = (double)mBaseline;
 }
 
 float Zed_Camera::setBaseline()

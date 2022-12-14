@@ -369,6 +369,7 @@ public:
         return (new ceres::AutoDiffCostFunction<OptimizePose, 2, 3, 4>(
                         new OptimizePose(K, point, observation, weight)));
     }
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 private:
     const Eigen::Vector2d observation_;
@@ -430,6 +431,7 @@ public:
         return (new ceres::AutoDiffCostFunction<OptimizePoseICP, 3, 3, 4>(
                         new OptimizePoseICP(K, point, observation, weight)));
     }
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 private:
     const Eigen::Vector3d observation_;

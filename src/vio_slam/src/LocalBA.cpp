@@ -33,24 +33,37 @@ void LocalMapper::calcProjMatrices(std::unordered_map<int, Eigen::Matrix<double,
 {
     Eigen::Matrix<double,3,3>& K = zedPtr->cameraLeft.intrisics;
     const int aKFsize {map->activeKeyFrames.size()};
+    Eigen::Matrix4d projL = Eigen::Matrix4d::Identity();
+    projL.block<3,3>(0,0) = K;
+    Eigen::Matrix4d projR = projL;
+    projR(0,3) = -fx * zedPtr->extrinsics(0,3);
     std::vector<KeyFrame*>::const_iterator it, end(map->activeKeyFrames.end());
+    bool first = true;
     for ( it = map->activeKeyFrames.begin(); it != end; it++)
     {
         const int kIdx {(*it)->numb};
-        Eigen::Matrix<double,3,4> extr = (*it)->pose.pose.block<3,4>(0,0);
-        Eigen::Matrix<double,3,4> extrRight = extr * zedPtr->extrinsics;
-        extr = K * extr;
-        extrRight = K * extrRight;
-        if ( kIdx != 0 )
+        Eigen::Matrix<double,4,4> extr2 = (*it)->pose.poseInverse;
+        extr2 = projL * extr2;
+        Eigen::Matrix<double,3,4> extr = extr2.block<3,4>(0,0);
+        if ( first )
         {
-            projMatrices.emplace(kIdx, extr);
-            projMatrices.emplace( - kIdx, extrRight);
+            Eigen::Matrix<double,4,4> extrRight = (*it)->pose.poseInverse;
+            extrRight =  projR * extrRight;
+            Eigen::Matrix<double,3,4> extrR = extrRight.block<3,4>(0,0);
+            projMatrices.emplace( - kIdx, extrR);
+            first = false;
         }
-        else
-        {
-            projMatrices.emplace(aKFsize, extr);
-            projMatrices.emplace( - aKFsize, extrRight);
-        }
+        projMatrices.emplace(kIdx, extr);
+        // if ( kIdx != 0 )
+        // {
+        //     projMatrices.emplace(kIdx, extr);
+        //     // projMatrices.emplace( - kIdx, extrRight2);
+        // }
+        // else
+        // {
+        //     projMatrices.emplace(aKFsize, extr);
+        //     projMatrices.emplace( - aKFsize, extrRight2);
+        // }
     }
 }
 
@@ -81,13 +94,31 @@ void LocalMapper::drawLBA(const char* com,std::vector<std::vector<std::pair<int,
     cv::waitKey(1);
 }
 
+void LocalMapper::drawPred(KeyFrame* lastKF, std::vector<cv::KeyPoint>& keys,std::vector<cv::KeyPoint>& predKeys)
+{
+    cv::Mat im = lastKF->rLeftIm.clone();
+    for ( size_t i{0}, end{keys.size()}; i < end; i ++)
+    {
+        if ( predKeys[i].pt.x <= 0 )
+            continue;
+        cv::circle(im, keys[i].pt,2,cv::Scalar(0,255,0));
+        cv::line(im, keys[i].pt, predKeys[i].pt,cv::Scalar(0,0,255));
+        cv::circle(im, predKeys[i].pt,2,cv::Scalar(255,0,0));
+    }
+    cv::imshow("predictions", im);
+    cv::waitKey(1);
+}
+
 void LocalMapper::predictKeysPos(TrackedKeys& keys, const Eigen::Matrix4d& curPose, const Eigen::Matrix4d& camPoseInv)
 {
     keys.predKeyPoints = keys.keyPoints;
     for ( size_t i {0}, end{keys.keyPoints.size()}; i < end; i ++)
     {
         if ( keys.estimatedDepth[i] <= 0 )
+        {
+            keys.predKeyPoints[i].pt = cv::Point2f(-1,-1);
             continue;
+        }
         const double zp = (double)keys.estimatedDepth[i];
         const double xp = (double)(((double)keys.keyPoints[i].pt.x-cx)*zp/fx);
         const double yp = (double)(((double)keys.keyPoints[i].pt.y-cy)*zp/fy);
@@ -134,11 +165,13 @@ void LocalMapper::processMatches(std::vector<std::pair<int, int>>& matchesOfPoin
     {
         proj_matrices.emplace_back(allProjMatrices.at(it->first));
         int kFIdx = it->first;
-        if ( map->activeKeyFrames.back()->numb == 0)
-            if ( abs(it->first) == aKFSize )
-                kFIdx = 0;
+        // if ( map->activeKeyFrames.back()->numb == 0)
+        // {
+        //     if ( abs(it->first) == aKFSize )
+        //         kFIdx = 0;
+        // }
 
-        if ( it->first > 0)
+        if ( it->first >= 0)
         {
             KeyFrame* kF = map->keyFrames.at(kFIdx);
             Eigen::Vector2d vec2d((double)kF->keys.keyPoints[it->second].pt.x, (double)kF->keys.keyPoints[it->second].pt.y);
@@ -151,6 +184,49 @@ void LocalMapper::processMatches(std::vector<std::pair<int, int>>& matchesOfPoin
             points.emplace_back(vec2d);
         }
     }
+}
+
+void LocalMapper::projectToPlane(Eigen::Vector4d& vec, cv::Point2f& p2f)
+{
+    const double invZ {1.0/vec(2)};
+    const double u {fx*vec(0)*invZ + cx};
+    const double v {fy*vec(1)*invZ + cy};
+    p2f = cv::Point2f((float)u, (float)v);
+}
+
+
+bool LocalMapper::checkReprojErr(Eigen::Vector3d& calcVec, std::vector<std::pair<int, int>>& matchesOfPoint)
+{
+    if ( calcVec(2) <= 0 )
+        return false;
+    Eigen::Vector4d p4d(calcVec(0), calcVec(1), calcVec(2),1.0);
+
+    for (size_t i {0}, end{matchesOfPoint.size()}; i < end; i++)
+    {
+        int kfNumb {matchesOfPoint[i].first};
+        KeyFrame* kF = map->keyFrames.at(abs(kfNumb));
+        Eigen::Vector4d p4dnew = kF->pose.poseInverse * p4d;
+        cv::Point2f p2f;
+        projectToPlane(p4dnew,p2f);
+        float err1,err2;
+        if (kfNumb > 0)
+        {
+            err1 = kF->keys.keyPoints[matchesOfPoint[i].second].pt.x - p2f.x;
+            err2 = kF->keys.keyPoints[matchesOfPoint[i].second].pt.y - p2f.y;
+
+        }
+        else
+        {
+            err1 = kF->keys.rightKeyPoints[matchesOfPoint[i].second].pt.x - p2f.x;
+            err2 = kF->keys.rightKeyPoints[matchesOfPoint[i].second].pt.y - p2f.y;
+
+        }
+        float err = err1*err1 + err2*err2;
+
+        if ( err > reprjThreshold )
+            return false;
+    }
+    return true;
 }
 
 void LocalMapper::computeAllMapPoints()
@@ -184,10 +260,15 @@ void LocalMapper::computeAllMapPoints()
     {
         if ( (*it)->numb == lastKFIdx)
             continue;
+        if ( (*it)->numb < lastKFIdx - 1)
+            continue;
         predictKeysPos(lastKF->keys, lastKF->pose.pose, (*it)->pose.poseInverse);
-        fm->matchLocalBA(matchedIdxs, lastKF, (*it), aKFsize, 3, first);
+        fm->matchLocalBA(matchedIdxs, lastKF, (*it), aKFsize, 4, first);
+        if (first)
+            drawLBA("LBA matches",matchedIdxs, lastKF,(*it));
         first = false;
-        // drawLBA("lel",matchedIdxs, lastKF,(*it));
+        
+        // drawPred(lastKF, lastKF->keys.keyPoints, lastKF->keys.predKeyPoints);
     }
 
 
@@ -221,14 +302,27 @@ void LocalMapper::computeAllMapPoints()
     for ( size_t i{0}, end {lastKF->keys.keyPoints.size()}; i < end; i ++)
     {
         std::vector<std::pair<int, int>>& matchesOfPoint = matchedIdxs[i];
-        if (matchesOfPoint.size() != 2)
+        if (matchesOfPoint.size() < 3)
             continue;
         std::vector<Eigen::Matrix<double, 3, 4>> proj_mat;
         std::vector<Eigen::Vector2d> pointsVec;
         processMatches(matchesOfPoint, allProjMatrices, proj_mat, pointsVec);
         Eigen::Vector3d vec3d = TriangulateMultiViewPoint(proj_mat, pointsVec);
+        if ( !checkReprojErr(vec3d, matchesOfPoint) )
+            continue;
         Logging("calc 3d", vec3d, 3);
-        Logging("est depth", lastKF->keys.estimatedDepth[i],3);
+
+        // Logging("est depth", lastKF->keys.estimatedDepth[i],3);
+        if ( lastKF->keys.estimatedDepth[i]> 0)
+        {
+            const double zp = (double)lastKF->keys.estimatedDepth[i];
+            const double xp = (double)(((double)lastKF->keys.keyPoints[i].pt.x-cx)*zp/fx);
+            const double yp = (double)(((double)lastKF->keys.keyPoints[i].pt.y-cy)*zp/fy);
+            Eigen::Vector4d vecCalc(xp, yp, zp, 1);
+            vecCalc = lastKF->pose.pose * vecCalc;
+            Eigen::Vector3d vec3(vecCalc(0), vecCalc(1), vecCalc(2));
+            Logging("vecCalc", vec3, 3);
+        }
         Logging("KF pose",lastKF->pose.pose,3);
     }
     

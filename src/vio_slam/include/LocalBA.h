@@ -34,6 +34,8 @@ class LocalMapper
 
         Map* map;
 
+        const float reprjThreshold {7.815f};
+
         Zed_Camera* zedPtr;
 
         FeatureMatcher* fm;
@@ -49,7 +51,10 @@ class LocalMapper
         void calcProjMatrices(std::unordered_map<int, Eigen::Matrix<double,3,4>>& projMatrices);
 
         void processMatches(std::vector<std::pair<int, int>>& matchesOfPoint, std::unordered_map<int, Eigen::Matrix<double,3,4>>& allProjMatrices, std::vector<Eigen::Matrix<double, 3, 4>>& proj_matrices, std::vector<Eigen::Vector2d>& points);
+        bool checkReprojErr(Eigen::Vector3d& calcVec, std::vector<std::pair<int, int>>& matchesOfPoint);
+        void projectToPlane(Eigen::Vector4d& vec, cv::Point2f& p2f);
 
+        void drawPred(KeyFrame* lastKF, std::vector<cv::KeyPoint>& keys,std::vector<cv::KeyPoint>& predKeys);
         void drawLBA(const char* com,std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, const KeyFrame* lastKF, const KeyFrame* otherKF);
 
 };

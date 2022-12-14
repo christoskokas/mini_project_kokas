@@ -2745,12 +2745,14 @@ bool FeatureTracker::worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose, boo
 
     const int h {zedPtr->mHeight};
     const int w {zedPtr->mWidth};
-
-    if ( u < 0 || v < 0 || u >= w || v >= h)
+    if (setActive)
     {
-        mp->setActive(setActive);
-        mp->SetInFrame(false);
-        return false;
+        if ( u < 0 || v < 0 || u >= w || v >= h)
+        {
+            mp->setActive(setActive);
+            mp->SetInFrame(false);
+            return false;
+        }
     }
     return true;
 }
