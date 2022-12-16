@@ -26,7 +26,7 @@ struct TrackedKeys
     std::vector<int> mapPointIdx;
     std::vector<int> matchedIdxs;
     std::vector<float> estimatedDepth;
-    std::vector<double> angles;
+    std::vector<float> angles;
     // std::vector<float> estimatedDepthNew;
     std::vector<bool> close;
     std::vector<bool> hasPrediction;
@@ -102,6 +102,7 @@ struct TrackedKeys
         keyPoints = keysToClone.keyPoints;
         rightKeyPoints = keysToClone.rightKeyPoints;
         rightIdxs = keysToClone.rightIdxs;
+        angles = keysToClone.angles;
         Desc = keysToClone.Desc.clone();
         rightDesc = keysToClone.rightDesc.clone();
         close = keysToClone.close;

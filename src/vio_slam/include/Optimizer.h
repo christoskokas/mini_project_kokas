@@ -445,6 +445,102 @@ private:
 
 };
 
+class MultiViewTriang
+{
+public:
+
+    MultiViewTriang(const Eigen::Matrix3d& K, const Eigen::Matrix<double, 3, 4>& proj, const Eigen::Vector2d& observation)
+        : K_(K), proj_(proj), observation_(observation)
+    {
+    }
+
+    template<typename T>
+    bool operator()(const T* const point, T* residuals_ptr) const
+    {
+
+        // Eigen::Map<const Eigen::Matrix<T, 3, 1>> p_frame(cameraT);
+        // Eigen::Map<const Eigen::Quaternion<T>> q_frame(cameraR);
+        Eigen::Map<const Eigen::Matrix<T, 4, 1>> point4d(point);
+
+        Eigen::Matrix<T, 3, 1> p_cp =
+        proj_.template cast<T>() * point4d;
+
+        // Compute the residuals.
+        // [ undistorted - projected ]
+        Eigen::Map<Eigen::Matrix<T, 2, 1>> residuals(residuals_ptr);
+        residuals[0] =
+            observation_.template cast<T>()[0] - p_cp[0] / p_cp[2];
+        residuals[1] =
+            observation_.template cast<T>()[1] - p_cp[1] / p_cp[2];
+
+        return true;
+    }
+
+    static ceres::CostFunction* Create(const Eigen::Matrix3d& K, const Eigen::Matrix<double, 3, 4>& proj, const Eigen::Vector2d& observation)
+    {
+        return (new ceres::AutoDiffCostFunction<MultiViewTriang, 2, 4>(
+                        new MultiViewTriang(K, proj, observation)));
+    }
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+private:
+    const Eigen::Vector2d observation_;
+    const Eigen::Matrix<double,3,4> proj_;
+    // const Eigen::Quaterniond Rot_;
+    // const Eigen::Matrix<double,3,1> Tra_;
+    const Eigen::Matrix3d& K_;
+
+};
+
+// class MultiViewTriangProj
+// {
+// public:
+
+//     MultiViewTriangProj(const Eigen::Matrix3d& K, const Eigen::Quaterniond& Rot, const Eigen::Matrix<double,3,1>& Tra, const Eigen::Vector2d& observation)
+//         : K_(K), Rot_(Rot), Tra_(Tra), observation_(observation)
+//     {
+//     }
+
+//     template<typename T>
+//     bool operator()(const T* const point, T* residuals_ptr) const
+//     {
+
+//         // Eigen::Map<const Eigen::Matrix<T, 3, 1>> p_frame(cameraT);
+//         // Eigen::Map<const Eigen::Quaternion<T>> q_frame(cameraR);
+//         Eigen::Map<const Eigen::Matrix<T, 3, 1>> point(point_);
+
+//         Eigen::Matrix<T, 3, 1> p_cp =
+//         Rot_.template cast<T>() * point + Tra_.template cast<T>();
+
+//         Eigen::Matrix<T, 3, 1> projected = K_ * p_cp;
+
+//         // Compute the residuals.
+//         // [ undistorted - projected ]
+//         Eigen::Map<Eigen::Matrix<T, 2, 1>> residuals(residuals_ptr);
+//         residuals[0] =
+//             observation_.template cast<T>()[0] - projected[0] / projected[2];
+//         residuals[1] =
+//             observation_.template cast<T>()[1] - projected[1] / projected[2];
+
+//         return true;
+//     }
+
+//     static ceres::CostFunction* Create(const Eigen::Matrix3d& K, const Eigen::Quaterniond& Rot, const Eigen::Matrix<double,3,1>& Tra, const Eigen::Vector2d& observation)
+//     {
+//         return (new ceres::AutoDiffCostFunction<MultiViewTriangProj, 2, 3>(
+//                         new MultiViewTriangProj(K, Rot, Tra, observation)));
+//     }
+//     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+// private:
+//     const Eigen::Vector2d observation_;
+//     const Eigen::Matrix<double,3,4> projMat_;
+//     const Eigen::Quaterniond Rot_;
+//     const Eigen::Matrix<double,3,1> Tra_;
+//     const Eigen::Matrix3d& K_;
+
+// };
+
 
 } // namespace vio_slam
 

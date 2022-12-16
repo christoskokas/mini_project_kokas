@@ -63,7 +63,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             if ( !otherKF->unMatchedF[idx] )
                 continue;
             cv::KeyPoint& kPO = otherKF->keys.keyPoints[idx];
-            double ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
+            float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
             if (abs(ang - lastKF->keys.angles[i]) > 0.1)
                 continue;
             int dist = DescriptorDistance(lastKF->keys.Desc.row(i), otherKF->keys.Desc.row(idx));
