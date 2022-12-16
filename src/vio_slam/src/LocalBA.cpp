@@ -112,6 +112,7 @@ void LocalMapper::drawPred(KeyFrame* lastKF, std::vector<cv::KeyPoint>& keys,std
 void LocalMapper::predictKeysPos(TrackedKeys& keys, const Eigen::Matrix4d& curPose, const Eigen::Matrix4d& camPoseInv)
 {
     keys.predKeyPoints = keys.keyPoints;
+    keys.angles.resize(keys.keyPoints.size(), 0.0);
     for ( size_t i {0}, end{keys.keyPoints.size()}; i < end; i ++)
     {
         if ( keys.estimatedDepth[i] <= 0 )
@@ -151,6 +152,7 @@ void LocalMapper::predictKeysPos(TrackedKeys& keys, const Eigen::Matrix4d& curPo
             v = h - 1.0;
 
         keys.predKeyPoints[i].pt = cv::Point2f((float)u, (float)v);
+        keys.angles[i] = atan2(v - keys.keyPoints[i].pt.y, u - keys.keyPoints[i].pt.x);
 
     }
 }

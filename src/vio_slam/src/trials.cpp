@@ -33,6 +33,8 @@ int main (int argc, char **argv)
 #elif ZED_DATASET
     std::string file = "config_exp.yaml";
     // vio_slam::ConfigFile yamlFile("config_exp.yaml");
+#elif ZED_DEMO
+    std::string file = "config_demo_zed.yaml";
 #else
     std::string file = "config.yaml";
     // vio_slam::ConfigFile yamlFile("config.yaml");

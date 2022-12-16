@@ -146,12 +146,19 @@ void Camera::setIntrinsicValuesUnR(const std::string& cameraPath, ConfigFile* co
 
 void Camera::setIntrinsicValuesR(const std::string& cameraPath, ConfigFile* confFile)
 {
-    std::vector < double > P {confFile->getValue<std::vector<double>>(cameraPath,"P","data")};
 
+#if KITTI_DATASET
+    std::vector < double > P {confFile->getValue<std::vector<double>>(cameraPath,"P","data")};
     fx = P[0];
     fy = P[5];
     cx = P[2];
     cy = P[6];
+#else
+    fx = confFile->getValue<double>(cameraPath,"fx");
+    fy = confFile->getValue<double>(cameraPath,"fy");
+    cx = confFile->getValue<double>(cameraPath,"cx");
+    cy = confFile->getValue<double>(cameraPath,"cy");
+#endif
     k1 = 0;
     k2 = 0;
     p1 = 0;

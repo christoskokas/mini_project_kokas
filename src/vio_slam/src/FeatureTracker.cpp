@@ -17,6 +17,10 @@ void ImageData::setImage(const int frameNumber, const char* whichImage, const st
     first = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/zed_exp/";
     second = "/" + t + "00";
     format = ".png";
+#elif ZED_DEMO
+    first = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/zed_exp/";
+    second = "/" + t + "00";
+    format = ".png";
 #else
     first = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/";
     second = "/frame";

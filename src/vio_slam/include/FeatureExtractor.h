@@ -26,6 +26,7 @@ struct TrackedKeys
     std::vector<int> mapPointIdx;
     std::vector<int> matchedIdxs;
     std::vector<float> estimatedDepth;
+    std::vector<double> angles;
     // std::vector<float> estimatedDepthNew;
     std::vector<bool> close;
     std::vector<bool> hasPrediction;

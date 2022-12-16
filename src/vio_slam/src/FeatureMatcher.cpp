@@ -46,6 +46,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
         }
         int gCol {cvRound(lastKF->keys.predKeyPoints[i].pt.x*lMult)};
         int gRow {cvRound(lastKF->keys.predKeyPoints[i].pt.y*rMult)};
+        cv::KeyPoint& kPL = lastKF->keys.keyPoints[i];
         if (gRow >= rnGrids)
             gRow = rnGrids - 1;
         if (gCol >= lnGrids)
@@ -60,6 +61,10 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
         for (auto& idx : idxs)
         {
             if ( !otherKF->unMatchedF[idx] )
+                continue;
+            cv::KeyPoint& kPO = otherKF->keys.keyPoints[idx];
+            double ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
+            if (abs(ang - lastKF->keys.angles[i]) > 0.1)
                 continue;
             int dist = DescriptorDistance(lastKF->keys.Desc.row(i), otherKF->keys.Desc.row(idx));
             if ( dist < bestDist)
