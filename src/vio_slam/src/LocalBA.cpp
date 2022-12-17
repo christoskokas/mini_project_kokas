@@ -232,6 +232,26 @@ bool LocalMapper::checkReprojErr(Eigen::Vector4d& calcVec, std::vector<std::pair
     return true;
 }
 
+void LocalMapper::addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::vector<std::pair<int, int>>& matchesOfPoint, std::unordered_map<MapPoint*, Eigen::Vector3d>& allMapPoints, const KeyFrame* lastKF, const size_t& keyPos)
+{
+    const TrackedKeys& temp = lastKF->keys; 
+    MapPoint* mp = new MapPoint(posW, temp.Desc.row(keyPos),temp.keyPoints[keyPos], temp.close[keyPos], lastKF->numb, map->pIdx);
+    int count {0};
+    for (size_t i {0}, end{matchesOfPoint.size()}; i < end; i++)
+    {
+        if ( matchesOfPoint[i].first > 0)
+        {
+            KeyFrame* kf = map->keyFrames.at(matchesOfPoint[i].first);
+            mp->kFWithFIdx.insert(std::pair<KeyFrame*, size_t>(kf, matchesOfPoint[i].second));
+            count ++;
+        }
+    }
+    mp->trackCnt = count;
+    map->activeMapPoints.emplace_back(mp);
+    map->addMapPoint(mp);
+
+}
+
 void LocalMapper::triangulateCeres(Eigen::Vector4d& p4d, const std::vector<Eigen::Matrix<double, 3, 4>>& proj_matrices, const std::vector<Eigen::Vector2d>& obs)
 {
     Eigen::Matrix<double,3,3>& K = zedPtr->cameraLeft.intrisics;
@@ -292,7 +312,7 @@ void LocalMapper::computeAllMapPoints()
     {
         if ( (*it)->numb == lastKFIdx)
             continue;
-        if ( (*it)->numb < lastKFIdx - 4)
+        if ( (*it)->numb < lastKFIdx - 5)
             continue;
         predictKeysPos(lastKF->keys, lastKF->pose.pose, (*it)->pose.poseInverse);
         fm->matchLocalBA(matchedIdxs, lastKF, (*it), aKFsize, 3, first);
@@ -334,7 +354,7 @@ void LocalMapper::computeAllMapPoints()
     for ( size_t i{0}, end {lastKF->keys.keyPoints.size()}; i < end; i ++)
     {
         std::vector<std::pair<int, int>>& matchesOfPoint = matchedIdxs[i];
-        if (matchesOfPoint.size() < 3)
+        if (matchesOfPoint.size() < 4)
             continue;
         std::vector<Eigen::Matrix<double, 3, 4>> proj_mat;
         std::vector<Eigen::Vector2d> pointsVec;
@@ -353,6 +373,9 @@ void LocalMapper::computeAllMapPoints()
             continue;
         // else
         //     Logging("Success!", "", 3);
+
+        addMultiViewMapPoints(vecCalc, matchesOfPoint, allMapPoints, lastKF, i);
+        
         newMapPointsCount ++;
         // Logging("calc 3d", vecCalcbef, 3);
         // Logging("calc 3d", vecCalc, 3);

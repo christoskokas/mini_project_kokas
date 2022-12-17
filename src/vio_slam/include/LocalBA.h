@@ -55,6 +55,8 @@ class LocalMapper
         bool checkReprojErr(Eigen::Vector4d& calcVec, std::vector<std::pair<int, int>>& matchesOfPoint, const std::unordered_map<int, Eigen::Matrix<double,3,4>>& allProjMatrices);
         void projectToPlane(Eigen::Vector4d& vec, cv::Point2f& p2f);
 
+        void addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::vector<std::pair<int, int>>& matchesOfPoint, std::unordered_map<MapPoint*, Eigen::Vector3d>& allMapPoints, const KeyFrame* lastKF, const size_t& keyPos);
+
         void drawPred(KeyFrame* lastKF, std::vector<cv::KeyPoint>& keys,std::vector<cv::KeyPoint>& predKeys);
         void drawLBA(const char* com,std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, const KeyFrame* lastKF, const KeyFrame* otherKF);
 

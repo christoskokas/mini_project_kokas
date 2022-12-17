@@ -58,7 +58,7 @@ class MapPoint
         bool getActive() const;
         bool GetIsOutlier() const;
         bool GetInFrame() const;
-        MapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _close, const unsigned long _kdx, const unsigned long _idx);
+        MapPoint(const Eigen::Vector4d& p, const cv::Mat& _desc, const cv::KeyPoint& obsK, const bool _close, const unsigned long _kdx, const unsigned long _idx);
 
 
         void addTCnt();

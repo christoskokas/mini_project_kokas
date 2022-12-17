@@ -182,7 +182,7 @@ class FeatureTracker
 
         bool worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose, bool setActive);
 
-        void calcAngles(TrackedKeys& keysLeft, std::vector<cv::KeyPoint>& projectedPoints);
+        void calcAngles(TrackedKeys& keysLeft, std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints);
 
         bool checkDisplacement(const Eigen::Matrix4d& currPose, Eigen::Matrix4d& estimPose);
         void removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, const Eigen::Matrix4d& estimPose);

@@ -63,9 +63,12 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             if ( !otherKF->unMatchedF[idx] )
                 continue;
             cv::KeyPoint& kPO = otherKF->keys.keyPoints[idx];
-            float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
-            if (abs(ang - lastKF->keys.angles[i]) > 0.1)
-                continue;
+            if ( lastKF->keys.estimatedDepth[i] > 0  && lastKF->keys.estimatedDepth[i] < closeNumber)
+            {
+                float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
+                if (abs(ang - lastKF->keys.angles[i]) > 0.1)
+                    continue;
+            }
             int dist = DescriptorDistance(lastKF->keys.Desc.row(i), otherKF->keys.Desc.row(idx));
             if ( dist < bestDist)
             {
@@ -1744,6 +1747,83 @@ int FeatureMatcher::matchByProjectionPred(std::vector<MapPoint*>& activeMapPoint
         for (auto& idx : idxs)
         {
             if ( matchedIdxsN[idx] >= 0 )
+                continue;
+            int dist = DescriptorDistance(activeMapPoints[i]->desc.row(0), keysLeft.Desc.row(idx));
+            if ( dist < bestDist)
+            {
+                // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
+                secDist = bestDist;
+                bestDist = dist;
+                bestIdx = idx;
+                continue;
+            }
+            if ( dist < secDist)
+                secDist = dist;
+        }
+        if ( bestDist < matchDist && bestDist < 0.8* secDist)
+        {
+            if (rIdxs[bestIdx] > bestDist)
+            {
+                rIdxs[bestIdx] = bestDist;
+                matchedIdxsN[bestIdx] = i;
+            }
+        }
+    }
+    int nMatches {0};
+    for ( size_t i {0}; i < newE; i++)
+    {
+        if (matchedIdxsB[matchedIdxsN[i]] >= 0)
+            continue;
+        if ( matchedIdxsN[i] >= 0)
+        {
+            matchedIdxsB[matchedIdxsN[i]] = i;
+            nMatches ++;
+        }
+    }
+    return nMatches;
+
+}
+
+int FeatureMatcher::matchByProjectionPredWA(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const int timesGrid)
+{
+    const float imageRatio = (float)zedptr->mWidth/(float)zedptr->mHeight;
+    // smaller window because these points have predicted positions
+    const int lnGrids = gridCols * timesGrid;
+    const int rnGrids = cvCeil(lnGrids/imageRatio);
+    const float lMult = (float)lnGrids/(float)zedptr->mWidth;
+    const float rMult = (float)rnGrids/(float)zedptr->mHeight;
+    std::vector<std::vector<std::vector<int>>> leftIdxs(rnGrids, std::vector<std::vector<int>>(lnGrids,std::vector<int>()));
+    destributeLeftKeys(keysLeft, leftIdxs, lnGrids, rnGrids);
+
+    const size_t prevE {activeMapPoints.size()};
+    const size_t newE {keysLeft.keyPoints.size()};
+    
+    std::vector<int> rIdxs(newE, 256);
+    for ( size_t i {0}; i < prevE; i++)
+    {
+        if ( matchedIdxsB[i] >= 0 || projectedPoints[i].pt.x <= 0)
+                continue;
+        int gCol {cvRound(projectedPoints[i].pt.x*lMult)};
+        int gRow {cvRound(projectedPoints[i].pt.y*rMult)};
+        cv::KeyPoint& kPL = activeMapPoints[i]->obs[0];
+        if (gRow >= rnGrids)
+            gRow = rnGrids - 1;
+        if (gCol >= lnGrids)
+            gCol = lnGrids - 1;
+        std::vector<int>& idxs = leftIdxs[gRow][gCol];
+
+        int bestDist = 256;
+        int bestIdx = -1;
+        int secDist = 256;
+        if ( idxs.empty() )
+            continue;
+        for (auto& idx : idxs)
+        {
+            if ( matchedIdxsN[idx] >= 0 )
+                continue;
+            cv::KeyPoint& kPO = keysLeft.keyPoints[idx];
+            float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
+            if (abs(ang - keysLeft.angles[idx]) > 0.1)
                 continue;
             int dist = DescriptorDistance(activeMapPoints[i]->desc.row(0), keysLeft.Desc.row(idx));
             if ( dist < bestDist)

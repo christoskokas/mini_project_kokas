@@ -2731,7 +2731,6 @@ void FeatureTracker::removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, 
     activeMapPoints.resize(j);
 }
 
-
 bool FeatureTracker::worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose, bool setActive)
 {
     Eigen::Vector4d point = mp->getWordPose4d();
@@ -2823,14 +2822,14 @@ bool FeatureTracker::checkDisplacement(const Eigen::Matrix4d& currPose, Eigen::M
         return false;
 }
 
-void FeatureTracker::calcAngles(TrackedKeys& keysLeft, std::vector<cv::KeyPoint>& projectedPoints)
+void FeatureTracker::calcAngles(TrackedKeys& keysLeft, std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints)
 {
-    const size_t keysSize {projectedPoints.size()};
+    const size_t keysSize {activeMapPoints.size()};
     keysLeft.angles.resize(keysSize,0);
     for (size_t i {0}; i < keysSize; i ++)
     {
-        if (projectedPoints[i].pt != keysLeft.keyPoints[i].pt)
-            keysLeft.angles[i] = atan2((float)projectedPoints[i].pt.y - keysLeft.keyPoints[i].pt.y, (float)projectedPoints[i].pt.x - keysLeft.keyPoints[i].pt.x);
+        if (projectedPoints[i].pt.x > 0)
+            keysLeft.angles[i] = atan2((float)projectedPoints[i].pt.y - activeMapPoints[i]->obs[0].pt.y, (float)projectedPoints[i].pt.x - activeMapPoints[i]->obs[0].pt.x);
     }
 }
 
@@ -2920,8 +2919,8 @@ void FeatureTracker::Track4(const int frames)
 
         std::vector<cv::KeyPoint> projectedPoints;
         worldToImg(activeMapPoints, projectedPoints, estimPose);
-        calcAngles(keysLeft, projectedPoints);
-        int nNewMatches = fm.matchByProjectionPred(activeMapPoints, projectedPoints, keysLeft, matchedIdxsN, matchedIdxsB, 3);
+        calcAngles(keysLeft, activeMapPoints, projectedPoints);
+        int nNewMatches = fm.matchByProjectionPredWA(activeMapPoints, projectedPoints, keysLeft, matchedIdxsN, matchedIdxsB, 3);
 
         std::vector<cv::Point2f> mpnts, pnts2f;
         for ( size_t i {0}, end{activeMapPoints.size()}; i < end; i++)
