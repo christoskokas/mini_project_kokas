@@ -460,8 +460,14 @@ public:
 
         // Eigen::Map<const Eigen::Matrix<T, 3, 1>> p_frame(cameraT);
         // Eigen::Map<const Eigen::Quaternion<T>> q_frame(cameraR);
-        Eigen::Map<const Eigen::Matrix<T, 4, 1>> point4d(point);
-
+        // Eigen::Map<const Eigen::Matrix<T, 3, 1>> point3d(point);
+        T p[4];
+        p[0] = point[0];
+        p[1] = point[1];
+        p[2] = point[2];
+        p[3] = T(1);
+        
+        Eigen::Map<const Eigen::Matrix<T,4,1>> point4d(p);
         Eigen::Matrix<T, 3, 1> p_cp =
         proj_.template cast<T>() * point4d;
 
@@ -478,7 +484,7 @@ public:
 
     static ceres::CostFunction* Create(const Eigen::Matrix3d& K, const Eigen::Matrix<double, 3, 4>& proj, const Eigen::Vector2d& observation)
     {
-        return (new ceres::AutoDiffCostFunction<MultiViewTriang, 2, 4>(
+        return (new ceres::AutoDiffCostFunction<MultiViewTriang, 2, 3>(
                         new MultiViewTriang(K, proj, observation)));
     }
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW

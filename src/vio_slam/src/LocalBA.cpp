@@ -112,6 +112,7 @@ void LocalMapper::drawPred(KeyFrame* lastKF, std::vector<cv::KeyPoint>& keys,std
 void LocalMapper::predictKeysPos(TrackedKeys& keys, const Eigen::Matrix4d& curPose, const Eigen::Matrix4d& camPoseInv)
 {
     keys.predKeyPoints = keys.keyPoints;
+    keys.angles.clear();
     keys.angles.resize(keys.keyPoints.size(), 0.0);
     for ( size_t i {0}, end{keys.keyPoints.size()}; i < end; i ++)
     {
@@ -239,11 +240,12 @@ void LocalMapper::addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::
     int count {0};
     for (size_t i {0}, end{matchesOfPoint.size()}; i < end; i++)
     {
-        if ( matchesOfPoint[i].first > 0)
+        if ( matchesOfPoint[i].first >= 0)
         {
             KeyFrame* kf = map->keyFrames.at(matchesOfPoint[i].first);
             mp->kFWithFIdx.insert(std::pair<KeyFrame*, size_t>(kf, matchesOfPoint[i].second));
             count ++;
+            map->keyFrames.at(matchesOfPoint[i].first)->unMatchedF[matchesOfPoint[i].second] = false;
         }
     }
     mp->trackCnt = count;
@@ -252,17 +254,17 @@ void LocalMapper::addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::
 
 }
 
-void LocalMapper::triangulateCeres(Eigen::Vector4d& p4d, const std::vector<Eigen::Matrix<double, 3, 4>>& proj_matrices, const std::vector<Eigen::Vector2d>& obs)
+void LocalMapper::triangulateCeres(Eigen::Vector3d& p3d, const std::vector<Eigen::Matrix<double, 3, 4>>& proj_matrices, const std::vector<Eigen::Vector2d>& obs)
 {
     Eigen::Matrix<double,3,3>& K = zedPtr->cameraLeft.intrisics;
     ceres::Problem problem;
     // ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
-    // Logging("before", p4d,3);
+    // Logging("before", p3d,3);
     ceres::LossFunction* loss_function = new ceres::HuberLoss(sqrt(7.815f));
     for (size_t i {0}, end{obs.size()}; i < end; i ++)
     {
         ceres::CostFunction* costf = MultiViewTriang::Create(K, proj_matrices[i], obs[i]);
-        problem.AddResidualBlock(costf, loss_function /* squared loss */,p4d.data());
+        problem.AddResidualBlock(costf, loss_function /* squared loss */,p3d.data());
 
         // problem.SetManifold(frame_qcw.coeffs().data(),quaternion_local_parameterization);
     }
@@ -275,9 +277,8 @@ void LocalMapper::triangulateCeres(Eigen::Vector4d& p4d, const std::vector<Eigen
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
     // Logging("sum",summary.BriefReport(),3);
-    p4d = p4d/p4d(3);
-    // Logging("after", p4d,3);
-    // Logging("after", p4d,3);
+    // Logging("after", p3d,3);
+    // Logging("after", p3d,3);
 
 }
 
@@ -364,8 +365,16 @@ void LocalMapper::computeAllMapPoints()
         const double yp = (double)(((double)lastKF->keys.keyPoints[i].pt.y-cy)*zp/fy);
         Eigen::Vector4d vecCalc(xp, yp, zp, 1);
         vecCalc = lastKF->pose.pose * vecCalc;
-        Eigen::Vector4d vecCalcbef = vecCalc;
-        triangulateCeres(vecCalc, proj_mat, pointsVec);
+        
+        Eigen::Vector3d vec3d(vecCalc(0), vecCalc(1), vecCalc(2));
+        triangulateCeres(vec3d, proj_mat, pointsVec);
+        vecCalc(0) = vec3d(0);
+        vecCalc(1) = vec3d(1);
+        vecCalc(2) = vec3d(2);
+
+        Eigen::Vector4d vecCalcCheckD = lastKF->pose.poseInverse * vecCalc;
+        if ( vecCalcCheckD(2) <= 0)
+            continue;
         // Eigen::Vector3d vec3(vecCalc(0), vecCalc(1), vecCalc(2));
         // Eigen::Vector3d vec3d = TriangulateMultiViewPoint(proj_mat, pointsVec);
         // Eigen::Vector4d temp(vec3d(0),vec3d(1),vec3d(2),1);

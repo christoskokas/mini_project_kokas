@@ -2685,17 +2685,17 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
             kF->unMatchedF[i] = false;
             continue;
         }
-        if ( keysLeft.estimatedDepth[i] > 0 )
-        {
-            const double zp = (double)keysLeft.estimatedDepth[i];
-            const double xp = (double)(((double)keysLeft.keyPoints[i].pt.x-cx)*zp/fx);
-            const double yp = (double)(((double)keysLeft.keyPoints[i].pt.y-cy)*zp/fy);
-            Eigen::Vector4d p(xp, yp, zp, 1);
-            p = zedPtr->cameraPose.pose * p;
-            MapPoint* mp = new MapPoint(p, keysLeft.Desc.row(i), keysLeft.keyPoints[i], keysLeft.close[i], map->kIdx, map->pIdx);
-            activeMapPoints.emplace_back(mp);
-            map->addMapPoint(mp);
-        }
+        // if ( keysLeft.estimatedDepth[i] > 0 )
+        // {
+        //     const double zp = (double)keysLeft.estimatedDepth[i];
+        //     const double xp = (double)(((double)keysLeft.keyPoints[i].pt.x-cx)*zp/fx);
+        //     const double yp = (double)(((double)keysLeft.keyPoints[i].pt.y-cy)*zp/fy);
+        //     Eigen::Vector4d p(xp, yp, zp, 1);
+        //     p = zedPtr->cameraPose.pose * p;
+        //     MapPoint* mp = new MapPoint(p, keysLeft.Desc.row(i), keysLeft.keyPoints[i], keysLeft.close[i], map->kIdx, map->pIdx);
+        //     activeMapPoints.emplace_back(mp);
+        //     map->addMapPoint(mp);
+        // }
     }
     kF->keys.getKeys(keysLeft);
     mPPerKeyFrame.push_back(activeMapPoints.size());
