@@ -94,9 +94,14 @@ void Zed_Camera::setCameraValues()
 
 float Zed_Camera::setBaseline()
 {
-    std::vector < float > P {confFile->getValue<std::vector<float>>("Camera_r","P","data")};
 
-    return -P[3]/(float)cameraLeft.fx;
+#if KITTI_DATASET
+    std::vector < float > P {confFile->getValue<std::vector<float>>("Camera_r","P","data")};
+    float bl = -P[3]/(float)cameraLeft.fx;
+#else
+    float bl = confFile->getValue<float>("Camera","bl");
+#endif
+    return bl;
 }
 
 Zed_Camera::~Zed_Camera()

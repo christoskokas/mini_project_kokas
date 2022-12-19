@@ -1,13 +1,13 @@
 rectified: true
 
-numOfFrames: 4581
+numOfFrames: 2358
 seq: "00"
 
 Camera_l:
-  fx: 528.805
-  fy: 528.45
-  cx: 637.475
-  cy: 361.9125
+  fx: 264.4025
+  fy: 264.225
+  cx: 334.2375
+  cy: 188.45625
   k1: 0
   k2: 0
   p1: 0
@@ -19,10 +19,10 @@ Camera_l_path: /zed2i/zed_node/left_raw/image_raw_color
 # /camera_1/left/image_raw
 
 Camera_r:
-  fx: 529.75
-  fy: 529.5
-  cx: 654.39
-  cy: 358.5625
+  fx: 264.875
+  fy: 264.75
+  cx: 342.695
+  cy: 186.78125
   k1: 0
   k2: 0
   p1: 0
@@ -34,8 +34,8 @@ Camera_r_path: /zed2i/zed_node/right_raw/image_raw_color
 # /camera_1/right/image_raw
 
 Camera:
-  width: 1280
-  height: 720
+  width: 640
+  height: 360
   fps: 15.0
   bl: 0.119342
 

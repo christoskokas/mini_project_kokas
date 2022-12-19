@@ -449,8 +449,8 @@ class MultiViewTriang
 {
 public:
 
-    MultiViewTriang(const Eigen::Matrix3d& K, const Eigen::Matrix<double, 3, 4>& proj, const Eigen::Vector2d& observation)
-        : K_(K), proj_(proj), observation_(observation)
+    MultiViewTriang(const Eigen::Matrix4d& camPose, const Eigen::Matrix<double, 3, 4>& proj, const Eigen::Vector2d& observation)
+        : camPose_(camPose), proj_(proj), observation_(observation)
     {
     }
 
@@ -466,10 +466,15 @@ public:
         p[1] = point[1];
         p[2] = point[2];
         p[3] = T(1);
-        
+        // Logging("point", point[0], 3);
+        // Logging("point1", point[1], 3);
+        // Logging("point2", point[2], 3);
         Eigen::Map<const Eigen::Matrix<T,4,1>> point4d(p);
-        Eigen::Matrix<T, 3, 1> p_cp =
-        proj_.template cast<T>() * point4d;
+        const Eigen::Matrix<T,4,1> pointCam = camPose_ * point4d;
+        // Logging("pointCam", pointCam, 3);
+        // Logging("point4d", point4d, 3);
+        const Eigen::Matrix<T, 3, 1> p_cp =
+        proj_ * pointCam;
 
         // Compute the residuals.
         // [ undistorted - projected ]
@@ -482,10 +487,10 @@ public:
         return true;
     }
 
-    static ceres::CostFunction* Create(const Eigen::Matrix3d& K, const Eigen::Matrix<double, 3, 4>& proj, const Eigen::Vector2d& observation)
+    static ceres::CostFunction* Create(const Eigen::Matrix4d& camPose, const Eigen::Matrix<double, 3, 4>& proj, const Eigen::Vector2d& observation)
     {
         return (new ceres::AutoDiffCostFunction<MultiViewTriang, 2, 3>(
-                        new MultiViewTriang(K, proj, observation)));
+                        new MultiViewTriang(camPose, proj, observation)));
     }
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -494,7 +499,7 @@ private:
     const Eigen::Matrix<double,3,4> proj_;
     // const Eigen::Quaterniond Rot_;
     // const Eigen::Matrix<double,3,1> Tra_;
-    const Eigen::Matrix3d& K_;
+    const Eigen::Matrix4d& camPose_;
 
 };
 

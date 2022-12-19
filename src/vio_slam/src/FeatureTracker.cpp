@@ -18,9 +18,9 @@ void ImageData::setImage(const int frameNumber, const char* whichImage, const st
     second = "/" + t + "00";
     format = ".png";
 #elif ZED_DEMO
-    first = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/zed_exp/";
-    second = "/" + t + "00";
-    format = ".png";
+    first = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/demo_1/";
+    second = "/frame";
+    format = ".jpg";
 #else
     first = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/";
     second = "/frame";
@@ -2858,6 +2858,7 @@ void FeatureTracker::Track4(const int frames)
         Eigen::Matrix4d currPose = predNPoseInv;
         Eigen::Matrix4d prevPose = zedPtr->cameraPose.poseInverse;
         std::vector<int> matchedIdxsN(keysLeft.keyPoints.size(), -1);
+        std::lock_guard<std::mutex> lock(map->mapMutex);
         std::vector<int> matchedIdxsB(activeMapPoints.size(), -1);
 
         

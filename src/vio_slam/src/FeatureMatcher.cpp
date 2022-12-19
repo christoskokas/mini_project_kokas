@@ -8,7 +8,7 @@ FeatureMatcher::FeatureMatcher(const Zed_Camera* _zed, const FeatureExtractor* _
 
 }
 
-void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, KeyFrame* lastKF, KeyFrame* otherKF, const int aKFSize, const int timesGrid, bool first)
+void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, KeyFrame* lastKF, KeyFrame* otherKF, const int aKFSize, const int timesGrid, bool first, std::vector<float>& keysAngles)
 {
     const float imageRatio = (float)zedptr->mWidth/(float)zedptr->mHeight;
     // smaller window because these points have predicted positions
@@ -63,12 +63,9 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             if ( !otherKF->unMatchedF[idx] )
                 continue;
             cv::KeyPoint& kPO = otherKF->keys.keyPoints[idx];
-            if ( lastKF->keys.estimatedDepth[i] > 0  && lastKF->keys.estimatedDepth[i] < closeNumber)
-            {
-                float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
-                if (abs(ang - lastKF->keys.angles[i]) > 0.1)
-                    continue;
-            }
+            float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
+            if (abs(ang - keysAngles[i]) > 0.1)
+                continue;
             int dist = DescriptorDistance(lastKF->keys.Desc.row(i), otherKF->keys.Desc.row(idx));
             if ( dist < bestDist)
             {
