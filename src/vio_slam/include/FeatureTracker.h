@@ -182,12 +182,12 @@ class FeatureTracker
 
         bool worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose, bool setActive);
 
-        void calcAngles(TrackedKeys& keysLeft, std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints);
+        void calcAngles(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, std::vector<float>& mapAngles);
 
         bool checkDisplacement(const Eigen::Matrix4d& currPose, Eigen::Matrix4d& estimPose);
         void removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, const Eigen::Matrix4d& estimPose);
         void removeMapPointOutBackUp(std::vector<MapPoint*>& activeMapPoints, const Eigen::Matrix4d& estimPose);
-        void addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN);
+        void addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo);
         bool check2dError(Eigen::Vector4d& p4d, const cv::Point2f& obs, const double thres, const float weight);
         bool check3dError(const Eigen::Vector4d& p4d, const Eigen::Vector4d& obs, const double thres, const float weight);
         int OutliersReprojErr(const Eigen::Matrix4d& estimatedP, std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsB, const double thres, const std::vector<float>& weights, int& nInliers);

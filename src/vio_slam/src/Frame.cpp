@@ -112,7 +112,7 @@ void Frame::pangoQuit(Zed_Camera* zedPtr, const Map* _map)
         // Swap frames and Process Events
         pangolin::FinishFrame();
 
-        // std::this_thread::sleep_for(50ms);
+        std::this_thread::sleep_for(10ms);
     }
 }
 
@@ -178,8 +178,10 @@ void CameraFrame::drawPoints()
     glBegin(GL_POINTS);
 
 
-    std::unordered_map<unsigned long, MapPoint*>::const_iterator itw, endw(map->mapPoints.end());
-    for ( itw = map->mapPoints.begin(); itw != endw; itw ++)
+    // std::lock_guard<std::mutex> lock(map->mapMutex);
+    std::unordered_map<unsigned long, MapPoint*> mapMapP = map->mapPoints;
+    std::unordered_map<unsigned long, MapPoint*>::const_iterator itw, endw(mapMapP.end());
+    for ( itw = mapMapP.begin(); itw != endw; itw ++)
     {
         if ( (*itw).second->GetIsOutlier() )
             continue;
@@ -220,8 +222,10 @@ void CameraFrame::drawKeyFrames()
     const float z = w*0.3;
 
     glColor3f(0.0f,1.0f,0.0f);
-    std::unordered_map<unsigned long,KeyFrame*>::const_iterator it, end(map->keyFrames.end());
-    for ( it = map->keyFrames.begin(); it != end; it ++)
+    // std::lock_guard<std::mutex> lock(map->mapMutex);
+    std::unordered_map<unsigned long, KeyFrame*> mapKeyF = map->keyFrames;
+    std::unordered_map<unsigned long,KeyFrame*>::const_iterator it, end(mapKeyF.end());
+    for ( it = mapKeyF.begin(); it != end; it ++)
     {
         if ((*it).second->active)
             glColor3f(0.0f,1.0f,0.0f);
@@ -351,9 +355,11 @@ void CameraFrame::lineFromKeyFrameToCamera()
         return;
     glPushMatrix();
     glLineWidth(1);
-    std::unordered_map<unsigned long, KeyFrame*>::const_iterator it, end(map->keyFrames.end());
+    // std::lock_guard<std::mutex> lock(map->mapMutex);
+    std::unordered_map<unsigned long, KeyFrame*> mapKeyF = map->keyFrames;
+    std::unordered_map<unsigned long, KeyFrame*>::const_iterator it, end(mapKeyF.end());
     glBegin(GL_LINES);
-    for ( it = map->keyFrames.begin(); it != end; it ++)
+    for ( it = mapKeyF.begin(); it != end; it ++)
     {
         // if ( (*it).second->numb == lastActiveKeyF)
         //     glColor3f(1.0f,0.0f,0.0f);
@@ -365,13 +371,13 @@ void CameraFrame::lineFromKeyFrameToCamera()
         {
             if (!(*it).second->visualize)
                 continue;
-            glVertex3f((GLfloat)map->keyFrames.at(key)->pose.pose(0,3),(GLfloat)map->keyFrames.at(key)->pose.pose(1,3),(GLfloat)map->keyFrames.at(key)->pose.pose(2,3));
+            glVertex3f((GLfloat)mapKeyF.at(key)->pose.pose(0,3),(GLfloat)mapKeyF.at(key)->pose.pose(1,3),(GLfloat)mapKeyF.at(key)->pose.pose(2,3));
             glVertex3f((GLfloat)(*it).second->pose.pose(0,3), (GLfloat)(*it).second->pose.pose(1,3), (GLfloat)(*it).second->pose.pose(2,3));
         }
     }
     glEnd();
     glColor3f(0.0f,1.0f,0.0f);
-    Eigen::Matrix4d keyPose = map->keyFrames.at(lastKeyFrameIdx)->getPose();
+    Eigen::Matrix4d keyPose = mapKeyF.at(lastKeyFrameIdx)->getPose();
     Eigen::Matrix4d camPose = zedCamera->cameraPose.pose;
     glBegin(GL_LINES);
     glVertex3f((GLfloat)keyPose(0,3),(GLfloat)keyPose(1,3),(GLfloat)keyPose(2,3));

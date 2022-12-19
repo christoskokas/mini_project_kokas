@@ -1644,7 +1644,7 @@ void FeatureExtractor::computeKeypoints(cv::Mat& image, std::vector<cv::KeyPoint
 
 void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
 {
-    Timer Levels("computeKeys");
+    // Timer Levels("computeKeys");
 
     computePyramid(image);
     std::vector<std::vector<cv::KeyPoint>> allKeys;
@@ -1659,7 +1659,7 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
     computeKeypointsORBNew(image, allKeys);
 
     int descriptorIdx {0};
-    Timer desc("desc");
+    // Timer desc("desc");
 
     // std::vector<cv::KeyPoint>lel;
     // for (size_t level {0}; level < nLevels; level++)

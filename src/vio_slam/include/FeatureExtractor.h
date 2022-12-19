@@ -209,7 +209,7 @@ class FeatureExtractor
     const int maxFastThreshold;
     const int minFastThreshold;
     const bool nonMaxSuppression;
-    const int mnContr {100};
+    const int mnContr {0};
 
 #if KITTI_DATASET
     const int gridRows {40};

@@ -8,7 +8,7 @@ FeatureMatcher::FeatureMatcher(const Zed_Camera* _zed, const FeatureExtractor* _
 
 }
 
-void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, KeyFrame* lastKF, KeyFrame* otherKF, const int aKFSize, const int timesGrid, bool first, std::vector<float>& keysAngles)
+void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, KeyFrame* lastKF, KeyFrame* otherKF, const int aKFSize, const int timesGrid, bool first, std::vector<float>& keysAngles, const std::vector<cv::Point2f>& predPoints)
 {
     const float imageRatio = (float)zedptr->mWidth/(float)zedptr->mHeight;
     // smaller window because these points have predicted positions
@@ -36,7 +36,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
     {
         if ( !lastKF->unMatchedF[i] )
             continue;
-        if ( lastKF->keys.predKeyPoints[i].pt.x < 0 )
+        if ( predPoints[i].x <= 0 )
             continue;
         if ( first )
         {
@@ -44,8 +44,8 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
                 matchedIdxs[i].emplace_back(std::pair<int,int>(-lastKFnumb, lastKF->keys.rightIdxs[i]));
             matchedIdxs[i].emplace_back(std::pair<int,int>(lastKFnumb, i));
         }
-        int gCol {cvRound(lastKF->keys.predKeyPoints[i].pt.x*lMult)};
-        int gRow {cvRound(lastKF->keys.predKeyPoints[i].pt.y*rMult)};
+        int gCol {cvRound(predPoints[i].x*lMult)};
+        int gRow {cvRound(predPoints[i].y*rMult)};
         cv::KeyPoint& kPL = lastKF->keys.keyPoints[i];
         if (gRow >= rnGrids)
             gRow = rnGrids - 1;
@@ -64,7 +64,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
                 continue;
             cv::KeyPoint& kPO = otherKF->keys.keyPoints[idx];
             float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
-            if (abs(ang - keysAngles[i]) > 0.1)
+            if (abs(ang - keysAngles[i]) > 0.05)
                 continue;
             int dist = DescriptorDistance(lastKF->keys.Desc.row(i), otherKF->keys.Desc.row(idx));
             if ( dist < bestDist)
@@ -78,7 +78,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             if ( dist < secDist)
                 secDist = dist;
         }
-        if ( bestDist < matchDist && bestDist < 0.8* secDist)
+        if ( bestDist < matchDist/*  && bestDist < 0.8* secDist */)
         {
             if (rIdxs[bestIdx] > bestDist)
             {
@@ -1672,7 +1672,6 @@ int FeatureMatcher::matchByProjectionConVel(std::vector<MapPoint*>& activeMapPoi
             continue;
         for (auto& idx : idxs)
         {
-            
             int dist = DescriptorDistance(activeMapPoints[i]->desc.row(0), keysLeft.Desc.row(idx));
             if ( dist < bestDist)
             {
@@ -1745,6 +1744,7 @@ int FeatureMatcher::matchByProjectionPred(std::vector<MapPoint*>& activeMapPoint
         {
             if ( matchedIdxsN[idx] >= 0 )
                 continue;
+                
             int dist = DescriptorDistance(activeMapPoints[i]->desc.row(0), keysLeft.Desc.row(idx));
             if ( dist < bestDist)
             {
@@ -1781,7 +1781,7 @@ int FeatureMatcher::matchByProjectionPred(std::vector<MapPoint*>& activeMapPoint
 
 }
 
-int FeatureMatcher::matchByProjectionPredWA(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const int timesGrid)
+int FeatureMatcher::matchByProjectionPredWA(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const int timesGrid, const std::vector<float>& mapAngles)
 {
     const float imageRatio = (float)zedptr->mWidth/(float)zedptr->mHeight;
     // smaller window because these points have predicted positions
@@ -1820,7 +1820,7 @@ int FeatureMatcher::matchByProjectionPredWA(std::vector<MapPoint*>& activeMapPoi
                 continue;
             cv::KeyPoint& kPO = keysLeft.keyPoints[idx];
             float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
-            if (abs(ang - keysLeft.angles[idx]) > 0.1)
+            if (abs(ang - mapAngles[i]) > 0.1)
                 continue;
             int dist = DescriptorDistance(activeMapPoints[i]->desc.row(0), keysLeft.Desc.row(idx));
             if ( dist < bestDist)

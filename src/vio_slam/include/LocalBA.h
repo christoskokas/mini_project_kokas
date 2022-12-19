@@ -42,7 +42,8 @@ class LocalMapper
 
         LocalMapper(Map* _map, Zed_Camera* _zedPtr, FeatureMatcher* _fm);
 
-        void predictKeysPos(TrackedKeys& keys, const Eigen::Matrix4d& curPose, const Eigen::Matrix4d& camPoseInv, std::vector<float>& keysAngles);
+        void predictKeysPos(TrackedKeys& keys, const Eigen::Matrix4d& curPose, const Eigen::Matrix4d& camPoseInv, std::vector<float>& keysAngles, const std::vector<Eigen::Vector4d>& p4d, std::vector<cv::Point2f>& predPoints);
+        void calcp4d(KeyFrame* lastKF, std::vector<Eigen::Vector4d>& p4d);
         void beginLocalMapping();
         void computeAllMapPoints();
         Eigen::Vector3d TriangulateMultiViewPoint(
@@ -58,6 +59,7 @@ class LocalMapper
         void addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::vector<std::pair<int, int>>& matchesOfPoint, std::unordered_map<MapPoint*, Eigen::Vector3d>& allMapPoints, const KeyFrame* lastKF, const size_t& keyPos);
 
         void drawPred(KeyFrame* lastKF, std::vector<cv::KeyPoint>& keys,std::vector<cv::KeyPoint>& predKeys);
+        void drawPred(KeyFrame* lastKF, std::vector<cv::KeyPoint>& keys,std::vector<cv::Point2f>& predKeys);
         void drawLBA(const char* com,std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, const KeyFrame* lastKF, const KeyFrame* otherKF);
 
 };
