@@ -2314,7 +2314,8 @@ void FeatureTracker::Track3(const int frames)
 
 void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
 {
-    KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx);
+    KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx, curFrame);
+    kF->keyF = true;
     // KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, map->kIdx);
     kF->unMatchedF.resize(keysLeft.keyPoints.size(), true);
     kF->localMapPoints.reserve(activeMapPoints.size());
@@ -2645,9 +2646,51 @@ std::pair<int,int> FeatureTracker::refinePose(std::vector<MapPoint*>& activeMapP
     return std::pair<int,int>(nIn, nStereo);
 }
 
+void FeatureTracker::removeKeyFrame(std::vector<KeyFrame *>& activeKeyFrames)
+{
+    int validKeyFramesCount {0};
+    int count {0};
+    bool removed {false};
+    std::vector<KeyFrame* >::iterator it, end(activeKeyFrames.begin());
+    for ( it = activeKeyFrames.end(); it != end; it--, count ++)
+    {
+        if ((*it)->keyF)
+        {
+            validKeyFramesCount = 0;
+            lastValidKF = (*it)->numb;
+            continue;
+        }
+        validKeyFramesCount++;
+        if (validKeyFramesCount >= 5)
+        {
+            validKeyFramesCount = 0;
+            (*it)->keyF = true;
+            lastValidKF = (*it)->numb;
+            continue;
+        }
+        const size_t validMapPointsSize {map->keyFrames.at(lastValidKF)->localMapPoints.size()};
+        const size_t kFMPSize {(*it)->localMapPoints.size()};
+        if (kFMPSize > 100 && kFMPSize > 0.9f * validMapPointsSize)
+        {
+            (*it)->visualize = false;
+            (*it)->active = false;
+            activeKeyFrames.erase(activeKeyFrames.end() - count);
+            removed = true;
+            break;
+        }
+        else
+            (*it)->keyF = true;
+    }
+    if (!removed)
+    {
+        activeKeyFrames.back()->active = false;
+        activeKeyFrames.resize(actvKFMaxSize);
+    }
+}
+
 void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo)
 {
-    KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx);
+    KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx, curFrame);
     const int minKIdx {activeMapPoints[0]->kdx};
     const int maxKIdx {activeMapPoints.back()->kdx};
     std::vector<int>kfCon(maxKIdx - minKIdx + 1,0);
@@ -2704,10 +2747,12 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
     // std::lock_guard<std::mutex> lock(map->mapMutex);
     map->addKeyFrame(kF);
     activeKeyFrames.insert(activeKeyFrames.begin(),kF);
+    // removeKeyFrame(activeKeyFrames);
     if ( activeKeyFrames.size() > actvKFMaxSize )
     {
-        activeKeyFrames.back()->active = false;
-        activeKeyFrames.resize(actvKFMaxSize);
+        removeKeyFrame(activeKeyFrames);
+        // activeKeyFrames.back()->active = false;
+        // activeKeyFrames.resize(actvKFMaxSize);
     }
     map->keyFrameAdded = true;
 
@@ -2862,7 +2907,7 @@ void FeatureTracker::Track4(const int frames)
         std::vector<int> matchedIdxsN(keysLeft.keyPoints.size(), -1);
         std::lock_guard<std::mutex> lock(map->mapMutex);
         std::vector<int> matchedIdxsB(activeMapPoints.size(), -1);
-
+        // Logging("activeSize", activeMapPoints.size(),3);
         
         if ( curFrame == 1 )
             int nMatches = fm.matchByProjection(activeMapPoints, keysLeft, matchedIdxsN, matchedIdxsB);
@@ -2977,6 +3022,7 @@ void FeatureTracker::Track4(const int frames)
         // {
         addKeyFrame(keysLeft, matchedIdxsN, nStIn.second);
         removeMapPointOut(activeMapPoints, estimPose);
+        // Logging("activeSizeAfterRemoval", activeMapPoints.size(),3);
 
 
         // Logging("I AM IIIIIIIIIIN", activeMapPoints.size(),3);

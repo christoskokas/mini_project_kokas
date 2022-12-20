@@ -31,16 +31,18 @@ class KeyFrame
         TrackedKeys keys;
         Eigen::MatrixXd homoPoints3D;
         const int numb;
+        const int frameIdx;
         bool visualize {true};
         std::vector<MapPoint*> localMapPoints;
         bool active {true};
+        bool keyF {false};
 
 
 
         KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, const int _numb = 0);
         KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, Eigen::MatrixXd _homoPoints3D, const int _numb = 0);
         KeyFrame(Eigen::Matrix4d _pose, const int _numb);
-        KeyFrame(Eigen::Matrix4d _pose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb);
+        KeyFrame(Eigen::Matrix4d _pose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx);
         Eigen::Vector4d getWorldPosition(int idx);
 
         Eigen::Matrix4d getPose();

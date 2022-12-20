@@ -129,7 +129,8 @@ class FeatureTracker
         // Optimization Parameters
         const size_t mxIter {25};
         const float mnErr {1.0f};
-        
+
+        int lastValidKF {0};
         int uStereo {0};
         int uMono {0};
         int keyNumb {0};
@@ -183,6 +184,8 @@ class FeatureTracker
         bool worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose, bool setActive);
 
         void calcAngles(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, std::vector<float>& mapAngles);
+
+        void removeKeyFrame(std::vector<vio_slam::KeyFrame *>& activeKeyFrames);
 
         bool checkDisplacement(const Eigen::Matrix4d& currPose, Eigen::Matrix4d& estimPose);
         void removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, const Eigen::Matrix4d& estimPose);
