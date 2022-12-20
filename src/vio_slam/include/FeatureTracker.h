@@ -84,7 +84,6 @@ class FeatureTracker
         std::vector<MapPoint*>& activeMapPoints;
         std::vector<KeyFrame*>& activeKeyFrames;
 
-        const int actvKFMaxSize {10};
         // std::vector<int> activeMapPointsCorr;
         std::vector<int> mPPerKeyFrame;
 
@@ -120,6 +119,10 @@ class FeatureTracker
         const int gridVelNumb {10};
         const int maskRadius {15};
         const int keyFrameConThresh {100};
+        const int maxKeyFrameDist {15};
+        const int keyFrameInsertThresh {3};
+        const int actvKFMaxSize {10};
+        const int maxActvKFMaxSize {20};
 
         const double fx,fy,cx,cy;
 
@@ -181,7 +184,8 @@ class FeatureTracker
 
         FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map);
 
-        bool worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose, bool setActive);
+        bool worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose);
+        bool worldToFrameKF(MapPoint* mp, const Eigen::Matrix4d& pose);
 
         void calcAngles(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, std::vector<float>& mapAngles);
 

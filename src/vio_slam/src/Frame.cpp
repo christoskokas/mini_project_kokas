@@ -363,14 +363,14 @@ void CameraFrame::lineFromKeyFrameToCamera()
     {
         // if ( (*it).second->numb == lastActiveKeyF)
         //     glColor3f(1.0f,0.0f,0.0f);
+        if (!(*it).second->visualize)
+            continue;
         if ((*it).second->active)
             glColor3f(0.0f,1.0f,0.0f);
         else
             glColor3f(1.0f,0.0f,0.0f);
         for (const auto& key:(*it).second->connections)
         {
-            if (!(*it).second->visualize)
-                continue;
             glVertex3f((GLfloat)mapKeyF.at(key)->pose.pose(0,3),(GLfloat)mapKeyF.at(key)->pose.pose(1,3),(GLfloat)mapKeyF.at(key)->pose.pose(2,3));
             glVertex3f((GLfloat)(*it).second->pose.pose(0,3), (GLfloat)(*it).second->pose.pose(1,3), (GLfloat)(*it).second->pose.pose(2,3));
         }
