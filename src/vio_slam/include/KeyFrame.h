@@ -32,6 +32,7 @@ class KeyFrame
         Eigen::MatrixXd homoPoints3D;
         const int numb;
         const int frameIdx;
+        int nKeysTracked {0};
         bool visualize {true};
         std::vector<MapPoint*> localMapPoints;
         bool active {true};

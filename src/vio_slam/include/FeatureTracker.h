@@ -118,11 +118,12 @@ class FeatureTracker
         const int sampleSize {15};
         const int gridVelNumb {10};
         const int maskRadius {15};
-        const int keyFrameConThresh {100};
-        const int maxKeyFrameDist {15};
-        const int keyFrameInsertThresh {3};
+        const int keyFrameConThresh {50};
+        const int maxKeyFrameDist {5};
+        const int keyFrameInsertThresh {1};
         const int actvKFMaxSize {10};
         const int maxActvKFMaxSize {20};
+        const int MminNStereo {150};
 
         const double fx,fy,cx,cy;
 

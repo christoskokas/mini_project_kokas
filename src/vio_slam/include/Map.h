@@ -83,6 +83,7 @@ class Map
         std::vector<KeyFrame*> activeKeyFrames;
         unsigned long kIdx {0};
         unsigned long pIdx {0};
+        
         bool keyFrameAdded {false};
         Map(){};
         void addMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _useable);

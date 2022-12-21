@@ -40,7 +40,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             continue;
         if ( first )
         {
-            if ( lastKF->keys.estimatedDepth[i] > 0 )
+            if ( lastKF->keys.estimatedDepth[i] > 0 && lastKFnumb != 0)
                 matchedIdxs[i].emplace_back(std::pair<int,int>(-lastKFnumb, lastKF->keys.rightIdxs[i]));
             matchedIdxs[i].emplace_back(std::pair<int,int>(lastKFnumb, i));
         }
@@ -78,7 +78,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             if ( dist < secDist)
                 secDist = dist;
         }
-        if ( bestDist < matchDist/*  && bestDist < 0.8* secDist */)
+        if ( bestDist < matchDist && bestDist < 0.8* secDist)
         {
             if (rIdxs[bestIdx] > bestDist)
             {
@@ -93,8 +93,8 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
         if ( matchedIdxsN[i] >= 0)
         {
             matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(otherKFnumb, i));
-            // if ( otherKF->keys.estimatedDepth[i] > 0 )
-            //     matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(-otherKFnumb, otherKF->keys.rightIdxs[i]));
+            if ( otherKF->keys.estimatedDepth[i] > 0 && otherKFnumb != 0)
+                matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(-otherKFnumb, otherKF->keys.rightIdxs[i]));
         }
     }
 }

@@ -37,24 +37,22 @@ void LocalMapper::calcProjMatrices(std::unordered_map<int, Eigen::Matrix<double,
     Eigen::Matrix4d projL = Eigen::Matrix4d::Identity();
     projL.block<3,3>(0,0) = K;
     Eigen::Matrix4d projR = Eigen::Matrix4d::Identity();
-    // projR.block<3,3>(0,0) = Kr;
-    projR.block<3,3>(0,0) = K;
+    projR.block<3,3>(0,0) = Kr;
+    // projR.block<3,3>(0,0) = K;
     projR(0,3) = -fx * zedPtr->extrinsics(0,3);
     std::vector<KeyFrame*>::const_iterator it, end(actKeyF.end());
-    bool first = true;
     for ( it = actKeyF.begin(); it != end; it++)
     {
         const int kIdx {(*it)->numb};
         Eigen::Matrix<double,4,4> extr2 = (*it)->pose.poseInverse;
         extr2 = projL * extr2;
         Eigen::Matrix<double,3,4> extr = extr2.block<3,4>(0,0);
-        if ( first )
+        if ( (*it)->numb != 0 )
         {
             Eigen::Matrix<double,4,4> extrRight = (*it)->pose.poseInverse;
             extrRight =  projR * extrRight;
             Eigen::Matrix<double,3,4> extrR = extrRight.block<3,4>(0,0);
             projMatrices.emplace( - kIdx, extrR);
-            first = false;
         }
         projMatrices.emplace(kIdx, extr);
         // if ( kIdx != 0 )
@@ -129,7 +127,6 @@ void LocalMapper::drawPred(KeyFrame* lastKF, std::vector<cv::KeyPoint>& keys,std
 
 void LocalMapper::predictKeysPos(TrackedKeys& keys, const Eigen::Matrix4d& curPose, const Eigen::Matrix4d& camPoseInv, std::vector<float>& keysAngles, const std::vector<Eigen::Vector4d>& p4d, std::vector<cv::Point2f>& predPoints)
 {
-    keys.predKeyPoints = keys.keyPoints;
     predPoints.resize(keys.keyPoints.size());
     keysAngles.resize(keys.keyPoints.size(), 0.0);
     for ( size_t i {0}, end{keys.keyPoints.size()}; i < end; i ++)
@@ -214,7 +211,7 @@ bool LocalMapper::checkReprojErr(Eigen::Vector4d& calcVec, std::vector<std::pair
     for (size_t i {0}, end{matchesOfPoint.size()}; i < end; i++)
     {
         int kfNumb {matchesOfPoint[i].first};
-        KeyFrame* kF = map->keyFrames.at(abs(kfNumb));
+        const KeyFrame* kF = map->keyFrames.at(abs(kfNumb));
         Eigen::Vector3d p3dnew = allProjMatrices.at(kfNumb) * calcVec;
         p3dnew = p3dnew/p3dnew(2);
         // p4dnew = kF->pose.poseInverse * calcVec;
@@ -241,12 +238,14 @@ bool LocalMapper::checkReprojErr(Eigen::Vector4d& calcVec, std::vector<std::pair
     return true;
 }
 
-void LocalMapper::addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::vector<std::pair<int, int>>& matchesOfPoint, std::unordered_map<MapPoint*, Eigen::Vector3d>& allMapPoints, KeyFrame* lastKF, const size_t& keyPos)
+void LocalMapper::addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::vector<std::pair<int, int>>& matchesOfPoint, std::vector<MapPoint*>& pointsToAdd, KeyFrame* lastKF, const size_t& keyPos)
 {
     const TrackedKeys& temp = lastKF->keys; 
-    MapPoint* mp = new MapPoint(posW, temp.Desc.row(keyPos),temp.keyPoints[keyPos], temp.close[keyPos], lastKF->numb, map->pIdx);
+    static unsigned long mpIdx {map->pIdx};
+    MapPoint* mp = new MapPoint(posW, temp.Desc.row(keyPos),temp.keyPoints[keyPos], temp.close[keyPos], lastKF->numb, mpIdx);
+    mpIdx++;
     int count {0};
-    std::lock_guard<std::mutex> lock(map->mapMutex);
+    // std::lock_guard<std::mutex> lock(map->mapMutex);
     for (size_t i {0}, end{matchesOfPoint.size()}; i < end; i++)
     {
         if ( matchesOfPoint[i].first >= 0)
@@ -258,10 +257,7 @@ void LocalMapper::addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::
         }
     }
     mp->trackCnt = count;
-    map->activeMapPoints.emplace_back(mp);
-    map->addMapPoint(mp);
-    lastKF->localMapPoints.emplace_back(mp);
-
+    pointsToAdd.emplace_back(mp);
 }
 
 void LocalMapper::calcp4d(KeyFrame* lastKF, std::vector<Eigen::Vector4d>& p4d)
@@ -323,6 +319,23 @@ void LocalMapper::triangulateCeres(Eigen::Vector3d& p3d, const std::vector<Eigen
 
 }
 
+void LocalMapper::addToMap(KeyFrame* lastKF, const std::vector<MapPoint*>& pointsToAdd)
+{
+    std::lock_guard<std::mutex> lock(map->mapMutex);
+    for (size_t i{0}, end{pointsToAdd.size()}; i < end; i++ )
+    {
+        // Logging("added MP","",3);
+        // std::unordered_map<vio_slam::KeyFrame *, size_t>::iterator it, Mapend(pointsToAdd[i]->kFWithFIdx.end());
+        // for (it = pointsToAdd[i]->kFWithFIdx.begin(); it != Mapend; it++)
+        // {
+        //     it->first->unMatchedF[it->second] = false;
+        // }
+        map->activeMapPoints.emplace_back(pointsToAdd[i]);
+        map->addMapPoint(pointsToAdd[i]);
+        lastKF->localMapPoints.emplace_back(pointsToAdd[i]);
+    }
+}
+
 void LocalMapper::computeAllMapPoints()
 {
     std::unordered_map<MapPoint*, Eigen::Vector3d> allMapPoints;
@@ -355,13 +368,13 @@ void LocalMapper::computeAllMapPoints()
     {
         if ( (*it)->numb == lastKFIdx)
             continue;
-        // if ( (*it)->numb < lastKFIdx - 5)
-        //     continue;
+        if ( (*it)->numb < lastKFIdx - 7)
+            continue;
         std::vector<float> keysAngles;
         std::vector<cv::Point2f> predPoints;
         predictKeysPos(lastKF->keys, lastKF->pose.pose, (*it)->pose.poseInverse, keysAngles, p4d, predPoints);
         // drawPred(lastKF, lastKF->keys.keyPoints, predPoints);
-        fm->matchLocalBA(matchedIdxs, lastKF, (*it), aKFsize, 4, first, keysAngles, predPoints);
+        fm->matchLocalBA(matchedIdxs, lastKF, (*it), aKFsize, 8, first, keysAngles, predPoints);
         // if (first)
         drawLBA("LBA matches",matchedIdxs, lastKF,(*it));
         first = false;
@@ -397,6 +410,8 @@ void LocalMapper::computeAllMapPoints()
 
     calcProjMatrices(allProjMatrices, actKeyF);
     int newMapPointsCount {0};
+    std::vector<MapPoint*> pointsToAdd;
+    pointsToAdd.reserve(lastKF->keys.keyPoints.size());
     lastKF->localMapPoints.reserve(lastKF->keys.keyPoints.size());
     // Logging("activeSizeLOCAL", map->activeMapPoints.size(),3);
     for ( size_t i{0}, end {lastKF->keys.keyPoints.size()}; i < end; i ++)
@@ -434,7 +449,7 @@ void LocalMapper::computeAllMapPoints()
         // else
         //     Logging("Success!", "", 3);
 
-        addMultiViewMapPoints(vecCalc, matchesOfPoint, allMapPoints, lastKF, i);
+        addMultiViewMapPoints(vecCalc, matchesOfPoint, pointsToAdd, lastKF, i);
         
         newMapPointsCount ++;
         // Logging("calc 3d", vecCalcbef, 3);
@@ -454,6 +469,7 @@ void LocalMapper::computeAllMapPoints()
         // }
         // Logging("KF pose",lastKF->pose.pose,3);
     }
+    addToMap(lastKF, pointsToAdd);
     Logging("Success!", newMapPointsCount, 3);
     
 

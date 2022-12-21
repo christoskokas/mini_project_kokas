@@ -2652,14 +2652,17 @@ void FeatureTracker::removeKeyFrame(std::vector<KeyFrame *>& activeKeyFrames)
     int removeCount {0};
     std::vector<bool> removeIdx;
     const int maxRemoval {maxActvKFMaxSize - actvKFMaxSize};
-    removeIdx.resize(maxRemoval);
+    removeIdx.resize(activeKeyFrames.size());
     std::vector<KeyFrame* >::reverse_iterator it, end(activeKeyFrames.rend());
     for ( it = activeKeyFrames.rbegin(); it != end; ++it, count --)
     {
-        if (count < 3)
+        if (count < 2)
             break;
         if ((*it)->keyF)
+        {
+            lastValidKF = (*it)->numb;
             continue;
+        }
         const int validKeyFramesCount {(*it)->numb - lastValidKF};
 
         if (validKeyFramesCount >= maxKeyFrameDist)
@@ -2668,8 +2671,8 @@ void FeatureTracker::removeKeyFrame(std::vector<KeyFrame *>& activeKeyFrames)
             lastValidKF = (*it)->numb;
             continue;
         }
-        const size_t validMapPointsSize {map->keyFrames.at(lastValidKF)->localMapPoints.size()};
-        const size_t kFMPSize {(*it)->localMapPoints.size()};
+        const size_t validMapPointsSize {map->keyFrames.at(lastValidKF)->nKeysTracked};
+        const size_t kFMPSize {(*it)->nKeysTracked};
         const float thres {0.9f * (float)validMapPointsSize};
         if (kFMPSize > 100 && kFMPSize > thres)
         {
@@ -2707,6 +2710,8 @@ void FeatureTracker::removeKeyFrame(std::vector<KeyFrame *>& activeKeyFrames)
     {
         if (!removeIdx[i])
             activeKeyFrames[j++] = activeKeyFrames[i];
+        else
+            activeKeyFrames[i]->active = false;
     }
     activeKeyFrames.resize(j);
 
@@ -2715,22 +2720,22 @@ void FeatureTracker::removeKeyFrame(std::vector<KeyFrame *>& activeKeyFrames)
 void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo)
 {
     KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx, curFrame);
-    const int minKIdx {activeMapPoints[0]->kdx};
-    const int maxKIdx {activeMapPoints.back()->kdx};
+    const unsigned long minKIdx {0};
+    const unsigned long maxKIdx {map->kIdx};
     std::vector<int>kfCon(maxKIdx - minKIdx + 1,0);
     std::vector<MapPoint*>::const_iterator it, end(activeMapPoints.end());
     for (it = activeMapPoints.begin(); it != end; it ++)
     {
         kfCon[(*it)->kdx - minKIdx] ++;
     }
-    kF->connections.reserve(maxKIdx - minKIdx + 1);
-    kF->connectionWeights.reserve(maxKIdx - minKIdx + 1);
+    kF->connections.resize(maxKIdx - minKIdx + 1,0);
+    // kF->connectionWeights.reserve(maxKIdx - minKIdx + 1);
     for (size_t i {0}, end{kfCon.size()}; i < end; i ++)
     {
         if (kfCon[i] > keyFrameConThresh)
         {
-            kF->connections.emplace_back(i + minKIdx);
-            kF->connectionWeights.emplace_back(kfCon[i]);
+            kF->connections[i] = kfCon[i];
+            // kF->connectionWeights.emplace_back(kfCon[i]);
         }
     }
     
@@ -2752,7 +2757,7 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
             kF->unMatchedF[i] = false;
             continue;
         }
-        if ( nStereo > 100)
+        if ( nStereo > MminNStereo)
             continue;
         if ( keysLeft.estimatedDepth[i] > 0 )
         {
@@ -2766,6 +2771,7 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
             map->addMapPoint(mp);
         }
     }
+    kF->nKeysTracked = kF->localMapPoints.size();
     kF->keys.getKeys(keysLeft);
     mPPerKeyFrame.push_back(activeMapPoints.size());
     // std::lock_guard<std::mutex> lock(map->mapMutex);
@@ -2788,30 +2794,34 @@ void FeatureTracker::removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, 
     int j {0};
     for ( size_t i {0}; i < end; i++)
     {
-        if ( activeMapPoints[i]->GetIsOutlier() )
-        {
-            continue;
-        }
         MapPoint* mp = activeMapPoints[i];
         if (worldToFrame(mp, estimPose))
-            mp->addTCnt();
-        bool setActive;
-        std::vector<KeyFrame* >::const_iterator it, end(activeKeyFrames.end());
-        for ( it = activeKeyFrames.begin(); it != end; ++it)
         {
-            if (worldToFrameKF(mp,(*it)->pose.poseInverse))
+            if ( !mp->GetIsOutlier() )
             {
-                setActive = true;
-                break;
+                mp->setActive(true);
+                mp->addTCnt();
             }
         }
-        if (!setActive)
+        else
         {
             mp->setActive(false);
             continue;
         }
-        else
-            mp->setActive(true);
+        // std::vector<KeyFrame* >::const_iterator it, end(activeKeyFrames.end());
+        // for ( it = activeKeyFrames.begin(); it != end; it++)
+        // {
+        //     if (worldToFrameKF(mp,(*it)->pose.poseInverse))
+        //     {
+        //         setActive = true;
+        //         break;
+        //     }
+        // }
+        // if (!setActive)
+        // {
+        //     mp->setActive(false);
+        //     continue;
+        // }
 
         activeMapPoints[j++] = mp;
     }
@@ -2864,6 +2874,7 @@ bool FeatureTracker::worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose)
         mp->SetInFrame(false);
         return false;
     }
+    mp->SetInFrame(true);
     return true;
 }
 
@@ -3029,7 +3040,7 @@ void FeatureTracker::Track4(const int frames)
         worldToImg(activeMapPoints, projectedPoints, estimPose);
         std::vector<float> mapAngles;
         calcAngles(activeMapPoints, projectedPoints, mapAngles);
-        int nNewMatches = fm.matchByProjectionPredWA(activeMapPoints, projectedPoints, keysLeft, matchedIdxsN, matchedIdxsB, 4, mapAngles);
+        int nNewMatches = fm.matchByProjectionPredWA(activeMapPoints, projectedPoints, keysLeft, matchedIdxsN, matchedIdxsB, 7, mapAngles);
 
         std::vector<cv::Point2f> mpnts, pnts2f;
         for ( size_t i {0}, end{activeMapPoints.size()}; i < end; i++)
@@ -3080,12 +3091,13 @@ void FeatureTracker::Track4(const int frames)
         publishPoseNew();
         // if ( nStIn.first < 200 )
         // {
-        keyFrameInsert++;
-        if (keyFrameInsert >= keyFrameInsertThresh || nStIn.second <= 150)
-        {
-            keyFrameInsert = 0;
-            addKeyFrame(keysLeft, matchedIdxsN, nStIn.second);
-        }
+        // keyFrameInsert++;
+        // if (keyFrameInsert >= keyFrameInsertThresh || nStIn.second <= 150)
+        // {
+            // keyFrameInsert = 0;
+        addKeyFrame(keysLeft, matchedIdxsN, nStIn.second);
+        // }
+
         removeMapPointOut(activeMapPoints, estimPose);
         // Logging("activeSizeAfterRemoval", activeMapPoints.size(),3);
 
