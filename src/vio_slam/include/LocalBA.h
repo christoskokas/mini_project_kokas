@@ -56,6 +56,8 @@ class LocalMapper
         bool checkReprojErr(Eigen::Vector4d& calcVec, std::vector<std::pair<int, int>>& matchesOfPoint, const std::unordered_map<int, Eigen::Matrix<double,3,4>>& allProjMatrices);
         void projectToPlane(Eigen::Vector4d& vec, cv::Point2f& p2f);
 
+        void triangulateNewPoints();
+
         void addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::vector<std::pair<int, int>>& matchesOfPoint, std::vector<MapPoint*>& pointsToAdd, KeyFrame* lastKF, const size_t& keyPos);
         void addToMap(KeyFrame* lastKF, const std::vector<MapPoint*>& pointsToAdd);
 

@@ -85,6 +85,7 @@ class Map
         unsigned long pIdx {0};
         
         bool keyFrameAdded {false};
+        bool frameAdded {false};
         Map(){};
         void addMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _useable);
         void addMapPoint(MapPoint* mp);

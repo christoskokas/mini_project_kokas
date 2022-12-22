@@ -2344,6 +2344,9 @@ void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
     kF->keys.getKeys(keysLeft);
     activeKeyFrames.insert(activeKeyFrames.begin(),kF);
     map->addKeyFrame(kF);
+    lastKFPose = zedPtr->cameraPose.pose;
+    lastKFPoseInv = lastKFPose.inverse();
+    lastKFImage = lIm.im.clone();
 }
 
 void FeatureTracker::worldToImg(std::vector<MapPoint*>& MapPointsVec, std::vector<cv::KeyPoint>& projectedPoints)
@@ -2504,15 +2507,9 @@ int FeatureTracker::OutliersReprojErr(const Eigen::Matrix4d& estimatedP, std::ve
             get3dFromKey(obs, keysLeft.keyPoints[nIdx], keysLeft.estimatedDepth[nIdx]);
             bool outlier = check3dError(p4d, obs, thres, 1.0);
             mp->SetIsOutlier(outlier);
-            if ( outlier )
+            if ( !outlier )
             {
-                nInliers--;
-            }
-            else
-            {
-
-                // Logging("obs", obs,3);
-                // Logging("point", p4d,3);
+                nInliers++;
                 nStereo++;
             }
 
@@ -2521,11 +2518,10 @@ int FeatureTracker::OutliersReprojErr(const Eigen::Matrix4d& estimatedP, std::ve
         {
             bool outlier = check2dError(p4d, keysLeft.keyPoints[nIdx].pt, thres, 1.0);
             mp->SetIsOutlier(outlier);
-            if ( outlier )
-                nInliers--;
-            else
+            if ( !outlier )
             {
-                if ( mp->close )
+                nInliers++;
+                if ( keysLeft.close[nIdx] )
                     nStereo++;
             }
 
@@ -2555,7 +2551,6 @@ std::pair<int,int> FeatureTracker::refinePose(std::vector<MapPoint*>& activeMapP
     weights.resize(prevS, 1.0f);
     std::vector<double>thresholds = {15.6f,9.8f,7.815f,7.815f};
     double thresh = 7.815f;
-    int nIn {0};
 
     ceres::Problem problem;
     Eigen::Vector3d frame_tcw;
@@ -2577,7 +2572,6 @@ std::pair<int,int> FeatureTracker::refinePose(std::vector<MapPoint*>& activeMapP
         MapPoint* mp = activeMapPoints[i];
         if  ( !mp->GetInFrame() || mp->GetIsOutlier() )
             continue;
-        nIn ++;
         const int nIdx {matchedIdxsB[i]};
         if (mp->close && keysLeft.estimatedDepth[nIdx] > 0)
         {
@@ -2641,6 +2635,7 @@ std::pair<int,int> FeatureTracker::refinePose(std::vector<MapPoint*>& activeMapP
     // if ( checkDisplacement(prevPose, estimPose) )
     //     return std::pair<int,int>(0, nIn);
     
+    int nIn {0};
     int nStereo = OutliersReprojErr(estimPose, activeMapPoints, keysLeft, matchedIdxsB, thresh, weights, nIn);
     // Logging("pose", estimPose,3);
     return std::pair<int,int>(nIn, nStereo);
@@ -2671,7 +2666,7 @@ void FeatureTracker::removeKeyFrame(std::vector<KeyFrame *>& activeKeyFrames)
             lastValidKF = (*it)->numb;
             continue;
         }
-        const size_t validMapPointsSize {map->keyFrames.at(lastValidKF)->nKeysTracked};
+        const size_t validMapPointsSize {map->keyFrames.at(lastValidKF)->localMapPoints.size()};
         const size_t kFMPSize {(*it)->nKeysTracked};
         const float thres {0.9f * (float)validMapPointsSize};
         if (kFMPSize > 100 && kFMPSize > thres)
@@ -2757,7 +2752,7 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
             kF->unMatchedF[i] = false;
             continue;
         }
-        if ( nStereo > MminNStereo)
+        if ( nStereo > minNStereo)
             continue;
         if ( keysLeft.estimatedDepth[i] > 0 )
         {
@@ -2785,6 +2780,9 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
         // activeKeyFrames.resize(actvKFMaxSize);
     }
     map->keyFrameAdded = true;
+    lastKFPose = zedPtr->cameraPose.pose;
+    lastKFPoseInv = lastKFPose.inverse();
+    lastKFImage = lIm.im.clone();
 
 }
 
@@ -3141,6 +3139,230 @@ void FeatureTracker::Track4(const int frames)
 
         // cloneTrackedKeys(prevLeftPnts, keysLeft);
         // updateMapPoints(prevLeftPnts);
+
+
+        
+
+    }
+    datafile.close();
+    map->endOfFrames = true;
+}
+
+void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo)
+{
+    KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx, curFrame);
+    const unsigned long minKIdx {0};
+    const unsigned long maxKIdx {map->kIdx};
+    std::vector<int>kfCon(maxKIdx - minKIdx + 1,0);
+    std::vector<MapPoint*>::const_iterator it, end(activeMapPoints.end());
+    for (it = activeMapPoints.begin(); it != end; it ++)
+    {
+        kfCon[(*it)->kdx - minKIdx] ++;
+    }
+    kF->connections.resize(maxKIdx - minKIdx + 1,0);
+    // kF->connectionWeights.reserve(maxKIdx - minKIdx + 1);
+    for (size_t i {0}, end{kfCon.size()}; i < end; i ++)
+    {
+        if (kfCon[i] > keyFrameConThresh)
+        {
+            kF->connections[i] = kfCon[i];
+            // kF->connectionWeights.emplace_back(kfCon[i]);
+        }
+    }
+    
+    kF->unMatchedF.resize(keysLeft.keyPoints.size(), true);
+    kF->localMapPoints.reserve(activeMapPoints.size());
+    activeMapPoints.reserve(activeMapPoints.size() + keysLeft.keyPoints.size());
+    mPPerKeyFrame.reserve(1000);
+    // std::lock_guard<std::mutex> lock(map->mapMutex);
+    for (size_t i{0}, end{keysLeft.keyPoints.size()}; i < end; i++)
+    {
+        // if ( keysLeft.close[i] >  )
+        if ( matchedIdxsN[i] >= 0 )
+        {
+            MapPoint* mp = activeMapPoints[matchedIdxsN[i]];
+            if ( mp->GetIsOutlier() )
+                continue;
+            mp->kFWithFIdx.insert(std::pair<KeyFrame*, size_t>(kF, i));
+            kF->localMapPoints.emplace_back(mp);
+            kF->unMatchedF[i] = false;
+            continue;
+        }
+        if ( nStereo > minNStereo)
+            continue;
+        if ( keysLeft.estimatedDepth[i] > 0 )
+        {
+            const double zp = (double)keysLeft.estimatedDepth[i];
+            const double xp = (double)(((double)keysLeft.keyPoints[i].pt.x-cx)*zp/fx);
+            const double yp = (double)(((double)keysLeft.keyPoints[i].pt.y-cy)*zp/fy);
+            Eigen::Vector4d p(xp, yp, zp, 1);
+            p = zedPtr->cameraPose.pose * p;
+            MapPoint* mp = new MapPoint(p, keysLeft.Desc.row(i), keysLeft.keyPoints[i], keysLeft.close[i], map->kIdx, map->pIdx);
+            activeMapPoints.emplace_back(mp);
+            map->addMapPoint(mp);
+        }
+    }
+    kF->nKeysTracked = kF->localMapPoints.size();
+    kF->keys.getKeys(keysLeft);
+    mPPerKeyFrame.push_back(activeMapPoints.size());
+    // std::lock_guard<std::mutex> lock(map->mapMutex);
+    map->addKeyFrame(kF);
+    activeKeyFrames.insert(activeKeyFrames.begin(),kF);
+    // removeKeyFrame(activeKeyFrames);
+    if ( activeKeyFrames.size() > actvKFMaxSize )
+    {
+        // removeKeyFrame(activeKeyFrames);
+        activeKeyFrames.back()->active = false;
+        activeKeyFrames.resize(actvKFMaxSize);
+    }
+    map->keyFrameAdded = true;
+    lastKFPose = zedPtr->cameraPose.pose;
+    lastKFPoseInv = lastKFPose.inverse();
+    lastKFImage = lIm.im.clone();
+
+}
+
+void FeatureTracker::insertFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo)
+{
+    KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx, curFrame);
+    kF->active = false;
+    kF->visualize = false;
+    const unsigned long minKIdx {0};
+    const unsigned long maxKIdx {map->kIdx};
+    std::vector<int>kfCon(maxKIdx - minKIdx + 1,0);
+    std::vector<MapPoint*>::const_iterator it, end(activeMapPoints.end());
+    for (it = activeMapPoints.begin(); it != end; it ++)
+    {
+        kfCon[(*it)->kdx - minKIdx] ++;
+    }
+    kF->connections.resize(maxKIdx - minKIdx + 1,0);
+    for (size_t i {0}, end{kfCon.size()}; i < end; i ++)
+    {
+        if (kfCon[i] > keyFrameConThresh)
+        {
+            kF->connections[i] = kfCon[i];
+        }
+    }
+    
+    kF->unMatchedF.resize(keysLeft.keyPoints.size(), true);
+    kF->localMapPoints.reserve(activeMapPoints.size());
+    activeMapPoints.reserve(activeMapPoints.size() + keysLeft.keyPoints.size());
+    for (size_t i{0}, end{keysLeft.keyPoints.size()}; i < end; i++)
+    {
+        if ( matchedIdxsN[i] >= 0 )
+        {
+            MapPoint* mp = activeMapPoints[matchedIdxsN[i]];
+            if ( mp->GetIsOutlier() )
+                continue;
+            mp->kFWithFIdx.insert(std::pair<KeyFrame*, size_t>(kF, i));
+            kF->localMapPoints.emplace_back(mp);
+            kF->unMatchedF[i] = false;
+            continue;
+        }
+    }
+    kF->nKeysTracked = kF->localMapPoints.size();
+    kF->keys.getKeys(keysLeft);
+    map->addKeyFrame(kF);
+    map->frameAdded = true;
+}
+
+void FeatureTracker::Track5(const int frames)
+{
+    int keyFrameInsert {0};
+    for (curFrame = 0; curFrame < frames; curFrame++)
+    {
+        setLRImages(curFrame);
+
+        TrackedKeys keysLeft;
+
+
+
+        if ( curFrame == 0 )
+        {
+            extractORBStereoMatch(lIm.im, rIm.im, keysLeft);
+
+            initializeMap(keysLeft);
+            // addMapPnts(keysLeft);
+            setPreLImage();
+            setPreRImage();
+            continue;
+        }
+        extractORBStereoMatch(lIm.im, rIm.im, keysLeft);
+
+        Eigen::Matrix4d currPose = predNPoseInv;
+        Eigen::Matrix4d prevPose = zedPtr->cameraPose.poseInverse;
+        std::vector<int> matchedIdxsN(keysLeft.keyPoints.size(), -1);
+        std::lock_guard<std::mutex> lock(map->mapMutex);
+        std::vector<int> matchedIdxsB(activeMapPoints.size(), -1);
+        
+        if ( curFrame == 1 )
+            int nMatches = fm.matchByProjection(activeMapPoints, keysLeft, matchedIdxsN, matchedIdxsB);
+        else
+        {
+            std::vector<cv::KeyPoint> ConVelPoints;
+            worldToImg(activeMapPoints, ConVelPoints, predNPoseInv);
+            int nNewMatches = fm.matchByProjectionConVel(activeMapPoints, ConVelPoints, keysLeft, matchedIdxsN, matchedIdxsB, 2);
+        }
+
+        Eigen::Matrix4d estimPose = predNPoseInv;
+        refinePose(activeMapPoints, keysLeft, matchedIdxsB, estimPose);
+
+        // after last refine check all matches, change outliers to inliers if they are no more, and in the end remove all outliers from vector. they are already saved on mappoints.
+
+        // the outliers from first refine are not used on the next refines.
+
+        // check for big displacement, if there is, use constant velocity model
+
+
+        std::vector<cv::KeyPoint> projectedPoints;
+        worldToImg(activeMapPoints, projectedPoints, estimPose);
+        std::vector<float> mapAngles;
+        calcAngles(activeMapPoints, projectedPoints, mapAngles);
+        int nNewMatches = fm.matchByProjectionPredWA(activeMapPoints, projectedPoints, keysLeft, matchedIdxsN, matchedIdxsB, 7, mapAngles);
+
+
+        std::pair<int,int> nStIn = refinePose(activeMapPoints, keysLeft, matchedIdxsB, estimPose);
+
+        // Logging("second refine pose", estimPose,3);
+
+        Logging("nIn", nStIn.first,3);
+        Logging("nStereo", nStIn.second,3);
+
+
+        poseEst = estimPose.inverse();
+
+
+        publishPoseNew();
+
+
+        if ( nStIn.first < minNMono || nStIn.second < minNStereo )
+        {
+            insertKeyFrame(keysLeft, matchedIdxsN, nStIn.second);
+            Logging("New KeyFrame!","",3);
+        }
+        else
+        {
+            const double dif = cv::norm(lastKFImage,lIm.im);
+            if ( dif > imageDifThres)
+            {
+                insertKeyFrame(keysLeft, matchedIdxsN, nStIn.second);
+                Logging("New KeyFrame!","",3);
+            }
+            else
+            {
+                insertFrame(keysLeft, matchedIdxsN, nStIn.second);
+                Logging("New Frame!","",3);
+            }
+        }
+            
+
+        // addKeyFrame(keysLeft, matchedIdxsN, nStIn.second);
+
+        removeMapPointOut(activeMapPoints, estimPose);
+
+        setPreLImage();
+        setPreRImage();
+
 
 
         
@@ -5083,8 +5305,11 @@ void FeatureTracker::publishPoseNew()
 {
     prevWPose = zedPtr->cameraPose.pose;
     prevWPoseInv = zedPtr->cameraPose.poseInverse;
-    zedPtr->cameraPose.setPose(poseEst);
-    zedPtr->cameraPose.setInvPose(poseEst.inverse());
+    Eigen::Matrix4d refPose = lastKFPoseInv * poseEst;
+    Eigen::Matrix4d lKFP = activeKeyFrames.front()->pose.pose;
+    zedPtr->cameraPose.setPose(refPose, lKFP);
+    // zedPtr->cameraPose.setPose(poseEst);
+    // zedPtr->cameraPose.setInvPose(poseEst.inverse());
     predNPose = poseEst * (prevWPoseInv * poseEst);
     predNPoseInv = predNPose.inverse();
 #if SAVEODOMETRYDATA

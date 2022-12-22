@@ -89,6 +89,8 @@ class FeatureTracker
 
         std::vector<int> reprojIdxs;
 
+        Eigen::Matrix4d lastKFPose = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d lastKFPoseInv = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d poseEst = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d keyFramePose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d poseEstFrame = Eigen::Matrix4d::Identity();
@@ -120,10 +122,12 @@ class FeatureTracker
         const int maskRadius {15};
         const int keyFrameConThresh {50};
         const int maxKeyFrameDist {5};
-        const int keyFrameInsertThresh {1};
+        const int keyFrameInsertThresh {10};
         const int actvKFMaxSize {10};
         const int maxActvKFMaxSize {20};
-        const int MminNStereo {150};
+        const int minNStereo {150};
+        const int minNMono {400};
+        const int imageDifThres {50000};
 
         const double fx,fy,cx,cy;
 
@@ -134,6 +138,7 @@ class FeatureTracker
         const size_t mxIter {25};
         const float mnErr {1.0f};
 
+        int insertKeyFrameCount {0};
         int lastValidKF {0};
         int uStereo {0};
         int uMono {0};
@@ -154,6 +159,7 @@ class FeatureTracker
 
         ImageData pLIm, pRIm, lIm, rIm;
         cv::Mat rmap[2][2];
+        cv::Mat lastKFImage;
         Zed_Camera* zedPtr;
         FeatureExtractor fe;
         FeatureExtractor feLeft;
@@ -185,6 +191,8 @@ class FeatureTracker
 
         FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map);
 
+        void insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo);
+        void insertFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo);
         bool worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose);
         bool worldToFrameKF(MapPoint* mp, const Eigen::Matrix4d& pose);
 
@@ -215,6 +223,7 @@ class FeatureTracker
         void computeStereoMatchesORB(TrackedKeys& keysLeft, TrackedKeys& prevLeftKeys);
 
         void initializeMap(TrackedKeys& keysLeft);
+        void Track5(const int frames);
         void Track4(const int frames);
         void Track3(const int frames);
         void beginTracking(const int frames);

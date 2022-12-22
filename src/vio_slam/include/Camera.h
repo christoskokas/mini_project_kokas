@@ -34,6 +34,8 @@ class CameraPose
         double vx {}, vy {}, vz {};
     public:
         Eigen::Matrix4d pose;
+        Eigen::Matrix4d keyPose;
+        Eigen::Matrix4d refPose;
         Eigen::Matrix3d Rv;
         Eigen::Vector3d tv;
         Eigen::Matrix4d poseInverse;
@@ -42,6 +44,8 @@ class CameraPose
         CameraPose(Eigen::Matrix4d _pose = Eigen::Matrix4d::Identity(), std::chrono::time_point<std::chrono::high_resolution_clock> _timestamp = std::chrono::high_resolution_clock::now());
         void setVel(const double _vx, const double _vy, const double _vz);
         void setPose(Eigen::Matrix4d poseT);
+        void setPose(Eigen::Matrix4d& _refPose, Eigen::Matrix4d& _keyPose);
+        void changePose(Eigen::Matrix4d& _keyPose);
         void setInvPose(Eigen::Matrix4d poseT);
         void separatePose();
 };

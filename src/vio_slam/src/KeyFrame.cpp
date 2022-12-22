@@ -10,6 +10,16 @@ KeyFrame::KeyFrame(Eigen::Matrix4d _pose, cv::Mat& _leftIm, cv::Mat& rLIm, const
     rLeftIm = rLIm.clone();
 }
 
+KeyFrame::KeyFrame(Eigen::Matrix4d& _refPose, Eigen::Matrix4d& _keyPose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx) : numb(_numb), frameIdx(_frameIdx)
+{
+    pose.keyPose = _keyPose;
+    pose.refPose = _refPose;
+    Eigen::Matrix4d truePose = pose.keyPose * pose.refPose;
+    pose.setPose(truePose);
+    leftIm = _leftIm.clone();
+    rLeftIm = rLIm.clone();
+}
+
 KeyFrame::KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, Eigen::MatrixXd _homoPoints3D, const int _numb) : numb(_numb), frameIdx(_numb)
 {
     points3D = points;
