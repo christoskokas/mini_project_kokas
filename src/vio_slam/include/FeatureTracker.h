@@ -89,6 +89,7 @@ class FeatureTracker
 
         std::vector<int> reprojIdxs;
 
+        Eigen::Matrix4d referencePose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d lastKFPose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d lastKFPoseInv = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d poseEst = Eigen::Matrix4d::Identity();
@@ -191,6 +192,7 @@ class FeatureTracker
 
         FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map);
 
+        void publishPoseLBA();
         void insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo);
         void insertFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo);
         bool worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose);

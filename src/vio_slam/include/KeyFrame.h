@@ -33,6 +33,7 @@ class KeyFrame
         const int numb;
         const int frameIdx;
         int nKeysTracked {0};
+        int closestKF {-1};
         bool visualize {true};
         std::vector<MapPoint*> localMapPoints;
         bool active {true};

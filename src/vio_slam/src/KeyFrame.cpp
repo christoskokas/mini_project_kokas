@@ -10,12 +10,10 @@ KeyFrame::KeyFrame(Eigen::Matrix4d _pose, cv::Mat& _leftIm, cv::Mat& rLIm, const
     rLeftIm = rLIm.clone();
 }
 
-KeyFrame::KeyFrame(Eigen::Matrix4d& _refPose, Eigen::Matrix4d& _keyPose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx) : numb(_numb), frameIdx(_frameIdx)
+KeyFrame::KeyFrame(Eigen::Matrix4d& _refPose, Eigen::Matrix4d& realPose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx) : numb(_numb), frameIdx(_frameIdx)
 {
-    pose.keyPose = _keyPose;
     pose.refPose = _refPose;
-    Eigen::Matrix4d truePose = pose.keyPose * pose.refPose;
-    pose.setPose(truePose);
+    pose.setPose(realPose);
     leftIm = _leftIm.clone();
     rLeftIm = rLIm.clone();
 }

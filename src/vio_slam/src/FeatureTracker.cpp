@@ -3150,7 +3150,9 @@ void FeatureTracker::Track4(const int frames)
 
 void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo)
 {
-    KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx, curFrame);
+    KeyFrame* kF = new KeyFrame(referencePose, zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx, curFrame);
+    kF->closestKF = activeKeyFrames.front()->numb;
+    kF->keyF = true;
     const unsigned long minKIdx {0};
     const unsigned long maxKIdx {map->kIdx};
     std::vector<int>kfCon(maxKIdx - minKIdx + 1,0);
@@ -3224,7 +3226,9 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
 
 void FeatureTracker::insertFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo)
 {
-    KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx, curFrame);
+    KeyFrame* kF = new KeyFrame(referencePose, zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx, curFrame);
+    kF->closestKF = activeKeyFrames.front()->numb;
+    kF->keyF = false;
     kF->active = false;
     kF->visualize = false;
     const unsigned long minKIdx {0};
@@ -3331,8 +3335,11 @@ void FeatureTracker::Track5(const int frames)
 
         poseEst = estimPose.inverse();
 
+        if ( map->LBADone )
+            publishPoseLBA();
+        else
+            publishPoseNew();
 
-        publishPoseNew();
 
 
         if ( nStIn.first < minNMono || nStIn.second < minNStereo )
@@ -5303,11 +5310,32 @@ void FeatureTracker::convertToEigen(cv::Mat& Rvec, cv::Mat& tvec, Eigen::Matrix4
 
 void FeatureTracker::publishPoseNew()
 {
+
     prevWPose = zedPtr->cameraPose.pose;
     prevWPoseInv = zedPtr->cameraPose.poseInverse;
-    Eigen::Matrix4d refPose = lastKFPoseInv * poseEst;
+    referencePose = lastKFPoseInv * poseEst;
     Eigen::Matrix4d lKFP = activeKeyFrames.front()->pose.pose;
-    zedPtr->cameraPose.setPose(refPose, lKFP);
+    zedPtr->cameraPose.setPose(referencePose, lKFP);
+    // zedPtr->cameraPose.setPose(poseEst);
+    // zedPtr->cameraPose.setInvPose(poseEst.inverse());
+    predNPose = poseEst * (prevWPoseInv * poseEst);
+    predNPoseInv = predNPose.inverse();
+#if SAVEODOMETRYDATA
+    saveData();
+#endif
+    // Logging zed("Zed Camera Pose", zedPtr->cameraPose.pose,3);
+    // Logging("predNPose", predNPose,3);
+}
+
+void FeatureTracker::publishPoseLBA()
+{
+    // here you have to get the last FRAME from map-> get the ref pose from zedptr but the keypose from the keyNumb the lastframe has.
+    Eigen::Matrix4d prevP = map->keyFrames.at(activeKeyFrames.front()->closestKF)->getPose();
+    Eigen::Matrix4d lKFP = activeKeyFrames.front()->pose.pose;
+    prevWPose = prevP * zedPtr->cameraPose.refPose;
+    prevWPoseInv = prevWPose.inverse();
+    referencePose = lastKFPoseInv * poseEst;
+    zedPtr->cameraPose.setPose(referencePose, lKFP);
     // zedPtr->cameraPose.setPose(poseEst);
     // zedPtr->cameraPose.setInvPose(poseEst.inverse());
     predNPose = poseEst * (prevWPoseInv * poseEst);

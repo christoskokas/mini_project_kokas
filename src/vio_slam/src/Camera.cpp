@@ -19,9 +19,7 @@ void CameraPose::setVel(const double _vx, const double _vy, const double _vz)
 }
 
 CameraPose::CameraPose(Eigen::Matrix4d _pose, std::chrono::time_point<std::chrono::high_resolution_clock> _timestamp) : pose(_pose), timestamp(_timestamp)
-{
-    poseInverse = Eigen::Matrix4d::Identity();
-}
+{}
 
 void CameraPose::setPose(Eigen::Matrix4d poseT)
 {
@@ -33,18 +31,21 @@ void CameraPose::setPose(Eigen::Matrix4d poseT)
     timestamp = std::chrono::high_resolution_clock::now();
 }
 
+Eigen::Matrix4d CameraPose::getPose()
+{
+    return pose;
+}
+
 void CameraPose::setPose(Eigen::Matrix4d& _refPose, Eigen::Matrix4d& _keyPose)
 {
     refPose = _refPose;
-    keyPose = _keyPose;
-    Eigen::Matrix4d truePose = keyPose * refPose;
+    Eigen::Matrix4d truePose = _keyPose * refPose;
     setPose(truePose);
 }
 
 void CameraPose::changePose(Eigen::Matrix4d& _keyPose)
 {
-    keyPose = _keyPose;
-    Eigen::Matrix4d truePose = keyPose * refPose;
+    Eigen::Matrix4d truePose = _keyPose * refPose;
     setPose(truePose);
 }
 

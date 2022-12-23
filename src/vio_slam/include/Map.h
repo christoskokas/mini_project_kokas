@@ -86,6 +86,7 @@ class Map
         
         bool keyFrameAdded {false};
         bool frameAdded {false};
+        bool LBADone {false};
         Map(){};
         void addMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _useable);
         void addMapPoint(MapPoint* mp);
