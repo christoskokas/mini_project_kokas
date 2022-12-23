@@ -39,6 +39,7 @@ class KeyFrame
         bool active {true};
         bool keyF {false};
         bool LBA {false};
+        bool fixed {false};
 
 
 

@@ -369,7 +369,7 @@ void CameraFrame::lineFromKeyFrameToCamera()
             glColor3f(0.0f,1.0f,0.0f);
         else
             glColor3f(1.0f,0.0f,0.0f);
-        for (size_t i{0}, end{(*it).second->connections.size()}; i < end; i++)
+        for (size_t i{0}, end2{(*it).second->connections.size()}; i < end2; i++)
         {
             if ((*it).second->connections[i] <= 50)
                 continue;

@@ -36,6 +36,11 @@ Eigen::Matrix4d CameraPose::getPose()
     return pose;
 }
 
+Eigen::Matrix4d CameraPose::getInvPose()
+{
+    return poseInverse;
+}
+
 void CameraPose::setPose(Eigen::Matrix4d& _refPose, Eigen::Matrix4d& _keyPose)
 {
     refPose = _refPose;

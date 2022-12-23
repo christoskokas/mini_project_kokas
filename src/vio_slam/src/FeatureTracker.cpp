@@ -2316,6 +2316,7 @@ void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
 {
     KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx, curFrame);
     kF->keyF = true;
+    kF->fixed = true;
     // KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, map->kIdx);
     kF->unMatchedF.resize(keysLeft.keyPoints.size(), true);
     kF->localMapPoints.reserve(activeMapPoints.size());
@@ -3270,11 +3271,51 @@ void FeatureTracker::insertFrame(TrackedKeys& keysLeft, std::vector<int>& matche
     map->frameAdded = true;
 }
 
+void FeatureTracker::changePosesLBA()
+{
+    Eigen::Matrix4d keyPose;
+    for (size_t i{map->endLBAIdx}, end{map->kIdx - 1}; i < end; i++)
+    {
+        if ( map->keyFrames.at(i)->keyF )
+            keyPose = map->keyFrames.at(i)->getPose();
+        if ( map->keyFrames.at(i + 1)->keyF )
+            map->keyFrames.at(i + 1)->pose.changePose(keyPose);
+    }
+    keyPose = map->keyFrames.at(map->activeKeyFrames.front()->numb)->getPose();
+    zedPtr->cameraPose.changePose(keyPose);
+    const Eigen::Matrix4d& newCamPose = zedPtr->cameraPose.pose;
+    KeyFrame* prevFrame = map->keyFrames.at(map->kIdx - 2);
+    Eigen::Matrix4d prevP = map->keyFrames.at(prevFrame->closestKF)->getPose();
+    Eigen::Matrix4d lKFP = activeKeyFrames.front()->pose.pose;
+    prevWPose = prevP * prevFrame->pose.refPose;
+    prevWPoseInv = prevWPose.inverse();
+    
+    predNPose = newCamPose * (prevWPoseInv * newCamPose);
+    predNPoseInv = predNPose.inverse();
+}
+
 void FeatureTracker::Track5(const int frames)
 {
     int keyFrameInsert {0};
     for (curFrame = 0; curFrame < frames; curFrame++)
     {
+        // if ( curFrame == 25)
+        // {
+        //     map->LBADone = true;
+        //     map->endLBAIdx = activeKeyFrames[5]->numb;
+        //     activeKeyFrames[5]->pose.pose = Eigen::Matrix4d::Identity();
+        // }
+        if ( map->LBADone )
+        {
+            std::lock_guard<std::mutex> lock(map->mapMutex);
+            changePosesLBA();
+            map->LBADone = false;
+        }
+        
+        // if (curFrame == 25)
+        // {
+        //     Logging("frame","25",3);
+        // }
         setLRImages(curFrame);
 
         TrackedKeys keysLeft;
@@ -3335,10 +3376,8 @@ void FeatureTracker::Track5(const int frames)
 
         poseEst = estimPose.inverse();
 
-        if ( map->LBADone )
-            publishPoseLBA();
-        else
-            publishPoseNew();
+        
+        publishPoseNew();
 
 
 

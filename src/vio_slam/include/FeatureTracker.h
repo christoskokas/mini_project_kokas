@@ -192,6 +192,7 @@ class FeatureTracker
 
         FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map);
 
+        void changePosesLBA();
         void publishPoseLBA();
         void insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo);
         void insertFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo);

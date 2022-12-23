@@ -10,6 +10,7 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include <opencv2/video/tracking.hpp>
 #include <Eigen/Core>
+#include <Eigen/Geometry>
 #include <opencv2/core/eigen.hpp>
 
 
@@ -60,6 +61,29 @@ struct Converter
         cv::eigen2cv(TraEig,Tra);
 
         cv::Rodrigues(Rot, Rot);
+    }
+
+    static Eigen::Matrix<double, 7, 1> Matrix4dToMatrix_7_1(
+    const Eigen::Matrix4d& pose) 
+    {
+        Eigen::Matrix<double, 7, 1> Tcw_7_1;
+        Eigen::Matrix3d R;
+        R = pose.block<3, 3>(0, 0);
+        // Eigen Quaternion coeffs output [x, y, z, w]
+        Tcw_7_1.block<3, 1>(0, 0) = pose.block<3, 1>(0, 3);
+        Tcw_7_1.block<4, 1>(3, 0) = Eigen::Quaterniond(R).coeffs();
+        return Tcw_7_1;
+    }
+
+    static Eigen::Matrix4d Matrix_7_1_ToMatrix4d(
+    const Eigen::Matrix<double, 7, 1>& Tcw_7_1) 
+    {
+        Eigen::Quaterniond q(Tcw_7_1[6], Tcw_7_1[3], Tcw_7_1[4], Tcw_7_1[5]);
+        Eigen::Matrix3d R = q.normalized().toRotationMatrix();
+        Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
+        pose.block<3, 3>(0, 0) = R;
+        pose.block<3, 1>(0, 3) = Tcw_7_1.block<3, 1>(0, 0);
+        return pose;
     }
 
 };

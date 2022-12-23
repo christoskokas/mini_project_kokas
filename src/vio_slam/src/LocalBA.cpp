@@ -338,20 +338,7 @@ void LocalMapper::addToMap(KeyFrame* lastKF, const std::vector<MapPoint*>& point
 
 void LocalMapper::computeAllMapPoints()
 {
-    std::unordered_map<MapPoint*, Eigen::Vector3d> allMapPoints;
     std::vector<vio_slam::KeyFrame *> actKeyF = map->activeKeyFrames;
-    std::vector<KeyFrame*>::const_iterator it, end(actKeyF.end());
-    for ( it = actKeyF.begin(); it != end; it++)
-    {
-        std::vector<MapPoint*>::const_iterator itmp, endmp((*it)->localMapPoints.end());
-        for ( itmp = (*it)->localMapPoints.begin(); itmp != endmp; itmp++)
-        {
-            if ( (*itmp)->GetIsOutlier() )
-                continue;
-
-            allMapPoints.insert(std::pair<MapPoint*, Eigen::Vector3d>((*itmp), (*itmp)->getWordPose3d()));
-        }
-    }
     
     // Logging("size", allMapPoints.size(),3);
     KeyFrame* lastKF = actKeyF.front();
@@ -364,6 +351,7 @@ void LocalMapper::computeAllMapPoints()
     calcp4d(lastKF, p4d);
     const int aKFsize {actKeyF.size()};
     bool first = true;
+    std::vector<KeyFrame*>::const_iterator it, end(actKeyF.end());
     for ( it = actKeyF.begin(); it != end; it++)
     {
         if ( (*it)->numb == lastKFIdx)
@@ -376,7 +364,7 @@ void LocalMapper::computeAllMapPoints()
         // drawPred(lastKF, lastKF->keys.keyPoints, predPoints);
         fm->matchLocalBA(matchedIdxs, lastKF, (*it), aKFsize, 8, first, keysAngles, predPoints);
         // if (first)
-        drawLBA("LBA matches",matchedIdxs, lastKF,(*it));
+        // drawLBA("LBA matches",matchedIdxs, lastKF,(*it));
         first = false;
         
         // drawPred(lastKF, lastKF->keys.keyPoints, lastKF->keys.predKeyPoints);
@@ -472,9 +460,42 @@ void LocalMapper::computeAllMapPoints()
     addToMap(lastKF, pointsToAdd);
     Logging("Success!", newMapPointsCount, 3);
     
+    std::unordered_map<MapPoint*, Eigen::Vector3d> allMapPoints;
+    std::unordered_map<KeyFrame*, Eigen::Matrix<double,7,1>> localKFs;
+    std::unordered_map<KeyFrame*, Eigen::Matrix<double,7,1>> fixedKFs;
+    localKFs.reserve(actKeyF.size());
+    fixedKFs.reserve(actKeyF.size());
+    for ( it = actKeyF.begin(); it != end; it++)
+    {
+        localKFs[*it] = Converter::Matrix4dToMatrix_7_1((*it)->pose.getInvPose());
 
+        std::vector<MapPoint*>::const_iterator itmp, endmp((*it)->localMapPoints.end());
+        for ( itmp = (*it)->localMapPoints.begin(); itmp != endmp; itmp++)
+        {
+            if ( (*itmp)->GetIsOutlier() )
+                continue;
 
+            std::unordered_map<KeyFrame*, size_t>::const_iterator kf, endkf((*itmp)->kFWithFIdx.end());
+            for (kf = (*itmp)->kFWithFIdx.begin(); kf != endkf; kf++)
+            {
+                KeyFrame* kFCand = kf->first;
+                if ( kFCand->active || !kFCand->keyF )
+                    continue;
+                fixedKFs[kFCand] = Converter::Matrix4dToMatrix_7_1(kFCand->pose.getInvPose());
+                
+            }
 
+            allMapPoints.insert(std::pair<MapPoint*, Eigen::Vector3d>((*itmp), (*itmp)->getWordPose3d()));
+        }
+    }
+    Logging("fixed size", fixedKFs.size(),3);
+    Logging("local size", localKFs.size(),3);
+
+    // std::unordered_map<MapPoint*, std::pair<Eigen::Vector3d,std::pair<int,std::pair<Eigen::Matrix<double,7,1>
+    // Mappoints / all KeyframeIdx check if it is keyframe or frame, pose, observation on keyframe // if keyframe is fixed
+
+    // kfidx can be negative if it is fixed
+    // map<mappoint*,vector<pair<vec3d,pair<kfidx,pair<pose, obs>>>>
 
     // for each active keyframe
     // if feature not matched and estim depth > 0
@@ -497,17 +518,17 @@ void LocalMapper::computeAllMapPoints()
 
 void LocalMapper::triangulateNewPoints()
 {
-    const int kFsize {5};
+    const int kFsize {10};
     KeyFrame* lastKF = map->keyFrames.at(map->kIdx - 1);
     const int lastKFIdx = lastKF->numb;
     std::vector<vio_slam::KeyFrame *> actKeyF;
     actKeyF.emplace_back(lastKF);
     actKeyF.reserve(kFsize);
-    const int startact {lastKFIdx%2};
+    const int startact {1};
     const int endact {startact + kFsize};
     for (size_t i {startact}; i < endact; i++)
     {
-        const int idx {lastKFIdx - 2 * i};
+        const int idx {lastKFIdx - i};
         if ( idx < 0 )
             break;
         actKeyF.emplace_back(map->keyFrames.at(idx));
@@ -524,8 +545,8 @@ void LocalMapper::triangulateNewPoints()
     {
         if ( (*it)->numb == lastKFIdx)
             continue;
-        if ( (*it)->numb < lastKFIdx - kFsize)
-            continue;
+        // if ( (*it)->numb < lastKFIdx - kFsize)
+        //     continue;
         std::vector<float> keysAngles;
         std::vector<cv::Point2f> predPoints;
         predictKeysPos(lastKF->keys, lastKF->pose.pose, (*it)->pose.poseInverse, keysAngles, p4d, predPoints);
