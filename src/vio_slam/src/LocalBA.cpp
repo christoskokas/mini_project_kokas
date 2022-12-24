@@ -207,7 +207,7 @@ bool LocalMapper::checkReprojErr(Eigen::Vector4d& calcVec, std::vector<std::pair
     if ( calcVec(2) <= 0 )
         return false;
     // Eigen::Vector4d p4d(calcVec(0), calcVec(1), calcVec(2),1.0);
-
+    int count {0};
     for (size_t i {0}, end{matchesOfPoint.size()}; i < end; i++)
     {
         int kfNumb {matchesOfPoint[i].first};
@@ -232,10 +232,16 @@ bool LocalMapper::checkReprojErr(Eigen::Vector4d& calcVec, std::vector<std::pair
         }
         float err = err1*err1 + err2*err2;
         // Logging("err", err,3);
-        if ( err > reprjThreshold )
-            return false;
+        if ( err < reprjThreshold )
+        {
+            matchesOfPoint[count++] = matchesOfPoint[i];
+        }
     }
-    return true;
+    matchesOfPoint.resize(count);
+    if ( count > 3 )
+        return true;
+    else
+        return false;
 }
 
 void LocalMapper::addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::vector<std::pair<int, int>>& matchesOfPoint, std::vector<MapPoint*>& pointsToAdd, KeyFrame* lastKF, const size_t& keyPos)
@@ -567,6 +573,22 @@ void LocalMapper::triangulateNewPoints()
     Logging("Success!", newMapPointsCount, 3);
 }
 
+bool LocalMapper::checkOutlier(const Eigen::Matrix3d& K, const Eigen::Vector2d& obs, const Eigen::Vector3d posW,const Eigen::Vector3d& tcw, const Eigen::Quaterniond& qcw, const float thresh)
+{
+    Eigen::Vector3d posC = qcw * posW + tcw;
+    if ( posC(2) <= 0 )
+        return true;
+    Eigen::Vector3d pixel_pose = K * (posC);
+    double error_u = obs[0] - pixel_pose[0] / pixel_pose[2];
+    double error_v = obs[1] - pixel_pose[1] / pixel_pose[2];
+    double error = (error_u * error_u + error_v * error_v);
+    if (error > thresh)
+        return true;
+    else 
+        return false;
+    
+}
+
 void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
 {
     std::unordered_map<MapPoint*, Eigen::Vector3d> allMapPoints;
@@ -604,11 +626,13 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     
     // Logging("before", localKFs[actKeyF.front()],3);
     Logging("Local Bundle Adjustment Starting...", "",3);
-
+    std::vector<std::pair<KeyFrame*, MapPoint*>> wrongMatches;
     bool first = true;
     ceres::Problem problem;
     ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
     ceres::LossFunction* loss_function;
+    for (size_t iterations{0}; iterations < 2; iterations++)
+    {
     if (first)
         loss_function = new ceres::HuberLoss(sqrt(7.815f));
     else
@@ -622,6 +646,9 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
         std::unordered_map<KeyFrame*, size_t>::iterator kf, endkf(itmp->first->kFWithFIdx.end());
         for (kf = itmp->first->kFWithFIdx.begin(); kf != endkf; kf++)
         {
+            if ( !wrongMatches.empty() && std::find(wrongMatches.begin(), wrongMatches.end(), std::make_pair(kf->first, itmp->first)) != wrongMatches.end())
+                continue;
+
             ceres::CostFunction* costf;
             if ( (*kf).first->keys.close[kf->second] )
             {
@@ -666,13 +693,44 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     ceres::Solver::Options options;
     options.linear_solver_ordering.reset(ordering);
     options.num_threads = 4;
-    options.max_num_iterations = 20;
+    options.max_num_iterations = 10;
+    if ( first )
+        options.max_num_iterations = 5;
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
     options.use_explicit_schur_complement = true;
 
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
-    Logging("summ", summary.FullReport(),3);
+    if ( !first )
+        Logging("summ", summary.FullReport(),3);
+
+
+    std::unordered_map<MapPoint*, Eigen::Vector3d>::iterator allmp, allmpend(allMapPoints.end());
+    for (allmp = allMapPoints.begin(); allmp != allmpend; allmp ++)
+    {
+        MapPoint* mp = allmp->first;
+        std::unordered_map<KeyFrame*, size_t>::iterator kf, endkf(mp->kFWithFIdx.end());
+        for (kf = mp->kFWithFIdx.begin(); kf != endkf; kf++)
+        {
+            KeyFrame* kfCand = kf->first;
+            if ( localKFs.find(kf->first) == localKFs.end() )
+                continue;
+            const cv::KeyPoint& kp = kfCand->keys.keyPoints[kf->second];
+            Eigen::Vector2d obs( (double)kp.pt.x, (double)kp.pt.y);
+            Eigen::Vector3d tcw = localKFs[kfCand].block<3, 1>(0, 0);
+            Eigen::Vector4d q_xyzw = localKFs[kfCand].block<4, 1>(3, 0);
+            Eigen::Quaterniond qcw(q_xyzw[3], q_xyzw[0], q_xyzw[1], q_xyzw[2]);
+            
+            bool outlier = checkOutlier(K, obs, allmp->second, tcw, qcw, reprjThreshold);
+
+            if ( outlier )
+                wrongMatches.emplace_back(std::pair<KeyFrame*, MapPoint*>(kfCand, mp));
+
+        }
+    }
+    first = false;
+    }
+    
     // Logging("after", localKFs[actKeyF.front()],3);
 }
 

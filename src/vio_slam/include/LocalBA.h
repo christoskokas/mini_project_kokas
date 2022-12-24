@@ -50,6 +50,7 @@ class LocalMapper
         Eigen::Vector3d TriangulateMultiViewPoint(
                 const std::vector<Eigen::Matrix<double, 3, 4>>& proj_matrices,
                 const std::vector<Eigen::Vector2d>& points);
+        bool checkOutlier(const Eigen::Matrix3d& K, const Eigen::Vector2d& obs, const Eigen::Vector3d posW,const Eigen::Vector3d& tcw, const Eigen::Quaterniond& qcw, const float thresh);
         Eigen::Vector3d get3d(const cv::KeyPoint& key, const float depth);
         void triangulateCeres(Eigen::Vector3d& p3d, const std::vector<Eigen::Matrix<double, 3, 4>>& proj_matrices, const std::vector<Eigen::Vector2d>& obs, const Eigen::Matrix4d& lastKFPose);
         void calcProjMatrices(std::unordered_map<int, Eigen::Matrix<double,3,4>>& projMatrices, std::vector<KeyFrame*>& actKeyF);
