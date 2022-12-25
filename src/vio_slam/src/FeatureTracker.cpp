@@ -3212,16 +3212,16 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
     map->addKeyFrame(kF);
     activeKeyFrames.insert(activeKeyFrames.begin(),kF);
     // removeKeyFrame(activeKeyFrames);
-    if ( activeKeyFrames.size() > actvKFMaxSize )
-    {
-        // removeKeyFrame(activeKeyFrames);
-        activeKeyFrames.back()->active = false;
-        activeKeyFrames.resize(actvKFMaxSize);
-    }
-    map->keyFrameAdded = true;
+    // if ( activeKeyFrames.size() > actvKFMaxSize )
+    // {
+    //     // removeKeyFrame(activeKeyFrames);
+    //     activeKeyFrames.back()->active = false;
+    //     activeKeyFrames.resize(actvKFMaxSize);
+    // }
     lastKFPose = zedPtr->cameraPose.pose;
     lastKFPoseInv = lastKFPose.inverse();
     lastKFImage = lIm.im.clone();
+    map->keyFrameAdded = true;
 
 }
 
@@ -3309,6 +3309,15 @@ void FeatureTracker::Track5(const int frames)
         {
             std::lock_guard<std::mutex> lock(map->mapMutex);
             changePosesLBA();
+            if ( map->activeKeyFrames.size() > actvKFMaxSize )
+            {
+                // removeKeyFrame(activeKeyFrames);
+                for ( size_t i{ actvKFMaxSize }, end{map->activeKeyFrames.size()}; i < end; i++)
+                {
+                    map->activeKeyFrames[i]->active = false;
+                }
+                activeKeyFrames.resize(actvKFMaxSize);
+            }
             map->LBADone = false;
         }
         

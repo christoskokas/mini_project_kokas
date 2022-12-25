@@ -606,18 +606,23 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
         {
             if ( (*itmp)->GetIsOutlier() )
                 continue;
-
+            bool hasKF {false};
             std::unordered_map<KeyFrame*, size_t>::const_iterator kf, endkf((*itmp)->kFWithFIdx.end());
             for (kf = (*itmp)->kFWithFIdx.begin(); kf != endkf; kf++)
             {
                 KeyFrame* kFCand = kf->first;
-                if ( kFCand->active || !kFCand->keyF )
+                if ( !kFCand->keyF )
                     continue;
+                if ( kFCand->active )
+                {
+                    hasKF = true;
+                    continue;
+                }
                 fixedKFs[kFCand] = Converter::Matrix4dToMatrix_7_1(kFCand->pose.getInvPose());
-                
+                hasKF = true;
             }
-
-            allMapPoints.insert(std::pair<MapPoint*, Eigen::Vector3d>((*itmp), (*itmp)->getWordPose3d()));
+            if ( hasKF )
+                allMapPoints.insert(std::pair<MapPoint*, Eigen::Vector3d>((*itmp), (*itmp)->getWordPose3d()));
         }
     }
     Logging("fixed size", fixedKFs.size(),3);
@@ -628,27 +633,35 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     Logging("Local Bundle Adjustment Starting...", "",3);
     std::vector<std::pair<KeyFrame*, MapPoint*>> wrongMatches;
     bool first = true;
-    ceres::Problem problem;
-    ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
-    ceres::LossFunction* loss_function;
     for (size_t iterations{0}; iterations < 2; iterations++)
     {
+    ceres::Problem problem;
+    ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
+    ceres::LossFunction* loss_function = nullptr;
     if (first)
         loss_function = new ceres::HuberLoss(sqrt(7.815f));
-    else
-        loss_function = nullptr;
     ceres::ParameterBlockOrdering* ordering = nullptr;
     ordering = new ceres::ParameterBlockOrdering;
     const Eigen::Matrix3d& K = zedPtr->cameraLeft.intrisics;
+    int lel{0};
+    int lelout{0};
     std::unordered_map<MapPoint*, Eigen::Vector3d>::iterator itmp, mpend(allMapPoints.end());
     for ( itmp = allMapPoints.begin(); itmp != mpend; itmp++)
     {
         std::unordered_map<KeyFrame*, size_t>::iterator kf, endkf(itmp->first->kFWithFIdx.end());
         for (kf = itmp->first->kFWithFIdx.begin(); kf != endkf; kf++)
         {
-            if ( !wrongMatches.empty() && std::find(wrongMatches.begin(), wrongMatches.end(), std::make_pair(kf->first, itmp->first)) != wrongMatches.end())
+            if ( !kf->first->keyF )
                 continue;
+            // Logging("1","",3);
+            if ( !wrongMatches.empty() && std::find(wrongMatches.begin(), wrongMatches.end(), std::make_pair(kf->first, itmp->first)) != wrongMatches.end())
+            {
+                // Logging("2","",3);
+                continue;
+            }
+            // Logging("3","",3);
 
+            lel++;
             ceres::CostFunction* costf;
             if ( (*kf).first->keys.close[kf->second] )
             {
@@ -686,14 +699,18 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 problem.SetParameterBlockConstant(fixedKFs[kf->first].block<3,1>(0,0).data());
                 problem.SetParameterBlockConstant(fixedKFs[kf->first].block<4,1>(3,0).data());
             }
+            else
+            {
+                lelout ++;
+            }
 
         }
     }
-
+    
     ceres::Solver::Options options;
     options.linear_solver_ordering.reset(ordering);
     options.num_threads = 4;
-    options.max_num_iterations = 10;
+    options.max_num_iterations = 100;
     if ( first )
         options.max_num_iterations = 5;
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
@@ -701,8 +718,10 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
 
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
-    if ( !first )
+    // if ( !first )
         Logging("summ", summary.FullReport(),3);
+    Logging("lel", lel, 3);
+    Logging("lelout", lelout, 3);
 
 
     std::unordered_map<MapPoint*, Eigen::Vector3d>::iterator allmp, allmpend(allMapPoints.end());
