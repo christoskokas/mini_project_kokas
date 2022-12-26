@@ -2787,9 +2787,10 @@ void FeatureTracker::addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matche
 
 }
 
-void FeatureTracker::removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, const Eigen::Matrix4d& estimPose)
+void FeatureTracker::removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, const Eigen::Matrix4d& estimPose, std::vector<bool>& toRemove)
 {
     const size_t end{activeMapPoints.size()};
+    toRemove.resize(end);
     int j {0};
     for ( size_t i {0}; i < end; i++)
     {
@@ -2804,6 +2805,7 @@ void FeatureTracker::removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, 
         }
         else
         {
+            toRemove[i] = true;
             mp->setActive(false);
             continue;
         }
@@ -2821,10 +2823,9 @@ void FeatureTracker::removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, 
         //     mp->setActive(false);
         //     continue;
         // }
-
-        activeMapPoints[j++] = mp;
+        // activeMapPoints[j++] = mp;
     }
-    activeMapPoints.resize(j);
+    // activeMapPoints.resize(j);
 }
 
 bool FeatureTracker::worldToFrameKF(MapPoint* mp, const Eigen::Matrix4d& pose)
@@ -3097,7 +3098,7 @@ void FeatureTracker::Track4(const int frames)
         addKeyFrame(keysLeft, matchedIdxsN, nStIn.second);
         // }
 
-        removeMapPointOut(activeMapPoints, estimPose);
+        removeMapPointOutBackUp(activeMapPoints, estimPose);
         // Logging("activeSizeAfterRemoval", activeMapPoints.size(),3);
 
 
@@ -3184,7 +3185,7 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
         if ( matchedIdxsN[i] >= 0 )
         {
             MapPoint* mp = activeMapPoints[matchedIdxsN[i]];
-            if ( mp->GetIsOutlier() )
+            if ( mp->GetIsOutlier() || !mp->GetInFrame() )
                 continue;
             mp->kFWithFIdx.insert(std::pair<KeyFrame*, size_t>(kF, i));
             kF->localMapPoints.emplace_back(mp);
@@ -3257,7 +3258,7 @@ void FeatureTracker::insertFrame(TrackedKeys& keysLeft, std::vector<int>& matche
         if ( matchedIdxsN[i] >= 0 )
         {
             MapPoint* mp = activeMapPoints[matchedIdxsN[i]];
-            if ( mp->GetIsOutlier() )
+            if ( mp->GetIsOutlier() || !mp->GetInFrame() )
                 continue;
             mp->kFWithFIdx.insert(std::pair<KeyFrame*, size_t>(kF, i));
             kF->localMapPoints.emplace_back(mp);
@@ -3388,6 +3389,8 @@ void FeatureTracker::Track5(const int frames)
         
         publishPoseNew();
 
+        std::vector<bool> toRemove;
+        removeMapPointOut(activeMapPoints, estimPose, toRemove);
 
 
         if ( nStIn.first < minNMono || nStIn.second < minNStereo )
@@ -3409,11 +3412,12 @@ void FeatureTracker::Track5(const int frames)
                 Logging("New Frame!","",3);
             }
         }
-            
+
+        removeMapPoints(activeMapPoints, toRemove);
 
         // addKeyFrame(keysLeft, matchedIdxsN, nStIn.second);
 
-        removeMapPointOut(activeMapPoints, estimPose);
+
 
         setPreLImage();
         setPreRImage();
@@ -3425,6 +3429,19 @@ void FeatureTracker::Track5(const int frames)
     }
     datafile.close();
     map->endOfFrames = true;
+}
+
+void FeatureTracker::removeMapPoints(std::vector<MapPoint*>& activeMapPoints, std::vector<bool>& toRemove)
+{
+    const size_t end{activeMapPoints.size()};
+    toRemove.resize(end);
+    int j {0};
+    for ( size_t i {0}; i < end; i++)
+    {
+        if ( !toRemove[i] )
+            activeMapPoints[j++] = activeMapPoints[i];
+    }
+    activeMapPoints.resize(j);
 }
 
 void FeatureTracker::beginTrackingGoodFeatures(const int frames)

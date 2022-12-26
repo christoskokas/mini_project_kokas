@@ -204,7 +204,8 @@ class FeatureTracker
         void removeKeyFrame(std::vector<vio_slam::KeyFrame *>& activeKeyFrames);
 
         bool checkDisplacement(const Eigen::Matrix4d& currPose, Eigen::Matrix4d& estimPose);
-        void removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, const Eigen::Matrix4d& estimPose);
+        void removeMapPoints(std::vector<MapPoint*>& activeMapPoints, std::vector<bool>& toRemove);
+        void removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, const Eigen::Matrix4d& estimPose, std::vector<bool>& toRemove);
         void removeMapPointOutBackUp(std::vector<MapPoint*>& activeMapPoints, const Eigen::Matrix4d& estimPose);
         void addKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo);
         bool check2dError(Eigen::Vector4d& p4d, const cv::Point2f& obs, const double thres, const float weight);

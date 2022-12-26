@@ -596,6 +596,7 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     std::unordered_map<KeyFrame*, Eigen::Matrix<double,7,1>> fixedKFs;
     localKFs.reserve(actKeyF.size());
     fixedKFs.reserve(actKeyF.size());
+    int blocks {0};
     std::vector<KeyFrame*>::const_iterator it, end(actKeyF.end());
     for ( it = actKeyF.begin(); it != end; it++)
     {
@@ -620,6 +621,7 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 }
                 fixedKFs[kFCand] = Converter::Matrix4dToMatrix_7_1(kFCand->pose.getInvPose());
                 hasKF = true;
+                blocks++;
             }
             if ( hasKF )
                 allMapPoints.insert(std::pair<MapPoint*, Eigen::Vector3d>((*itmp), (*itmp)->getWordPose3d()));
@@ -632,6 +634,7 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     // Logging("before", localKFs[actKeyF.front()],3);
     Logging("Local Bundle Adjustment Starting...", "",3);
     std::vector<std::pair<KeyFrame*, MapPoint*>> wrongMatches;
+    wrongMatches.reserve(blocks);
     bool first = true;
     for (size_t iterations{0}; iterations < 2; iterations++)
     {
@@ -749,6 +752,10 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     }
     first = false;
     }
+
+
+    std::lock_guard<std::mutex> lock(map->mapMutex);
+    map->LBADone = true;
     
     // Logging("after", localKFs[actKeyF.front()],3);
 }
