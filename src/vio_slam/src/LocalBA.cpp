@@ -128,7 +128,7 @@ void LocalMapper::drawPred(KeyFrame* lastKF, std::vector<cv::KeyPoint>& keys,std
 void LocalMapper::predictKeysPos(TrackedKeys& keys, const Eigen::Matrix4d& curPose, const Eigen::Matrix4d& camPoseInv, std::vector<float>& keysAngles, const std::vector<Eigen::Vector4d>& p4d, std::vector<cv::Point2f>& predPoints)
 {
     predPoints.resize(keys.keyPoints.size());
-    keysAngles.resize(keys.keyPoints.size(), 0.0);
+    keysAngles.resize(keys.keyPoints.size(), -5.0);
     for ( size_t i {0}, end{keys.keyPoints.size()}; i < end; i ++)
     {
         if ( keys.estimatedDepth[i] <= 0 )
@@ -360,8 +360,8 @@ void LocalMapper::computeAllMapPoints(std::vector<vio_slam::KeyFrame *>& actKeyF
     {
         if ( (*it)->numb == lastKFIdx)
             continue;
-        if ( (*it)->numb < lastKFIdx - 5)
-            continue;
+        // if ( (*it)->numb < lastKFIdx - 5)
+        //     continue;
         std::vector<float> keysAngles;
         std::vector<cv::Point2f> predPoints;
         predictKeysPos(lastKF->keys, lastKF->pose.pose, (*it)->pose.poseInverse, keysAngles, p4d, predPoints);
@@ -602,7 +602,7 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     for ( it = actKeyF.begin(); it != end; it++)
     {
         localKFs[*it] = Converter::Matrix4dToMatrix_7_1((*it)->pose.getInvPose());
-
+        Logging("BEFORE BA", (*it)->getPose(),3);
         std::vector<MapPoint*>::const_iterator itmp, endmp((*it)->localMapPoints.end());
         for ( itmp = (*it)->localMapPoints.begin(); itmp != endmp; itmp++)
         {
@@ -679,19 +679,19 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
             // Logging("index", kf->second,3);
             // Logging("kfnumb", kf->first->numb,3);
             ceres::CostFunction* costf;
-            if ( (*kf).first->keys.close[kf->second] )
-            {
-                const cv::KeyPoint& obs = kf->first->keys.keyPoints[kf->second];
-                const float depth = kf->first->keys.estimatedDepth[kf->second];
-                Eigen::Vector3d obs3d = get3d(obs, depth);
-                costf = LocalBundleAdjustmentICP::Create(K, obs3d, 1.0f);
-            }
-            else
-            {
+            // if ( (*kf).first->keys.close[kf->second] )
+            // {
+            //     const cv::KeyPoint& obs = kf->first->keys.keyPoints[kf->second];
+            //     const float depth = kf->first->keys.estimatedDepth[kf->second];
+            //     Eigen::Vector3d obs3d = get3d(obs, depth);
+            //     costf = LocalBundleAdjustmentICP::Create(K, obs3d, 1.0f);
+            // }
+            // else
+            // {
                 const cv::KeyPoint& obs = kf->first->keys.keyPoints[kf->second];
                 Eigen::Vector2d obs2d((double)obs.pt.x, (double)obs.pt.y);
                 costf = LocalBundleAdjustment::Create(K, obs2d, 1.0f);
-            }
+            // }
 
             ordering->AddElementToGroup(itmp->second.data(), 0);
             if (localKFs.find(kf->first) != localKFs.end())
@@ -737,7 +737,7 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
     // if ( !first )
-        Logging("summ", summary.FullReport(),3);
+        Logging("summ", summary.BriefReport(),3);
     Logging("lelout", lelout, 3);
 
 
@@ -749,7 +749,7 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
         for (kf = mp->kFWithFIdx.begin(); kf != endkf; kf++)
         {
             KeyFrame* kfCand = kf->first;
-            if ( localKFs.find(kf->first) == localKFs.end() )
+            if ( localKFs.find(kfCand) == localKFs.end() )
                 continue;
             const cv::KeyPoint& kp = kfCand->keys.keyPoints[kf->second];
             Eigen::Vector2d obs( (double)kp.pt.x, (double)kp.pt.y);
@@ -783,10 +783,12 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     for ( localkf = localKFs.begin(); localkf != endlocalkf; localkf++)
     {
         localkf->first->pose.setInvPose(Converter::Matrix_7_1_ToMatrix4d(localkf->second));
+        Logging("AFTER BA", localkf->first->getPose(),3);
         localkf->first->LBA = true;
     }
 
     map->endLBAIdx = actKeyF.front()->numb;
+    map->keyFrameAdded = false;
     map->LBADone = true;
     
     // Logging("after", localKFs[actKeyF.front()],3);
@@ -805,18 +807,17 @@ void LocalMapper::beginLocalMapping()
     using namespace std::literals::chrono_literals;
     while ( !map->endOfFrames )
     {
-        if ( map->keyFrameAdded )
+        if ( map->keyFrameAdded && !map->LBADone )
         {
             Timer matchingInLBA("matching LBA");
             std::vector<vio_slam::KeyFrame *> actKeyF = map->activeKeyFrames;
             computeAllMapPoints(actKeyF);
             localBA(actKeyF);
-            map->keyFrameAdded = false;
         }
         else if( map->frameAdded )
         {
-            map->frameAdded = false;
             triangulateNewPoints();
+            map->frameAdded = false;
         }
         std::this_thread::sleep_for(20ms);
     }
