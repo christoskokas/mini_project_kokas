@@ -52,10 +52,16 @@ Eigen::Vector3d MapPoint::getWordPose3d()
 
 
 
-void MapPoint::setWordPose4d(Eigen::Vector4d& p)
+void MapPoint::setWordPose4d(const Eigen::Vector4d& p)
 {
     wp = p;
     wp3d = Eigen::Vector3d(p(0), p(1), p(2));
+}
+
+void MapPoint::setWordPose3d(const Eigen::Vector3d& p)
+{
+    wp3d = p;
+    wp = Eigen::Vector4d(p(0), p(1), p(2), 1.0);
 }
 
 void MapPoint::addTCnt()

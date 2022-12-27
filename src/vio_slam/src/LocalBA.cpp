@@ -597,6 +597,7 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     localKFs.reserve(actKeyF.size());
     fixedKFs.reserve(actKeyF.size());
     int blocks {0};
+    int lastActKF {actKeyF.front()->numb};
     std::vector<KeyFrame*>::const_iterator it, end(actKeyF.end());
     for ( it = actKeyF.begin(); it != end; it++)
     {
@@ -612,7 +613,7 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
             for (kf = (*itmp)->kFWithFIdx.begin(); kf != endkf; kf++)
             {
                 KeyFrame* kFCand = kf->first;
-                if ( !kFCand->keyF )
+                if ( !kFCand->keyF || kFCand->numb > lastActKF )
                     continue;
                 if ( kFCand->active )
                 {
@@ -635,6 +636,8 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     Logging("Local Bundle Adjustment Starting...", "",3);
     std::vector<std::pair<KeyFrame*, MapPoint*>> wrongMatches;
     wrongMatches.reserve(blocks);
+    std::vector<bool>mpOutliers;
+    mpOutliers.resize(allMapPoints.size());
     bool first = true;
     for (size_t iterations{0}; iterations < 2; iterations++)
     {
@@ -646,25 +649,35 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     ceres::ParameterBlockOrdering* ordering = nullptr;
     ordering = new ceres::ParameterBlockOrdering;
     const Eigen::Matrix3d& K = zedPtr->cameraLeft.intrisics;
-    int lel{0};
     int lelout{0};
+    int mpCount {0};
     std::unordered_map<MapPoint*, Eigen::Vector3d>::iterator itmp, mpend(allMapPoints.end());
-    for ( itmp = allMapPoints.begin(); itmp != mpend; itmp++)
+    for ( itmp = allMapPoints.begin(); itmp != mpend; itmp++, mpCount ++)
     {
+        bool mpIsOut {true};
         std::unordered_map<KeyFrame*, size_t>::iterator kf, endkf(itmp->first->kFWithFIdx.end());
         for (kf = itmp->first->kFWithFIdx.begin(); kf != endkf; kf++)
         {
             if ( !kf->first->keyF )
-                continue;
+                    continue;
             // Logging("1","",3);
             if ( !wrongMatches.empty() && std::find(wrongMatches.begin(), wrongMatches.end(), std::make_pair(kf->first, itmp->first)) != wrongMatches.end())
             {
                 // Logging("2","",3);
                 continue;
             }
+
+            if ( kf->first->numb > lastActKF )
+            {
+                mpIsOut = false;
+                continue;
+            }
             // Logging("3","",3);
 
-            lel++;
+            mpIsOut = false;
+            // Logging("size", kf->first->keys.keyPoints.size(),3);
+            // Logging("index", kf->second,3);
+            // Logging("kfnumb", kf->first->numb,3);
             ceres::CostFunction* costf;
             if ( (*kf).first->keys.close[kf->second] )
             {
@@ -708,6 +721,8 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
             }
 
         }
+        if ( mpIsOut )
+            mpOutliers[mpCount] = true;
     }
     
     ceres::Solver::Options options;
@@ -723,7 +738,6 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     ceres::Solve(options, &problem, &summary);
     // if ( !first )
         Logging("summ", summary.FullReport(),3);
-    Logging("lel", lel, 3);
     Logging("lelout", lelout, 3);
 
 
@@ -755,6 +769,24 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
 
 
     std::lock_guard<std::mutex> lock(map->mapMutex);
+    int mpCount {0};
+    std::unordered_map<MapPoint*, Eigen::Vector3d>::iterator itmp, mpend(allMapPoints.end());
+    for ( itmp = allMapPoints.begin(); itmp != mpend; itmp++, mpCount ++)
+    {
+        if ( mpOutliers[mpCount] )
+            itmp->first->SetIsOutlier(true);
+        else
+            itmp->first->setWordPose3d(itmp->second);
+    }
+    
+    std::unordered_map<KeyFrame*, Eigen::Matrix<double,7,1>>::iterator localkf, endlocalkf(localKFs.end());
+    for ( localkf = localKFs.begin(); localkf != endlocalkf; localkf++)
+    {
+        localkf->first->pose.setInvPose(Converter::Matrix_7_1_ToMatrix4d(localkf->second));
+        localkf->first->LBA = true;
+    }
+
+    map->endLBAIdx = actKeyF.front()->numb;
     map->LBADone = true;
     
     // Logging("after", localKFs[actKeyF.front()],3);
@@ -776,10 +808,10 @@ void LocalMapper::beginLocalMapping()
         if ( map->keyFrameAdded )
         {
             Timer matchingInLBA("matching LBA");
-            map->keyFrameAdded = false;
             std::vector<vio_slam::KeyFrame *> actKeyF = map->activeKeyFrames;
             computeAllMapPoints(actKeyF);
             localBA(actKeyF);
+            map->keyFrameAdded = false;
         }
         else if( map->frameAdded )
         {

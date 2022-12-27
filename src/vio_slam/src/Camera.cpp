@@ -21,7 +21,7 @@ void CameraPose::setVel(const double _vx, const double _vy, const double _vz)
 CameraPose::CameraPose(Eigen::Matrix4d _pose, std::chrono::time_point<std::chrono::high_resolution_clock> _timestamp) : pose(_pose), timestamp(_timestamp)
 {}
 
-void CameraPose::setPose(Eigen::Matrix4d poseT)
+void CameraPose::setPose(const Eigen::Matrix4d& poseT)
 {
     pose = poseT;
     poseInverse = poseT.inverse();
@@ -54,9 +54,10 @@ void CameraPose::changePose(Eigen::Matrix4d& _keyPose)
     setPose(truePose);
 }
 
-void CameraPose::setInvPose(Eigen::Matrix4d poseT)
+void CameraPose::setInvPose(const Eigen::Matrix4d poseT)
 {
     poseInverse = poseT;
+    pose = poseT.inverse();
 }
 
 Zed_Camera::Zed_Camera(ConfigFile* yamlFile)

@@ -122,7 +122,7 @@ class FeatureTracker
         const int gridVelNumb {10};
         const int maskRadius {15};
         const int keyFrameConThresh {50};
-        const int maxKeyFrameDist {5};
+        const int maxKeyFrameDist {10};
         const int keyFrameInsertThresh {10};
         const int actvKFMaxSize {10};
         const int maxActvKFMaxSize {20};
@@ -194,8 +194,8 @@ class FeatureTracker
 
         void changePosesLBA();
         void publishPoseLBA();
-        void insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo);
-        void insertFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo);
+        void insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const Eigen::Matrix4d& estimPose);
+        void insertFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const Eigen::Matrix4d& estimPose);
         bool worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose);
         bool worldToFrameKF(MapPoint* mp, const Eigen::Matrix4d& pose);
 

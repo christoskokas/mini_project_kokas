@@ -47,7 +47,7 @@ class KeyFrame
         KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, Eigen::MatrixXd _homoPoints3D, const int _numb = 0);
         KeyFrame(Eigen::Matrix4d _pose, const int _numb);
         KeyFrame(Eigen::Matrix4d _pose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx);
-        KeyFrame(Eigen::Matrix4d& _refPose, Eigen::Matrix4d& _keyPose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx);
+        KeyFrame(const Eigen::Matrix4d& _refPose, const Eigen::Matrix4d& realPose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx);
         Eigen::Vector4d getWorldPosition(int idx);
 
         Eigen::Matrix4d getPose();
