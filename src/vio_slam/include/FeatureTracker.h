@@ -192,6 +192,8 @@ class FeatureTracker
 
         FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map);
 
+        void calcPrevFramePos(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& prevKeyPos, const Eigen::Matrix4d& prevPose);
+
         void changePosesLBA();
         void publishPoseLBA();
         void insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const Eigen::Matrix4d& estimPose);
@@ -199,7 +201,7 @@ class FeatureTracker
         bool worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose);
         bool worldToFrameKF(MapPoint* mp, const Eigen::Matrix4d& pose);
 
-        void calcAngles(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, std::vector<float>& mapAngles);
+        void calcAngles(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, std::vector<cv::KeyPoint>& prevKeyPos, std::vector<float>& mapAngles);
 
         void removeKeyFrame(std::vector<vio_slam::KeyFrame *>& activeKeyFrames);
 

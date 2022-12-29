@@ -112,7 +112,7 @@ void Frame::pangoQuit(Zed_Camera* zedPtr, const Map* _map)
         // Swap frames and Process Events
         pangolin::FinishFrame();
 
-        std::this_thread::sleep_for(10ms);
+        // std::this_thread::sleep_for(10ms);
     }
 }
 

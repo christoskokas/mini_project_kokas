@@ -10,6 +10,22 @@ MapPoint::MapPoint(const Eigen::Vector4d& p, const cv::Mat& _desc, const cv::Key
     desc.push_back(_desc);
 }
 
+void MapPoint::updatePos(const Eigen::Matrix4d& camPoseInv, const Zed_Camera* zedPtr)
+{
+    Eigen::Vector4d p = wp;
+    p = camPoseInv * p;
+
+    const double invZ = 1.0/p(2);
+    const double fx {zedPtr->cameraLeft.fx};
+    const double fy {zedPtr->cameraLeft.fy};
+    const double cx {zedPtr->cameraLeft.cx};
+    const double cy {zedPtr->cameraLeft.cy};
+
+    const double u {fx*p(0)*invZ + cx};
+    const double v {fy*p(1)*invZ + cy};
+    obs[0].pt = cv::Point2f((float)u, (float)v);
+}
+
 bool MapPoint::GetInFrame() const
 {
     return inFrame;

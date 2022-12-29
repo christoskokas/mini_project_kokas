@@ -65,6 +65,7 @@ class MapPoint
 
         Eigen::Vector4d getWordPose4d();
         Eigen::Vector3d getWordPose3d();
+        void updatePos(const Eigen::Matrix4d& camPoseInv, const Zed_Camera* zedPtr);
         void setWordPose4d(const Eigen::Vector4d& p);
         void setWordPose3d(const Eigen::Vector3d& p);
         void updateMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& _obs);
