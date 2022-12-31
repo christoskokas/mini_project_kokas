@@ -250,7 +250,15 @@ void LocalMapper::addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::
 {
     const TrackedKeys& temp = lastKF->keys; 
     static unsigned long mpIdx {map->pIdx};
-    MapPoint* mp = new MapPoint(posW, temp.Desc.row(keyPos),temp.keyPoints[keyPos], temp.close[keyPos], lastKF->numb, mpIdx);
+    MapPoint* mp;
+    bool toAdd {true};
+    if ( lastKF->unMatchedF[keyPos] >= 0 )
+    {
+        mp = lastKF->localMapPoints[keyPos];
+        toAdd = false;
+    }
+    else
+        mp = new MapPoint(posW, temp.Desc.row(keyPos),temp.keyPoints[keyPos], temp.close[keyPos], lastKF->numb, mpIdx);
     mpIdx++;
     int count {0};
     // std::lock_guard<std::mutex> lock(map->mapMutex);
@@ -265,7 +273,8 @@ void LocalMapper::addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::
         }
     }
     mp->trackCnt = count;
-    pointsToAdd[keyPos] = mp;
+    if (toAdd)
+        pointsToAdd[keyPos] = mp;
 }
 
 void LocalMapper::calcp4d(KeyFrame* lastKF, std::vector<Eigen::Vector4d>& p4d)
@@ -554,13 +563,21 @@ void LocalMapper::triangulateNewPoints()
         std::vector<Eigen::Vector2d> pointsVec;
         processMatches(matchesOfPoint, allProjMatrices, proj_mat, pointsVec, actKeyF);
         double zp;
-        if (lastKF->keys.estimatedDepth[i] > 0)
-            zp = (double)lastKF->keys.estimatedDepth[i];
+        Eigen::Vector4d vecCalc;
+        if ( lastKF->unMatchedF[i] >= 0 )
+        {
+            vecCalc = lastKF->localMapPoints[i]->getWordPose4d();
+        }
         else
-            zp = 200.0;
-        const double xp = (double)(((double)lastKF->keys.keyPoints[i].pt.x-cx)*zp/fx);
-        const double yp = (double)(((double)lastKF->keys.keyPoints[i].pt.y-cy)*zp/fy);
-        Eigen::Vector4d vecCalc(xp, yp, zp, 1);
+        {
+            if (lastKF->keys.estimatedDepth[i] > 0)
+                zp = (double)lastKF->keys.estimatedDepth[i];
+            else
+                zp = 200.0;
+            const double xp = (double)(((double)lastKF->keys.keyPoints[i].pt.x-cx)*zp/fx);
+            const double yp = (double)(((double)lastKF->keys.keyPoints[i].pt.y-cy)*zp/fy);
+            vecCalc = Eigen::Vector4d(xp, yp, zp, 1);
+        }
         
         Eigen::Vector3d vec3d(vecCalc(0), vecCalc(1), vecCalc(2));
         triangulateCeres(vec3d, proj_mat, pointsVec, lastKF->pose.pose);
@@ -739,7 +756,7 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     ceres::Solver::Options options;
     options.linear_solver_ordering.reset(ordering);
     options.num_threads = 4;
-    options.max_num_iterations = 100;
+    options.max_num_iterations = 10;
     if ( first )
         options.max_num_iterations = 5;
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;

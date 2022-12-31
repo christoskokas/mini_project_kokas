@@ -34,7 +34,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
     std::vector<int> rIdxs(newE, 256);
     for ( size_t i {0}; i < prevE; i++)
     {
-        if ( !lastKF->unMatchedF[i] )
+        if ( lastKF->unMatchedF[i] == otherKFnumb)
             continue;
         if ( predPoints[i].x <= 0 )
             continue;
@@ -60,7 +60,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             continue;
         for (auto& idx : idxs)
         {
-            if ( !otherKF->unMatchedF[idx] )
+            if ( otherKF->unMatchedF[idx] == lastKFnumb)
                 continue;
             cv::KeyPoint& kPO = otherKF->keys.keyPoints[idx];
             if ( keysAngles[i] != -5.0 )

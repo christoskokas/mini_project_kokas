@@ -3188,7 +3188,7 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
         }
     }
     
-    kF->unMatchedF.resize(keysLeft.keyPoints.size(), true);
+    kF->unMatchedF.resize(keysLeft.keyPoints.size(), -1);
     kF->localMapPoints.resize(keysLeft.keyPoints.size(), nullptr);
     activeMapPoints.reserve(activeMapPoints.size() + keysLeft.keyPoints.size());
     mPPerKeyFrame.reserve(1000);
@@ -3205,7 +3205,7 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
             mp->desc.push_back(keysLeft.Desc.row(i));
             mp->seenCnt ++;
             kF->localMapPoints[i] = mp;
-            kF->unMatchedF[i] = false;
+            kF->unMatchedF[i] = mp->kdx;
             continue;
         }
         // if ( nStereo > minNStereo)
@@ -3222,6 +3222,7 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
             // kF->unMatchedF[i] = false;
             // kF->localMapPoints.emplace_back(mp);
             kF->localMapPoints[i] = mp;
+            kF->unMatchedF[i] = mp->kdx;
             activeMapPoints.emplace_back(mp);
             map->addMapPoint(mp);
         }
@@ -3274,7 +3275,7 @@ void FeatureTracker::insertFrame(TrackedKeys& keysLeft, std::vector<int>& matche
         }
     }
     
-    kF->unMatchedF.resize(keysLeft.keyPoints.size(), true);
+    kF->unMatchedF.resize(keysLeft.keyPoints.size(), -1);
     kF->localMapPoints.resize(keysLeft.keyPoints.size(), nullptr);
     // kF->localMapPoints.resize(activeMapPoints.size(), nullptr);
     // kF->localMapPoints.reserve(activeMapPoints.size());
@@ -3291,7 +3292,7 @@ void FeatureTracker::insertFrame(TrackedKeys& keysLeft, std::vector<int>& matche
             mp->seenCnt ++;
             kF->localMapPoints[i] = mp;
             // kF->localMapPoints.emplace_back(mp);
-            kF->unMatchedF[i] = false;
+            kF->unMatchedF[i] = mp->kdx;
             continue;
         }
     }
