@@ -36,6 +36,7 @@ class MapPoint
         Eigen::Vector4d wp;
         Eigen::Vector3d wp3d;
         int trackCnt {0};
+        int seenCnt {1};
         // std::vector<Observation> obs;
         std::vector<cv::KeyPoint> obs;
         cv::Mat desc;
@@ -52,6 +53,7 @@ class MapPoint
         const unsigned long idx;
         const unsigned long kdx;
 
+        void eraseKFConnection(KeyFrame* kF);
         void setActive(bool act);
         void SetInFrame(bool infr);
         void SetIsOutlier(bool isOut);

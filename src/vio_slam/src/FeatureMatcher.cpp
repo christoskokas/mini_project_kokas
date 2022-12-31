@@ -40,7 +40,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             continue;
         if ( first )
         {
-            if ( lastKF->keys.estimatedDepth[i] > 0 && lastKFnumb != 0)
+            if ( lastKF->keys.close[i] && lastKFnumb != 0)
                 matchedIdxs[i].emplace_back(std::pair<int,int>(-lastKFnumb, lastKF->keys.rightIdxs[i]));
             matchedIdxs[i].emplace_back(std::pair<int,int>(lastKFnumb, i));
         }
@@ -68,11 +68,9 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
                 float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
                 if ( ang < 0 )
                     ang += 3.14159265359;
-                if (abs(ang - keysAngles[i]) > 0.05)
+                if (abs(ang - keysAngles[i]) > 0.2)
                     continue;
             }
-            else
-                continue;
             int dist = DescriptorDistance(lastKF->keys.Desc.row(i), otherKF->keys.Desc.row(idx));
             if ( dist < bestDist)
             {
@@ -100,7 +98,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
         if ( matchedIdxsN[i] >= 0)
         {
             matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(otherKFnumb, i));
-            if ( otherKF->keys.estimatedDepth[i] > 0 && otherKFnumb != 0)
+            if ( otherKF->keys.close[i] && otherKFnumb != 0)
                 matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(-otherKFnumb, otherKF->keys.rightIdxs[i]));
         }
     }
@@ -1832,26 +1830,27 @@ int FeatureMatcher::matchByProjectionPredWA(std::vector<MapPoint*>& activeMapPoi
                 float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
                 if ( ang < 0 )
                     ang += 3.14159265359;
-                if (abs(ang - mapAngles[i]) > 0.1)
+                if (abs(ang - mapAngles[i]) > 0.3)
                     continue;
                 // Logging("ang", ang,3);
                 // Logging("mapAngles[i]", mapAngles[i],3);
             }
-            else
-                continue;
-            int dist = DescriptorDistance(activeMapPoints[i]->desc.row(0), keysLeft.Desc.row(idx));
-            if ( dist < bestDist)
+            for (size_t descrow {0}; descrow < activeMapPoints[i]->desc.rows; descrow++)
             {
-                // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
-                secDist = bestDist;
-                bestDist = dist;
-                bestIdx = idx;
-                continue;
+                int dist = DescriptorDistance(activeMapPoints[i]->desc.row(descrow), keysLeft.Desc.row(idx));
+                if ( dist < bestDist)
+                {
+                    // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
+                    secDist = bestDist;
+                    bestDist = dist;
+                    bestIdx = idx;
+                    continue;
+                }
+                if ( dist < secDist)
+                    secDist = dist;
             }
-            if ( dist < secDist)
-                secDist = dist;
         }
-        if ( bestDist < matchDist && bestDist < 0.8* secDist)
+        if ( bestDist < matchDist && bestDist < 0.9* secDist)
         {
             if (rIdxs[bestIdx] > bestDist)
             {
@@ -1869,6 +1868,8 @@ int FeatureMatcher::matchByProjectionPredWA(std::vector<MapPoint*>& activeMapPoi
         {
             matchedIdxsB[matchedIdxsN[i]] = i;
             nMatches ++;
+            // Logging("projected",projectedPoints[matchedIdxsN[i]].pt,3);
+            // Logging("found",keysLeft.keyPoints[i].pt,3);
         }
     }
     return nMatches;
@@ -1877,7 +1878,7 @@ int FeatureMatcher::matchByProjectionPredWA(std::vector<MapPoint*>& activeMapPoi
 
 void FeatureMatcher::destributeLeftKeys(TrackedKeys& keysLeft, std::vector<std::vector<std::vector<int>>>& leftIdxs, const int lnGrids, const int rnGrids)
 {
-    const int off {2};
+    const int off {1};
     const float lMult = (float)lnGrids/(float)zedptr->mWidth;
     const float rMult = (float)rnGrids/(float)zedptr->mHeight;
     std::vector<cv::KeyPoint>::const_iterator it, end(keysLeft.keyPoints.end());

@@ -123,12 +123,12 @@ class FeatureTracker
         const int maskRadius {15};
         const int keyFrameConThresh {50};
         const int maxKeyFrameDist {10};
-        const int keyFrameInsertThresh {10};
+        const int keyFrameInsertThresh {3};
         const int actvKFMaxSize {10};
         const int maxActvKFMaxSize {20};
-        const int minNStereo {150};
+        const int minNStereo {100};
         const int minNMono {400};
-        const int imageDifThres {50000};
+        const int imageDifThres {20000};
 
         const double fx,fy,cx,cy;
 
@@ -193,6 +193,8 @@ class FeatureTracker
         FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map);
 
         void calcPrevFramePos(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& prevKeyPos, const Eigen::Matrix4d& prevPose);
+
+        void checkWithFund(const std::vector<cv::KeyPoint>& activeKeys, const std::vector<cv::KeyPoint>& newKeys, std::vector<int>& matchedIdxsB, std::vector<int>& matchedIdxsN);
 
         void changePosesLBA();
         void publishPoseLBA();

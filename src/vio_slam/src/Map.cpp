@@ -26,6 +26,11 @@ void MapPoint::updatePos(const Eigen::Matrix4d& camPoseInv, const Zed_Camera* ze
     obs[0].pt = cv::Point2f((float)u, (float)v);
 }
 
+void MapPoint::eraseKFConnection(KeyFrame* kF)
+{
+    kFWithFIdx.erase(kF);
+}
+
 bool MapPoint::GetInFrame() const
 {
     return inFrame;

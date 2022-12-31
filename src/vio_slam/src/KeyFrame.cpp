@@ -3,6 +3,11 @@
 namespace vio_slam
 {
 
+void KeyFrame::eraseMPConnection(const int mpPos)
+{
+    localMapPoints[mpPos] = nullptr;
+}
+
 KeyFrame::KeyFrame(Eigen::Matrix4d _pose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx) : numb(_numb), frameIdx(_frameIdx)
 {
     pose.setPose(_pose);
