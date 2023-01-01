@@ -246,6 +246,55 @@ bool LocalMapper::checkReprojErr(Eigen::Vector4d& calcVec, std::vector<std::pair
         return false;
 }
 
+bool LocalMapper::checkReprojErrNew(const int lastKFNumb, Eigen::Vector4d& calcVec, std::vector<std::pair<int, int>>& matchesOfPoint, const std::unordered_map<int, Eigen::Matrix<double,3,4>>& allProjMatrices, std::vector<Eigen::Matrix<double, 3, 4>>& proj_mat, std::vector<Eigen::Vector2d>& pointsVec)
+{
+    if ( calcVec(2) <= 0 )
+        return false;
+    // Eigen::Vector4d p4d(calcVec(0), calcVec(1), calcVec(2),1.0);
+    int count {0};
+    bool correctKF {false};
+    for (size_t i {0}, end{matchesOfPoint.size()}; i < end; i++)
+    {
+        int kfNumb {matchesOfPoint[i].first};
+        
+        const KeyFrame* kF = map->keyFrames.at(abs(kfNumb));
+        Eigen::Vector3d p3dnew = allProjMatrices.at(kfNumb) * calcVec;
+        p3dnew = p3dnew/p3dnew(2);
+        // p4dnew = kF->pose.poseInverse * calcVec;
+        // projectToPlane(p4dnew,p2f);
+        cv::Point2f p2f((float)p3dnew(0), (float)p3dnew(1));
+        float err1,err2;
+        if (kfNumb >= 0)
+        {
+            err1 = kF->keys.keyPoints[matchesOfPoint[i].second].pt.x - p2f.x;
+            err2 = kF->keys.keyPoints[matchesOfPoint[i].second].pt.y - p2f.y;
+
+        }
+        else
+        {
+            err1 = kF->keys.rightKeyPoints[matchesOfPoint[i].second].pt.x - p2f.x;
+            err2 = kF->keys.rightKeyPoints[matchesOfPoint[i].second].pt.y - p2f.y;
+
+        }
+        float err = err1*err1 + err2*err2;
+        // Logging("err", err,3);
+        if ( err < reprjThreshold )
+        {
+            matchesOfPoint[count] = matchesOfPoint[i];
+            proj_mat[count] = proj_mat[i];
+            pointsVec[count] = pointsVec[i];
+            count ++;
+            if ( kfNumb == lastKFNumb )
+                correctKF = true;
+        }
+    }
+    matchesOfPoint.resize(count);
+    if ( count > 3  && correctKF )
+        return true;
+    else
+        return false;
+}
+
 void LocalMapper::addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::vector<std::pair<int, int>>& matchesOfPoint, std::vector<MapPoint*>& pointsToAdd, KeyFrame* lastKF, const size_t& keyPos)
 {
     const TrackedKeys& temp = lastKF->keys; 
@@ -269,12 +318,15 @@ void LocalMapper::addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::
             KeyFrame* kf = map->keyFrames.at(matchesOfPoint[i].first);
             mp->kFWithFIdx.insert(std::pair<KeyFrame*, size_t>(kf, matchesOfPoint[i].second));
             count ++;
-            kf->unMatchedF[matchesOfPoint[i].second] = false;
+            kf->localMapPoints[matchesOfPoint[i].second] = mp;
+            kf->unMatchedF[matchesOfPoint[i].second] = mp->kdx;
         }
     }
-    mp->trackCnt = count;
     if (toAdd)
+    {
+        mp->trackCnt = count;
         pointsToAdd[keyPos] = mp;
+    }
 }
 
 void LocalMapper::calcp4d(KeyFrame* lastKF, std::vector<Eigen::Vector4d>& p4d)
@@ -335,6 +387,46 @@ void LocalMapper::triangulateCeres(Eigen::Vector3d& p3d, const std::vector<Eigen
 
 }
 
+void LocalMapper::triangulateCeresNew(Eigen::Vector3d& p3d, const std::vector<Eigen::Matrix<double, 3, 4>>& proj_matrices, const std::vector<Eigen::Vector2d>& obs, const Eigen::Matrix4d& lastKFPose, bool first)
+{
+    // Eigen::Matrix<double,3,3>& K = zedPtr->cameraLeft.intrisics;
+    const Eigen::Matrix4d& camPose = lastKFPose;
+    ceres::Problem problem;
+    // ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
+    // Logging("before", p3d,3);
+    ceres::LossFunction* loss_function = nullptr;
+    if ( first )
+        loss_function = new ceres::HuberLoss(sqrt(7.815f));
+    // Logging("p3d", p3d,3);
+    for (size_t i {0}, end{obs.size()}; i < end; i ++)
+    {
+        ceres::CostFunction* costf = MultiViewTriang::Create(camPose, proj_matrices[i], obs[i]);
+        problem.AddResidualBlock(costf, loss_function /* squared loss */,p3d.data());
+
+        // problem.SetManifold(frame_qcw.coeffs().data(),quaternion_local_parameterization);
+    }
+
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    // options.use_explicit_schur_complement = true;
+    options.max_num_iterations = 20;
+    // options.minimizer_progress_to_stdout = false;
+    problem.SetParameterLowerBound(p3d.data(), 2, 0.1);
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+
+    Eigen::Vector4d p4d(p3d(0), p3d(1), p3d(2), 1.0);
+    p4d = lastKFPose * p4d;
+    // Logging("p4d", p4d, 3);
+    // Logging("after", p3d,3);
+    p3d(0) = p4d(0);
+    p3d(1) = p4d(1);
+    p3d(2) = p4d(2);
+    // Logging("sum",summary.BriefReport(),3);
+    // Logging("after", p3d,3);
+
+}
+
 void LocalMapper::addToMap(KeyFrame* lastKF, const std::vector<MapPoint*>& pointsToAdd)
 {
     std::lock_guard<std::mutex> lock(map->mapMutex);
@@ -351,7 +443,7 @@ void LocalMapper::addToMap(KeyFrame* lastKF, const std::vector<MapPoint*>& point
         map->activeMapPoints.emplace_back(pointsToAdd[i]);
         map->addMapPoint(pointsToAdd[i]);
     }
-        lastKF->localMapPoints = pointsToAdd;
+    lastKF->localMapPoints = pointsToAdd;
 }
 
 void LocalMapper::computeAllMapPoints(std::vector<vio_slam::KeyFrame *>& actKeyF)
@@ -546,7 +638,7 @@ void LocalMapper::triangulateNewPoints()
     }
 
     std::unordered_map<int, Eigen::Matrix<double,3,4>> allProjMatrices;
-    allProjMatrices.reserve(aKFsize);
+    allProjMatrices.reserve(2 * aKFsize);
 
     calcProjMatrices(allProjMatrices, actKeyF);
     int newMapPointsCount {0};
@@ -580,12 +672,25 @@ void LocalMapper::triangulateNewPoints()
         }
         
         Eigen::Vector3d vec3d(vecCalc(0), vecCalc(1), vecCalc(2));
-        triangulateCeres(vec3d, proj_mat, pointsVec, lastKF->pose.pose);
+        triangulateCeresNew(vec3d, proj_mat, pointsVec, lastKF->pose.pose, true);
         vecCalc(0) = vec3d(0);
         vecCalc(1) = vec3d(1);
         vecCalc(2) = vec3d(2);
 
-        if ( !checkReprojErr(vecCalc, matchesOfPoint, allProjMatrices) )
+        if ( !checkReprojErrNew(lastKF->numb, vecCalc, matchesOfPoint, allProjMatrices, proj_mat, pointsVec) )
+            continue;
+
+        vecCalc = lastKF->pose.getInvPose() * vecCalc;
+        vec3d(0) = vecCalc(0);
+        vec3d(1) = vecCalc(1);
+        vec3d(2) = vecCalc(2);
+
+        triangulateCeresNew(vec3d, proj_mat, pointsVec, lastKF->pose.pose, false);
+        vecCalc(0) = vec3d(0);
+        vecCalc(1) = vec3d(1);
+        vecCalc(2) = vec3d(2);
+
+        if ( !checkReprojErrNew(lastKF->numb, vecCalc, matchesOfPoint, allProjMatrices, proj_mat, pointsVec) )
             continue;
 
         addMultiViewMapPoints(vecCalc, matchesOfPoint, pointsToAdd, lastKF, i);
@@ -756,7 +861,7 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     ceres::Solver::Options options;
     options.linear_solver_ordering.reset(ordering);
     options.num_threads = 4;
-    options.max_num_iterations = 10;
+    options.max_num_iterations = 100;
     if ( first )
         options.max_num_iterations = 5;
     options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
@@ -817,7 +922,9 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
             itmp->first->SetIsOutlier(true);
         else
         {
+            // Logging ("before pose", itmp->first->getWordPose3d(), 3);
             itmp->first->setWordPose3d(itmp->second);
+            // Logging ("after pose", itmp->first->getWordPose3d(), 3);
             // itmp->first->updatePos(map->keyFrames.at(itmp->first->kdx)->pose.getInvPose(), zedPtr);
         }
     }
@@ -860,6 +967,7 @@ void LocalMapper::beginLocalMapping()
         }
         else if( map->frameAdded )
         {
+            Logging("xdddd","",3);
             triangulateNewPoints();
             map->frameAdded = false;
         }

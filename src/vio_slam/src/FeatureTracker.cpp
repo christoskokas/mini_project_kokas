@@ -2800,10 +2800,11 @@ void FeatureTracker::removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, 
         MapPoint* mp = activeMapPoints[i];
         if (worldToFrame(mp, estimPose) && !mp->GetIsOutlier() )
         {
+            mp->seenCnt++;
+            mp->setActive(true);
             // if ( !mp->GetIsOutlier() )
             // {
-                mp->setActive(true);
-                mp->addTCnt();
+                // mp->addTCnt();
             // }
         }
         else
@@ -3203,7 +3204,7 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
                 continue;
             mp->kFWithFIdx.insert(std::pair<KeyFrame*, size_t>(kF, i));
             mp->desc.push_back(keysLeft.Desc.row(i));
-            mp->seenCnt ++;
+            mp->addTCnt();
             kF->localMapPoints[i] = mp;
             kF->unMatchedF[i] = mp->kdx;
             continue;
@@ -3289,7 +3290,7 @@ void FeatureTracker::insertFrame(TrackedKeys& keysLeft, std::vector<int>& matche
                 continue;
             mp->kFWithFIdx.insert(std::pair<KeyFrame*, size_t>(kF, i));
             mp->desc.push_back(keysLeft.Desc.row(i));
-            mp->seenCnt ++;
+            mp->addTCnt();
             kF->localMapPoints[i] = mp;
             // kF->localMapPoints.emplace_back(mp);
             kF->unMatchedF[i] = mp->kdx;
