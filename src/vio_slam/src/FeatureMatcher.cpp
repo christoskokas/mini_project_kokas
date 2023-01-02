@@ -38,12 +38,12 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             continue;
         if ( predPoints[i].x <= 0 )
             continue;
-        if ( first )
-        {
-            if ( lastKF->keys.close[i] && lastKFnumb != 0)
-                matchedIdxs[i].emplace_back(std::pair<int,int>(-lastKFnumb, lastKF->keys.rightIdxs[i]));
-            matchedIdxs[i].emplace_back(std::pair<int,int>(lastKFnumb, i));
-        }
+        // if ( first )
+        // {
+        //     if ( lastKF->keys.close[i] && lastKFnumb != 0)
+        //         matchedIdxs[i].emplace_back(std::pair<int,int>(-lastKFnumb, lastKF->keys.rightIdxs[i]));
+        //     matchedIdxs[i].emplace_back(std::pair<int,int>(lastKFnumb, i));
+        // }
         int gCol {cvRound(predPoints[i].x*lMult)};
         int gRow {cvRound(predPoints[i].y*rMult)};
         cv::KeyPoint& kPL = lastKF->keys.keyPoints[i];
@@ -60,7 +60,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             continue;
         for (auto& idx : idxs)
         {
-            if ( otherKF->unMatchedF[idx] == lastKFnumb)
+            if ( otherKF->unMatchedF[idx] < 0)
                 continue;
             cv::KeyPoint& kPO = otherKF->keys.keyPoints[idx];
             if ( keysAngles[i] != -5.0 )

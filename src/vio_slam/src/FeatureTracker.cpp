@@ -3372,7 +3372,7 @@ void FeatureTracker::Track5(const int frames)
     int keyFrameInsert {0};
     for (curFrame = 0; curFrame < frames; curFrame++)
     {
-        Timer all("all");
+        // Timer all("all");
         // if ( curFrame == 25)
         // {
         //     map->LBADone = true;
@@ -3381,7 +3381,6 @@ void FeatureTracker::Track5(const int frames)
         // }
         if ( map->LBADone )
         {
-            std::lock_guard<std::mutex> lock(map->mapMutex);
             // changePosesLBA();
             if ( map->activeKeyFrames.size() > actvKFMaxSize )
             {
@@ -3392,6 +3391,7 @@ void FeatureTracker::Track5(const int frames)
                 }
                 activeKeyFrames.resize(actvKFMaxSize);
             }
+            std::lock_guard<std::mutex> lock(map->mapMutex);
             map->LBADone = false;
         }
         // if ( curFrame > 2)
@@ -3419,7 +3419,7 @@ void FeatureTracker::Track5(const int frames)
             continue;
         }
         extractORBStereoMatch(lIm.im, rIm.im, keysLeft);
-        Timer lel3("after extract");
+        // Timer lel3("after extract");
 
         // Eigen::Matrix4d currPose = predNPoseInv;
         // Eigen::Matrix4d prevPose = zedPtr->cameraPose.poseInverse;
@@ -3460,7 +3460,7 @@ void FeatureTracker::Track5(const int frames)
 
         // check for big displacement, if there is, use constant velocity model
 
-        Timer lel("after first refine");
+        // Timer lel("after first refine");
 
         std::vector<cv::KeyPoint> projectedPoints, prevKeyPos;
         worldToImg(activeMapPoints, projectedPoints, estimPose);
@@ -3510,7 +3510,7 @@ void FeatureTracker::Track5(const int frames)
         // Logging("nIn", nStIn.first,3);
         // Logging("nStereo", nStIn.second,3);
 
-        Timer lel2("after second refine");
+        // Timer lel2("after second refine");
 
         poseEst = estimPose.inverse();
 
@@ -3537,7 +3537,7 @@ void FeatureTracker::Track5(const int frames)
             {
                 insertFrame(keysLeft, matchedIdxsN, nStIn.second, poseEst);
                 // insertKeyFrame(keysLeft, matchedIdxsN, nStIn.second, poseEst);
-                Logging("New Frame!","",3);
+                // Logging("New Frame!","",3);
             }
         }
 
