@@ -3370,6 +3370,9 @@ void FeatureTracker::checkWithFund(const std::vector<cv::KeyPoint>& activeKeys, 
 void FeatureTracker::Track5(const int frames)
 {
     int keyFrameInsert {0};
+    const int imageH {zedPtr->mHeight};
+    const int imageW {zedPtr->mWidth};
+    const int numbOfPixels {zedPtr->mHeight * zedPtr->mWidth};
     for (curFrame = 0; curFrame < frames; curFrame++)
     {
         // Timer all("all");
@@ -3436,11 +3439,11 @@ void FeatureTracker::Track5(const int frames)
             int nNewMatches = fm.matchByProjectionConVel(activeMapPoints, ConVelPoints, keysLeft, matchedIdxsN, matchedIdxsB, 2);
         }
 
-        {
-        std::vector<cv::KeyPoint>activeKeys;
-        worldToImg(activeMapPoints, activeKeys, zedPtr->cameraPose.poseInverse);
-        checkWithFund(activeKeys, keysLeft.keyPoints, matchedIdxsB, matchedIdxsN);
-        }
+        // {
+        // std::vector<cv::KeyPoint>activeKeys;
+        // worldToImg(activeMapPoints, activeKeys, zedPtr->cameraPose.poseInverse);
+        // checkWithFund(activeKeys, keysLeft.keyPoints, matchedIdxsB, matchedIdxsN);
+        // }
 
         Eigen::Matrix4d estimPose = predNPoseInv;
         refinePose(activeMapPoints, keysLeft, matchedIdxsB, estimPose);
@@ -3526,8 +3529,10 @@ void FeatureTracker::Track5(const int frames)
         }
         else
         {
-            const double dif = cv::norm(lastKFImage,lIm.im);
-            if ( dif > imageDifThres && keyFrameInsert >= maxKeyFrameDist )
+            const double dif = cv::norm(lastKFImage,lIm.im, cv::NORM_L2);
+            const double similarity = 1 - dif/(numbOfPixels);
+            Logging("similarity", similarity,3);
+            if ( similarity < imageDifThres && keyFrameInsert >= maxKeyFrameDist )
             {
                 keyFrameInsert = 0;
                 insertKeyFrame(keysLeft, matchedIdxsN, nStIn.second, poseEst);

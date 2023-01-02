@@ -10,6 +10,22 @@ MapPoint::MapPoint(const Eigen::Vector4d& p, const cv::Mat& _desc, const cv::Key
     desc.push_back(_desc);
 }
 
+MapPoint::MapPoint(const unsigned long _idx, const unsigned long _kdx) : idx(_idx), kdx(_kdx)
+{}
+
+void MapPoint::copyMp(const MapPoint* mp)
+{
+    // Eigen::Vector3d p3d = mp->getWordPose3d();
+    setWordPose3d(mp->getWordPose3d());
+    desc = mp->desc.clone();
+    kFWithFIdx = mp->kFWithFIdx;
+    inFrame = mp->inFrame;
+    close = mp->close;
+    added = mp->added;
+    trackCnt = mp->trackCnt;
+    obs = mp->obs;
+}
+
 void MapPoint::updatePos(const Eigen::Matrix4d& camPoseInv, const Zed_Camera* zedPtr)
 {
     Eigen::Vector4d p = wp;
@@ -61,12 +77,12 @@ void MapPoint::setActive(bool act)
     isActive = act;
 }
 
-Eigen::Vector4d MapPoint::getWordPose4d()
+Eigen::Vector4d MapPoint::getWordPose4d() const
 {
     return wp;
 }
 
-Eigen::Vector3d MapPoint::getWordPose3d()
+Eigen::Vector3d MapPoint::getWordPose3d() const
 {
     return wp3d;
 }

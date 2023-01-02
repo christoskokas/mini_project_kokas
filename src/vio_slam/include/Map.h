@@ -61,12 +61,21 @@ class MapPoint
         bool GetIsOutlier() const;
         bool GetInFrame() const;
         MapPoint(const Eigen::Vector4d& p, const cv::Mat& _desc, const cv::KeyPoint& obsK, const bool _close, const unsigned long _kdx, const unsigned long _idx);
+        MapPoint(const unsigned long _idx, const unsigned long _kdx);
 
+        void copyMp(const MapPoint* mp);
+
+
+        // MapPoint operator = (MapPoint const& obj)
+        // {
+        //     MapPoint res(obj.idx, obj.kdx);
+
+        // }
 
         void addTCnt();
 
-        Eigen::Vector4d getWordPose4d();
-        Eigen::Vector3d getWordPose3d();
+        Eigen::Vector4d getWordPose4d() const;
+        Eigen::Vector3d getWordPose3d() const;
         void updatePos(const Eigen::Matrix4d& camPoseInv, const Zed_Camera* zedPtr);
         void setWordPose4d(const Eigen::Vector4d& p);
         void setWordPose3d(const Eigen::Vector3d& p);

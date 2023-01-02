@@ -183,6 +183,8 @@ void CameraFrame::drawPoints()
     std::unordered_map<unsigned long, MapPoint*>::const_iterator itw, endw(mapMapP.end());
     for ( itw = mapMapP.begin(); itw != endw; itw ++)
     {
+        if ( !(*itw).second )
+            continue;
         if ( (*itw).second->GetIsOutlier() )
             continue;
 

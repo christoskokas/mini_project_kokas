@@ -128,7 +128,7 @@ class FeatureTracker
         const int maxActvKFMaxSize {20};
         const int minNStereo {100};
         const int minNMono {400};
-        const int imageDifThres {20000};
+        const double imageDifThres {0.92};
 
         const double fx,fy,cx,cy;
 

@@ -60,7 +60,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             continue;
         for (auto& idx : idxs)
         {
-            if ( otherKF->unMatchedF[idx] < 0)
+            if ( otherKF->unMatchedF[idx] >= 0)
                 continue;
             cv::KeyPoint& kPO = otherKF->keys.keyPoints[idx];
             if ( keysAngles[i] != -5.0 )
@@ -93,15 +93,27 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
         }
     }
     int nMatches {0};
+    int logKey {145};
+    bool toLog {true};
     for ( size_t i {0}; i < newE; i++)
     {
         if ( matchedIdxsN[i] >= 0)
         {
+            // if (matchedIdxsN[i] > logKey && toLog)
+            // {
+            //     Logging("keypoint ",lastKF->keys.keyPoints[matchedIdxsN[i]].pt,3);
+            //     Logging("predicted ",predPoints[matchedIdxsN[i]],3);
+            //     Logging("matched ",otherKF->keys.keyPoints[i].pt,3);
+            //     toLog = false;
+            // }
             matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(otherKFnumb, i));
             if ( otherKF->keys.close[i] && otherKFnumb != 0)
                 matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(-otherKFnumb, otherKF->keys.rightIdxs[i]));
+            nMatches++;
         }
     }
+    Logging("KF", otherKFnumb,3);
+    Logging("matches", nMatches,3);
 }
 
 void FeatureMatcher::computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, SubPixelPoints& prevPoints, SubPixelPoints& newPoints)
@@ -1930,7 +1942,8 @@ void FeatureMatcher::findStereoMatchesORB2(const cv::Mat& lImage, const cv::Mat&
     // Because of the EdgeThreshold used around the image we dont need to check out of bounds
 
     const int windowMovementX {5};
-
+    std::vector<float> allDepths;
+    allDepths.reserve(keysLeft.keyPoints.size());
     std::vector < cv::KeyPoint >::const_iterator it,end(keysLeft.keyPoints.end());
     for (it = keysLeft.keyPoints.begin(); it != end; it++, leftRow++)
     {
@@ -2036,6 +2049,7 @@ void FeatureMatcher::findStereoMatchesORB2(const cv::Mat& lImage, const cv::Mat&
         if (disparity > 0.0f && disparity < zedptr->cameraLeft.fx)
         {
             const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
+            allDepths.emplace_back(depth);
             // if false depth is unusable
             keysLeft.rightIdxs[leftRow] = bestIdx;
             keysLeft.estimatedDepth[leftRow] = depth;
@@ -2046,6 +2060,26 @@ void FeatureMatcher::findStereoMatchesORB2(const cv::Mat& lImage, const cv::Mat&
         }
 
     }
+
+    std::sort(allDepths.begin(), allDepths.end());
+    const float median {allDepths[allDepths.size()/2]};
+    // const float medianDistMax {1.5f*1.4f*median};
+    const float medianDistMin {median/(1.5f*1.4f)};
+    for (size_t i{0}, end{keysLeft.keyPoints.size()}; i < end; i++)
+    {
+        if (keysLeft.estimatedDepth[i] <= 0)
+            continue;
+        if ( keysLeft.estimatedDepth[i] < medianDistMin )
+        {
+            keysLeft.rightIdxs[i] = -1;
+            keysLeft.estimatedDepth[i] = -1;
+            keysLeft.close[i] = false;
+        }
+        
+    }
+    
+
+
 }
 
 void FeatureMatcher::findStereoMatches(const StereoDescriptors& desc, SubPixelPoints& points, StereoKeypoints& keypoints)
