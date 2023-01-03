@@ -183,19 +183,20 @@ void LocalMapper::processMatches(std::vector<std::pair<int, int>>& matchesOfPoin
     std::vector<std::pair<int, int>>::const_iterator it, end(matchesOfPoint.end());
     for ( it = matchesOfPoint.begin(); it != end; it++)
     {
-        proj_matrices.emplace_back(allProjMatrices.at(it->first));
-        int kFIdx = it->first;
+        const int kFIdx = it->first;
+        const int keyIdx = it->second;
+        proj_matrices.emplace_back(allProjMatrices.at(kFIdx));
 
         if ( it->first >= 0)
         {
-            KeyFrame* kF = map->keyFrames.at(kFIdx);
-            Eigen::Vector2d vec2d((double)kF->keys.keyPoints[it->second].pt.x, (double)kF->keys.keyPoints[it->second].pt.y);
+            const std::vector<cv::KeyPoint>& keys = map->keyFrames.at(abs(kFIdx))->keys.keyPoints;
+            Eigen::Vector2d vec2d((double)keys[keyIdx].pt.x, (double)keys[keyIdx].pt.y);
             points.emplace_back(vec2d);
         }
         else
         {
-            KeyFrame* kF = map->keyFrames.at( - kFIdx);
-            Eigen::Vector2d vec2d((double)kF->keys.rightKeyPoints[it->second].pt.x, (double)kF->keys.rightKeyPoints[it->second].pt.y);
+            const std::vector<cv::KeyPoint>& keys = map->keyFrames.at(abs(kFIdx))->keys.rightKeyPoints;
+            Eigen::Vector2d vec2d((double)keys[keyIdx].pt.x, (double)keys[keyIdx].pt.y);
             points.emplace_back(vec2d);
         }
     }
@@ -258,50 +259,52 @@ bool LocalMapper::checkReprojErrNew(KeyFrame* lastKF, const int keyPos, Eigen::V
     // Eigen::Vector4d p4d(calcVec(0), calcVec(1), calcVec(2),1.0);
     int count {0};
     bool correctKF {false};
-    bool right {false};
     for (size_t i {0}, end{matchesOfPoint.size()}; i < end; i++)
     {
-        int kfNumb {matchesOfPoint[i].first};
+        std::pair<int, int>& match = matchesOfPoint[i];
+        bool right {false};
+        int kfNumb {match.first};
         const int lastKFNumb = lastKF->numb;
-        Logging("kfNumb", kfNumb,3);
-        Logging("keyssize", map->keyFrames.at(abs(kfNumb))->keys.keyPoints.size(),3);
-        Logging("keyssizeright", map->keyFrames.at(abs(kfNumb))->keys.rightKeyPoints.size(),3);
-        Logging("matchesOfPoint[i].sec", matchesOfPoint[i].second,3);
-        const KeyFrame* kF = map->keyFrames.at(abs(kfNumb));
+        Logging("1", "",3);
         Eigen::Vector3d p3dnew = allProjMatrices.at(kfNumb) * calcVec;
+        Logging("2", "",3);
         p3dnew = p3dnew/p3dnew(2);
         // p4dnew = kF->pose.poseInverse * calcVec;
         // projectToPlane(p4dnew,p2f);
         cv::Point2f p2f((float)p3dnew(0), (float)p3dnew(1));
         float err1,err2;
+        Logging("3", "",3);
         if (kfNumb >= 0)
         {
-            err1 = kF->keys.keyPoints[matchesOfPoint[i].second].pt.x - p2f.x;
-            err2 = kF->keys.keyPoints[matchesOfPoint[i].second].pt.y - p2f.y;
+            const std::vector<cv::KeyPoint>& keys = map->keyFrames.at(abs(kfNumb))->keys.keyPoints;
+            err1 = keys[match.second].pt.x - p2f.x;
+            err2 = keys[match.second].pt.y - p2f.y;
 
         }
         else
         {
             right = true;
-            err1 = kF->keys.rightKeyPoints[matchesOfPoint[i].second].pt.x - p2f.x;
-            err2 = kF->keys.rightKeyPoints[matchesOfPoint[i].second].pt.y - p2f.y;
+            const std::vector<cv::KeyPoint>& keys = map->keyFrames.at(abs(kfNumb))->keys.rightKeyPoints;
+            err1 = keys[match.second].pt.x - p2f.x;
+            err2 = keys[match.second].pt.y - p2f.y;
 
         }
         float err = err1*err1 + err2*err2;
         // Logging("err", err,3);
+        Logging("4", "",3);
         if ( err < reprjThreshold )
         {
-            matchesOfPoint[count] = matchesOfPoint[i];
+            matchesOfPoint[count] = match;
             proj_mat[count] = proj_mat[i];
             pointsVec[count] = pointsVec[i];
             count ++;
             if ( kfNumb == lastKFNumb )
                 correctKF = true;
         }
-        else
-        {
-            // remove connections here
-        }
+        // else
+        // {
+        //     // remove connections here
+        // }
     }
     matchesOfPoint.resize(count);
     if ( count > 3  && correctKF )
@@ -642,6 +645,7 @@ void LocalMapper::calcAllMpsOfKF(std::vector<std::vector<std::pair<int, int>>>& 
     p4d.reserve(keysSize);
     for ( size_t i{0}; i < keysSize; i++)
     {
+        matchedIdxs[i].reserve(300);
         MapPoint* mp = lastKF->localMapPoints[i];
         if ( !mp )
         {
@@ -741,17 +745,16 @@ void LocalMapper::triangulateNewPoints()
         {
             vecCalc = lastKF->localMapPoints[i]->getWordPose4d();
         }
-        else
-        {
-            if (lastKF->keys.estimatedDepth[i] > 0)
-                zp = (double)lastKF->keys.estimatedDepth[i];
-            else
-                zp = 200.0;
-            const double xp = (double)(((double)lastKF->keys.keyPoints[i].pt.x-cx)*zp/fx);
-            const double yp = (double)(((double)lastKF->keys.keyPoints[i].pt.y-cy)*zp/fy);
-            vecCalc = Eigen::Vector4d(xp, yp, zp, 1);
-        }
-        
+        // else
+        // {
+        //     if (lastKF->keys.estimatedDepth[i] > 0)
+        //         zp = (double)lastKF->keys.estimatedDepth[i];
+        //     else
+        //         zp = 200.0;
+        //     const double xp = (double)(((double)lastKF->keys.keyPoints[i].pt.x-cx)*zp/fx);
+        //     const double yp = (double)(((double)lastKF->keys.keyPoints[i].pt.y-cy)*zp/fy);
+        //     vecCalc = Eigen::Vector4d(xp, yp, zp, 1);
+        // }
         Eigen::Vector3d vec3d(vecCalc(0), vecCalc(1), vecCalc(2));
         triangulateCeresNew(vec3d, proj_mat, pointsVec, lastKF->pose.pose, true);
         vecCalc(0) = vec3d(0);

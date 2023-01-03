@@ -2508,7 +2508,7 @@ int FeatureTracker::OutliersReprojErr(const Eigen::Matrix4d& estimatedP, std::ve
         {
             Eigen::Vector4d obs;
             get3dFromKey(obs, keysLeft.keyPoints[nIdx], keysLeft.estimatedDepth[nIdx]);
-            bool outlier = check3dError(p4d, obs, thres, 1.0);
+            bool outlier = check3dError(p4d, obs, 0.01 * thres, 1.0);
             mp->SetIsOutlier(outlier);
             if ( !outlier )
             {
@@ -3405,6 +3405,7 @@ void FeatureTracker::Track5(const int frames)
         // {
         //     Logging("frame","25",3);
         // }
+        // Logging("1","",3);
         setLRImages(curFrame);
 
         TrackedKeys keysLeft;
@@ -3423,6 +3424,7 @@ void FeatureTracker::Track5(const int frames)
         }
         extractORBStereoMatch(lIm.im, rIm.im, keysLeft);
         // Timer lel3("after extract");
+        // Logging("2","",3);
 
         // Eigen::Matrix4d currPose = predNPoseInv;
         // Eigen::Matrix4d prevPose = zedPtr->cameraPose.poseInverse;
@@ -3439,14 +3441,15 @@ void FeatureTracker::Track5(const int frames)
             int nNewMatches = fm.matchByProjectionConVel(activeMapPoints, ConVelPoints, keysLeft, matchedIdxsN, matchedIdxsB, 2);
         }
 
-        // {
-        // std::vector<cv::KeyPoint>activeKeys;
-        // worldToImg(activeMapPoints, activeKeys, zedPtr->cameraPose.poseInverse);
-        // checkWithFund(activeKeys, keysLeft.keyPoints, matchedIdxsB, matchedIdxsN);
-        // }
+        {
+        std::vector<cv::KeyPoint>activeKeys;
+        worldToImg(activeMapPoints, activeKeys, zedPtr->cameraPose.poseInverse);
+        checkWithFund(activeKeys, keysLeft.keyPoints, matchedIdxsB, matchedIdxsN);
+        }
 
         Eigen::Matrix4d estimPose = predNPoseInv;
         refinePose(activeMapPoints, keysLeft, matchedIdxsB, estimPose);
+        // Logging("3","",3);
 
         for (size_t i{0}, end{matchedIdxsB.size()}; i < end; i++)
         {
@@ -3471,6 +3474,7 @@ void FeatureTracker::Track5(const int frames)
         std::vector<float> mapAngles;
         calcAngles(activeMapPoints, projectedPoints, prevKeyPos, mapAngles);
         int nNewMatches = fm.matchByProjectionPredWA(activeMapPoints, projectedPoints, prevKeyPos, keysLeft, matchedIdxsN, matchedIdxsB, 4, mapAngles);
+        // Logging("4","",3);
 
         // std::vector<cv::Point2f> mpnts, pnts2f;
         // for ( size_t i {0}, end{activeMapPoints.size()}; i < end; i++)
@@ -3545,6 +3549,7 @@ void FeatureTracker::Track5(const int frames)
                 // Logging("New Frame!","",3);
             }
         }
+        // Logging("5","",3);
 
         std::vector<bool> toRemove;
         removeMapPointOut(activeMapPoints, estimPose, toRemove);
@@ -3554,6 +3559,7 @@ void FeatureTracker::Track5(const int frames)
         publishPoseNew();
         // addKeyFrame(keysLeft, matchedIdxsN, nStIn.second);
 
+        // Logging("6","",3);
 
 
         setPreLImage();
