@@ -2798,7 +2798,7 @@ void FeatureTracker::removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, 
     for ( size_t i {0}; i < end; i++)
     {
         MapPoint* mp = activeMapPoints[i];
-        if (worldToFrame(mp, estimPose) && !mp->GetIsOutlier() )
+        if (worldToFrame(mp, estimPose) /* && !mp->GetIsOutlier() */ )
         {
             mp->seenCnt++;
             mp->setActive(true);
@@ -2810,6 +2810,8 @@ void FeatureTracker::removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, 
         else
         {
             // toRemove[i] = true;
+            // if ( mp->trackCnt < 5 )
+            //     mp->SetIsOutlier(true);
             mp->setActive(false);
             continue;
         }
@@ -3224,8 +3226,13 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
             // kF->localMapPoints.emplace_back(mp);
             kF->localMapPoints[i] = mp;
             kF->unMatchedF[i] = mp->kdx;
-            activeMapPoints.emplace_back(mp);
-            map->addMapPoint(mp);
+            if ( keysLeft.close[i] )
+            {
+                mp->added = true;
+                activeMapPoints.emplace_back(mp);
+                map->addMapPoint(mp);
+
+            }
         }
     }
     kF->nKeysTracked = kF->localMapPoints.size();
@@ -3535,7 +3542,7 @@ void FeatureTracker::Track5(const int frames)
         {
             const double dif = cv::norm(lastKFImage,lIm.im, cv::NORM_L2);
             const double similarity = 1 - dif/(numbOfPixels);
-            Logging("similarity", similarity,3);
+            // Logging("similarity", similarity,3);
             if ( similarity < imageDifThres && keyFrameInsert >= maxKeyFrameDist )
             {
                 keyFrameInsert = 0;

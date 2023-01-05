@@ -255,7 +255,10 @@ bool LocalMapper::checkReprojErr(Eigen::Vector4d& calcVec, std::vector<std::pair
 bool LocalMapper::checkReprojErrNew(KeyFrame* lastKF, const int keyPos, Eigen::Vector4d& calcVec, std::vector<std::pair<int, int>>& matchesOfPoint, const std::unordered_map<int, Eigen::Matrix<double,3,4>>& allProjMatrices, std::vector<Eigen::Matrix<double, 3, 4>>& proj_mat, std::vector<Eigen::Vector2d>& pointsVec)
 {
     if ( calcVec(2) <= 0 )
+    {
+        matchesOfPoint.clear();
         return false;
+    }
     // Eigen::Vector4d p4d(calcVec(0), calcVec(1), calcVec(2),1.0);
     int count {0};
     bool correctKF {false};
@@ -265,18 +268,36 @@ bool LocalMapper::checkReprojErrNew(KeyFrame* lastKF, const int keyPos, Eigen::V
         bool right {false};
         int kfNumb {match.first};
         const int lastKFNumb = lastKF->numb;
-        Logging("1", "",3);
+        // Logging("1", "",3);
         Eigen::Vector3d p3dnew = allProjMatrices.at(kfNumb) * calcVec;
-        Logging("2", "",3);
+        // Logging("2", "",3);
         p3dnew = p3dnew/p3dnew(2);
         // p4dnew = kF->pose.poseInverse * calcVec;
         // projectToPlane(p4dnew,p2f);
         cv::Point2f p2f((float)p3dnew(0), (float)p3dnew(1));
         float err1,err2;
-        Logging("3", "",3);
+        // Logging("3", "",3);
         if (kfNumb >= 0)
         {
-            const std::vector<cv::KeyPoint>& keys = map->keyFrames.at(abs(kfNumb))->keys.keyPoints;
+        
+            std::vector<cv::KeyPoint> keys;
+            bool out {false};
+            try {
+                keys = map->keyFrames.at(abs(kfNumb))->keys.keyPoints;
+            } 
+            catch(std::out_of_range& e)
+            {
+                out = true;
+                Logging("OUT OF RANGEEEEEEEEEEEEEEEEEEEEEE", "",3);
+            }
+            if ( out )
+            {
+                matchesOfPoint.clear();
+                return false;
+            }
+
+
+            // const std::vector<cv::KeyPoint>& keys = map->keyFrames.at((unsigned long)abs(kfNumb))->keys.keyPoints;
             err1 = keys[match.second].pt.x - p2f.x;
             err2 = keys[match.second].pt.y - p2f.y;
 
@@ -284,14 +305,29 @@ bool LocalMapper::checkReprojErrNew(KeyFrame* lastKF, const int keyPos, Eigen::V
         else
         {
             right = true;
-            const std::vector<cv::KeyPoint>& keys = map->keyFrames.at(abs(kfNumb))->keys.rightKeyPoints;
+            std::vector<cv::KeyPoint> keys;
+            bool out {false};
+            try {
+                keys = map->keyFrames.at(abs(kfNumb))->keys.rightKeyPoints;
+            } 
+            catch(std::out_of_range& e)
+            {
+                out = true;
+                Logging("OUT OF RANGEEEEEEEEEEEEEEEEEEEEEE", "",3);
+            }
+            if ( out )
+            {
+                matchesOfPoint.clear();
+                return false;
+            }
+            // const std::vector<cv::KeyPoint>& keys = map->keyFrames.at(abs(kfNumb))->keys.rightKeyPoints;
             err1 = keys[match.second].pt.x - p2f.x;
             err2 = keys[match.second].pt.y - p2f.y;
 
         }
         float err = err1*err1 + err2*err2;
         // Logging("err", err,3);
-        Logging("4", "",3);
+        // Logging("4", "",3);
         if ( err < reprjThreshold )
         {
             matchesOfPoint[count] = match;
@@ -307,7 +343,7 @@ bool LocalMapper::checkReprojErrNew(KeyFrame* lastKF, const int keyPos, Eigen::V
         // }
     }
     matchesOfPoint.resize(count);
-    if ( count > 3  && correctKF )
+    if ( count > (minCount - 1)  && correctKF )
         return true;
     else
     {
@@ -460,7 +496,8 @@ void LocalMapper::addToMap(KeyFrame* lastKF, const std::vector<MapPoint*>& point
         {
             if ( lastKF->localMapPoints[i] )
             {
-                // lastKF->localMapPoints[i]->SetIsOutlier(true);
+                if ( !lastKF->localMapPoints[i]->GetInFrame() )
+                    lastKF->localMapPoints[i]->SetIsOutlier(true);
                 // lastKF->localMapPoints[i] = nullptr;
                 lastKF->unMatchedF[i] = -1;
                 lastKF->keys.estimatedDepth[i] = -1;
@@ -489,6 +526,89 @@ void LocalMapper::addToMap(KeyFrame* lastKF, const std::vector<MapPoint*>& point
     }
     Logging("Success!", newMapPointsCount, 3);
 
+}
+
+void LocalMapper::addToMapRemoveCon(KeyFrame* lastKF, std::vector<MapPoint*>& pointsToAdd, std::vector<std::vector<std::pair<int, int>>>& matchedIdxs)
+{
+    int newMapPointsCount {0};
+    std::lock_guard<std::mutex> lock(map->mapMutex);
+    for (size_t i{0}, end{pointsToAdd.size()}; i < end; i++ )
+    {
+        MapPoint* mp = lastKF->localMapPoints[i];
+        if (!pointsToAdd[i] )
+        {
+            if ( mp )
+            {
+                if ( !mp->GetInFrame() )
+                    mp->SetIsOutlier(true);
+                std::vector<std::pair<int, int>>& matchesOfPoint = matchedIdxs[i];
+                // removeCon(mp, matchesOfPoint, lastKF->numb);
+                // lastKF->localMapPoints[i] = nullptr;
+                lastKF->unMatchedF[i] = -1;
+                lastKF->keys.estimatedDepth[i] = -1;
+                lastKF->keys.close[i] = false;
+                lastKF->keys.rightIdxs[i] = -1;
+                // here remove all localmappoints from keyframes for the current mappoint
+            }
+            continue;
+        }
+        // Logging("added MP","",3);
+        // std::unordered_map<vio_slam::KeyFrame *, size_t>::iterator it, Mapend(pointsToAdd[i]->kFWithFIdx.end());
+        // for (it = pointsToAdd[i]->kFWithFIdx.begin(); it != Mapend; it++)
+        // {
+        //     it->first->unMatchedF[it->second] = false;
+        // }
+        if ( !mp || !mp->added )
+        {
+            map->activeMapPoints.emplace_back(pointsToAdd[i]);
+            map->addMapPoint(pointsToAdd[i]);
+            pointsToAdd[i]->added = true;
+            newMapPointsCount ++;
+        }
+        if ( !mp )
+        {
+            mp = pointsToAdd[i];
+        }
+        else
+            mp->copyMp(pointsToAdd[i]);
+        
+        // lastKF->localMapPoints[i] = pointsToAdd[i];
+        lastKF->unMatchedF[i] = pointsToAdd[i]->kdx;
+    }
+    Logging("Success!", newMapPointsCount, 3);
+
+}
+
+void LocalMapper::removeCon(MapPoint* mp, std::vector<std::pair<int, int>>& matchesOfPoint, const int lastKFNumb)
+{
+    std::unordered_map<KeyFrame*, size_t> temp;
+    temp.reserve(matchesOfPoint.size());
+    std::unordered_map<KeyFrame*, size_t>::const_iterator it, end(mp->kFWithFIdx.end());
+    for ( it = mp->kFWithFIdx.begin(); it != end; it++)
+    {
+        if ( (*it).first->numb <= (lastKFNumb - 10))
+        {
+            temp.insert((*it));
+        }
+    }
+    if ( matchesOfPoint.empty() )
+    {
+        // mp->SetIsOutlier(true);
+        // mp->kFWithFIdx.clear();
+        mp->kFWithFIdx = temp;
+        // mp = nullptr;
+        return;
+    }
+    for ( auto& match : matchesOfPoint )
+    {
+        const int kfNumb = match.first;
+        KeyFrame* kf = map->keyFrames.at(abs(kfNumb));
+        if ( kfNumb >= 0 )
+        {
+            temp[kf] = (size_t)match.second;
+        }
+    }
+    mp->kFWithFIdx = temp;
 }
 
 void LocalMapper::computeAllMapPoints(std::vector<vio_slam::KeyFrame *>& actKeyF)
@@ -643,34 +763,44 @@ void LocalMapper::calcAllMpsOfKF(std::vector<std::vector<std::pair<int, int>>>& 
     const int keysSize {lastKF->keys.keyPoints.size()};
     const int kfNumbDif {lastKF->numb - kFsize};
     p4d.reserve(keysSize);
+    std::set<int> allKeys;
     for ( size_t i{0}; i < keysSize; i++)
     {
         matchedIdxs[i].reserve(300);
         MapPoint* mp = lastKF->localMapPoints[i];
         if ( !mp )
         {
-            p4d.emplace_back(-1,-1,-1,-1);
+            const double zp = 300.0;
+            const double xp = (double)(((double)lastKF->keys.keyPoints[i].pt.x-cx)*zp/fx);
+            const double yp = (double)(((double)lastKF->keys.keyPoints[i].pt.y-cy)*zp/fy);
+            Eigen::Vector4d p4dcam(xp, yp, zp, 1);
+            p4dcam = lastKF->pose.pose * p4dcam;
+            p4d.emplace_back(p4dcam);
             continue;
         }
         p4d.emplace_back(mp->getWordPose4d());
-        std::unordered_map<KeyFrame*, size_t>::const_iterator kfit, kfend(mp->kFWithFIdx.end());
-        for ( kfit = mp->kFWithFIdx.begin(); kfit != kfend; kfit++)
-        {
-            KeyFrame* kf = kfit->first;
-            // if ( kf->keyF )
-            const size_t keyPos = kfit->second;
-            // if ( kf->numb <= kfNumbDif || kf->numb > lastKF->numb)
-            //     continue;
-            const TrackedKeys& keys = kf->keys;
-            if ( kf->numb > lastKF->numb )
-                continue;
-            matchedIdxs[i].emplace_back(kf->numb,(int)keyPos);
-            if ( keys.estimatedDepth[keyPos] > 0 && kf->numb != 0)
-                matchedIdxs[i].emplace_back( - kf->numb,(int)keys.rightIdxs[keyPos]);
-            if ( kf->numb > kfNumbDif )
-                continue;
-            actKeyF.emplace_back(kf);
-        }
+        // std::unordered_map<KeyFrame*, size_t>::const_iterator kfit, kfend(mp->kFWithFIdx.end());
+        // for ( kfit = mp->kFWithFIdx.begin(); kfit != kfend; kfit++)
+        // {
+        //     KeyFrame* kf = kfit->first;
+        //     // if ( kf->keyF )
+        //     const size_t keyPos = kfit->second;
+        //     // if ( kf->numb <= kfNumbDif || kf->numb > lastKF->numb)
+        //     //     continue;
+        //     const TrackedKeys& keys = kf->keys;
+        //     if ( kf->numb > lastKF->numb )
+        //         continue;
+        //     if ( kf->numb <= kfNumbDif/*  && !kf->keyF */ )
+        //         continue;
+        //     matchedIdxs[i].emplace_back(kf->numb,(int)keyPos);
+        //     // if ( keys.estimatedDepth[keyPos] > 0 && kf->numb != 0)
+        //     //     matchedIdxs[i].emplace_back( - kf->numb,(int)keys.rightIdxs[keyPos]);
+        //     // if ( allKeys.find(kf->numb) == allKeys.end() )
+        //     // {
+        //     //     allKeys.insert(kf->numb);
+        //     //     actKeyF.emplace_back(kf);
+        //     // }
+        // }
     }
 
 
@@ -686,7 +816,7 @@ void LocalMapper::triangulateNewPoints()
     actKeyF.emplace_back(lastKF);
     actKeyF.reserve(kFsize);
     const int startact {1};
-    const int endact {startact + kFsize};
+    const int endact {startact + kFsize - 1};
     for (size_t i {startact}; i < endact; i++)
     {
         const int idx {lastKFIdx - i};
@@ -716,7 +846,7 @@ void LocalMapper::triangulateNewPoints()
         std::vector<cv::Point2f> predPoints;
         predictKeysPos(lastKF->keys, lastKF->pose.pose, (*it)->pose.poseInverse, keysAngles, p4d, predPoints);
         // drawPred(lastKF, lastKF->keys.keyPoints, predPoints);
-        fm->matchLocalBA(matchedIdxs, lastKF, (*it), aKFsize, 8, first, keysAngles, predPoints);
+        fm->matchLocalBA(matchedIdxs, lastKF, (*it), aKFsize, 10, first, keysAngles, predPoints);
         // if (first)
         // drawLBA("LBA matches",matchedIdxs, lastKF,(*it));
         first = false;
@@ -734,17 +864,17 @@ void LocalMapper::triangulateNewPoints()
     for ( size_t i{0}, end {lastKF->keys.keyPoints.size()}; i < end; i ++)
     {
         std::vector<std::pair<int, int>>& matchesOfPoint = matchedIdxs[i];
-        if (matchesOfPoint.size() < 4)
+        if (matchesOfPoint.size() < minCount)
             continue;
         std::vector<Eigen::Matrix<double, 3, 4>> proj_mat;
         std::vector<Eigen::Vector2d> pointsVec;
         processMatches(matchesOfPoint, allProjMatrices, proj_mat, pointsVec, actKeyF);
         double zp;
-        Eigen::Vector4d vecCalc;
-        if ( lastKF->unMatchedF[i] >= 0 )
-        {
-            vecCalc = lastKF->localMapPoints[i]->getWordPose4d();
-        }
+        Eigen::Vector4d vecCalc = lastKF->pose.getInvPose() * p4d[i];
+        // if ( lastKF->unMatchedF[i] >= 0 )
+        // {
+        //     vecCalc = lastKF->localMapPoints[i]->getWordPose4d();
+        // }
         // else
         // {
         //     if (lastKF->keys.estimatedDepth[i] > 0)
@@ -780,7 +910,8 @@ void LocalMapper::triangulateNewPoints()
         addMultiViewMapPoints(vecCalc, matchesOfPoint, pointsToAdd, lastKF, i);
         
     }
-    addToMap(lastKF, pointsToAdd);
+    // addToMap(lastKF, pointsToAdd);
+    addToMapRemoveCon(lastKF, pointsToAdd, matchedIdxs);
 }
 
 bool LocalMapper::checkOutlier(const Eigen::Matrix3d& K, const Eigen::Vector2d& obs, const Eigen::Vector3d posW,const Eigen::Vector3d& tcw, const Eigen::Quaterniond& qcw, const float thresh)
@@ -808,6 +939,8 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     fixedKFs.reserve(actKeyF.size());
     int blocks {0};
     int lastActKF {actKeyF.front()->numb};
+    // std::vector<MapPoint*> outliersMP;
+    // outliersMP.reserve(1000);
     std::vector<KeyFrame*>::const_iterator it, end(actKeyF.end());
     for ( it = actKeyF.begin(); it != end; it++)
     {
@@ -824,6 +957,7 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
             // if ( (*itmp)->kFWithFIdx.size() < 3 )
             //     continue;
             bool hasKF {false};
+            // int keyFMatches {0};
             std::unordered_map<KeyFrame*, size_t>::const_iterator kf, endkf(mp->kFWithFIdx.end());
             for (kf = mp->kFWithFIdx.begin(); kf != endkf; kf++)
             {
@@ -833,14 +967,20 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 if ( kFCand->active )
                 {
                     hasKF = true;
+                    // keyFMatches++;
                     continue;
                 }
                 fixedKFs[kFCand] = Converter::Matrix4dToMatrix_7_1(kFCand->pose.getInvPose());
                 hasKF = true;
                 blocks++;
+                // keyFMatches++;
             }
-            if ( hasKF )
+            if ( hasKF /* && keyFMatches >= 3 */ )
                 allMapPoints.insert(std::pair<MapPoint*, Eigen::Vector3d>((*itmp), (*itmp)->getWordPose3d()));
+            // else if ( keyFMatches < 3 )
+            // {
+            //     outliersMP.emplace_back(mp);
+            // }
         }
     }
     // Logging("fixed size", fixedKFs.size(),3);
@@ -915,6 +1055,7 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 ordering->AddElementToGroup(localKFs[kf->first].block<4,1>(3,0).data(),1);
                 problem.AddResidualBlock(costf, loss_function, itmp->second.data(), localKFs[kf->first].block<3,1>(0,0).data(), localKFs[kf->first].block<4,1>(3,0).data());
                 problem.SetManifold(localKFs[kf->first].block<4,1>(3,0).data(),quaternion_local_parameterization);
+                // problem.SetParameterBlockConstant(itmp->second.data());
                 if ( kf->first->fixed )
                 {
                     problem.SetParameterBlockConstant(localKFs[kf->first].block<3,1>(0,0).data());
@@ -927,6 +1068,7 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 ordering->AddElementToGroup(fixedKFs[kf->first].block<4,1>(3,0).data(),1);
                 problem.AddResidualBlock(costf, loss_function, itmp->second.data(), fixedKFs[kf->first].block<3,1>(0,0).data(), fixedKFs[kf->first].block<4,1>(3,0).data());
                 problem.SetManifold(fixedKFs[kf->first].block<4,1>(3,0).data(),quaternion_local_parameterization);
+                // problem.SetParameterBlockConstant(itmp->second.data());
                 problem.SetParameterBlockConstant(fixedKFs[kf->first].block<3,1>(0,0).data());
                 problem.SetParameterBlockConstant(fixedKFs[kf->first].block<4,1>(3,0).data());
             }
@@ -951,8 +1093,8 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
 
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
-    if ( !first )
-        Logging("summ", summary.BriefReport(),3);
+    // if ( !first )
+    //     Logging("summ", summary.BriefReport(),3);
     // Logging("lelout", lelout, 3);
     wrongMatches.clear();
 
@@ -996,6 +1138,15 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
 
 
     std::lock_guard<std::mutex> lock(map->mapMutex);
+    
+    std::unordered_map<KeyFrame*, Eigen::Matrix<double,7,1>>::iterator localkf, endlocalkf(localKFs.end());
+    for ( localkf = localKFs.begin(); localkf != endlocalkf; localkf++)
+    {
+        localkf->first->pose.setInvPose(Converter::Matrix_7_1_ToMatrix4d(localkf->second));
+        // Logging("AFTER BA", localkf->first->getPose(),3);
+        localkf->first->LBA = true;
+    }
+
     int mpCount {0};
     std::unordered_map<MapPoint*, Eigen::Vector3d>::iterator itmp, mpend(allMapPoints.end());
     for ( itmp = allMapPoints.begin(); itmp != mpend; itmp++, mpCount ++)
@@ -1007,17 +1158,18 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
             // Logging ("before pose", itmp->first->getWordPose3d(), 3);
             itmp->first->setWordPose3d(itmp->second);
             // Logging ("after pose", itmp->first->getWordPose3d(), 3);
-            // itmp->first->updatePos(map->keyFrames.at(itmp->first->kdx)->pose.getInvPose(), zedPtr);
+            itmp->first->updatePos(map->keyFrames.at(itmp->first->kdx)->pose.getInvPose(), zedPtr);
         }
     }
+
+    // std::vector<MapPoint*>::iterator mpout, mpoutend(outliersMP.end());
+    // for ( mpout = outliersMP.begin(); mpout != mpoutend; mpout++ )
+    // {
+    //     MapPoint* mp = *mpout;
+    //     if ( !mp->GetInFrame() )
+    //         mp->SetIsOutlier(true);
+    // }
     
-    std::unordered_map<KeyFrame*, Eigen::Matrix<double,7,1>>::iterator localkf, endlocalkf(localKFs.end());
-    for ( localkf = localKFs.begin(); localkf != endlocalkf; localkf++)
-    {
-        localkf->first->pose.setInvPose(Converter::Matrix_7_1_ToMatrix4d(localkf->second));
-        // Logging("AFTER BA", localkf->first->getPose(),3);
-        localkf->first->LBA = true;
-    }
 
     map->endLBAIdx = actKeyF.front()->numb;
     map->keyFrameAdded = false;
@@ -1042,7 +1194,7 @@ void LocalMapper::beginLocalMapping()
         // Logging("Local Mapping Thread Running...","",3);
         if ( map->keyFrameAdded && !map->LBADone )
         {
-            Timer matchingInLBA("matching LBA");
+            // Timer matchingInLBA("matching LBA");
             std::vector<vio_slam::KeyFrame *> actKeyF = map->activeKeyFrames;
             // computeAllMapPoints(actKeyF);
             // Logging("Before Triang","",3);

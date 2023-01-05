@@ -21,7 +21,6 @@ void MapPoint::copyMp(const MapPoint* mp)
     kFWithFIdx = mp->kFWithFIdx;
     inFrame = mp->inFrame;
     close = mp->close;
-    added = mp->added;
     trackCnt = mp->trackCnt;
     obs = mp->obs;
 }

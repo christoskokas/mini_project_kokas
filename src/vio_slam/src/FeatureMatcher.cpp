@@ -38,12 +38,12 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             continue;
         if ( predPoints[i].x <= 0 )
             continue;
-        // if ( first )
-        // {
-        //     if ( lastKF->keys.close[i] && lastKFnumb != 0)
-        //         matchedIdxs[i].emplace_back(std::pair<int,int>(-lastKFnumb, lastKF->keys.rightIdxs[i]));
-        //     matchedIdxs[i].emplace_back(std::pair<int,int>(lastKFnumb, i));
-        // }
+        if ( first )
+        {
+            // if ( lastKF->keys.estimatedDepth[i] > 0 && lastKFnumb != 0)
+            //     matchedIdxs[i].emplace_back(std::pair<int,int>(-lastKFnumb, lastKF->keys.rightIdxs[i]));
+            matchedIdxs[i].emplace_back(std::pair<int,int>(lastKFnumb, i));
+        }
         int gCol {cvRound(predPoints[i].x*lMult)};
         int gRow {cvRound(predPoints[i].y*rMult)};
         cv::KeyPoint& kPL = lastKF->keys.keyPoints[i];
@@ -71,17 +71,41 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
                 if (abs(ang - keysAngles[i]) > 0.2)
                     continue;
             }
-            int dist = DescriptorDistance(lastKF->keys.Desc.row(i), otherKF->keys.Desc.row(idx));
-            if ( dist < bestDist)
+            MapPoint* mp = lastKF->localMapPoints[i];
+            if ( mp )
             {
-                // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
-                secDist = bestDist;
-                bestDist = dist;
-                bestIdx = idx;
-                continue;
+                for ( size_t row {0}, rowend{mp->desc.rows}; row < rowend; row++)
+                {
+                    int dist = DescriptorDistance(mp->desc.row(row), otherKF->keys.Desc.row(idx));
+                    if ( dist < bestDist)
+                    {
+                        // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
+                        secDist = bestDist;
+                        bestDist = dist;
+                        bestIdx = idx;
+                        continue;
+                    }
+                    if ( dist < secDist)
+                        secDist = dist;
+
+                }
             }
-            if ( dist < secDist)
-                secDist = dist;
+            else
+            {
+                int dist = DescriptorDistance(lastKF->keys.Desc.row(i), otherKF->keys.Desc.row(idx));
+                if ( dist < bestDist)
+                {
+                    // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
+                    secDist = bestDist;
+                    bestDist = dist;
+                    bestIdx = idx;
+                    continue;
+                }
+                if ( dist < secDist)
+                    secDist = dist;
+            }
+
+
         }
         if ( bestDist < matchDist && bestDist < 0.8* secDist)
         {
@@ -106,14 +130,25 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             //     Logging("matched ",otherKF->keys.keyPoints[i].pt,3);
             //     toLog = false;
             // }
+            // if (lastKF->keys.estimatedDepth[matchedIdxsN[i]] > 70 )
+            // {
+            //     Logging("more than 70 idx",matchedIdxsN[i], 3);
+            // }
             matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(otherKFnumb, i));
-            if ( otherKF->keys.close[i] && otherKFnumb != 0)
-                matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(-otherKFnumb, otherKF->keys.rightIdxs[i]));
+            // if ( otherKF->keys.estimatedDepth[i] > 0 && otherKFnumb != 0)
+            // {
+            //     matchedIdxs[matchedIdxsN[i]].emplace_back(std::pair<int,int>(-otherKFnumb, otherKF->keys.rightIdxs[i]));
+            //     // Logging("left",otherKF->keys.keyPoints[i].pt,3);
+            //     // Logging("right",otherKF->keys.rightKeyPoints[otherKF->keys.rightIdxs[i]].pt,3);
+            //     // Logging("MATCH left",lastKF->keys.keyPoints[matchedIdxsN[i]].pt,3);
+            //     // if ( lastKF->keys.estimatedDepth[matchedIdxsN[i]] > 0 )
+            //     //     Logging("MATCH right",lastKF->keys.rightKeyPoints[lastKF->keys.rightIdxs[matchedIdxsN[i]]].pt,3);
+            // }
             nMatches++;
         }
     }
-    Logging("KF", otherKFnumb,3);
-    Logging("matches", nMatches,3);
+    // Logging("KF", otherKFnumb,3);
+    // Logging("matches", nMatches,3);
 }
 
 void FeatureMatcher::computeOpticalFlow(const cv::Mat& prevLeftIm, const cv::Mat& leftIm, SubPixelPoints& prevPoints, SubPixelPoints& newPoints)

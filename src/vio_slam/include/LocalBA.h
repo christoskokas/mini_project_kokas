@@ -37,6 +37,7 @@ class LocalMapper
         const float reprjThreshold {7.815f};
 
         const int actvKFMaxSize {10};
+        const int minCount {3};
 
         Zed_Camera* zedPtr;
 
@@ -69,6 +70,8 @@ class LocalMapper
 
         void addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::vector<std::pair<int, int>>& matchesOfPoint, std::vector<MapPoint*>& pointsToAdd, KeyFrame* lastKF, const size_t& keyPos);
         void addToMap(KeyFrame* lastKF, const std::vector<MapPoint*>& pointsToAdd);
+        void addToMapRemoveCon(KeyFrame* lastKF, std::vector<MapPoint*>& pointsToAdd, std::vector<std::vector<std::pair<int, int>>>& matchedIdxs);
+        void removeCon(MapPoint* mp, std::vector<std::pair<int, int>>& matchesOfPoint, const int lastKFNumb);
 
         void drawPred(KeyFrame* lastKF, std::vector<cv::KeyPoint>& keys,std::vector<cv::KeyPoint>& predKeys);
         void drawPred(KeyFrame* lastKF, std::vector<cv::KeyPoint>& keys,std::vector<cv::Point2f>& predKeys);
