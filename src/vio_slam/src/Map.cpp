@@ -13,16 +13,49 @@ MapPoint::MapPoint(const Eigen::Vector4d& p, const cv::Mat& _desc, const cv::Key
 MapPoint::MapPoint(const unsigned long _idx, const unsigned long _kdx) : idx(_idx), kdx(_kdx)
 {}
 
-void MapPoint::copyMp(const MapPoint* mp)
+void MapPoint::copyMp(MapPoint* mp)
 {
     // Eigen::Vector3d p3d = mp->getWordPose3d();
     setWordPose3d(mp->getWordPose3d());
-    desc = mp->desc.clone();
-    kFWithFIdx = mp->kFWithFIdx;
-    inFrame = mp->inFrame;
-    close = mp->close;
+    desc.push_back(mp->desc.clone());
+    // kFWithFIdx = mp->kFWithFIdx;
+    std::vector<KeyFrame*> toerase;
+    toerase.reserve(kFWithFIdx.size());
+    std::unordered_map<KeyFrame*, size_t>::const_iterator it, end(kFWithFIdx.end());
+    for ( it = kFWithFIdx.begin(); it != end; it++)
+    {
+        KeyFrame* kF = it->first;
+        size_t keyPos = it->second;
+        if ( mp->kFWithFIdx.find(kF) == mp->kFWithFIdx.end() /* || kF->localMapPoints[keyPos] != mp */ )
+        {
+            kF->eraseMPConnection(keyPos);
+            toerase.push_back(kF);
+            // eraseKFConnection(kF);
+        }
+
+    }
+
+    for (size_t i{0}, end{toerase.size()}; i < end; i++)
+    {
+            eraseKFConnection(toerase[i]);
+    }
+    std::unordered_map<KeyFrame*, size_t>::const_iterator itn, endn(mp->kFWithFIdx.end());
+    for ( itn = mp->kFWithFIdx.begin(); itn != endn; itn++)
+    {
+        KeyFrame* kf = itn->first;
+        size_t keyPos = itn->second;
+        if ( kFWithFIdx.find(kf) == kFWithFIdx.end() )
+        {
+            kFWithFIdx.insert((*itn));
+            kf->localMapPoints[keyPos] = mp;
+            kf->unMatchedF[keyPos] = mp->kdx;
+        }
+    }
+    // kFWithFIdx = mp->kFWithFIdx;
+    // inFrame = mp->inFrame;
+    // close = mp->close;
     trackCnt = mp->trackCnt;
-    obs = mp->obs;
+    // obs = mp->obs;
 }
 
 void MapPoint::updatePos(const Eigen::Matrix4d& camPoseInv, const Zed_Camera* zedPtr)

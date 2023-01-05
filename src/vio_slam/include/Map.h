@@ -63,7 +63,7 @@ class MapPoint
         MapPoint(const Eigen::Vector4d& p, const cv::Mat& _desc, const cv::KeyPoint& obsK, const bool _close, const unsigned long _kdx, const unsigned long _idx);
         MapPoint(const unsigned long _idx, const unsigned long _kdx);
 
-        void copyMp(const MapPoint* mp);
+        void copyMp(MapPoint* mp);
 
 
         // MapPoint operator = (MapPoint const& obj)

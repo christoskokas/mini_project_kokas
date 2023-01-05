@@ -2318,7 +2318,8 @@ void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
     kF->keyF = true;
     kF->fixed = true;
     // KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, map->kIdx);
-    kF->unMatchedF.resize(keysLeft.keyPoints.size(), true);
+    // kF->unMatchedF.resize(keysLeft.keyPoints.size(), true);
+    kF->unMatchedF.resize(keysLeft.keyPoints.size(), -1);
     kF->localMapPoints.resize(keysLeft.keyPoints.size(), nullptr);
     // kF->localMapPoints.reserve(activeMapPoints.size());
     activeMapPoints.reserve(keysLeft.keyPoints.size());
@@ -2340,6 +2341,7 @@ void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
             map->addMapPoint(mp);
             activeMapPoints.emplace_back(mp);
             kF->localMapPoints[i] = mp;
+            kF->unMatchedF[i] = mp->kdx;
             // kF->localMapPoints.emplace_back(mp);
         }
     }
@@ -3551,7 +3553,7 @@ void FeatureTracker::Track5(const int frames)
             }
             else
             {
-                insertFrame(keysLeft, matchedIdxsN, nStIn.second, poseEst);
+                // insertFrame(keysLeft, matchedIdxsN, nStIn.second, poseEst);
                 // insertKeyFrame(keysLeft, matchedIdxsN, nStIn.second, poseEst);
                 // Logging("New Frame!","",3);
             }

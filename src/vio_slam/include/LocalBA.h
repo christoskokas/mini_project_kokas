@@ -66,7 +66,7 @@ class LocalMapper
         bool checkReprojErrNew(KeyFrame* lastKF, const int keyPos, Eigen::Vector4d& calcVec, std::vector<std::pair<int, int>>& matchesOfPoint, const std::unordered_map<int, Eigen::Matrix<double,3,4>>& allProjMatrices, std::vector<Eigen::Matrix<double, 3, 4>>& proj_mat, std::vector<Eigen::Vector2d>& pointsVec);
         void projectToPlane(Eigen::Vector4d& vec, cv::Point2f& p2f);
 
-        void triangulateNewPoints();
+        void triangulateNewPoints(std::vector<vio_slam::KeyFrame *>& activeKF);
 
         void addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::vector<std::pair<int, int>>& matchesOfPoint, std::vector<MapPoint*>& pointsToAdd, KeyFrame* lastKF, const size_t& keyPos);
         void addToMap(KeyFrame* lastKF, const std::vector<MapPoint*>& pointsToAdd);
