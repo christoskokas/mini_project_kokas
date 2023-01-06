@@ -3,6 +3,17 @@
 namespace vio_slam
 {
 
+void KeyFrame::getConnectedKFs(const Map* map, std::vector<KeyFrame*>& activeKF)
+{
+    // activeKF.reserve(20);
+    // activeKF.emplace_back(this);
+    for ( size_t i{0}, end{connections.size()}; i < end; i++)
+    {
+        if ( connections[i] > 0 )
+            activeKF.emplace_back(map->keyFrames.at(i));
+    }
+}
+
 void KeyFrame::eraseMPConnection(const int mpPos)
 {
     localMapPoints[mpPos] = nullptr;
