@@ -3228,7 +3228,7 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
             // kF->unMatchedF[i] = false;
             // kF->localMapPoints.emplace_back(mp);
             kF->localMapPoints[i] = mp;
-            kF->unMatchedF[i] = mp->kdx;
+            // kF->unMatchedF[i] = mp->kdx;
             // if ( keysLeft.close[i] )
             // {
                 mp->added = true;
@@ -3256,7 +3256,7 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
     // lastKFPose = estimPose;
     // lastKFPoseInv = lastKFPose.inverse();
     lastKFImage = lIm.im.clone();
-    if ( curFrame > 3 )
+    if ( activeKeyFrames.size() > 3 )
         map->keyFrameAdded = true;
 
 }
@@ -3366,7 +3366,7 @@ void FeatureTracker::checkWithFund(const std::vector<cv::KeyPoint>& activeKeys, 
         idxs.emplace_back(i);
     }
     std::vector<uchar> inliers;
-    cv::findFundamentalMat(prevKeys, currKeys, inliers, cv::FM_RANSAC, 3.0, 0.99);
+    cv::findFundamentalMat(prevKeys, currKeys, inliers, cv::FM_RANSAC, 1, 0.99);
     for (size_t i {0}, end2 {prevKeys.size()}; i < end2; i++)
     {
         if ( inliers[i] )
@@ -3395,6 +3395,7 @@ void FeatureTracker::Track5(const int frames)
         if ( map->LBADone )
         {
             // changePosesLBA();
+            std::lock_guard<std::mutex> lock(map->mapMutex);
             if ( map->activeKeyFrames.size() > actvKFMaxSize )
             {
                 // removeKeyFrame(activeKeyFrames);
@@ -3404,7 +3405,6 @@ void FeatureTracker::Track5(const int frames)
                 }
                 activeKeyFrames.resize(actvKFMaxSize);
             }
-            std::lock_guard<std::mutex> lock(map->mapMutex);
             map->LBADone = false;
         }
         // if ( curFrame > 2)
@@ -3451,11 +3451,11 @@ void FeatureTracker::Track5(const int frames)
             int nNewMatches = fm.matchByProjectionConVel(activeMapPoints, ConVelPoints, keysLeft, matchedIdxsN, matchedIdxsB, 2);
         }
 
-        // {
-        // std::vector<cv::KeyPoint>activeKeys;
-        // worldToImg(activeMapPoints, activeKeys, zedPtr->cameraPose.poseInverse);
-        // checkWithFund(activeKeys, keysLeft.keyPoints, matchedIdxsB, matchedIdxsN);
-        // }
+        {
+        std::vector<cv::KeyPoint>activeKeys;
+        worldToImg(activeMapPoints, activeKeys, zedPtr->cameraPose.poseInverse);
+        checkWithFund(activeKeys, keysLeft.keyPoints, matchedIdxsB, matchedIdxsN);
+        }
 
         Eigen::Matrix4d estimPose = predNPoseInv;
         refinePose(activeMapPoints, keysLeft, matchedIdxsB, estimPose);
@@ -3529,11 +3529,11 @@ void FeatureTracker::Track5(const int frames)
         // drawPointsTemp<cv::Point2f>("real matches", lIm.rIm, Nmpnts, Npnts2f);
         // cv::waitKey(0);
 
-        // {
-        // std::vector<cv::KeyPoint>activeKeys;
-        // worldToImg(activeMapPoints, activeKeys, zedPtr->cameraPose.poseInverse);
-        // checkWithFund(activeKeys, keysLeft.keyPoints, matchedIdxsB, matchedIdxsN);
-        // }
+        {
+        std::vector<cv::KeyPoint>activeKeys;
+        worldToImg(activeMapPoints, activeKeys, zedPtr->cameraPose.poseInverse);
+        checkWithFund(activeKeys, keysLeft.keyPoints, matchedIdxsB, matchedIdxsN);
+        }
 
 
 

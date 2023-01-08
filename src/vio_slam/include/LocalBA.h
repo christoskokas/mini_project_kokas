@@ -77,6 +77,21 @@ class LocalMapper
         void drawPred(KeyFrame* lastKF, std::vector<cv::KeyPoint>& keys,std::vector<cv::Point2f>& predKeys);
         void drawLBA(const char* com,std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, const KeyFrame* lastKF, const KeyFrame* otherKF);
 
+        template <typename T, typename U>
+        void drawPointsTemp(const char* com, const cv::Mat& im, const std::vector<T>& p2Dfp3D, const std::vector<U>& p2D)
+        {
+                cv::Mat outIm = im.clone();
+                const size_t end {p2Dfp3D.size()};
+                for (size_t i{0};i < end; i ++ )
+                {
+                        cv::circle(outIm, p2Dfp3D[i],2,cv::Scalar(0,255,0));
+                        cv::line(outIm, p2Dfp3D[i], p2D[i],cv::Scalar(0,0,255));
+                        cv::circle(outIm, p2D[i],2,cv::Scalar(255,0,0));
+                }
+                cv::imshow(com, outIm);
+
+        }
+
 };
 
 

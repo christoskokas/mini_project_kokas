@@ -34,8 +34,8 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
     std::vector<int> rIdxs(newE, 256);
     for ( size_t i {0}; i < prevE; i++)
     {
-        // if ( lastKF->unMatchedF[i] == otherKFnumb)
-        //     continue;
+        if ( lastKF->unMatchedF[i] >= 0 )
+            continue;
         if ( predPoints[i].x <= 0 )
             continue;
         // if ( first )

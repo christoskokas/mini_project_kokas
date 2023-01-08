@@ -121,7 +121,7 @@ class FeatureTracker
         const int sampleSize {15};
         const int gridVelNumb {10};
         const int maskRadius {15};
-        const int keyFrameConThresh {50};
+        const int keyFrameConThresh {5};
         const int maxKeyFrameDist {10};
         const int keyFrameInsertThresh {3};
         const int actvKFMaxSize {10};

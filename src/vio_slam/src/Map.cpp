@@ -16,7 +16,9 @@ MapPoint::MapPoint(const unsigned long _idx, const unsigned long _kdx) : idx(_id
 void MapPoint::copyMp(MapPoint* mp)
 {
     // Eigen::Vector3d p3d = mp->getWordPose3d();
+    // Logging("before pos", wp3d,3);
     setWordPose3d(mp->getWordPose3d());
+    // Logging("after pos", wp3d,3);
     desc.push_back(mp->desc.clone());
     // kFWithFIdx = mp->kFWithFIdx;
     std::vector<KeyFrame*> toerase;
@@ -44,11 +46,11 @@ void MapPoint::copyMp(MapPoint* mp)
     {
         KeyFrame* kf = itn->first;
         size_t keyPos = itn->second;
+        kf->localMapPoints[keyPos] = mp;
+        kf->unMatchedF[keyPos] = mp->kdx;
         if ( kFWithFIdx.find(kf) == kFWithFIdx.end() )
         {
             kFWithFIdx.insert((*itn));
-            kf->localMapPoints[keyPos] = mp;
-            kf->unMatchedF[keyPos] = mp->kdx;
         }
     }
     // kFWithFIdx = mp->kFWithFIdx;

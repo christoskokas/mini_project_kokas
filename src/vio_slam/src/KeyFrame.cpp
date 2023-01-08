@@ -3,14 +3,20 @@
 namespace vio_slam
 {
 
-void KeyFrame::getConnectedKFs(const Map* map, std::vector<KeyFrame*>& activeKF)
+void KeyFrame::getConnectedKFs(const Map* map, std::vector<KeyFrame*>& activeKF, const int N)
 {
     // activeKF.reserve(20);
     // activeKF.emplace_back(this);
-    for ( size_t i{0}, end{connections.size()}; i < end; i++)
+    int count {1};
+    for ( int32_t i{connections.size() - 2}, end{0}; i >= end; i--)
     {
         if ( connections[i] > 0 )
+        {
             activeKF.emplace_back(map->keyFrames.at(i));
+            count++;
+        }
+        if ( count > N )
+            break;
     }
 }
 
