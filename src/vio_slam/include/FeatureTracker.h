@@ -123,12 +123,13 @@ class FeatureTracker
         const int maskRadius {15};
         const int keyFrameConThresh {5};
         const int maxKeyFrameDist {10};
-        const int keyFrameInsertThresh {3};
+        const int keyFrameInsertThresh {1};
         const int actvKFMaxSize {10};
         const int maxActvKFMaxSize {20};
         const int minNStereo {100};
         const int minNMono {400};
         const double imageDifThres {0.93};
+        const double noMovementCheck {0.96};
 
         const double fx,fy,cx,cy;
 
@@ -192,6 +193,8 @@ class FeatureTracker
 
         FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map);
 
+        void checkPrevAngles(std::vector<float>& mapAngles, std::vector<cv::KeyPoint>& prevKeys, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const TrackedKeys& keysLeft);
+
         void calcPrevFramePos(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& prevKeyPos, const Eigen::Matrix4d& prevPose);
 
         void checkWithFund(const std::vector<cv::KeyPoint>& activeKeys, const std::vector<cv::KeyPoint>& newKeys, std::vector<int>& matchedIdxsB, std::vector<int>& matchedIdxsN);
@@ -220,6 +223,7 @@ class FeatureTracker
         void removePnPOut(std::vector<int>& idxs, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB);
         void worldToImg(std::vector<MapPoint*>& MapPointsVec, std::vector<cv::KeyPoint>& projectedPoints);
         void worldToImg(std::vector<MapPoint*>& MapPointsVec, std::vector<cv::KeyPoint>& projectedPoints, const Eigen::Matrix4d& currPoseInv);
+        void worldToImgAng(std::vector<MapPoint*>& MapPointsVec, std::vector<float>& mapAngles, const Eigen::Matrix4d& currPoseInv, std::vector<cv::KeyPoint>& prevKeyPos, std::vector<cv::KeyPoint>& projectedPoints);
         void getPoints3dFromMapPoints(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<cv::Point3d>& points3d, std::vector<cv::Point2d>& points2d, std::vector<int>& matchedIdxs);
 
         void initializeTracking();
@@ -388,6 +392,24 @@ class FeatureTracker
                         cv::circle(outIm, p2Dfp3D[i],2,cv::Scalar(0,255,0));
                         cv::line(outIm, p2Dfp3D[i], p2D[i],cv::Scalar(0,0,255));
                         cv::circle(outIm, p2D[i],2,cv::Scalar(255,0,0));
+                }
+                cv::imshow(com, outIm);
+                cv::waitKey(waitImRep);
+
+        }
+
+        template <typename T, typename U, typename N>
+        void draw3PointsTemp(const char* com, const cv::Mat& im, const std::vector<T>& prevpnts, const std::vector<U>& projpnts, const std::vector<N>& matchedpnts)
+        {
+                cv::Mat outIm = im.clone();
+                const size_t end {prevpnts.size()};
+                for (size_t i{0};i < end; i ++ )
+                {
+                        cv::circle(outIm, prevpnts[i],1,cv::Scalar(0,255,0));
+                        cv::line(outIm, prevpnts[i], projpnts[i],cv::Scalar(0,0,255), 1);
+                        cv::circle(outIm, projpnts[i],6,cv::Scalar(255,0,0));
+                        cv::line(outIm, prevpnts[i], matchedpnts[i],cv::Scalar(0,255,255),2);
+                        cv::circle(outIm, matchedpnts[i],4,cv::Scalar(255,255,0));
                 }
                 cv::imshow(com, outIm);
                 cv::waitKey(waitImRep);

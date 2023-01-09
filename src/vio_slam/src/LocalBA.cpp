@@ -178,8 +178,6 @@ void LocalMapper::predictKeysPos(TrackedKeys& keys, const Eigen::Matrix4d& curPo
 
         predPoints[i] = cv::Point2f((float)u, (float)v);
         keysAngles[i] = atan2((float)v - keys.keyPoints[i].pt.y, (float)u - keys.keyPoints[i].pt.x);
-        if ( keysAngles[i] < 0 )
-                keysAngles[i] += 3.14159265359;
 
     }
 }
@@ -814,7 +812,7 @@ void LocalMapper::calcAllMpsOfKF(std::vector<std::vector<std::pair<int, int>>>& 
             if ( lastKF->keys.estimatedDepth[i] > 0 )
                 zp = (double)lastKF->keys.estimatedDepth[i];
             else
-                zp = 300.0;
+                zp = 20.0;
             const double xp = (double)(((double)lastKF->keys.keyPoints[i].pt.x-cx)*zp/fx);
             const double yp = (double)(((double)lastKF->keys.keyPoints[i].pt.y-cy)*zp/fy);
             Eigen::Vector4d p4dcam(xp, yp, zp, 1);
@@ -1021,12 +1019,12 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 KeyFrame* kFCand = kf->first;
                 if ( !kFCand->keyF || kFCand->numb > lastActKF )
                     continue;
-                if ( kFCand->active )
-                {
-                    hasKF = true;
-                    // keyFMatches++;
-                    continue;
-                }
+                // if ( kFCand->active )
+                // {
+                //     hasKF = true;
+                //     // keyFMatches++;
+                //     continue;
+                // }
                 fixedKFs[kFCand] = Converter::Matrix4dToMatrix_7_1(kFCand->pose.getInvPose());
                 hasKF = true;
                 blocks++;
