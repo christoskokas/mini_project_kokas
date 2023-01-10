@@ -157,7 +157,7 @@ class FeatureTracker
 
         SubPixelPoints tr;
 
-
+        Sophus::Vector6d displacement = Sophus::Vector6d::Zero();
 
         ImageData pLIm, pRIm, lIm, rIm;
         cv::Mat rmap[2][2];
@@ -199,12 +199,16 @@ class FeatureTracker
 
         void checkWithFund(const std::vector<cv::KeyPoint>& activeKeys, const std::vector<cv::KeyPoint>& newKeys, std::vector<int>& matchedIdxsB, std::vector<int>& matchedIdxsN);
 
+        void calculatePrevKeyPos(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, const Eigen::Matrix4d& currPoseInv);
+
         void changePosesLBA();
         void publishPoseLBA();
         void insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const Eigen::Matrix4d& estimPose);
         void insertFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const Eigen::Matrix4d& estimPose);
         bool worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose);
         bool worldToFrameKF(MapPoint* mp, const Eigen::Matrix4d& pose);
+
+        void kalmanF(Eigen::Matrix4d& calcPoseDif);
 
         void calcAngles(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, std::vector<cv::KeyPoint>& prevKeyPos, std::vector<float>& mapAngles);
 

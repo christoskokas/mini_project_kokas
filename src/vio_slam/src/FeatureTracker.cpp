@@ -3271,8 +3271,8 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
     // }
     // referencePose = Eigen::Matrix4d::Identity();
     // zedPtr->cameraPose.refPose = referencePose;
-    // lastKFPose = estimPose;
-    // lastKFPoseInv = lastKFPose.inverse();
+    lastKFPose = estimPose;
+    lastKFPoseInv = lastKFPose.inverse();
     lastKFImage = lIm.im.clone();
     if ( activeKeyFrames.size() > 3 )
         map->keyFrameAdded = true;
@@ -3411,6 +3411,44 @@ void FeatureTracker::checkPrevAngles(std::vector<float>& mapAngles, std::vector<
     }
 }
 
+void FeatureTracker::calculatePrevKeyPos(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, const Eigen::Matrix4d& currPoseInv)
+{
+    projectedPoints.resize(activeMapPoints.size());
+    for ( size_t i {0}, end{activeMapPoints.size()}; i < end; i++)
+    {
+        projectedPoints[i].pt = cv::Point2f(-1, -1);
+        MapPoint* mp = activeMapPoints[i];
+        // const Eigen::Matrix4d& currPoseInv = map->keyFrames.at(mp->kdx)->pose.getInvPose();
+        Eigen::Vector4d p4d = currPoseInv * mp->getWordPose4d();
+
+        if (p4d(2) <= 0.0f )
+        {
+            mp->SetInFrame(false);
+            continue;
+        }
+
+        const double invfx = 1.0f/fx;
+        const double invfy = 1.0f/fy;
+
+
+        double u {fx * p4d(0)/p4d(2) + cx};
+        double v {fy * p4d(1)/p4d(2) + cy};
+
+        const int h = zedPtr->mHeight;
+        const int w = zedPtr->mWidth;
+
+        if ( u < 0 )
+            u = 0.1;
+        if ( v < 0 )
+            v = 0.1;
+        if ( u > w )
+            u = w - 1;
+        if ( v > h )
+            v = h - 1;
+        projectedPoints[i].pt = cv::Point2f((float)u, (float)v);
+    }
+}
+
 void FeatureTracker::Track5(const int frames)
 {
     int keyFrameInsert {0};
@@ -3450,6 +3488,8 @@ void FeatureTracker::Track5(const int frames)
         //     Logging("frame","25",3);
         // }
         // Logging("1","",3);
+        // if ( curFrame%4 != 0 && curFrame != 0  && curFrame != 1 )
+        //     continue;
         setLRImages(curFrame);
 
         TrackedKeys keysLeft;
@@ -3476,13 +3516,25 @@ void FeatureTracker::Track5(const int frames)
         std::lock_guard<std::mutex> lock(map->mapMutex);
         std::vector<int> matchedIdxsB(activeMapPoints.size(), -1);
         
+        std::vector<cv::KeyPoint> prevKeyPos;
+
+        // worldToImg(activeMapPoints, prevKeyPos, zedPtr->cameraPose.poseInverse);
+        calculatePrevKeyPos(activeMapPoints, prevKeyPos, lastKFPoseInv);
+        const double dif = cv::norm(lastKFImage,lIm.im, cv::NORM_L2);
+        const double similarity = 1 - dif/(numbOfPixels);
+
         if ( curFrame == 1 )
             int nMatches = fm.matchByProjection(activeMapPoints, keysLeft, matchedIdxsN, matchedIdxsB);
         else
         {
             std::vector<cv::KeyPoint> ConVelPoints;
             worldToImg(activeMapPoints, ConVelPoints, predNPoseInv);
-            int nNewMatches = fm.matchByProjectionConVel(activeMapPoints, ConVelPoints, keysLeft, matchedIdxsN, matchedIdxsB, 2);
+            std::vector<float> mapAngles(activeMapPoints.size(), -5.0);
+
+            // if ( similarity < noMovementCheck )
+            //     calcAngles(activeMapPoints, ConVelPoints, prevKeyPos, mapAngles);
+
+            int nNewMatches = fm.matchByProjectionConVelAng(activeMapPoints, ConVelPoints, prevKeyPos, keysLeft, matchedIdxsN, matchedIdxsB, 2, mapAngles);
         }
 
         // {
@@ -3521,14 +3573,12 @@ void FeatureTracker::Track5(const int frames)
         // the outliers from first refine are not used on the next refines.
 
         // check for big displacement, if there is, use constant velocity model
-        const double dif = cv::norm(lastKFImage,lIm.im, cv::NORM_L2);
-        const double similarity = 1 - dif/(numbOfPixels);
+        
         // Timer lel("after first refine");
-        Logging("similarity", similarity,3);
+        // Logging("similarity", similarity,3);
 
-        std::vector<cv::KeyPoint> projectedPoints, prevKeyPos, projectedPointsfromang;
+        std::vector<cv::KeyPoint> projectedPoints, projectedPointsfromang;
         worldToImg(activeMapPoints, projectedPoints, estimPose);
-        worldToImg(activeMapPoints, prevKeyPos, zedPtr->cameraPose.poseInverse);
         std::vector<float> mapAngles(activeMapPoints.size(), -5.0);
         // worldToImgAng(activeMapPoints, mapAngles, estimPose,prevKeyPos, projectedPointsfromang);
         if ( similarity < noMovementCheck )
@@ -3611,8 +3661,17 @@ void FeatureTracker::Track5(const int frames)
         Sophus::SE3<double> se3t(Rdif, tdif);
         // Sophus::SE3;
 
-        Sophus::Vector6d displacement = se3t.log();
-        std::cout << "displacement " << displacement.norm() << std::endl;
+        Sophus::Vector6d prevDisp = displacement;
+
+        displacement = se3t.log();
+        // std::cout << "dif displacement " << displacement - prevDisp << std::endl;
+        // std::cout << "displacement " << displacement << std::endl;
+        // std::cout << "prevDisp " << prevDisp << std::endl;
+
+        // kalmanF(poseDif);
+
+        // poseEst = poseDif * zedPtr->cameraPose.pose;
+        // estimPose = poseEst.inverse();
 
         // get percentage of displacement. keep the previous one and calculate the percentage.
 
@@ -4680,6 +4739,47 @@ void FeatureTracker::pnpRansac(cv::Mat& Rvec, cv::Mat& tvec, std::vector<cv::Poi
 
     draw2D3D(pLIm.rIm, p2Dtr, pn2D);
 #endif
+
+}
+
+void FeatureTracker::kalmanF(Eigen::Matrix4d& calcPoseDif)
+{
+    cv::Mat measurements = cv::Mat::zeros(6,1, CV_64F);
+
+    // Logging("tvec", cv::norm(tvec,pTvec), 3);
+    // Logging("Rvec", cv::norm(Rvec,pRvec), 3);
+
+    // // Logging("tvec", tvec, 3);
+    // // Logging("pTvec", pTvec, 3);
+
+    // // Logging("Rvec", Rvec, 3);
+    // // Logging("pRvec", pRvec, 3);
+
+    cv::Mat tvec, Rvec;
+    Eigen::Matrix3d Reig = calcPoseDif.block<3,3>(0,0);
+    Eigen::Matrix<double,3,1> teig = calcPoseDif.block<3,1>(0,3);
+    cv::eigen2cv(Reig,Rvec);
+    cv::eigen2cv(teig,tvec);
+    cv::Rodrigues(Rvec, Rvec);
+    Logging("Rvec", Rvec,3);
+    Logging("tvec", tvec,3);
+
+    lkal.fillMeasurements(measurements, tvec, Rvec);
+
+
+    cv::Mat translation_estimated(3, 1, CV_64F);
+    cv::Mat rotation_estimated(3, 3, CV_64F);
+
+    lkal.updateKalmanFilter(measurements, translation_estimated, rotation_estimated);
+    // translation_estimated = tvec.clone();
+    // cv::Rodrigues(Rvec, rotation_estimated);
+    pE.convertToEigenMat(rotation_estimated, translation_estimated, calcPoseDif);
+
+    Logging("rotation_estimated", rotation_estimated,3);
+    Logging("translation_estimated", translation_estimated,3);
+    // publishPose();
+
+    // publishPoseTrial();
 
 }
 

@@ -1760,6 +1760,88 @@ int FeatureMatcher::matchByProjectionConVel(std::vector<MapPoint*>& activeMapPoi
     return nMatches;
 }
 
+int FeatureMatcher::matchByProjectionConVelAng(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, std::vector<cv::KeyPoint>& prevKeyPos, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const int timesGrid, const std::vector<float>& mapAngles)
+{
+    const float imageRatio = (float)zedptr->mWidth/(float)zedptr->mHeight;
+    const int lnGrids = gridCols * timesGrid;
+    const int rnGrids = cvCeil(lnGrids/imageRatio);
+    const float lMult = (float)lnGrids/(float)zedptr->mWidth;
+    const float rMult = (float)rnGrids/(float)zedptr->mHeight;
+    std::vector<std::vector<std::vector<int>>> leftIdxs(rnGrids, std::vector<std::vector<int>>(lnGrids,std::vector<int>()));
+    destributeLeftKeys(keysLeft, leftIdxs, lnGrids, rnGrids);
+
+
+    const size_t prevE {activeMapPoints.size()};
+    const size_t newE {keysLeft.keyPoints.size()};
+    
+    std::vector<int> rIdxs(newE, 256);
+    for ( size_t i {0}; i < prevE; i++)
+    {
+        if ( projectedPoints[i].pt.x <= 0 )
+                continue;
+        int gCol {cvRound(projectedPoints[i].pt.x*lMult)};
+        int gRow {cvRound(projectedPoints[i].pt.y*rMult)};
+        if (gRow >= rnGrids)
+            gRow = rnGrids - 1;
+        if (gCol >= lnGrids)
+            gCol = lnGrids - 1;
+        std::vector<int>& idxs = leftIdxs[gRow][gCol];
+        cv::KeyPoint& kPL = prevKeyPos[i];
+        int bestDist = 256;
+        int bestIdx = -1;
+        int secDist = 256;
+        if ( idxs.empty() )
+            continue;
+        for (auto& idx : idxs)
+        {
+            cv::KeyPoint& kPO = keysLeft.keyPoints[idx];
+            if ( mapAngles[i] != -5.0)
+            {
+                float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
+                if (abs(ang - mapAngles[i]) > 0.8)
+                    continue;
+                // Logging("ang", ang,3);
+                // Logging("mapAngles[i]", mapAngles[i],3);
+            }
+            for (size_t descrow {0}; descrow < activeMapPoints[i]->desc.rows; descrow++)
+            {
+                int dist = DescriptorDistance(activeMapPoints[i]->desc.row(descrow), keysLeft.Desc.row(idx));
+                if ( dist < bestDist)
+                {
+                    // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
+                    secDist = bestDist;
+                    bestDist = dist;
+                    bestIdx = idx;
+                    continue;
+                }
+                if ( dist < secDist)
+                    secDist = dist;
+            }
+        }
+        if ( bestDist < matchDist && bestDist < 0.8* secDist)
+        {
+            if (rIdxs[bestIdx] > bestDist)
+            {
+                rIdxs[bestIdx] = bestDist;
+                matchedIdxsN[bestIdx] = i;
+            }
+            // prevLeftKeys.matchedIdxs[i] = bestIdx;
+            // prevLeftKeys.predKeyPoints[i] = keysLeft.keyPoints[bestIdx];
+
+        }
+    }
+    int nMatches {0};
+    for ( size_t i {0}; i < newE; i++)
+    {
+        if ( matchedIdxsN[i] >= 0)
+        {
+            matchedIdxsB[matchedIdxsN[i]] = i;
+            nMatches ++;
+        }
+    }
+    return nMatches;
+}
+
 int FeatureMatcher::matchByProjectionPred(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const int timesGrid)
 {
     const float imageRatio = (float)zedptr->mWidth/(float)zedptr->mHeight;
