@@ -896,7 +896,7 @@ void LocalMapper::triangulateNewPoints(std::vector<vio_slam::KeyFrame *>& active
         std::vector<cv::Point2f> predPoints;
         predictKeysPos(lastKF->keys, lastKF->pose.pose, (*it)->pose.poseInverse, keysAngles, p4d, predPoints);
         // drawPred(lastKF, lastKF->keys.keyPoints, predPoints);
-        fm->matchLocalBA(matchedIdxs, lastKF, (*it), aKFsize, 8, first, keysAngles, predPoints);
+        fm->matchLocalBA(matchedIdxs, lastKF, (*it), aKFsize, 10, first, keysAngles, predPoints);
         // if (first)
         // drawLBA("LBA matches",matchedIdxs, lastKF,(*it));
         // cv::waitKey(1);

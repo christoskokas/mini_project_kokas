@@ -2669,6 +2669,114 @@ std::pair<int,int> FeatureTracker::refinePose(std::vector<MapPoint*>& activeMapP
     return std::pair<int,int>(nIn, nStereo);
 }
 
+std::pair<int,int> FeatureTracker::estimatePoseCeres(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsB, Eigen::Matrix4d& estimPose, const bool first)
+{
+
+
+    const size_t prevS { activeMapPoints.size()};
+    const size_t newS { keysLeft.keyPoints.size()};
+    const size_t startPrev {newS - prevS};
+    std::vector<bool> inliers(prevS,true);
+    std::vector<bool> prevInliers(prevS,true);
+
+    std::vector<float> weights;
+    // calcWeights(prePnts, weights);
+    weights.resize(prevS, 1.0f);
+    std::vector<double>thresholds = {15.6f,9.8f,7.815f,7.815f};
+    double thresh = 7.815f;
+
+    ceres::Problem problem;
+    Eigen::Vector3d frame_tcw;
+    Eigen::Quaterniond frame_qcw;
+    // OutliersReprojErr(estimPose, activeMapPoints, keysLeft, matchedIdxsB, thresh, weights, nIn);
+    Eigen::Matrix4d prevPose = estimPose;
+    Eigen::Matrix4d frame_pose = estimPose;
+    Eigen::Matrix3d frame_R;
+    frame_R = frame_pose.block<3, 3>(0, 0);
+    frame_tcw = frame_pose.block<3, 1>(0, 3);
+    frame_qcw = Eigen::Quaterniond(frame_R);
+    std::vector<cv::Point2f> found, observed;
+    ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
+    ceres::LossFunction* loss_function = nullptr;
+    if ( first )
+        loss_function = new ceres::HuberLoss(sqrt(7.815f));
+    // ceres::LossFunction* loss_function = nullptr;
+    for (size_t i{0}, end{matchedIdxsB.size()}; i < end; i++)
+    {
+        if ( matchedIdxsB[i] < 0 )
+            continue;
+        MapPoint* mp = activeMapPoints[i];
+        if  ( !mp->GetInFrame() || mp->GetIsOutlier() )
+            continue;
+        const int nIdx {matchedIdxsB[i]};
+        if ( mp->close && keysLeft.close[nIdx] )
+        {
+            Eigen::Vector4d np4d;
+            get3dFromKey(np4d, keysLeft.keyPoints[nIdx], keysLeft.estimatedDepth[nIdx]);
+            Eigen::Vector3d obs(np4d(0), np4d(1),np4d(2));
+            Eigen::Vector3d point = mp->getWordPose3d();
+            Eigen::Vector4d point4d = mp->getWordPose4d();
+            point4d = estimPose * point4d;
+            const double u {fx*point4d(0)/point4d(2) + cx};
+            const double v {fy*point4d(1)/point4d(2) + cy};
+            found.emplace_back((float)u, (float)v);
+            observed.emplace_back(keysLeft.keyPoints[nIdx].pt);
+            // Logging("obs", obs,3);
+            // Logging("point", point,3);
+            ceres::CostFunction* costf = OptimizePoseICP::Create(K, point, obs, (double)weights[i]);
+            problem.AddResidualBlock(costf, loss_function /* squared loss */,frame_tcw.data(), frame_qcw.coeffs().data());
+
+            problem.SetManifold(frame_qcw.coeffs().data(),
+                                        quaternion_local_parameterization);
+        }
+        else
+        {
+            Eigen::Vector2d obs((double)keysLeft.keyPoints[nIdx].pt.x, (double)keysLeft.keyPoints[nIdx].pt.y);
+            Eigen::Vector3d point = mp->getWordPose3d();
+            Eigen::Vector4d point4d = mp->getWordPose4d();
+            point4d = estimPose * point4d;
+            const double u {fx*point4d(0)/point4d(2) + cx};
+            const double v {fy*point4d(1)/point4d(2) + cy};
+            found.emplace_back((float)u, (float)v);
+            observed.emplace_back(keysLeft.keyPoints[nIdx].pt);
+            // if ( point4d(2) <= 0 || std::isnan(keysLeft.keyPoints[nIdx].pt.x) || std::isnan(keysLeft.keyPoints[nIdx].pt.y))
+            //     Logging("out", point4d,3);
+            // if (u < 0 || v < 0 || v > zedPtr->mHeight || u > zedPtr->mWidth)
+            //     Logging("out", point4d,3);
+            
+            ceres::CostFunction* costf = OptimizePose::Create(K, point, obs, (double)weights[i]);
+            // Logging("obs", obs,3);
+            // Logging("point", point,3);
+            problem.AddResidualBlock(costf, loss_function /* squared loss */,frame_tcw.data(), frame_qcw.coeffs().data());
+
+            problem.SetManifold(frame_qcw.coeffs().data(),
+                                        quaternion_local_parameterization);
+        }
+    }
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    // options.use_explicit_schur_complement = true;
+    options.max_num_iterations = 100;
+    // options.minimizer_progress_to_stdout = false;
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+    // Logging("ceres report", summary.FullReport(),3);
+    Eigen::Matrix3d R = frame_qcw.normalized().toRotationMatrix();
+    estimPose.block<3, 3>(0, 0) = R;
+    estimPose.block<3, 1>(0, 3) = frame_tcw;
+
+    drawPointsTemp<cv::Point2f, cv::Point2f>("ceres", lIm.rIm, found, observed);
+    cv::waitKey(1);
+    
+    // if ( checkDisplacement(prevPose, estimPose) )
+    //     return std::pair<int,int>(0, nIn);
+    
+    int nIn {0};
+    int nStereo = OutliersReprojErr(estimPose, activeMapPoints, keysLeft, matchedIdxsB, thresh, weights, nIn);
+    // Logging("pose", estimPose,3);
+    return std::pair<int,int>(nIn, nStereo);
+}
+
 void FeatureTracker::removeKeyFrame(std::vector<KeyFrame *>& activeKeyFrames)
 {
     int count {activeKeyFrames.size() - 1};
@@ -3404,7 +3512,7 @@ void FeatureTracker::checkPrevAngles(std::vector<float>& mapAngles, std::vector<
         const cv::KeyPoint& kPO = keysLeft.keyPoints[matchedIdxsB[i]];
         const cv::KeyPoint& kPL = prevKeys[i];
         float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
-        if (abs(ang - mapAngles[i]) <= 0.3)
+        if (abs(ang - mapAngles[i]) <= 0.2)
             continue;
         matchedIdxsN[matchedIdxsB[i]] = -1;
         matchedIdxsB[i] = -1;
@@ -3414,7 +3522,7 @@ void FeatureTracker::checkPrevAngles(std::vector<float>& mapAngles, std::vector<
 void FeatureTracker::calculatePrevKeyPos(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, const Eigen::Matrix4d& currPoseInv, const Eigen::Matrix4d& predPoseInv)
 {
     projectedPoints.resize(activeMapPoints.size());
-    Eigen::Matrix4d temp = currPoseInv * predNPose;
+    Eigen::Matrix4d temp = currPoseInv * predPoseInv.inverse();
     Eigen::Matrix4d temp2 = temp.inverse();
     for ( size_t i {0}, end{activeMapPoints.size()}; i < end; i++)
     {
@@ -3499,7 +3607,7 @@ void FeatureTracker::Track5(const int frames)
         //     Logging("frame","25",3);
         // }
         // Logging("1","",3);
-        // if ( curFrame%4 != 0 && curFrame != 0  && curFrame != 1 )
+        // if ( curFrame%3 != 0 && curFrame != 0  && curFrame != 1 )
         //     continue;
         setLRImages(curFrame);
 
@@ -3530,7 +3638,7 @@ void FeatureTracker::Track5(const int frames)
         std::vector<cv::KeyPoint> prevKeyPos;
 
         // worldToImg(activeMapPoints, prevKeyPos, zedPtr->cameraPose.poseInverse);
-        calculatePrevKeyPos(activeMapPoints, prevKeyPos, zedPtr->cameraPose.poseInverse, predNPoseInv);
+        
         const double dif = cv::norm(lastKFImage,lIm.im, cv::NORM_L2);
         const double similarity = 1 - dif/(numbOfPixels);
 
@@ -3545,17 +3653,17 @@ void FeatureTracker::Track5(const int frames)
             // if ( similarity < noMovementCheck )
             //     calcAngles(activeMapPoints, ConVelPoints, prevKeyPos, mapAngles);
 
-            int nNewMatches = fm.matchByProjectionConVelAng(activeMapPoints, ConVelPoints, prevKeyPos, keysLeft, matchedIdxsN, matchedIdxsB, 2, mapAngles);
+            int nNewMatches = fm.matchByProjectionConVelAng(activeMapPoints, ConVelPoints, prevKeyPos, keysLeft, matchedIdxsN, matchedIdxsB, 6, mapAngles);
         }
 
-        // {
-        // std::vector<cv::KeyPoint>activeKeys;
-        // worldToImg(activeMapPoints, activeKeys, zedPtr->cameraPose.poseInverse);
-        // checkWithFund(activeKeys, keysLeft.keyPoints, matchedIdxsB, matchedIdxsN);
-        // }
+        {
+        std::vector<cv::KeyPoint>activeKeys;
+        worldToImg(activeMapPoints, activeKeys, zedPtr->cameraPose.poseInverse);
+        checkWithFund(activeKeys, keysLeft.keyPoints, matchedIdxsB, matchedIdxsN);
+        }
 
         Eigen::Matrix4d estimPose = predNPoseInv;
-        refinePose(activeMapPoints, keysLeft, matchedIdxsB, estimPose);
+        estimatePoseCeres(activeMapPoints, keysLeft, matchedIdxsB, estimPose, true);
         // Logging("3","",3);
 
         // for (size_t i{0}, end{matchedIdxsB.size()}; i < end; i++)
@@ -3591,6 +3699,7 @@ void FeatureTracker::Track5(const int frames)
         std::vector<cv::KeyPoint> projectedPoints, projectedPointsfromang, realPrevKeys;
         worldToImg(activeMapPoints, projectedPoints, estimPose);
         worldToImg(activeMapPoints, realPrevKeys, zedPtr->cameraPose.poseInverse);
+        calculatePrevKeyPos(activeMapPoints, prevKeyPos, zedPtr->cameraPose.poseInverse, estimPose);
         std::vector<float> mapAngles(activeMapPoints.size(), -5.0);
         // worldToImgAng(activeMapPoints, mapAngles, estimPose,prevKeyPos, projectedPointsfromang);
         if ( similarity < noMovementCheck )
@@ -3598,7 +3707,7 @@ void FeatureTracker::Track5(const int frames)
             calcAngles(activeMapPoints, projectedPoints, prevKeyPos, mapAngles);
             checkPrevAngles(mapAngles, prevKeyPos, matchedIdxsN, matchedIdxsB, keysLeft);
         }
-        int nNewMatches = fm.matchByProjectionPredWA(activeMapPoints, projectedPoints, prevKeyPos, keysLeft, matchedIdxsN, matchedIdxsB, 6, mapAngles);
+        int nNewMatches = fm.matchByProjectionPredWA(activeMapPoints, projectedPoints, realPrevKeys, keysLeft, matchedIdxsN, matchedIdxsB, 10, mapAngles);
         // Logging("4","",3);
 
         std::vector<cv::Point2f> prevpnts, projpnts, matchedpnts;
@@ -3655,7 +3764,7 @@ void FeatureTracker::Track5(const int frames)
 
 
 
-        std::pair<int,int> nStIn = refinePose(activeMapPoints, keysLeft, matchedIdxsB, estimPose);
+        std::pair<int,int> nStIn = estimatePoseCeres(activeMapPoints, keysLeft, matchedIdxsB, estimPose, true);
         cv::waitKey(1);
 
         for (size_t i{0}, end{matchedIdxsB.size()}; i < end; i++)

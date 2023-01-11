@@ -68,7 +68,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             if ( keysAngles[i] != -5.0 )
             {
                 float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
-                if (abs(ang - keysAngles[i]) > 0.1)
+                if (abs(ang - keysAngles[i]) > 0.2)
                     continue;
             }
             MapPoint* mp = lastKF->localMapPoints[i];
@@ -1957,7 +1957,7 @@ int FeatureMatcher::matchByProjectionPredWA(std::vector<MapPoint*>& activeMapPoi
             if ( mapAngles[i] != -5.0)
             {
                 float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
-                if (abs(ang - mapAngles[i]) > 0.3)
+                if (abs(ang - mapAngles[i]) > 0.2)
                     continue;
                 // Logging("ang", ang,3);
                 // Logging("mapAngles[i]", mapAngles[i],3);

@@ -127,7 +127,7 @@ class FeatureTracker
         const int actvKFMaxSize {10};
         const int maxActvKFMaxSize {20};
         const int minNStereo {100};
-        const int minNMono {50};
+        const int minNMono {20};
         const double imageDifThres {0.93};
         const double noMovementCheck {0.96};
 
@@ -223,6 +223,7 @@ class FeatureTracker
         bool check3dError(const Eigen::Vector4d& p4d, const Eigen::Vector4d& obs, const double thres, const float weight);
         int OutliersReprojErr(const Eigen::Matrix4d& estimatedP, std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsB, const double thres, const std::vector<float>& weights, int& nInliers);
         std::pair<int,int> refinePose(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsB, Eigen::Matrix4d& estimPose);
+        std::pair<int,int> estimatePoseCeres(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsB, Eigen::Matrix4d& estimPose, const bool first);
         void publishPoseNew();
         void removePnPOut(std::vector<int>& idxs, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB);
         void worldToImg(std::vector<MapPoint*>& MapPointsVec, std::vector<cv::KeyPoint>& projectedPoints);
