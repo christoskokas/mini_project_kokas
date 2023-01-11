@@ -127,7 +127,7 @@ class FeatureTracker
         const int actvKFMaxSize {10};
         const int maxActvKFMaxSize {20};
         const int minNStereo {100};
-        const int minNMono {400};
+        const int minNMono {50};
         const double imageDifThres {0.93};
         const double noMovementCheck {0.96};
 
@@ -199,11 +199,11 @@ class FeatureTracker
 
         void checkWithFund(const std::vector<cv::KeyPoint>& activeKeys, const std::vector<cv::KeyPoint>& newKeys, std::vector<int>& matchedIdxsB, std::vector<int>& matchedIdxsN);
 
-        void calculatePrevKeyPos(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, const Eigen::Matrix4d& currPoseInv);
+        void calculatePrevKeyPos(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, const Eigen::Matrix4d& currPoseInv, const Eigen::Matrix4d& predPoseInv);
 
         void changePosesLBA();
         void publishPoseLBA();
-        void insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const Eigen::Matrix4d& estimPose);
+        void insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const int nMono, const Eigen::Matrix4d& estimPose);
         void insertFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const Eigen::Matrix4d& estimPose);
         bool worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose);
         bool worldToFrameKF(MapPoint* mp, const Eigen::Matrix4d& pose);

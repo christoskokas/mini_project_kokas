@@ -3182,7 +3182,7 @@ void FeatureTracker::Track4(const int frames)
     map->endOfFrames = true;
 }
 
-void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const Eigen::Matrix4d& estimPose)
+void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const int nMono, const Eigen::Matrix4d& estimPose)
 {
     referencePose = lastKFPoseInv * estimPose;
     // Logging("referencePose in keyframe", referencePose,3);
@@ -3232,9 +3232,9 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
             kF->unMatchedF[i] = mp->kdx;
             continue;
         }
-        if ( nStereo > minNStereo)
+        if ( nStereo > minNStereo )
             continue;
-        if ( keysLeft.close[i])
+        if ( keysLeft.close[i] || ( nMono <= minNMono && keysLeft.estimatedDepth[i] > 0) )
         {
             const double zp = (double)keysLeft.estimatedDepth[i];
             const double xp = (double)(((double)keysLeft.keyPoints[i].pt.x-cx)*zp/fx);
@@ -3411,21 +3411,32 @@ void FeatureTracker::checkPrevAngles(std::vector<float>& mapAngles, std::vector<
     }
 }
 
-void FeatureTracker::calculatePrevKeyPos(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, const Eigen::Matrix4d& currPoseInv)
+void FeatureTracker::calculatePrevKeyPos(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, const Eigen::Matrix4d& currPoseInv, const Eigen::Matrix4d& predPoseInv)
 {
     projectedPoints.resize(activeMapPoints.size());
+    Eigen::Matrix4d temp = currPoseInv * predNPose;
+    Eigen::Matrix4d temp2 = temp.inverse();
     for ( size_t i {0}, end{activeMapPoints.size()}; i < end; i++)
     {
         projectedPoints[i].pt = cv::Point2f(-1, -1);
         MapPoint* mp = activeMapPoints[i];
         // const Eigen::Matrix4d& currPoseInv = map->keyFrames.at(mp->kdx)->pose.getInvPose();
-        Eigen::Vector4d p4d = currPoseInv * mp->getWordPose4d();
+        Eigen::Vector4d p4d = predPoseInv * mp->getWordPose4d();
 
-        if (p4d(2) <= 0.0f )
-        {
-            mp->SetInFrame(false);
-            continue;
-        }
+        const double mult = 0.1/p4d(2);
+
+
+
+        p4d = p4d*mult;
+        p4d(3) = 1;
+
+        p4d = temp * p4d;
+
+        // if (p4d(2) <= 0.0f )
+        // {
+        //     mp->SetInFrame(false);
+        //     continue;
+        // }
 
         const double invfx = 1.0f/fx;
         const double invfy = 1.0f/fy;
@@ -3437,14 +3448,14 @@ void FeatureTracker::calculatePrevKeyPos(std::vector<MapPoint*>& activeMapPoints
         const int h = zedPtr->mHeight;
         const int w = zedPtr->mWidth;
 
-        if ( u < 0 )
-            u = 0.1;
-        if ( v < 0 )
-            v = 0.1;
-        if ( u > w )
-            u = w - 1;
-        if ( v > h )
-            v = h - 1;
+        // if ( u < 0 )
+        //     u = 0.1;
+        // if ( v < 0 )
+        //     v = 0.1;
+        // if ( u > w )
+        //     u = w - 1;
+        // if ( v > h )
+        //     v = h - 1;
         projectedPoints[i].pt = cv::Point2f((float)u, (float)v);
     }
 }
@@ -3519,7 +3530,7 @@ void FeatureTracker::Track5(const int frames)
         std::vector<cv::KeyPoint> prevKeyPos;
 
         // worldToImg(activeMapPoints, prevKeyPos, zedPtr->cameraPose.poseInverse);
-        calculatePrevKeyPos(activeMapPoints, prevKeyPos, lastKFPoseInv);
+        calculatePrevKeyPos(activeMapPoints, prevKeyPos, zedPtr->cameraPose.poseInverse, predNPoseInv);
         const double dif = cv::norm(lastKFImage,lIm.im, cv::NORM_L2);
         const double similarity = 1 - dif/(numbOfPixels);
 
@@ -3577,8 +3588,9 @@ void FeatureTracker::Track5(const int frames)
         // Timer lel("after first refine");
         // Logging("similarity", similarity,3);
 
-        std::vector<cv::KeyPoint> projectedPoints, projectedPointsfromang;
+        std::vector<cv::KeyPoint> projectedPoints, projectedPointsfromang, realPrevKeys;
         worldToImg(activeMapPoints, projectedPoints, estimPose);
+        worldToImg(activeMapPoints, realPrevKeys, zedPtr->cameraPose.poseInverse);
         std::vector<float> mapAngles(activeMapPoints.size(), -5.0);
         // worldToImgAng(activeMapPoints, mapAngles, estimPose,prevKeyPos, projectedPointsfromang);
         if ( similarity < noMovementCheck )
@@ -3603,6 +3615,21 @@ void FeatureTracker::Track5(const int frames)
             }
         }
         draw3PointsTemp<cv::Point2f,cv::Point2f,cv::Point2f>("proj, matched",lIm.rIm,prevpnts,projpnts,matchedpnts);
+
+        std::vector<cv::Point2f> prevpnts2, projpnts2, matchedpnts2;
+        for ( size_t i {0}, end{activeMapPoints.size()}; i < end; i++)
+        {
+            if ( projectedPoints[i].pt.x > 0)
+            {
+                if ( matchedIdxsB[i] >= 0 && !activeMapPoints[i]->GetIsOutlier())
+                {
+                    prevpnts2.emplace_back(realPrevKeys[i].pt);
+                    projpnts2.emplace_back(projectedPoints[i].pt);
+                    matchedpnts2.emplace_back(keysLeft.keyPoints[matchedIdxsB[i]].pt);
+                }
+            }
+        }
+        draw3PointsTemp<cv::Point2f,cv::Point2f,cv::Point2f>("realPrevKeys, matched",lIm.rIm,prevpnts2,projpnts2,matchedpnts2);
         // drawPointsTemp<cv::Point2f>("projected matches", lIm.rIm, mpnts, pnts2f);
 
         // std::vector<cv::Point2f> Nmpnts, Npnts2f;
@@ -3674,12 +3701,12 @@ void FeatureTracker::Track5(const int frames)
         // estimPose = poseEst.inverse();
 
         // get percentage of displacement. keep the previous one and calculate the percentage.
-
+        const int nMono = nStIn.first - nStIn.second;
         keyFrameInsert++;
         if ( nStIn.second < minNStereo)
         {
             keyFrameInsert = 0;
-            insertKeyFrame(keysLeft, matchedIdxsN, nStIn.second, poseEst);
+            insertKeyFrame(keysLeft, matchedIdxsN, nStIn.second, nMono, poseEst);
             Logging("New KeyFrame!","",3);
         }
         else
@@ -3689,7 +3716,7 @@ void FeatureTracker::Track5(const int frames)
             if ( similarity < imageDifThres && keyFrameInsert >= maxKeyFrameDist )
             {
                 keyFrameInsert = 0;
-                insertKeyFrame(keysLeft, matchedIdxsN, nStIn.second, poseEst);
+                insertKeyFrame(keysLeft, matchedIdxsN, nStIn.second, nMono, poseEst);
                 Logging("New KeyFrame!","",3);
             }
             else
