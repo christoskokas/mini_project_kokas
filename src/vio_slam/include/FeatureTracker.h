@@ -125,7 +125,7 @@ class FeatureTracker
         const int maxKeyFrameDist {10};
         const int keyFrameInsertThresh {1};
         const int actvKFMaxSize {10};
-        const int maxActvKFMaxSize {20};
+        const int maxActvKFMaxSize {50};
         const int minNStereo {100};
         const int minNMono {20};
         const double imageDifThres {0.93};

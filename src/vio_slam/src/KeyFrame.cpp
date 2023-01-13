@@ -15,7 +15,7 @@ void KeyFrame::getConnectedKFs(const Map* map, std::vector<KeyFrame*>& activeKF,
             activeKF.emplace_back(map->keyFrames.at(i));
             count++;
         }
-        if ( count > N )
+        if ( count >= N )
             break;
     }
 }

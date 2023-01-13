@@ -65,7 +65,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             // if ( lastKF->localMapPoints[i] == otherKF->localMapPoints[idx] )
             //     continue;
             cv::KeyPoint& kPO = otherKF->keys.keyPoints[idx];
-            if ( keysAngles[i] != -5.0 )
+            if ( keysAngles[i] != -5.0 && (pow(kPO.pt.x - kPL.pt.x,2) + pow(kPO.pt.y - kPL.pt.y,2) > 25))
             {
                 float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
                 if (abs(ang - keysAngles[i]) > 0.2)
@@ -1954,7 +1954,7 @@ int FeatureMatcher::matchByProjectionPredWA(std::vector<MapPoint*>& activeMapPoi
             if ( matchedIdxsN[idx] >= 0 )
                 continue;
             cv::KeyPoint& kPO = keysLeft.keyPoints[idx];
-            if ( mapAngles[i] != -5.0)
+            if ( mapAngles[i] != -5.0 && (pow(kPO.pt.x - kPL.pt.x,2) + pow(kPO.pt.y - kPL.pt.y,2) > 25) )
             {
                 float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
                 if (abs(ang - mapAngles[i]) > 0.2)
@@ -2050,15 +2050,17 @@ void FeatureMatcher::findStereoMatchesORB2(const cv::Mat& lImage, const cv::Mat&
 
     const float minZ = zedptr->mBaseline;
     const float minD = 0;
-    const float maxD = zedptr->mBaseline * zedptr->cameraLeft.fx/minZ;
+    const float maxD = zedptr->cameraLeft.fx;
 
     // Because we use FAST to detect Features the sliding window will get a window of side 11 pixels (5 (3 + 2offset) pixels radius + 1 which is the feature)
     const int windowRadius {5};
     // Because of the EdgeThreshold used around the image we dont need to check out of bounds
 
     const int windowMovementX {5};
-    std::vector<float> allDepths;
+    std::vector<std::pair<float,int>> allDepths;
     allDepths.reserve(keysLeft.keyPoints.size());
+    std::vector<std::pair<int,int>> allDists2;
+    allDists2.reserve(keysLeft.keyPoints.size());
     std::vector < cv::KeyPoint >::const_iterator it,end(keysLeft.keyPoints.end());
     for (it = keysLeft.keyPoints.begin(); it != end; it++, leftRow++)
     {
@@ -2164,35 +2166,73 @@ void FeatureMatcher::findStereoMatchesORB2(const cv::Mat& lImage, const cv::Mat&
         if (disparity > 0.0f && disparity < zedptr->cameraLeft.fx)
         {
             const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
-            allDepths.emplace_back(depth);
             // if false depth is unusable
             keysLeft.rightIdxs[leftRow] = bestIdx;
             keysLeft.estimatedDepth[leftRow] = depth;
+            allDists2.emplace_back(bestDistW,leftRow);
+            allDepths.emplace_back(depth,leftRow);
             if (depth < zedptr->mBaseline * closeNumber)
             {
                 keysLeft.close[leftRow] = true;
+
             }
         }
 
     }
 
     std::sort(allDepths.begin(), allDepths.end());
-    const float median {allDepths[allDepths.size()/2]};
-    // const float medianDistMax {1.5f*1.4f*median};
-    const float medianDistMin {median/(1.5f*1.4f)};
-    for (size_t i{0}, end{keysLeft.keyPoints.size()}; i < end; i++)
-    {
-        if (keysLeft.estimatedDepth[i] <= 0)
-            continue;
-        if ( keysLeft.estimatedDepth[i] < medianDistMin )
-        {
-            keysLeft.rightIdxs[i] = -1;
-            keysLeft.estimatedDepth[i] = -1;
-            keysLeft.close[i] = false;
-        }
+    std::sort(allDists2.begin(), allDists2.end());
+    const float median {allDepths[allDepths.size()/2].first};
+    const float medianD {allDists2[allDists2.size()/2].first};
+    const float medDistD = medianD*(1.5f*1.4f);
+    // const float medDist = median/(1.5f*1.4f);
+    // const float Q1 {allDepths[allDepths.size()/4].first};
+    // const float Q3 {allDepths[3*allDepths.size()/4].first};
+    // const float last {allDepths[allDepths.size() - 1].first};
+    // const float IQR {Q3 - Q1};
+    // const float medianDistMax {Q3 + 1.5* IQR};
+    // const float medianDistMin2 {Q1 - 1.5* IQR};
+    // const float medianDistMin {median/(1.5*1.4)};
+    // std::cout << std::endl;
+    // Logging("Q1", Q1, 3);
+    // Logging("Q3", Q3, 3);
+    // Logging("IQR", IQR, 3);
+    // Logging("median", median, 3);
+    // Logging("cutoff", medianDistMin2, 3);
+    // const int sss = allDepthsVec.size();
+    // for (size_t i{0}, end{keysLeft.keyPoints.size()}; i < end; i++)
+    // {
+    //     if (keysLeft.estimatedDepth[i] <= 0)
+    //         continue;
+    //     if ( keysLeft.estimatedDepth[i] < medianDistMin )
+    //     {
+    //         keysLeft.rightIdxs[i] = -1;
+    //         keysLeft.estimatedDepth[i] = -1;
+    //         keysLeft.close[i] = false;
+    //     }
         
+    // }
+    const int endDe {cvFloor(allDepths.size()*0.05)};
+    for(int i=0;i < endDe;i++)
+    {
+        keysLeft.rightIdxs[allDepths[i].second] = -1;
+        keysLeft.estimatedDepth[allDepths[i].second] = -1;
+        keysLeft.close[allDepths[i].second] = false;
     }
+
     
+
+    for(int i=allDists2.size()-1;i>=0;i--)
+    {
+        if(allDists2[i].first<medDistD)
+            break;
+        else
+        {
+            keysLeft.rightIdxs[allDists2[i].second] = -1;
+            keysLeft.estimatedDepth[allDists2[i].second] = -1;
+            keysLeft.close[allDists2[i].second] = false;
+        }
+    }
 
 
 }

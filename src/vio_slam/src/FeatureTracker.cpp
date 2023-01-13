@@ -2945,6 +2945,8 @@ void FeatureTracker::removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, 
             // if ( mp->trackCnt < 5 )
             //     mp->SetIsOutlier(true);
             mp->setActive(false);
+            // if ( mp->kFWithFIdx.size() < 3 )
+            //     mp->SetIsOutlier(true);
             continue;
         }
         // std::vector<KeyFrame* >::const_iterator it, end(activeKeyFrames.end());
@@ -3512,7 +3514,7 @@ void FeatureTracker::checkPrevAngles(std::vector<float>& mapAngles, std::vector<
         const cv::KeyPoint& kPO = keysLeft.keyPoints[matchedIdxsB[i]];
         const cv::KeyPoint& kPL = prevKeys[i];
         float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
-        if (abs(ang - mapAngles[i]) <= 0.2)
+        if (abs(ang - mapAngles[i]) <= 0.2 || (pow(kPO.pt.x - kPL.pt.x,2) + pow(kPO.pt.y - kPL.pt.y,2) < 25) )
             continue;
         matchedIdxsN[matchedIdxsB[i]] = -1;
         matchedIdxsB[i] = -1;
@@ -3653,14 +3655,14 @@ void FeatureTracker::Track5(const int frames)
             // if ( similarity < noMovementCheck )
             //     calcAngles(activeMapPoints, ConVelPoints, prevKeyPos, mapAngles);
 
-            int nNewMatches = fm.matchByProjectionConVelAng(activeMapPoints, ConVelPoints, prevKeyPos, keysLeft, matchedIdxsN, matchedIdxsB, 6, mapAngles);
+            int nNewMatches = fm.matchByProjectionConVelAng(activeMapPoints, ConVelPoints, prevKeyPos, keysLeft, matchedIdxsN, matchedIdxsB, 2, mapAngles);
         }
 
-        {
-        std::vector<cv::KeyPoint>activeKeys;
-        worldToImg(activeMapPoints, activeKeys, zedPtr->cameraPose.poseInverse);
-        checkWithFund(activeKeys, keysLeft.keyPoints, matchedIdxsB, matchedIdxsN);
-        }
+        // {
+        // std::vector<cv::KeyPoint>activeKeys;
+        // worldToImg(activeMapPoints, activeKeys, zedPtr->cameraPose.poseInverse);
+        // checkWithFund(activeKeys, keysLeft.keyPoints, matchedIdxsB, matchedIdxsN);
+        // }
 
         Eigen::Matrix4d estimPose = predNPoseInv;
         estimatePoseCeres(activeMapPoints, keysLeft, matchedIdxsB, estimPose, true);

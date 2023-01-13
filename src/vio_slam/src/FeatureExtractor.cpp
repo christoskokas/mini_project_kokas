@@ -1642,6 +1642,16 @@ void FeatureExtractor::computeKeypoints(cv::Mat& image, std::vector<cv::KeyPoint
     detector->compute(image, keypoints, descriptors);
 }
 
+void FeatureExtractor::computeAllOrientations(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints)
+{
+
+    std::vector<cv::KeyPoint>::iterator it;
+    std::vector<cv::KeyPoint>::const_iterator end(keypoints.end());
+    for ( it = keypoints.begin(); it != end; it++)
+        it->angle = computeOrientation(image, it->pt);
+
+}
+
 void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
 {
     // Timer Levels("computeKeys");
@@ -1705,6 +1715,7 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
             allKeys[level] = ssc(allKeys[level], fPLevel, 0.1, imagePyramid[level].cols, imagePyramid[level].rows);
         }
         nF += allKeys[level].size();
+        computeAllOrientations(imagePyramid[level], allKeys[level]);
     }
 
 
@@ -1728,7 +1739,7 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
         for (it = allKeys[level].begin(); it != end; it++, descCount++)
         {
             it->size = scaledPatchSize[level];
-            it->angle = computeOrientation(imagePyramid[level], it->pt);
+            // it->angle = computeOrientation(imagePyramid[level], it->pt);
             if ( level != 0 )
                 it->pt *= scale;
 
