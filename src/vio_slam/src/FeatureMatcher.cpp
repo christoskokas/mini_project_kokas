@@ -1795,10 +1795,10 @@ int FeatureMatcher::matchByProjectionConVelAng(std::vector<MapPoint*>& activeMap
         for (auto& idx : idxs)
         {
             cv::KeyPoint& kPO = keysLeft.keyPoints[idx];
-            if ( mapAngles[i] != -5.0)
+            if ( mapAngles[i] != -5.0 && (pow(kPO.pt.x - kPL.pt.x,2) + pow(kPO.pt.y - kPL.pt.y,2) > 25) )
             {
                 float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
-                if (abs(ang - mapAngles[i]) > 0.8)
+                if (abs(ang - mapAngles[i]) > 0.5)
                     continue;
                 // Logging("ang", ang,3);
                 // Logging("mapAngles[i]", mapAngles[i],3);

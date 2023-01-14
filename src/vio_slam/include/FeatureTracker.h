@@ -61,7 +61,7 @@ class FeatureTracker
 
 #if SAVEODOMETRYDATA
 #if KITTI_DATASET
-        std::string filepath {KITTI_SEQ + std::string(".txt")};
+        std::string filepath {KITTI_SEQ + std::string("lel.txt")};
 #else
         std::string filepath {"zedPoses.txt"};
 #endif
@@ -152,7 +152,7 @@ class FeatureTracker
         bool addFeatures {false};
         bool bigRot {false};
         bool redo {false};
-
+        std::vector<KeyFrame*> allFrames;
         cv::Mat prevF;
 
         SubPixelPoints tr;
@@ -205,6 +205,7 @@ class FeatureTracker
         void publishPoseLBA();
         void insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const int nMono, const Eigen::Matrix4d& estimPose);
         void insertFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const Eigen::Matrix4d& estimPose);
+        void addFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const Eigen::Matrix4d& estimPose);
         bool worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose);
         bool worldToFrameKF(MapPoint* mp, const Eigen::Matrix4d& pose);
 

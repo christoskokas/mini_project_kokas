@@ -31,12 +31,12 @@ void CameraPose::setPose(const Eigen::Matrix4d& poseT)
     timestamp = std::chrono::high_resolution_clock::now();
 }
 
-Eigen::Matrix4d CameraPose::getPose()
+Eigen::Matrix4d CameraPose::getPose() const
 {
     return pose;
 }
 
-Eigen::Matrix4d CameraPose::getInvPose()
+Eigen::Matrix4d CameraPose::getInvPose() const
 {
     return poseInverse;
 }

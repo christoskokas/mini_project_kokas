@@ -1048,10 +1048,13 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
             //     outliersMP.emplace_back(mp);
             // }
         }
+#if DRAWMATCHES
+
         drawPointsTemp<cv::Point2f,cv::Point2f>("lba", (*it)->rLeftIm, kFkeys, mpKeys);
         // Logging("mpkeys",mpKeys[10], 3);
         // Logging("kFkeys",kFkeys[10], 3);
         cv::waitKey(1);
+#endif
     }
     Logging("fixed size", fixedKFs.size(),3);
     Logging("local size", localKFs.size(),3);
