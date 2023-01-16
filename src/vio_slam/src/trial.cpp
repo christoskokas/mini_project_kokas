@@ -1211,11 +1211,29 @@ void RobustMatcher2::testImageRectify()
 void RobustMatcher2::undistortMap()
 {
     cv::Size imgSize = cv::Size(zedcamera->mWidth, zedcamera->mHeight);
-    cv::stereoRectify(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, imgSize, zedcamera->sensorsRotate, zedcamera->sensorsTranslate, R1, R2, P1, P2, Q);
-    cv::Mat leftCamera = cv::getOptimalNewCameraMatrix(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs,imgSize, 0);
-    cv::Mat rightCamera = cv::getOptimalNewCameraMatrix(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs,imgSize, 0);
-    cv::initUndistortRectifyMap(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, R1, leftCamera, imgSize, CV_32FC1, rmap[0][0], rmap[0][1]);
-    cv::initUndistortRectifyMap(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, R2, rightCamera, imgSize, CV_32FC1, rmap[1][0], rmap[1][1]);
+    // cv::Size lel;
+    // cv::stereoRectify(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, imgSize, zedcamera->sensorsRotate, zedcamera->sensorsTranslate, R1, R2, P1, P2, Q,1024, 0.0,imgSize);
+    // std::cout << imgSize << std::endl;
+    // std::cout << "zedcamera->cameraLeft.cameraMatrix" << zedcamera->cameraLeft.cameraMatrix << std::endl;
+    // std::cout << "R1" << R1 << std::endl;
+    // std::cout << "zedcamera->sensorsRotate" << zedcamera->sensorsRotate << std::endl;
+    // std::cout << "zedcamera->cameraLeft.distCoeffs" << zedcamera->cameraLeft.distCoeffs << std::endl;
+    // cv::Mat leftCamera = cv::getOptimalNewCameraMatrix(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs,imgSize, 0);
+    // cv::Mat rightCamera = cv::getOptimalNewCameraMatrix(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs,imgSize, 0);
+#if V1_02
+
+    cv::Mat rightCamera = (cv::Mat_<double>(3,3) << 435.2046959714599, 0, 367.4517211914062, 0, 435.2046959714599, 252.2008514404297, 0, 0, 1);
+    cv::Mat leftCamera = (cv::Mat_<double>(3,3) << 435.2046959714599, 0, 367.4517211914062, 0, 435.2046959714599, 252.2008514404297, 0, 0, 1);
+    R1 = (cv::Mat_<double>(3,3) << 0.999966347530033, -0.001422739138722922, 0.008079580483432283, 0.001365741834644127, 0.9999741760894847, 0.007055629199258132, -0.008089410156878961, -0.007044357138835809, 0.9999424675829176);
+    R2 = (cv::Mat_<double>(3,3) << 0.9999633526194376, -0.003625811871560086, 0.007755443660172947, 0.003680398547259526, 0.9999684752771629, -0.007035845251224894, -0.007729688520722713, 0.007064130529506649, 0.999945173484644);
+#else
+
+    cv::Mat leftCamera = zedcamera->cameraLeft.cameraMatrix;
+    cv::Mat rightCamera = zedcamera->cameraRight.cameraMatrix;
+#endif
+
+    cv::initUndistortRectifyMap(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, R1, leftCamera, imgSize, CV_32F, rmap[0][0], rmap[0][1]);
+    cv::initUndistortRectifyMap(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, R2, rightCamera, imgSize, CV_32F, rmap[1][0], rmap[1][1]);
     Logging("P1",P1,1);
     Logging("P2",P2,1);
 }

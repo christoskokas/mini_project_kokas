@@ -38,6 +38,8 @@ class System
         std::thread* Tracking;
         std::thread* LocalMapping;
 
+        FeatureTracker* featTracker;
+
         Frame* mFrame;
 
         Zed_Camera* mZedCamera;

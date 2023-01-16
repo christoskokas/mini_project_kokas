@@ -1,47 +1,48 @@
-rectified: true
+rectified: false
 
-numOfFrames: 2358
+numOfFrames: 1710
 seq: "00"
 
-imagesPath: "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/demo_1/"
+imagesPath: "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/V1_02/"
 
 fileExtension: ".jpg"
 
+
 Camera_l:
-  fx: 264.4025
-  fy: 264.225
-  cx: 334.2375
-  cy: 188.45625
-  k1: -0.0434655
-  k2: 0.0131028
-  p1: 0.000225966
-  p2: -0.000251516
-  k3: -0.00587127
+  fx: 458.654
+  fy: 457.296
+  cx: 367.215
+  cy: 248.375
+  k1: -0.28340811
+  k2: 0.07395907
+  p1: 0.00019359
+  p2: 1.76187114e-05
+  k3: 0.0
 
 Camera_l_path: /zed2i/zed_node/left_raw/image_raw_color
 # /zed2i/zed_node/left_raw/image_raw_color
 # /camera_1/left/image_raw
 
 Camera_r:
-  fx: 264.875
-  fy: 264.75
-  cx: 342.695
-  cy: 186.78125
-  k1: -0.0442866
-  k2: 0.0124045
-  p1: 0.00010787
-  p2: -0.000388194
-  k3: -0.00539649
+  fx: 457.587
+  fy: 456.134
+  cx: 379.999
+  cy: 255.238
+  k1: -0.28368365
+  k2: 0.07451284
+  p1: -0.00010473
+  p2: -3.55590700e-05
+  k3: 0.0
   
 Camera_r_path: /zed2i/zed_node/right_raw/image_raw_color
 # /zed2i/zed_node/right_raw/image_raw_color
 # /camera_1/right/image_raw
 
 Camera:
-  width: 640
-  height: 360
-  fps: 15.0
-  bl: 0.119342
+  width: 752
+  height: 480
+  fps: 20.0
+  bl: 0.110074137800478
 
 Camera_path: /zed2i/zed_node/left_raw/image_raw_color
 ground_truth_path: /odom/ground_truth/2
@@ -63,7 +64,7 @@ Stereo:
     rows: 4
     cols: 4
     dt: f
-    data: [1.0, 0.0, 0.0, -0.119848,
-         0.0, 1.0, 0.0, 0.0000475606,
-         0.0, 0.0, 1.0, 0.0000445916,
-         0.0, 0.0, 0.0, 1.0]
+    data: [0.999997256477797,-0.002317135723275,-0.000343393120620,0.110074137800478,
+         0.002312067192432,0.999898048507103,-0.014090668452683,-0.000156612054392,
+         0.000376008102320,0.014089835846691,0.999900662638081,0.000889382785432,
+         0,0,0,1.000000000000000]

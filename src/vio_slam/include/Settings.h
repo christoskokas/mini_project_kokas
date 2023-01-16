@@ -8,13 +8,15 @@
 #include <yaml-cpp/yaml.h>
 #include <chrono>
 
-#define KITTI_DATASET true
+#define KITTI_DATASET false
 #define KITTI_SEQ "00"
 #define ZED_DATASET false
 #define ZED_DEMO true
+#define V1_02 false
+#define SIMULATION true
 #define DRAWMATCHES false
 
-#define SAVEODOMETRYDATA true
+#define SAVEODOMETRYDATA false
 
 namespace vio_slam
 {

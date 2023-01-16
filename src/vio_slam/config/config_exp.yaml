@@ -3,6 +3,10 @@ rectified: false
 numOfFrames: 4581
 seq: "00"
 
+imagesPath: "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/zed_exp/"
+
+fileExtension: ".png"
+
 Camera_l:
   fx: 529.14
   fy: 529.085

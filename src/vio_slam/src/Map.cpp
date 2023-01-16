@@ -13,7 +13,7 @@ MapPoint::MapPoint(const Eigen::Vector4d& p, const cv::Mat& _desc, const cv::Key
 MapPoint::MapPoint(const unsigned long _idx, const unsigned long _kdx) : idx(_idx), kdx(_kdx)
 {}
 
-void MapPoint::copyMp(MapPoint* mp)
+void MapPoint::copyMp(MapPoint* mp, const Zed_Camera* zedPtr)
 {
     // Eigen::Vector3d p3d = mp->getWordPose3d();
     // Logging("before pos", wp3d,3);
@@ -44,14 +44,21 @@ void MapPoint::copyMp(MapPoint* mp)
     std::unordered_map<KeyFrame*, size_t>::const_iterator itn, endn(mp->kFWithFIdx.end());
     for ( itn = mp->kFWithFIdx.begin(); itn != endn; itn++)
     {
-        KeyFrame* kf = itn->first;
+        KeyFrame* kFcand = itn->first;
         size_t keyPos = itn->second;
-        kf->localMapPoints[keyPos] = mp;
-        kf->unMatchedF[keyPos] = mp->kdx;
-        if ( kFWithFIdx.find(kf) == kFWithFIdx.end() )
+        kFcand->localMapPoints[keyPos] = mp;
+        kFcand->unMatchedF[keyPos] = mp->kdx;
+        TrackedKeys& tKeys = kFcand->keys;
+        if ( kFWithFIdx.find(kFcand) == kFWithFIdx.end() )
         {
             kFWithFIdx.insert((*itn));
         }
+        if ( tKeys.estimatedDepth[keyPos] <= 0 )
+            continue;
+        Eigen::Vector4d pCam = kFcand->pose.getInvPose() * wp;
+        tKeys.estimatedDepth[keyPos] = pCam(2);
+        if ( pCam(2) <= zedPtr->mBaseline * 40 )
+            tKeys.close[keyPos] = true;
     }
     // kFWithFIdx = mp->kFWithFIdx;
     // inFrame = mp->inFrame;
@@ -62,18 +69,52 @@ void MapPoint::copyMp(MapPoint* mp)
 
 void MapPoint::updatePos(const Eigen::Matrix4d& camPoseInv, const Zed_Camera* zedPtr)
 {
-    Eigen::Vector4d p = wp;
-    p = camPoseInv * p;
+    // Eigen::Vector4d p = wp;
+    // p = camPoseInv * p;
 
-    const double invZ = 1.0/p(2);
-    const double fx {zedPtr->cameraLeft.fx};
-    const double fy {zedPtr->cameraLeft.fy};
-    const double cx {zedPtr->cameraLeft.cx};
-    const double cy {zedPtr->cameraLeft.cy};
+    // const double invZ = 1.0/p(2);
+    // const double fx {zedPtr->cameraLeft.fx};
+    // const double fy {zedPtr->cameraLeft.fy};
+    // const double cx {zedPtr->cameraLeft.cx};
+    // const double cy {zedPtr->cameraLeft.cy};
 
-    const double u {fx*p(0)*invZ + cx};
-    const double v {fy*p(1)*invZ + cy};
-    obs[0].pt = cv::Point2f((float)u, (float)v);
+    // const double u {fx*p(0)*invZ + cx};
+    // const double v {fy*p(1)*invZ + cy};
+    // obs[0].pt = cv::Point2f((float)u, (float)v);
+    std::vector<KeyFrame*> toerase;
+    toerase.reserve(kFWithFIdx.size());
+    std::unordered_map<KeyFrame*, size_t>::iterator it;
+    std::unordered_map<KeyFrame*, size_t>::const_iterator end(kFWithFIdx.end());
+    for ( it = kFWithFIdx.begin(); it != end; it++)
+    {
+        KeyFrame* kFcand = it->first;
+        const size_t keyPos = it->second;
+        TrackedKeys& tKeys = kFcand->keys;
+        if ( tKeys.estimatedDepth[keyPos] <= 0 )
+            continue;
+        Eigen::Vector4d pCam = kFcand->pose.getInvPose() * wp;
+        if (pCam(2) <= 0 )
+        {
+            tKeys.estimatedDepth[keyPos] = -1;
+            kFcand->localMapPoints[keyPos] = nullptr;
+            tKeys.rightIdxs[keyPos] = -1;
+            toerase.emplace_back(kFcand);
+            continue;
+        }
+        tKeys.estimatedDepth[keyPos] = pCam(2);
+        if ( pCam(2) <= zedPtr->mBaseline * 40)
+        {
+            tKeys.close[keyPos] = true;
+        }
+    }
+    if ( !toerase.empty() )
+    {
+        for ( size_t i{0}, end{toerase.size()}; i < end; i++)
+        {
+            this->eraseKFConnection(toerase[i]);
+        }
+    }
+
 }
 
 void MapPoint::eraseKFConnection(KeyFrame* kF)

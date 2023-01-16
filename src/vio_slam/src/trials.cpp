@@ -35,6 +35,10 @@ int main (int argc, char **argv)
     // vio_slam::ConfigFile yamlFile("config_exp.yaml");
 #elif ZED_DEMO
     std::string file = "config_demo_zed.yaml";
+#elif V1_02
+    std::string file = "config_V1_02.yaml";
+#elif SIMULATION
+    std::string file = "config_simulation.yaml";
 #else
     std::string file = "config.yaml";
     // vio_slam::ConfigFile yamlFile("config.yaml");

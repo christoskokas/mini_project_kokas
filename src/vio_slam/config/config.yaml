@@ -2,6 +2,13 @@ rectified: false
 
 numOfFrames: 657
 
+
+imagesPath: "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/"
+
+fileExtension: ".jpg"
+
+
+
 Camera_l:
   fx: 265.795
   fy: 265.6975
@@ -59,6 +66,6 @@ Stereo:
     cols: 4
     dt: f
     data: [1.0, 0.0, 0.0, -0.119947,
-         0.0, 1.0, 0.0, 0.0,
-         0.0, 0.0, 1.0, 0.0,
+         0.0, 1.0, 0.0, 0.00037599,
+         0.0, 0.0, 1.0, -0.000147674,
          0.0, 0.0, 0.0, 1.0]
