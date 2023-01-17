@@ -107,7 +107,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
 
 
         }
-        if ( bestDist < matchDist && bestDist < 0.8* secDist)
+        if ( bestDist < matchDistProj && bestDist < 0.8* secDist)
         {
             if (rIdxs[bestIdx] > bestDist)
             {
@@ -1977,7 +1977,7 @@ int FeatureMatcher::matchByProjectionPredWA(std::vector<MapPoint*>& activeMapPoi
                     secDist = dist;
             }
         }
-        if ( bestDist < matchDist && bestDist < 0.9* secDist)
+        if ( bestDist < matchDistProj && bestDist < 0.9* secDist)
         {
             if (rIdxs[bestIdx] > bestDist)
             {

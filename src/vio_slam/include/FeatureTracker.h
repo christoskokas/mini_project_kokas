@@ -126,8 +126,12 @@ class FeatureTracker
         const int keyFrameInsertThresh {1};
         const int actvKFMaxSize {10};
         const int maxActvKFMaxSize {50};
-        const int minNStereo {100};
+        const int minNStereo {70};
         const int minNMono {20};
+        const int maxActiveMPSize {800};
+
+        int lastKFTrackedNumb {0};
+
         const double imageDifThres {0.93};
         const double noMovementCheck {0.96};
 
@@ -140,12 +144,14 @@ class FeatureTracker
         const size_t mxIter {25};
         const float mnErr {1.0f};
 
+        const int keyFrameCountEnd {5};
         int insertKeyFrameCount {0};
         int lastValidKF {0};
         int uStereo {0};
         int uMono {0};
         int keyNumb {0};
         int curFrame {0};
+        int curFrameNumb {-1};
 
         float leftRight {0};
 

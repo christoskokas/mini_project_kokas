@@ -42,6 +42,8 @@ class FeatureMatcher
         const int closeNumber {40};
         const int thDist {75};
         const int matchDist {50};
+        const int matchDistProj {50};
+        // const int matchDistProj {40};
 
         // std::vector<std::vector<std::vector<int>>> leftIdxs;
 

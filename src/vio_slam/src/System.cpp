@@ -78,6 +78,7 @@ void System::SLAM()
     {
         cv::Mat imageLeft = cv::imread(leftImagesStr[i],cv::IMREAD_COLOR);
         cv::Mat imageRight = cv::imread(rightImagesStr[i],cv::IMREAD_COLOR);
+        // std::cout << "channels" <<imageLeft.channels() << std::endl;
 
         cv::Mat imLRect, imRRect;
 
@@ -95,6 +96,31 @@ void System::SLAM()
         featTracker->TrackImage(imLRect, imRRect, i);
 
     }
+
+    // BACKWARDS CHECK
+
+    // for ( size_t i{nFrames - 1}; i >= 0; i--)
+    // {
+    //     cv::Mat imageLeft = cv::imread(leftImagesStr[i],cv::IMREAD_COLOR);
+    //     cv::Mat imageRight = cv::imread(rightImagesStr[i],cv::IMREAD_COLOR);
+    //     // std::cout << "channels" <<imageLeft.channels() << std::endl;
+
+    //     cv::Mat imLRect, imRRect;
+
+    //     if ( !mZedCamera->rectified )
+    //     {
+    //         cv::remap(imageLeft, imLRect, rectMap[0][0], rectMap[0][1], cv::INTER_LINEAR);
+    //         cv::remap(imageRight, imRRect, rectMap[1][0], rectMap[1][1], cv::INTER_LINEAR);
+    //     }
+    //     else
+    //     {
+    //         imLRect = imageLeft.clone();
+    //         imRRect = imageRight.clone();
+    //     }
+
+    //     featTracker->TrackImage(imLRect, imRRect, i);
+
+    // }
 
 
 

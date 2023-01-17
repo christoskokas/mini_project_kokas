@@ -2347,6 +2347,7 @@ void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
     activeKeyFrames.reserve(1000);
     mPPerKeyFrame.reserve(1000);
     // std::lock_guard<std::mutex> lock(map->mapMutex);
+    int trckedKeys {0};
     for (size_t i{0}, end{keysLeft.keyPoints.size()}; i < end; i++)
     {
         if ( keysLeft.estimatedDepth[i] > 0 )
@@ -2363,9 +2364,11 @@ void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
             activeMapPoints.emplace_back(mp);
             kF->localMapPoints[i] = mp;
             kF->unMatchedF[i] = mp->kdx;
+            trckedKeys++;
             // kF->localMapPoints.emplace_back(mp);
         }
     }
+    lastKFTrackedNumb = trckedKeys;
     mPPerKeyFrame.push_back(activeMapPoints.size());
     kF->keys.getKeys(keysLeft);
     activeKeyFrames.insert(activeKeyFrames.begin(),kF);
@@ -2955,6 +2958,14 @@ void FeatureTracker::removeMapPointOut(std::vector<MapPoint*>& activeMapPoints, 
         if (worldToFrame(mp, estimPose) /* && !mp->GetIsOutlier() */ )
         {
             mp->seenCnt++;
+            // if ( activeMapPoints.size() > maxActiveMPSize )
+            // {
+            //     if ( mp->GetIsOutlier() )
+            //     {
+            //         mp->setActive(false);
+            //         continue;
+            //     }
+            // }
             mp->setActive(true);
             // if ( !mp->GetIsOutlier() )
             // {
@@ -3350,6 +3361,7 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
     activeMapPoints.reserve(activeMapPoints.size() + keysLeft.keyPoints.size());
     mPPerKeyFrame.reserve(1000);
     // std::lock_guard<std::mutex> lock(map->mapMutex);
+    int trckedKeys {0};
     for (size_t i{0}, end{keysLeft.keyPoints.size()}; i < end; i++)
     {
         // if ( keysLeft.close[i] >  )
@@ -3363,6 +3375,7 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
             mp->addTCnt();
             kF->localMapPoints[i] = mp;
             kF->unMatchedF[i] = mp->kdx;
+            trckedKeys++;
             continue;
         }
         if ( nStereo > minNStereo )
@@ -3385,10 +3398,11 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
                 mp->added = true;
                 activeMapPoints.emplace_back(mp);
                 map->addMapPoint(mp);
-
+            trckedKeys ++;
             // }
         }
     }
+    lastKFTrackedNumb = trckedKeys;
     kF->nKeysTracked = kF->localMapPoints.size();
     kF->keys.getKeys(keysLeft);
     mPPerKeyFrame.push_back(activeMapPoints.size());
@@ -3916,10 +3930,11 @@ void FeatureTracker::Track5(const int frames)
 
 void FeatureTracker::TrackImage(const cv::Mat& leftRect, const cv::Mat& rightRect, const int frameNumb)
 {
-    int keyFrameInsert {0};
     const int imageH {zedPtr->mHeight};
     const int imageW {zedPtr->mWidth};
     const int numbOfPixels {zedPtr->mHeight * zedPtr->mWidth};
+    curFrame = frameNumb;
+    curFrameNumb++;
     
     if ( map->LBADone )
     {
@@ -3939,15 +3954,14 @@ void FeatureTracker::TrackImage(const cv::Mat& leftRect, const cv::Mat& rightRec
 
     lIm.rIm = leftRect.clone();
     rIm.rIm = rightRect.clone();
-
+    cv::imshow("color", lIm.rIm);
     cv::cvtColor(lIm.rIm, lIm.im, cv::COLOR_BGR2GRAY);
     cv::cvtColor(rIm.rIm, rIm.im, cv::COLOR_BGR2GRAY);
-
+    cv::imshow("gray", lIm.im);
     TrackedKeys keysLeft;
 
 
-
-    if ( frameNumb == 0 )
+    if ( curFrameNumb == 0 )
     {
         extractORBStereoMatch(lIm.im, rIm.im, keysLeft);
 
@@ -3971,7 +3985,8 @@ void FeatureTracker::TrackImage(const cv::Mat& leftRect, const cv::Mat& rightRec
     const double dif = cv::norm(lastKFImage,lIm.im, cv::NORM_L2);
     const double similarity = 1 - dif/(numbOfPixels);
 
-    if ( frameNumb == 1 )
+
+    if ( curFrameNumb == 1 )
         int nMatches = fm.matchByProjection(activeMapPoints, keysLeft, matchedIdxsN, matchedIdxsB);
     else
     {
@@ -3983,7 +3998,7 @@ void FeatureTracker::TrackImage(const cv::Mat& leftRect, const cv::Mat& rightRec
         // worldToImg(activeMapPoints, prevKeyPos, zedPtr->cameraPose.poseInverse);
         calculatePrevKeyPos(activeMapPoints, prevKeyPos, zedPtr->cameraPose.poseInverse, predNPoseInv);
         // if ( similarity < noMovementCheck )
-        //     calcAngles(activeMapPoints, ConVelPoints, prevKeyPos, mapAngles);
+        calcAngles(activeMapPoints, ConVelPoints, prevKeyPos, mapAngles);
 
         int nNewMatches = fm.matchByProjectionConVelAng(activeMapPoints, ConVelPoints, prevKeyPos, keysLeft, matchedIdxsN, matchedIdxsB, 2, mapAngles);
     }
@@ -4042,7 +4057,7 @@ void FeatureTracker::TrackImage(const cv::Mat& leftRect, const cv::Mat& rightRec
         calcAngles(activeMapPoints, projectedPoints, prevKeyPos, mapAngles);
         checkPrevAngles(mapAngles, prevKeyPos, matchedIdxsN, matchedIdxsB, keysLeft);
     }
-    int nNewMatches = fm.matchByProjectionPredWA(activeMapPoints, projectedPoints, realPrevKeys, keysLeft, matchedIdxsN, matchedIdxsB, 10, mapAngles);
+    int nNewMatches = fm.matchByProjectionPredWA(activeMapPoints, projectedPoints, realPrevKeys, keysLeft, matchedIdxsN, matchedIdxsB, 15, mapAngles);
     // Logging("4","",3);
 #if DRAWMATCHES
     std::vector<cv::Point2f> prevpnts, projpnts, matchedpnts;
@@ -4152,11 +4167,14 @@ void FeatureTracker::TrackImage(const cv::Mat& leftRect, const cv::Mat& rightRec
     // estimPose = poseEst.inverse();
 
     // get percentage of displacement. keep the previous one and calculate the percentage.
+    insertKeyFrameCount ++;
     const int nMono = nStIn.first - nStIn.second;
-    keyFrameInsert++;
-    if ( nStIn.second < minNStereo)
+    Logging("inliers", nStIn.first,3);
+    Logging("stereo", nStIn.second,3);
+    Logging("lastKFTrackedNumb", 0.9* lastKFTrackedNumb,3);
+    if ( nStIn.second < minNStereo || (nStIn.first < 0.9 * lastKFTrackedNumb && insertKeyFrameCount >= keyFrameCountEnd))
     {
-        keyFrameInsert = 0;
+        insertKeyFrameCount = 0;
         insertKeyFrame(keysLeft, matchedIdxsN, nStIn.second, nMono, poseEst);
         Logging("New KeyFrame!","",3);
     }
@@ -4164,18 +4182,17 @@ void FeatureTracker::TrackImage(const cv::Mat& leftRect, const cv::Mat& rightRec
     {
         
         // Logging("similarity", similarity,3);
-        if ( similarity < imageDifThres && keyFrameInsert >= maxKeyFrameDist )
-        {
-            keyFrameInsert = 0;
-            insertKeyFrame(keysLeft, matchedIdxsN, nStIn.second, nMono, poseEst);
-            Logging("New KeyFrame!","",3);
-        }
-        else
-        {
+        // if ( similarity < imageDifThres )
+        // {
+        //     insertKeyFrame(keysLeft, matchedIdxsN, nStIn.second, nMono, poseEst);
+        //     Logging("New KeyFrame!","",3);
+        // }
+        // else
+        // {
             addFrame(keysLeft, matchedIdxsN, nStIn.second, poseEst);
             // insertKeyFrame(keysLeft, matchedIdxsN, nStIn.second, poseEst);
             // Logging("New Frame!","",3);
-        }
+        // }
     }
     // Logging("5","",3);
 
