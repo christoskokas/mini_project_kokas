@@ -1654,7 +1654,8 @@ void FeatureExtractor::computeAllOrientations(const cv::Mat& image, std::vector<
 
 void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors)
 {
-    // Timer Levels("computeKeys");
+    // Timer keys("computeKeys");
+
 
     computePyramid(image);
     std::vector<std::vector<cv::KeyPoint>> allKeys;
@@ -1755,7 +1756,7 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
 void FeatureExtractor::computeKeypointsORBNew(cv::Mat& image, std::vector<std::vector<cv::KeyPoint>>& allKeys)
 {
     // populateKeyDestrib(pnts,keyDestribution);
-
+    // Timer orb("orb");
 
     const int fastEdge = 3;
 
@@ -1828,11 +1829,11 @@ void FeatureExtractor::computeKeypointsORBNew(cv::Mat& image, std::vector<std::v
                     cv::FAST(cellIm, temp, minFastThreshold,true);
                 if (!temp.empty())
                 {
-                    if ( temp.size() > featuresPerCell)
-                    {
-                        cv::KeyPointsFilter::retainBest(temp,featuresPerCell);
-                        temp.resize(featuresPerCell);
-                    }
+                    // if ( temp.size() > featuresPerCell)
+                    // {
+                    //     cv::KeyPointsFilter::retainBest(temp,featuresPerCell);
+                    //     temp.resize(featuresPerCell);
+                    // }
                     std::vector<cv::KeyPoint>::iterator it;
                     std::vector<cv::KeyPoint>::const_iterator end(temp.end());
                     for (it = temp.begin(); it != end; it++)

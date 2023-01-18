@@ -72,7 +72,10 @@ void System::SLAM()
         cv::initUndistortRectifyMap(mZedCamera->cameraRight.cameraMatrix, mZedCamera->cameraRight.distCoeffs, R2, mZedCamera->cameraRight.cameraMatrix, cv::Size(width, height), CV_32F, rectMap[1][0], rectMap[1][1]);
     }
 
-
+    Eigen::Matrix4d prevWPose = Eigen::Matrix4d::Identity();
+    Eigen::Matrix4d prevWPoseInv = Eigen::Matrix4d::Identity();
+    Eigen::Matrix4d predNPose = Eigen::Matrix4d::Identity();
+    Eigen::Matrix4d predNPoseInv = Eigen::Matrix4d::Identity();
 
     for ( size_t i{0}; i < nFrames; i++)
     {
@@ -93,7 +96,17 @@ void System::SLAM()
             imRRect = imageRight.clone();
         }
 
-        featTracker->TrackImage(imLRect, imRRect, i);
+        Eigen::Matrix4d estimPose = featTracker->TrackImage(imLRect, imRRect, predNPoseInv, i);
+
+        prevWPose = mZedCamera->cameraPose.pose;
+        prevWPoseInv = mZedCamera->cameraPose.poseInverse;
+        // referencePose = lastKFPoseInv * poseEst;
+        // Eigen::Matrix4d lKFP = activeKeyFrames.front()->pose.pose;
+        // zedPtr->cameraPose.setPose(referencePose, lKFP);
+        mZedCamera->cameraPose.setPose(estimPose);
+        mZedCamera->cameraPose.setInvPose(estimPose.inverse());
+        predNPose = estimPose * (prevWPoseInv * estimPose);
+        predNPoseInv = predNPose.inverse();
 
     }
 

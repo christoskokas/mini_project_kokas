@@ -819,7 +819,7 @@ void LocalMapper::calcAllMpsOfKF(std::vector<std::vector<std::pair<int, int>>>& 
             if ( lastKF->keys.estimatedDepth[i] > 0 )
                 zp = (double)lastKF->keys.estimatedDepth[i];
             else
-                zp = 20.0;
+                zp = 1000.0;
             const double xp = (double)(((double)lastKF->keys.keyPoints[i].pt.x-cx)*zp/fx);
             const double yp = (double)(((double)lastKF->keys.keyPoints[i].pt.y-cy)*zp/fy);
             Eigen::Vector4d p4dcam(xp, yp, zp, 1);
@@ -903,7 +903,7 @@ void LocalMapper::triangulateNewPoints(std::vector<vio_slam::KeyFrame *>& active
         std::vector<cv::Point2f> predPoints;
         predictKeysPos(lastKF->keys, lastKF->pose.pose, (*it)->pose.poseInverse, keysAngles, p4d, predPoints);
         // drawPred(lastKF, lastKF->keys.keyPoints, predPoints);
-        fm->matchLocalBA(matchedIdxs, lastKF, (*it), aKFsize, 15, first, keysAngles, predPoints);
+        fm->matchLocalBA(matchedIdxs, lastKF, (*it), aKFsize, 10, first, keysAngles, predPoints);
         // if (first)
         // drawLBA("LBA matches",matchedIdxs, lastKF,(*it));
         cv::waitKey(1);

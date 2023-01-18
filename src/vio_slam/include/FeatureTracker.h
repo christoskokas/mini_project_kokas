@@ -200,7 +200,7 @@ class FeatureTracker
         FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map);
         FeatureTracker(Zed_Camera* _zedPtr, Map* _map);
 
-        void TrackImage(const cv::Mat& leftRect, const cv::Mat& rightRect, const int frameNumb);
+        Eigen::Matrix4d TrackImage(const cv::Mat& leftRect, const cv::Mat& rightRect, const Eigen::Matrix4d& predPose, const int frameNumb);
 
         void checkPrevAngles(std::vector<float>& mapAngles, std::vector<cv::KeyPoint>& prevKeys, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const TrackedKeys& keysLeft);
 
