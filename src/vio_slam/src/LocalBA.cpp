@@ -372,6 +372,8 @@ void LocalMapper::addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::
     // }
     // else
     MapPoint* mp = new MapPoint(posW, temp.Desc.row(keyPos),temp.keyPoints[keyPos], temp.close[keyPos], lastKF->numb, mpIdx);
+    if ( lastKF->keys.estimatedDepth[keyPos] > 0)
+        mp->desc.push_back(lastKF->keys.rightDesc.row(lastKF->keys.rightIdxs[keyPos]));
 
     // MapPoint* mp;
     // *mp = *mpnew;
@@ -383,10 +385,16 @@ void LocalMapper::addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::
         if ( matchesOfPoint[i].first >= 0)
         {
             KeyFrame* kf = map->keyFrames.at(matchesOfPoint[i].first);
+            const TrackedKeys& keys = kf->keys;
+            const size_t keyPosCand = matchesOfPoint[i].second;
             mp->kFWithFIdx.insert(std::pair<KeyFrame*, size_t>(kf, matchesOfPoint[i].second));
             count ++;
             if ( kf->numb != lastKFNumb)
+            {
                 mp->desc.push_back(kf->keys.Desc.row(matchesOfPoint[i].second));
+                if ( keys.estimatedDepth[keyPosCand] > 0 )
+                    mp->desc.push_back(keys.rightDesc.row(keys.rightIdxs[keyPosCand]));
+            }
             // kf->localMapPoints[matchesOfPoint[i].second] = &mp;
             // kf->unMatchedF[matchesOfPoint[i].second] = mp.kdx;
         }

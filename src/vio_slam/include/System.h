@@ -58,6 +58,8 @@ class System
         
         FeatureMatcher* fm;
 
+        void setActiveOutliers(std::vector<MapPoint*>& activeMPs, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches);
+
 };
 
 } // namespace vio_slam
