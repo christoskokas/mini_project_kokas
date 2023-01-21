@@ -18,7 +18,27 @@ Camera_l:
   k2: 0.0107849
   p1: 0.000333607
   p2: 0.000225869
-  k3: -0.00521306
+  k3: -0.0052130
+  K: 
+    rows: 3
+    cols: 3
+    dt: d
+    data: [265.795, 0.0, 338.7225, 0.0, 265.6975, 186.95575, 0.0, 0.0, 1]
+  D: 
+    rows: 1
+    cols: 5
+    dt: d
+    data: [-0.0420501, 0.0107849, 0.000333607, 0.000225869, -0.0052130]
+  R : 
+    rows: 3
+    cols: 3
+    dt: d
+    data: [1,0,0,0,1,0,0,0,1]
+  P: 
+    rows: 3
+    cols: 4
+    dt: d
+    data: [265.795, 0.0, 338.7225, 0.0, 0.0, 265.6975, 186.95575,0.0, 0.0, 0.0, 1, 0.0]
 
 Camera_l_path: /zed2i/zed_node/left_raw/image_raw_color
 # /zed2i/zed_node/left_raw/image_raw_color
@@ -34,6 +54,26 @@ Camera_r:
   p1: -1.93738e-05
   p2: -0.000249686
   k3: -0.00489882
+  K: 
+    rows: 3
+    cols: 3
+    dt: d
+    data: [264.59, 0.0, 337.56, 0.0, 264.325, 188.85625, 0.0, 0.0, 1]
+  D: 
+    rows: 1
+    cols: 5
+    dt: d
+    data: [-0.0416772, 0.0101824, -1.93738e-05, -0.000249686, -0.00489882]
+  R : 
+    rows: 3
+    cols: 3
+    dt: d
+    data: [1,0,0,0,1,0,0,0,1]
+  P: 
+    rows: 3
+    cols: 4
+    dt: d
+    data: [264.59, 0.0, 337.56, 0.0, 0.0, 264.325, 188.85625, 0.0, 0.0, 0.0, 1,0.0]
   
 Camera_r_path: /zed2i/zed_node/right_raw/image_raw_color
 # /zed2i/zed_node/right_raw/image_raw_color

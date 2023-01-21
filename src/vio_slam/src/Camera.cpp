@@ -161,14 +161,22 @@ void Camera::setIntrinsicValuesUnR(const std::string& cameraPath, ConfigFile* co
     path = confFile->getValue<std::string>(cameraPath + "_path");
     std::vector < double > Rt = confFile->getValue<std::vector<double>>(cameraPath,"R","data");
     std::vector < double > Pt = confFile->getValue<std::vector<double>>(cameraPath,"P","data");
+    std::vector < double > Dt = confFile->getValue<std::vector<double>>(cameraPath,"D","data");
+    std::vector < double > Kt = confFile->getValue<std::vector<double>>(cameraPath,"K","data");
 
     R = (cv::Mat_<double>(3,3) << Rt[0], Rt[1], Rt[2], Rt[3], Rt[4], Rt[5], Rt[6], Rt[7], Rt[8]);
     P = (cv::Mat_<double>(3,4) << Pt[0], Pt[1], Pt[2], Pt[3], Pt[4], Pt[5], Pt[6], Pt[7], Pt[8], Pt[9], Pt[10], Pt[11]);
+    K = (cv::Mat_<double>(3,3) << Kt[0], Kt[1], Kt[2], Kt[3], Kt[4], Kt[5], Kt[6], Kt[7], Kt[8]);
+    D = (cv::Mat_<double>(1,5) << Dt[0], Dt[1], Dt[2], Dt[3], Dt[4]);
+    cameraMatrix = K;
+    std::cout << cameraPath<< " cameraMatrix " << cameraMatrix << std::endl;
+    // std::cout << cameraPath<< " P " << P << std::endl;
+    // std::cout << cameraPath<< " P " << P << std::endl;
 
-    std::cout << "R " << R << std::endl;
-    std::cout << "P " << P << std::endl;
-    std::cout << "P " << P << std::endl;
-
+    intrisics(0,0) = fx;
+    intrisics(1,1) = fy;
+    intrisics(0,2) = cx;
+    intrisics(1,2) = cy;
 
     // nh->getParam(cameraPath + "/fx",fx);
     // nh->getParam(cameraPath + "/fy",fy);

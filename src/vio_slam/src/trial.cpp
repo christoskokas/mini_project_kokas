@@ -1222,8 +1222,8 @@ void RobustMatcher2::undistortMap()
     // cv::Mat rightCamera = cv::getOptimalNewCameraMatrix(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs,imgSize, 0);
 #if V1_02
 
-    cv::Mat rightCamera = (cv::Mat_<double>(3,3) << 435.2046959714599, 0, 367.4517211914062, 0, 435.2046959714599, 252.2008514404297, 0, 0, 1);
     cv::Mat leftCamera = (cv::Mat_<double>(3,3) << 435.2046959714599, 0, 367.4517211914062, 0, 435.2046959714599, 252.2008514404297, 0, 0, 1);
+    cv::Mat rightCamera = (cv::Mat_<double>(3,3) << 435.2046959714599, 0, 367.4517211914062, 0, 435.2046959714599, 252.2008514404297, 0, 0, 1);
     R1 = (cv::Mat_<double>(3,3) << 0.999966347530033, -0.001422739138722922, 0.008079580483432283, 0.001365741834644127, 0.9999741760894847, 0.007055629199258132, -0.008089410156878961, -0.007044357138835809, 0.9999424675829176);
     R2 = (cv::Mat_<double>(3,3) << 0.9999633526194376, -0.003625811871560086, 0.007755443660172947, 0.003680398547259526, 0.9999684752771629, -0.007035845251224894, -0.007729688520722713, 0.007064130529506649, 0.999945173484644);
 #else
@@ -1234,8 +1234,8 @@ void RobustMatcher2::undistortMap()
 
     cv::initUndistortRectifyMap(zedcamera->cameraLeft.cameraMatrix, zedcamera->cameraLeft.distCoeffs, R1, leftCamera, imgSize, CV_32F, rmap[0][0], rmap[0][1]);
     cv::initUndistortRectifyMap(zedcamera->cameraRight.cameraMatrix, zedcamera->cameraRight.distCoeffs, R2, rightCamera, imgSize, CV_32F, rmap[1][0], rmap[1][1]);
-    Logging("P1",P1,1);
-    Logging("P2",P2,1);
+    Logging("P1init",P1,1);
+    Logging("P2init",P2,1);
 }
 
 void ImageFrame::rectifyImage(cv::Mat& image, cv::Mat& map1, cv::Mat& map2)
