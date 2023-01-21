@@ -427,7 +427,7 @@ void FeatureExtractor::computePyramid(const cv::Mat& image)
         float scale = scaleInvPyramid[level];
         cv::Size sz(cvRound((float)image.cols*scale), cvRound((float)image.rows*scale));
         cv::Size wholeSize(sz.width + edgeThreshold*2, sz.height + edgeThreshold*2);
-        cv::Mat temp(wholeSize, image.type()), masktemp;
+        cv::Mat temp(wholeSize, image.type());
         imagePyramid[level] = temp(cv::Rect(edgeThreshold, edgeThreshold, sz.width, sz.height));
 
         // Compute the resized image
@@ -1368,7 +1368,7 @@ std::vector<cv::KeyPoint> FeatureExtractor::ssc(std::vector<cv::KeyPoint> keyPoi
   // several temp expression variables to simplify solution equation
     std::vector<float> responseVector;
     for (unsigned int i = 0; i < keyPoints.size(); i++)
-    responseVector.push_back(keyPoints[i].response);
+        responseVector.push_back(keyPoints[i].response);
     std::vector<int> Indx(responseVector.size());
     std::iota(std::begin(Indx), std::end(Indx), 0);
     cv::sortIdx(responseVector, Indx, cv::SORT_DESCENDING);
@@ -1710,13 +1710,13 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
     int nF {0};
     for (size_t level {0}; level < nLevels; level++)
     {
-        const int fPLevel = featurePerLevel[level];
-        if ( allKeys[level].size() > fPLevel )
-        {
-            allKeys[level] = ssc(allKeys[level], fPLevel, 0.1, imagePyramid[level].cols, imagePyramid[level].rows);
-        }
+        // const int fPLevel = featurePerLevel[level];
+        // if ( allKeys[level].size() > fPLevel )
+        // {
+        //     allKeys[level] = ssc(allKeys[level], fPLevel, 0.1, imagePyramid[level].cols, imagePyramid[level].rows);
+        // }
         nF += allKeys[level].size();
-        computeAllOrientations(imagePyramid[level], allKeys[level]);
+        // computeAllOrientations(imagePyramid[level], allKeys[level]);
     }
 
 
@@ -1739,7 +1739,6 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
         int descCount {0};
         for (it = allKeys[level].begin(); it != end; it++, descCount++)
         {
-            it->size = scaledPatchSize[level];
             // it->angle = computeOrientation(imagePyramid[level], it->pt);
             if ( level != 0 )
                 it->pt *= scale;
@@ -1780,8 +1779,8 @@ void FeatureExtractor::computeKeypointsORBNew(cv::Mat& image, std::vector<std::v
 
         const int nGrids = gridCols * gridRows;
         allKeys[level].reserve( 2 * nFeatures );
-        const int featuresPerEachLevel = featurePerLevel[level];
-        const int featuresPerCell = cvCeil((float)featuresPerEachLevel/nGrids);
+        // const int featuresPerEachLevel = featurePerLevel[level];
+        // const int featuresPerCell = cvCeil((float)featuresPerEachLevel/nGrids);
 
         
 
@@ -1816,14 +1815,14 @@ void FeatureExtractor::computeKeypointsORBNew(cv::Mat& image, std::vector<std::v
 
                 const cv::Mat& cellIm = imagePyramid[level].rowRange(rStart, rEnd).colRange(cStart, cEnd);
 
-                cv::Mat fl;
-                cv::flip(cellIm, fl,-1);
-                // Logging("fl",cv::norm(im,fl),3);
-                if ( cv::norm(cellIm,fl) < mnContr)
-                    continue;
+                // cv::Mat fl;
+                // cv::flip(cellIm, fl,-1);
+                // // Logging("fl",cv::norm(im,fl),3);
+                // if ( cv::norm(cellIm,fl) < mnContr)
+                //     continue;
 
                 std::vector<cv::KeyPoint> temp;
-                temp.reserve(2 * featuresPerCell);
+                // temp.reserve(2 * featuresPerCell);
                 cv::FAST(cellIm, temp, maxFastThreshold,true);
                 if (temp.empty())
                     cv::FAST(cellIm, temp, minFastThreshold,true);
@@ -1841,6 +1840,7 @@ void FeatureExtractor::computeKeypointsORBNew(cv::Mat& image, std::vector<std::v
                         it->pt.x += cStart;
                         it->pt.y += rStart;
                         it->octave = level;
+                        it->size = scaledPatchSize[level];
                         // cellKeys[iR][iC].emplace_back(*it);
                         allKeys[level].emplace_back(*it);
                     }
@@ -1851,6 +1851,13 @@ void FeatureExtractor::computeKeypointsORBNew(cv::Mat& image, std::vector<std::v
             }
 
         }
+        const int fPLevel = featurePerLevel[level];
+        if ( allKeys[level].size() > fPLevel )
+        {
+            allKeys[level] = ssc(allKeys[level], fPLevel, 0.1, imagePyramid[level].cols, imagePyramid[level].rows);
+        }
+        computeAllOrientations(imagePyramid[level], allKeys[level]);
+
     }
 
 

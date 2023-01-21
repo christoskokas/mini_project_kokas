@@ -3104,7 +3104,7 @@ bool FeatureTracker::worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose)
 
     const int h {zedPtr->mHeight};
     const int w {zedPtr->mWidth};
-    if ( u < 0 || v < 0 || u >= w || v >= h)
+    if ( u < 15 || v < 15 || u >= w - 15 || v >= h - 15)
     {
         mp->SetInFrame(false);
         return false;

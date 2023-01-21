@@ -71,6 +71,8 @@ class Camera
         double k1 {}, k2 {}, p1 {}, p2 {}, k3{};
         std::string path {};
         cv::Mat cameraMatrix {};
+        cv::Mat R = cv::Mat::eye(3,3,CV_64F);
+        cv::Mat P = cv::Mat::eye(3,4,CV_64F);
         Eigen::Matrix<double,3,3> intrisics = Eigen::Matrix<double,3,3>::Identity();
         cv::Mat distCoeffs {};
         Camera(ros::NodeHandle *nh);

@@ -44,9 +44,9 @@ void System::setActiveOutliers(std::vector<MapPoint*>& activeMPs, std::vector<bo
             mp->unMCnt = 0;
         else
             mp->unMCnt++;
-        if ( !MPsOutliers[i] && mp->unMCnt < 3 )
+        if ( !MPsOutliers[i] && mp->unMCnt < 20 )
             continue;
-        mp->SetIsOutlier( MPsOutliers[i] );
+        mp->SetIsOutlier( true );
     }
 }
 
@@ -84,8 +84,11 @@ void System::SLAM()
     if ( !mZedCamera->rectified )
     {
         cv::Mat R1,R2;
-        cv::initUndistortRectifyMap(mZedCamera->cameraLeft.cameraMatrix, mZedCamera->cameraLeft.distCoeffs, R1, mZedCamera->cameraLeft.cameraMatrix, cv::Size(width, height), CV_32F, rectMap[0][0], rectMap[0][1]);
-        cv::initUndistortRectifyMap(mZedCamera->cameraRight.cameraMatrix, mZedCamera->cameraRight.distCoeffs, R2, mZedCamera->cameraRight.cameraMatrix, cv::Size(width, height), CV_32F, rectMap[1][0], rectMap[1][1]);
+        cv::initUndistortRectifyMap(mZedCamera->cameraLeft.cameraMatrix, mZedCamera->cameraLeft.distCoeffs, mZedCamera->cameraLeft.R, mZedCamera->cameraLeft.P.rowRange(0,3).colRange(0,3), cv::Size(width, height), CV_32F, rectMap[0][0], rectMap[0][1]);
+        cv::initUndistortRectifyMap(mZedCamera->cameraRight.cameraMatrix, mZedCamera->cameraRight.distCoeffs, mZedCamera->cameraRight.R, mZedCamera->cameraRight.P.rowRange(0,3).colRange(0,3), cv::Size(width, height), CV_32F, rectMap[1][0], rectMap[1][1]);
+    std::cout << "mZedCamera->cameraRight.P " << mZedCamera->cameraRight.P.rowRange(0,3).colRange(0,3) << std::endl;
+    std::cout << "mZedCamera->cameraRight.cameraMatrix " << mZedCamera->cameraRight.cameraMatrix << std::endl;
+
     }
 
     Eigen::Matrix4d prevWPose = Eigen::Matrix4d::Identity();
@@ -110,6 +113,9 @@ void System::SLAM()
         {
             cv::remap(imageLeft, imLRect, rectMap[0][0], rectMap[0][1], cv::INTER_LINEAR);
             cv::remap(imageRight, imRRect, rectMap[1][0], rectMap[1][1], cv::INTER_LINEAR);
+            cv::imshow("left", imageLeft);
+            cv::imshow("left rect", imLRect);
+            cv::waitKey(0);
         }
         else
         {

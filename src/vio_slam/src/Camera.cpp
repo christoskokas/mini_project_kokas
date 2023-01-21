@@ -159,6 +159,17 @@ void Camera::setIntrinsicValuesUnR(const std::string& cameraPath, ConfigFile* co
     p2 = confFile->getValue<double>(cameraPath,"p2");
     k3 = confFile->getValue<double>(cameraPath,"k3");
     path = confFile->getValue<std::string>(cameraPath + "_path");
+    std::vector < double > Rt = confFile->getValue<std::vector<double>>(cameraPath,"R","data");
+    std::vector < double > Pt = confFile->getValue<std::vector<double>>(cameraPath,"P","data");
+
+    R = (cv::Mat_<double>(3,3) << Rt[0], Rt[1], Rt[2], Rt[3], Rt[4], Rt[5], Rt[6], Rt[7], Rt[8]);
+    P = (cv::Mat_<double>(3,4) << Pt[0], Pt[1], Pt[2], Pt[3], Pt[4], Pt[5], Pt[6], Pt[7], Pt[8], Pt[9], Pt[10], Pt[11]);
+
+    std::cout << "R " << R << std::endl;
+    std::cout << "P " << P << std::endl;
+    std::cout << "P " << P << std::endl;
+
+
     // nh->getParam(cameraPath + "/fx",fx);
     // nh->getParam(cameraPath + "/fy",fy);
     // nh->getParam(cameraPath + "/cx",cx);

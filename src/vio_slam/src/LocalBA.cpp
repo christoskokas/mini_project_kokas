@@ -1006,11 +1006,18 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     int lastActKF {actKeyF.front()->numb};
     // std::vector<MapPoint*> outliersMP;
     // outliersMP.reserve(1000);
+    bool fixedKF {false};
     std::vector<KeyFrame*>::const_iterator it, end(actKeyF.end());
     for ( it = actKeyF.begin(); it != end; it++)
     {
         localKFs[*it] = Converter::Matrix4dToMatrix_7_1((*it)->pose.getInvPose());
+    }
+    for ( it = actKeyF.begin(); it != end; it++)
+    {
+        // localKFs[*it] = Converter::Matrix4dToMatrix_7_1((*it)->pose.getInvPose());
         std::vector<cv::Point2f> kFkeys, mpKeys;
+        if ( (*it)->fixed )
+            fixedKF = true;
         // Logging("BEFORE BA", (*it)->getPose(),3);
         int count {0};
         std::vector<MapPoint*>::const_iterator itmp, endmp((*it)->localMapPoints.end());
@@ -1040,24 +1047,23 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 //     // keyFMatches++;
                 //     continue;
                 // }
-                fixedKFs[kFCand] = Converter::Matrix4dToMatrix_7_1(kFCand->pose.getInvPose());
-                hasKF = true;
+                if (localKFs.find(kFCand) == localKFs.end())
+                {
+                    fixedKFs[kFCand] = Converter::Matrix4dToMatrix_7_1(kFCand->pose.getInvPose());
+                }
                 blocks++;
                 // keyFMatches++;
             }
-            if ( hasKF /* && keyFMatches >= 3 */ )
-            {
-                const Eigen::Matrix4d camPose = (*it)->pose.getInvPose();
-                Eigen::Vector4d pointCam = camPose * mp->getWordPose4d();
-                if ( pointCam(2) <= 0)
-                    continue;
-                double u {fx*pointCam(0)/pointCam(2) + cx};
-                double v {fy*pointCam(1)/pointCam(2) + cy};
-                kFkeys.emplace_back((*it)->keys.keyPoints[count].pt);
-                mpKeys.emplace_back((float)u,(float)v);
-                allMapPoints.insert(std::pair<MapPoint*, Eigen::Vector3d>((*itmp), (*itmp)->getWordPose3d()));
+            const Eigen::Matrix4d camPose = (*it)->pose.getInvPose();
+            Eigen::Vector4d pointCam = camPose * mp->getWordPose4d();
+            if ( pointCam(2) <= 0)
+                continue;
+            double u {fx*pointCam(0)/pointCam(2) + cx};
+            double v {fy*pointCam(1)/pointCam(2) + cy};
+            kFkeys.emplace_back((*it)->keys.keyPoints[count].pt);
+            mpKeys.emplace_back((float)u,(float)v);
+            allMapPoints.insert(std::pair<MapPoint*, Eigen::Vector3d>((*itmp), (*itmp)->getWordPose3d()));
 
-            }
             // else if ( keyFMatches < 3 )
             // {
             //     outliersMP.emplace_back(mp);
@@ -1073,6 +1079,12 @@ void LocalMapper::localBA(std::vector<vio_slam::KeyFrame *>& actKeyF)
     }
     Logging("fixed size", fixedKFs.size(),3);
     Logging("local size", localKFs.size(),3);
+    if ( fixedKFs.size() == 0 && !fixedKF )
+    {
+        KeyFrame* lastKF = actKeyF.back();
+        localKFs.erase(lastKF);
+        fixedKFs[lastKF] = Converter::Matrix4dToMatrix_7_1(lastKF->pose.getInvPose());
+    }
     // Logging("mappoints size", allMapPoints.size(),3);
     
     // Logging("before", localKFs[actKeyF.front()],3);
