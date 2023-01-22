@@ -205,7 +205,7 @@ class FeatureTracker
         void removeOutOfFrameMPs(const Eigen::Matrix4d& prevCameraPose, std::vector<MapPoint*>& activeMapPoints);
 
         Eigen::Matrix4d TrackImage(const cv::Mat& leftRect, const cv::Mat& rightRect, const Eigen::Matrix4d& prevCameraPose, const Eigen::Matrix4d& predPoseInv, std::vector<MapPoint*>& activeMpsTemp, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches, const int frameNumb, bool& newKF);
-        std::pair<KeyFrame*,Eigen::Matrix4d> TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRect, const Eigen::Matrix4d& prevCameraPose, const Eigen::Matrix4d& predPoseInv, std::vector<MapPoint*>& activeMpsTemp, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches, bool& newKF, const int frameNumb, std::vector<int>& matchedIdxsN, int& nStereo, int& nMono);
+        void TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRect, const Eigen::Matrix4d& prevCameraPose, const Eigen::Matrix4d& predPoseInv, std::vector<MapPoint*>& activeMpsTemp, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches, bool& newKF, const int frameNumb, std::vector<int>& matchedIdxsN, int& nStereo, int& nMono, KeyFrame*& kFCandidate, Eigen::Matrix4d& framePose);
 
         void checkPrevAngles(std::vector<float>& mapAngles, std::vector<cv::KeyPoint>& prevKeys, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const TrackedKeys& keysLeft);
 

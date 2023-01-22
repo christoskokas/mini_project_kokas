@@ -4,15 +4,13 @@
 namespace vio_slam
 {
 
-System::System(std::string& confFile)
+System::System(ConfigFile* _mConf)
 {
-    mConf = new ConfigFile(confFile.c_str());
+    mConf = _mConf;
 
     mZedCamera = new Zed_Camera(mConf);
 
     mFrame = new Frame;
-
-    mRb = new RobustMatcher2(mZedCamera);
 
     map = new Map();
 
@@ -24,6 +22,10 @@ System::System(std::string& confFile)
     fm = new FeatureMatcher(mZedCamera, feLeft, feRight, mZedCamera->mHeight, feLeft->getGridRows(), feLeft->getGridCols());
 
     localMap = new LocalMapper(map, mZedCamera, fm);
+
+    Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera, map);
+
+    LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMapping, localMap);
     // Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera);
 
     // Tracking = new std::thread(&vio_slam::RobustMatcher2::beginTest, mRb);
@@ -34,7 +36,46 @@ System::System(std::string& confFile)
     // std::thread tester(&vio_slam::RobustMatcher2::beginTest, &rb);
 }
 
-void System::setActiveOutliers(std::vector<MapPoint*>& activeMPs, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches)
+System::System(ConfigFile* _mConf, bool multi)
+{
+    mConf = _mConf;
+
+    mZedCamera = new Zed_Camera(mConf);
+    mZedCameraB = new Zed_Camera(mConf);
+
+    mFrame = new Frame;
+
+    map = new Map();
+    mapB = new Map();
+
+    featTracker = new FeatureTracker(mZedCamera,map);
+    featTrackerB = new FeatureTracker(mZedCameraB,mapB);
+
+    feLeft = new FeatureExtractor(nFeatures/2);
+    feRight = new FeatureExtractor(nFeatures/2);
+
+    feLeftB = new FeatureExtractor(nFeatures/2);
+    feRightB = new FeatureExtractor(nFeatures/2);
+
+    fm = new FeatureMatcher(mZedCamera, feLeft, feRight, mZedCamera->mHeight, feLeft->getGridRows(), feLeft->getGridCols());
+    fmB = new FeatureMatcher(mZedCameraB, feLeftB, feRightB, mZedCameraB->mHeight, feLeftB->getGridRows(), feLeftB->getGridCols());
+
+    localMap = new LocalMapper(map, mZedCamera, fm);
+
+    Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera, map);
+
+    LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMapping, localMap);
+    // Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera);
+
+    // Tracking = new std::thread(&vio_slam::RobustMatcher2::beginTest, mRb);
+
+    // vio_slam::Frame frame;
+    // vio_slam::RobustMatcher2 rb(zedptr);
+    // std::thread worker(&vio_slam::Frame::pangoQuit, frame, zedptr);
+    // std::thread tester(&vio_slam::RobustMatcher2::beginTest, &rb);
+}
+
+void System::setActiveOutliers(Map* map, std::vector<MapPoint*>& activeMPs, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches)
 {
     std::lock_guard<std::mutex> lock(map->mapMutex);
     for ( size_t i{0}, end{MPsOutliers.size()}; i < end; i++)
@@ -50,7 +91,7 @@ void System::setActiveOutliers(std::vector<MapPoint*>& activeMPs, std::vector<bo
     }
 }
 
-void System::insertKF(KeyFrame* kF, std::vector<MapPoint*>& activeMapPoints, std::vector<int>& matchedIdxsN, const Eigen::Matrix4d& estimPose, const int nStereo, const int nMono)
+void System::insertKF(Map* map, KeyFrame* kF, std::vector<int>& matchedIdxsN, const Eigen::Matrix4d& estimPose, const int nStereo, const int nMono, const bool front)
 {
     const double fx {mZedCamera->cameraLeft.fx};
     const double fy {mZedCamera->cameraLeft.fy};
@@ -60,6 +101,7 @@ void System::insertKF(KeyFrame* kF, std::vector<MapPoint*>& activeMapPoints, std
     kF->keyF = true;
     kF->unMatchedF.resize(keysLeft.keyPoints.size(), -1);
     kF->localMapPoints.resize(keysLeft.keyPoints.size(), nullptr);
+    std::vector<MapPoint*>& activeMapPoints = map->activeMapPoints;
     activeMapPoints.reserve(activeMapPoints.size() + keysLeft.keyPoints.size());
     std::lock_guard<std::mutex> lock(map->mapMutex);
     int trckedKeys {0};
@@ -70,7 +112,10 @@ void System::insertKF(KeyFrame* kF, std::vector<MapPoint*>& activeMapPoints, std
         {
             MapPoint* mp = activeMapPoints[matchedIdxsN[i]];
             if ( mp->GetIsOutlier() || !mp->GetInFrame() )
+            {
+                matchedIdxsN[i] = -1;
                 continue;
+            }
             mp->kFWithFIdx.insert(std::pair<KeyFrame*, size_t>(kF, i));
             mp->desc.push_back(keysLeft.Desc.row(i));
             if ( keysLeft.estimatedDepth[i] > 0 )
@@ -110,6 +155,7 @@ void System::insertKF(KeyFrame* kF, std::vector<MapPoint*>& activeMapPoints, std
     // kF->keys.getKeys(keysLeft);
     map->addKeyFrame(kF);
     map->activeKeyFrames.insert(map->activeKeyFrames.begin(),kF);
+    
     // if ( activeKeyFrames.size() > actvKFMaxSize )
     // {
     //     // removeKeyFrame(activeKeyFrames);
@@ -118,15 +164,34 @@ void System::insertKF(KeyFrame* kF, std::vector<MapPoint*>& activeMapPoints, std
     // }
     // referencePose = Eigen::Matrix4d::Identity();
     // zedPtr->cameraPose.refPose = referencePose;
-    if ( map->activeKeyFrames.size() > 3 )
+    if ( map->activeKeyFrames.size() > 3 && front )
         map->keyFrameAdded = true;
+}
+
+void System::drawTrackedKeys(KeyFrame* kF, std::vector<int> matched, const char* com, cv::Mat& im)
+{
+    TrackedKeys& tKeys = kF->keys;
+    std::vector<cv::KeyPoint> keys;
+    keys.reserve(tKeys.keyPoints.size());
+    for ( size_t i{0}, end{ tKeys.keyPoints.size()}; i < end; i++)
+    {
+        if ( matched[i] >= 0 )
+            keys.emplace_back(tKeys.keyPoints[i]);
+    }
+
+    cv::Mat outIm = im.clone();
+    for (auto& key:keys)
+    {
+        cv::circle(outIm, key.pt,2,cv::Scalar(0,255,0));
+
+    }
+    cv::imshow(com, outIm);
+    cv::waitKey(1);
 }
 
 void System::SLAM()
 {
-    Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera, map);
-
-    LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMapping, localMap);
+    
 
     const int nFrames {mZedCamera->numOfFrames};
     std::vector<std::string>leftImagesStr, rightImagesStr;
@@ -210,15 +275,22 @@ void System::SLAM()
         std::pair<KeyFrame*, Eigen::Matrix4d> trckF;
 
         // Eigen::Matrix4d estimPose = featTracker->TrackImage(imLRect, imRRect, currCameraPose, predNPoseInv, activeMpsTemp, MPsOutliers, MPsMatches, i, newKF);
-        trckF = featTracker->TrackImageT(imLRect, imRRect, currCameraPose, predNPoseInv, activeMpsTemp, MPsOutliers, MPsMatches, newKF, i, matchedIdxsN, nStereo, nMono);
-        Eigen::Matrix4d estimPose = trckF.second;
-        KeyFrame* kFCandF = trckF.first;
+        // trckF = std::thread lel(&vio_slam::FeatureTracker::TrackImageT,)
 
-        setActiveOutliers(activeMpsTemp,MPsOutliers, MPsMatches);
+        Eigen::Matrix4d estimPose = Eigen::Matrix4d::Identity();
+        KeyFrame* kFCandF;
+
+        // featTracker->TrackImageT(imLRect, imRRect, currCameraPose, predNPoseInv, activeMpsTemp, MPsOutliers, MPsMatches, newKF, i, matchedIdxsN, nStereo, nMono, kFCandF, estimPose);
+        FeatTrack = new std::thread(&vio_slam::FeatureTracker::TrackImageT, featTracker, std::ref(imLRect), std::ref(imRRect), std::ref(currCameraPose), std::ref(predNPoseInv), std::ref(activeMpsTemp), std::ref(MPsOutliers), std::ref(MPsMatches), std::ref(newKF), std::ref(i), std::ref(matchedIdxsN), std::ref(nStereo), std::ref(nMono), std::ref(kFCandF), std::ref(estimPose));
+        FeatTrack->join();
+        // Eigen::Matrix4d estimPose = trckF.second;
+        // KeyFrame* kFCandF = trckF.first;
+
+        setActiveOutliers(map, activeMpsTemp,MPsOutliers, MPsMatches);
 
         if ( newKF )
         {
-            insertKF(kFCandF, map->activeMapPoints,matchedIdxsN, estimPose, nStereo, nMono);
+            insertKF(map, kFCandF, matchedIdxsN, estimPose, nStereo, nMono, true);
             map->keyFrameAddedMain = true;
 
         }
@@ -244,8 +316,229 @@ void System::SLAM()
 
 
     Visual->join();
-    Tracking->join();
+    // Tracking->join();
     LocalMapping->join();
+}
+
+void System::MultiSLAM()
+{
+    
+
+    const int nFrames {mZedCamera->numOfFrames};
+    std::vector<std::string>leftImagesStr, rightImagesStr, leftImagesStrB, rightImagesStrB;
+    leftImagesStr.reserve(nFrames);
+    rightImagesStr.reserve(nFrames);
+    leftImagesStrB.reserve(nFrames);
+    rightImagesStrB.reserve(nFrames);
+
+    const std::string imagesPath = mConf->getValue<std::string>("imagesPath");
+
+    std::vector<float> Tc1_c2 = mConf->getValue<std::vector<float>>("Multi", "T_c1_c2", "data");
+
+    Eigen::Matrix4d transfC1C2;
+    transfC1C2 << Tc1_c2[0],Tc1_c2[1],Tc1_c2[2],Tc1_c2[3],Tc1_c2[4],Tc1_c2[5],Tc1_c2[6],Tc1_c2[7],Tc1_c2[8],Tc1_c2[9],Tc1_c2[10],Tc1_c2[11],Tc1_c2[12],Tc1_c2[13],Tc1_c2[14],Tc1_c2[15];
+
+    Logging("Tc1c2", transfC1C2, 3);
+
+    mZedCameraB->cameraPose.setPose(transfC1C2);
+    Eigen::Matrix4d transfC1C2inv = transfC1C2.inverse();
+
+    const std::string leftPath = imagesPath + "left/";
+    const std::string rightPath = imagesPath + "right/";
+    const std::string leftPathB = imagesPath + "leftBack/";
+    const std::string rightPathB = imagesPath + "rightBack/";
+    const std::string fileExt = mConf->getValue<std::string>("fileExtension");
+
+    const size_t imageNumbLength = 6;
+
+    for ( size_t i {0}; i < nFrames; i++)
+    {
+        std::string frameNumb = std::to_string(i);
+        std::string frameStr = std::string(imageNumbLength - std::min(imageNumbLength, frameNumb.length()), '0') + frameNumb;
+        leftImagesStr.emplace_back(leftPath + frameStr + fileExt);
+        rightImagesStr.emplace_back(rightPath + frameStr + fileExt);
+        leftImagesStrB.emplace_back(leftPathB + frameStr + fileExt);
+        rightImagesStrB.emplace_back(rightPathB + frameStr + fileExt);
+    }
+
+    cv::Mat rectMap[2][2], rectMapB[2][2];
+    const int width = mZedCamera->mWidth;
+    const int height = mZedCamera->mHeight;
+
+    if ( !mZedCamera->rectified )
+    {
+        cv::initUndistortRectifyMap(mZedCamera->cameraLeft.K, mZedCamera->cameraLeft.D, mZedCamera->cameraLeft.R, mZedCamera->cameraLeft.P.rowRange(0,3).colRange(0,3), cv::Size(width, height), CV_32F, rectMap[0][0], rectMap[0][1]);
+        cv::initUndistortRectifyMap(mZedCamera->cameraRight.K, mZedCamera->cameraRight.D, mZedCamera->cameraRight.R, mZedCamera->cameraRight.P.rowRange(0,3).colRange(0,3), cv::Size(width, height), CV_32F, rectMap[1][0], rectMap[1][1]);
+        cv::initUndistortRectifyMap(mZedCameraB->cameraLeft.K, mZedCameraB->cameraLeft.D, mZedCameraB->cameraLeft.R, mZedCameraB->cameraLeft.P.rowRange(0,3).colRange(0,3), cv::Size(width, height), CV_32F, rectMapB[0][0], rectMapB[0][1]);
+        cv::initUndistortRectifyMap(mZedCameraB->cameraRight.K, mZedCameraB->cameraRight.D, mZedCameraB->cameraRight.R, mZedCameraB->cameraRight.P.rowRange(0,3).colRange(0,3), cv::Size(width, height), CV_32F, rectMapB[1][0], rectMapB[1][1]);
+        // std::cout << "mZedCamera->cameraRight.P " << mZedCamera->cameraRight.P.rowRange(0,3).colRange(0,3) << std::endl;
+        // std::cout << "mZedCamera->cameraRight.cameraMatrix " << mZedCamera->cameraRight.cameraMatrix << std::endl;
+
+    }
+
+    Eigen::Matrix4d prevWPose = Eigen::Matrix4d::Identity();
+    Eigen::Matrix4d prevWPoseInv = Eigen::Matrix4d::Identity();
+    Eigen::Matrix4d predNPose = Eigen::Matrix4d::Identity();
+    Eigen::Matrix4d predNPoseInv = Eigen::Matrix4d::Identity();
+    Eigen::Matrix4d currCameraPose = Eigen::Matrix4d::Identity();
+    Eigen::Matrix4d prevWPoseB = mZedCameraB->cameraPose.pose;
+    Eigen::Matrix4d prevWPoseInvB = mZedCameraB->cameraPose.pose;
+    Eigen::Matrix4d predNPoseB = mZedCameraB->cameraPose.pose;
+    Eigen::Matrix4d predNPoseInvB = mZedCameraB->cameraPose.pose;
+    Eigen::Matrix4d currCameraPoseB = mZedCameraB->cameraPose.pose;
+
+    Sophus::Vector6d displacement;
+    
+
+    for ( size_t i{0}; i < nFrames; i++)
+    {
+
+        // if ( i%3 != 0 && i != 0  && i != 1 )
+        //     continue;
+
+        cv::Mat imageLeft = cv::imread(leftImagesStr[i],cv::IMREAD_COLOR);
+        cv::Mat imageRight = cv::imread(rightImagesStr[i],cv::IMREAD_COLOR);
+        cv::Mat imageLeftB = cv::imread(leftImagesStrB[i],cv::IMREAD_COLOR);
+        cv::Mat imageRightB = cv::imread(rightImagesStrB[i],cv::IMREAD_COLOR);
+        // std::cout << "channels" <<imageLeft.channels() << std::endl;
+
+        cv::Mat imLRect, imRRect, imLRectB, imRRectB;
+
+        if ( !mZedCamera->rectified )
+        {
+            cv::remap(imageLeft, imLRect, rectMap[0][0], rectMap[0][1], cv::INTER_LINEAR);
+            cv::remap(imageRight, imRRect, rectMap[1][0], rectMap[1][1], cv::INTER_LINEAR);
+            cv::remap(imageLeftB, imLRectB, rectMapB[0][0], rectMapB[0][1], cv::INTER_LINEAR);
+            cv::remap(imageRightB, imRRectB, rectMapB[1][0], rectMapB[1][1], cv::INTER_LINEAR);
+            // cv::imshow("right rect", imRRect);
+            // cv::imshow("left rect", imLRect);
+            // cv::imshow("right", imageRight);
+            // cv::imshow("left", imageLeft);
+            // cv::waitKey(1);
+        }
+        else
+        {
+            imLRect = imageLeft.clone();
+            imRRect = imageRight.clone();
+            imLRectB = imageLeftB.clone();
+            imRRectB = imageRightB.clone();
+        }
+
+        std::vector<MapPoint*> activeMpsTemp;
+        std::vector<MapPoint*> activeMpsTempB;
+
+        std::vector<bool> MPsOutliers;
+        std::vector<bool> MPsMatches;
+        std::vector<int> matchedIdxsN;
+        std::vector<bool> MPsOutliersB;
+        std::vector<bool> MPsMatchesB;
+        std::vector<int> matchedIdxsNB;
+
+
+        int nStereo {0}, nMono {0};
+        int nStereoB {0}, nMonoB {0};
+        bool newKF {false};
+        bool newKFB {false};
+
+        // Eigen::Matrix4d estimPose = featTracker->TrackImage(imLRect, imRRect, currCameraPose, predNPoseInv, activeMpsTemp, MPsOutliers, MPsMatches, i, newKF);
+        // trckF = std::thread lel(&vio_slam::FeatureTracker::TrackImageT,)
+
+        Eigen::Matrix4d estimPose = Eigen::Matrix4d::Identity();
+        KeyFrame* kFCandF;
+        Eigen::Matrix4d estimPoseB = Eigen::Matrix4d::Identity();
+        KeyFrame* kFCandFB;
+
+        // featTracker->TrackImageT(imLRect, imRRect, currCameraPose, predNPoseInv, activeMpsTemp, MPsOutliers, MPsMatches, newKF, i, matchedIdxsN, nStereo, nMono, kFCandF, estimPose);
+        FeatTrack = new std::thread(&vio_slam::FeatureTracker::TrackImageT, featTracker, std::ref(imLRect), std::ref(imRRect), std::ref(currCameraPose), std::ref(predNPoseInv), std::ref(activeMpsTemp), std::ref(MPsOutliers), std::ref(MPsMatches), std::ref(newKF), std::ref(i), std::ref(matchedIdxsN), std::ref(nStereo), std::ref(nMono), std::ref(kFCandF), std::ref(estimPose));
+        FeatTrackB = new std::thread(&vio_slam::FeatureTracker::TrackImageT, featTrackerB, std::ref(imLRectB), std::ref(imRRectB), std::ref(currCameraPoseB), std::ref(predNPoseInvB), std::ref(activeMpsTempB), std::ref(MPsOutliersB), std::ref(MPsMatchesB), std::ref(newKFB), std::ref(i), std::ref(matchedIdxsNB), std::ref(nStereoB), std::ref(nMonoB), std::ref(kFCandFB), std::ref(estimPoseB));
+        FeatTrack->join();
+        FeatTrackB->join();
+        // Eigen::Matrix4d estimPose = trckF.second;
+        // KeyFrame* kFCandF = trckF.first;
+
+        setActiveOutliers(map, activeMpsTemp,MPsOutliers, MPsMatches);
+        setActiveOutliers(mapB, activeMpsTempB,MPsOutliersB, MPsMatchesB);
+
+        if ( i == 0 )
+            continue;
+
+        if ( newKF || newKFB)
+        {
+            insertKF(map, kFCandF, matchedIdxsN, estimPose, nStereo, nMono, true);
+            insertKF(mapB, kFCandFB, matchedIdxsNB, estimPoseB, nStereoB, nMonoB, false);
+            map->keyFrameAddedMain = true;
+
+        }
+        drawTrackedKeys(kFCandF, matchedIdxsN, "tracked Keys", imLRect);
+
+        // Eigen::Matrix4d poseDif = estimPose * mZedCamera->cameraPose.poseInverse;
+
+        // Eigen::Matrix3d Rdif = poseDif.block<3,3>(0,0);
+        // Eigen::Matrix<double,3,1> tdif =  poseDif.block<3,1>(0,3);
+
+        // Sophus::SE3<double> se3t(Rdif, tdif);
+        // // Sophus::SE3;
+
+        // Sophus::Vector6d prevDisp = displacement;
+
+        // displacement = se3t.log();
+
+
+        currCameraPose = estimPose;
+        currCameraPoseB = estimPoseB;
+
+        Eigen::Matrix4d realPoseB = estimPoseB * transfC1C2inv;
+        Logging("Front Pose", estimPose,3);
+        Logging("Back Pose", estimPoseB,3);
+        Logging("realPoseB", realPoseB,3);
+
+        changePosesFromBoth(estimPose, realPoseB);
+
+        prevWPose = mZedCamera->cameraPose.pose;
+        prevWPoseInv = mZedCamera->cameraPose.poseInverse;
+        mZedCamera->cameraPose.setPose(estimPose);
+        mZedCamera->cameraPose.setInvPose(estimPose.inverse());
+        predNPose = estimPose * (prevWPoseInv * estimPose);
+        predNPoseInv = predNPose.inverse();
+
+        prevWPoseB = mZedCameraB->cameraPose.pose;
+        prevWPoseInvB = mZedCameraB->cameraPose.poseInverse;
+        mZedCameraB->cameraPose.setPose(estimPoseB);
+        mZedCameraB->cameraPose.setInvPose(estimPoseB.inverse());
+        predNPoseB = estimPoseB * (prevWPoseInvB * estimPoseB);
+        predNPoseInvB = predNPoseB.inverse();
+
+    }
+
+
+    // Tracking = new std::thread(&vio_slam::RobustMatcher2::beginTest, mRb, map);
+
+
+
+
+    Visual->join();
+    // Tracking->join();
+    LocalMapping->join();
+}
+
+void System::changePosesFromBoth(Eigen::Matrix4d& estimPose, Eigen::Matrix4d& estimPoseB)
+{
+    Eigen::Matrix3d Rot = estimPose.block<3,3>(0,0);
+    Eigen::Vector3d t = estimPose.block<3,1>(0,3);
+    Eigen::Quaterniond q(Rot);
+    Eigen::Matrix3d RotB = estimPoseB.block<3,3>(0,0);
+    Eigen::Vector3d tB = estimPoseB.block<3,1>(0,3);
+    Eigen::Quaterniond qB(RotB);
+    q = q * qB;
+    q.normalize();
+    Eigen::Vector3d tnew = (t + tB)/2;
+
+    Eigen::Matrix4d newPose = Eigen::Matrix4d::Identity();
+    newPose.block<3,3>(0,0) = q.toRotationMatrix();
+    newPose.block<3,1>(0,3) = tnew;
+
+    Logging("NEWPOSE", newPose,3);
+    
 }
 
 } // namespace vio_slam

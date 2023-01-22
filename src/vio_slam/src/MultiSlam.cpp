@@ -44,9 +44,33 @@ int main (int argc, char **argv)
     // vio_slam::ConfigFile yamlFile("config.yaml");
 #endif
 
-    vio_slam::System voSLAM(file);
+    
 
-    voSLAM.SLAM();
+    vio_slam::ConfigFile* confFile = new vio_slam::ConfigFile(file.c_str());
+
+
+    bool multi {false};
+    try{
+        multi = confFile->getValue<bool>("multi");
+    }
+    catch(std::exception& e)
+    {
+        multi = false;
+    }
+
+    vio_slam::System* voSLAM;
+
+    if ( multi )
+        voSLAM = new vio_slam::System(confFile, multi);
+    else
+        voSLAM = new vio_slam::System(confFile);
+
+    
+
+    if ( multi )
+        voSLAM->MultiSLAM();
+    else
+        voSLAM->SLAM();
 
     // ros::init(argc, argv, "trial");
     // ros::NodeHandle nh;

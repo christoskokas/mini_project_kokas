@@ -1656,8 +1656,10 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
 {
     // Timer keys("computeKeys");
 
-
+{
+    Timer pyr("pyr");
     computePyramid(image);
+}
     std::vector<std::vector<cv::KeyPoint>> allKeys;
     // if ( left )
     // {
@@ -1667,7 +1669,10 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
     // }
     // else
     //     computeKeypointsORBNewRight(image, allKeys);
+{
+    Timer keys("keys");
     computeKeypointsORBNew(image, allKeys);
+}
 
     int descriptorIdx {0};
     // Timer desc("desc");
@@ -1706,7 +1711,7 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
     //     }
     //     nF += allKeys[level].size();
     // }
-
+    Timer desc("desc");
     int nF {0};
     for (size_t level {0}; level < nLevels; level++)
     {

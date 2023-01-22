@@ -30,39 +30,50 @@ class System
         const int nFeatures {1000};
 #endif
 
-        System(std::string& confFile);
+        System(ConfigFile* _mConf);
+        System(ConfigFile* _mConf, bool multi);
 
         void SLAM();
+        void MultiSLAM();
 
         std::thread* Visual;
         std::thread* Tracking;
         std::thread* LocalMapping;
 
+        std::thread* FeatTrack;
+        std::thread* FeatTrackB;
+
         FeatureTracker* featTracker;
+        FeatureTracker* featTrackerB;
 
         Frame* mFrame;
 
         Zed_Camera* mZedCamera;
+        Zed_Camera* mZedCameraB;
 
         ConfigFile* mConf;
 
-        RobustMatcher2* mRb;
-
         Map* map;
+        Map* mapB;
 
         LocalMapper* localMap;
 
         FeatureExtractor* feLeft;
+        FeatureExtractor* feLeftB;
 
         FeatureExtractor* feRight;
+        FeatureExtractor* feRightB;
         
         FeatureMatcher* fm;
+        FeatureMatcher* fmB;
 
         const int minNStereo {70};
         const int minNMono {20};
 
-        void setActiveOutliers(std::vector<MapPoint*>& activeMPs, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches);
-        void insertKF(KeyFrame* kF, std::vector<MapPoint*>& activeMapPoints, std::vector<int>& matchedIdxsN, const Eigen::Matrix4d& estimPose, const int nStereo, const int nMono);
+        void setActiveOutliers(Map* map, std::vector<MapPoint*>& activeMPs, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches);
+        void insertKF(Map* map, KeyFrame* kF, std::vector<int>& matchedIdxsN, const Eigen::Matrix4d& estimPose, const int nStereo, const int nMono, const bool front);
+        void drawTrackedKeys(KeyFrame* kF, std::vector<int> matched, const char* com, cv::Mat& im);
+        void changePosesFromBoth(Eigen::Matrix4d& estimPose, Eigen::Matrix4d& estimPoseB);
 
 };
 

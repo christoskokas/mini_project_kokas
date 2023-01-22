@@ -3,6 +3,8 @@ rectified: true
 numOfFrames: 978
 seq: "00"
 
+multi: true
+
 imagesPath: "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/simulation/"
 
 fileExtension: ".jpg"
@@ -66,4 +68,14 @@ Stereo:
     data: [1.0, 0.0, 0.0, -0.12,
          0.0, 1.0, 0.0, 0.0,
          0.0, 0.0, 1.0, 0.0,
+         0.0, 0.0, 0.0, 1.0]
+
+Multi:
+  T_c1_c2:
+    rows: 4
+    cols: 4
+    dt: d
+    data: [-1.0, 0.0, 0.0, 0.0,
+         0.0, 1.0, 0.0, 0.0,
+         0.0, 0.0, -1.0, -0.3,
          0.0, 0.0, 0.0, 1.0]
