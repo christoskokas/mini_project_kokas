@@ -65,7 +65,7 @@ void FeatureMatcher::matchLocalBA(std::vector<std::vector<std::pair<int, int>>>&
             // if ( lastKF->localMapPoints[i] == otherKF->localMapPoints[idx] )
             //     continue;
             cv::KeyPoint& kPO = otherKF->keys.keyPoints[idx];
-            if ( keysAngles[i] != -5.0 && (pow(kPO.pt.x - kPL.pt.x,2) + pow(kPO.pt.y - kPL.pt.y,2) > 25))
+            if ( keysAngles[i] != -5.0 && (pow(kPO.pt.x - kPL.pt.x,2) + pow(kPO.pt.y - kPL.pt.y,2) > maxDistAng))
             {
                 float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
                 if (abs(ang - keysAngles[i]) > 0.2)
@@ -1795,7 +1795,7 @@ int FeatureMatcher::matchByProjectionConVelAng(std::vector<MapPoint*>& activeMap
         for (auto& idx : idxs)
         {
             cv::KeyPoint& kPO = keysLeft.keyPoints[idx];
-            if ( mapAngles[i] != -5.0 && (pow(kPO.pt.x - kPL.pt.x,2) + pow(kPO.pt.y - kPL.pt.y,2) > 25) )
+            if ( mapAngles[i] != -5.0 && (pow(kPO.pt.x - kPL.pt.x,2) + pow(kPO.pt.y - kPL.pt.y,2) > maxDistAng) )
             {
                 float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
                 if (abs(ang - mapAngles[i]) > 0.5)
@@ -1818,7 +1818,7 @@ int FeatureMatcher::matchByProjectionConVelAng(std::vector<MapPoint*>& activeMap
                     secDist = dist;
             }
         }
-        if ( bestDist < matchDist && bestDist < 0.8* secDist)
+        if ( bestDist < matchDistConVel && bestDist < 0.8* secDist)
         {
             if (rIdxs[bestIdx] > bestDist)
             {
@@ -1954,7 +1954,7 @@ int FeatureMatcher::matchByProjectionPredWA(std::vector<MapPoint*>& activeMapPoi
             if ( matchedIdxsN[idx] >= 0 )
                 continue;
             cv::KeyPoint& kPO = keysLeft.keyPoints[idx];
-            if ( mapAngles[i] != -5.0 && (pow(kPO.pt.x - kPL.pt.x,2) + pow(kPO.pt.y - kPL.pt.y,2) > 25) )
+            if ( mapAngles[i] != -5.0 && (pow(kPO.pt.x - kPL.pt.x,2) + pow(kPO.pt.y - kPL.pt.y,2) > maxDistAng) )
             {
                 float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
                 if (abs(ang - mapAngles[i]) > 0.2)

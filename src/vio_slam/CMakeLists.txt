@@ -131,3 +131,6 @@ target_link_libraries(VioSlam ${PROJECT_NAME})
 
 add_executable(Trial src/trials.cpp)
 target_link_libraries(Trial ${PROJECT_NAME})
+
+add_executable(MultiSlam src/MultiSlam.cpp)
+target_link_libraries(MultiSlam ${PROJECT_NAME})

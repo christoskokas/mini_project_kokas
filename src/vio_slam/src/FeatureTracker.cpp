@@ -3468,7 +3468,7 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
         }
     }
     lastKFTrackedNumb = trckedKeys;
-    kF->nKeysTracked = kF->localMapPoints.size();
+    kF->nKeysTracked = trckedKeys;
     kF->keys.getKeys(keysLeft);
     mPPerKeyFrame.push_back(activeMapPoints.size());
     // std::lock_guard<std::mutex> lock(map->mapMutex);
@@ -3489,6 +3489,42 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
     allFrames.emplace_back(kF);
     if ( activeKeyFrames.size() > 3 )
         map->keyFrameAdded = true;
+
+}
+
+KeyFrame* FeatureTracker::insertKeyFrameOut(TrackedKeys& keysLeft, const Eigen::Matrix4d& estimPose)
+{
+    const KeyFrame* closeKF = activeKeyFrames.front();
+    referencePose = estimPose * closeKF->pose.getInvPose();
+    // Logging("referencePose in keyframe", referencePose,3);
+    KeyFrame* kF = new KeyFrame(referencePose, estimPose, lIm.im, lIm.rIm,map->kIdx, curFrame);
+    // Logging("REALPOSE in keyframe", kF->getPose(),3);
+    kF->closestKF = activeKeyFrames.front()->numb;
+    // Logging("closestKF in keyframe", map->keyFrames.at(kF->closestKF)->getPose(),3);
+    // Logging("lastKFPose", lastKFPose,3);
+    // Logging("lastKFPoseInv", lastKFPoseInv,3);
+    kF->keyF = false;
+    const unsigned long minKIdx {0};
+    const unsigned long maxKIdx {map->kIdx};
+    std::vector<int>kfCon(maxKIdx - minKIdx + 1,0);
+    std::vector<MapPoint*>::const_iterator it, end(activeMapPoints.end());
+    for (it = activeMapPoints.begin(); it != end; it ++)
+    {
+        kfCon[(*it)->kdx - minKIdx] ++;
+    }
+    kF->connections.resize(maxKIdx - minKIdx + 1,0);
+    // kF->connectionWeights.reserve(maxKIdx - minKIdx + 1);
+    for (size_t i {0}, end{kfCon.size()}; i < end; i ++)
+    {
+        if (kfCon[i] > keyFrameConThresh)
+        {
+            kF->connections[i] = kfCon[i];
+            // kF->connectionWeights.emplace_back(kfCon[i]);
+        }
+    }
+    kF->keys.getKeys(keysLeft);
+    allFrames.emplace_back(kF);
+    return kF;
 
 }
 
@@ -3630,7 +3666,7 @@ void FeatureTracker::checkPrevAngles(std::vector<float>& mapAngles, std::vector<
         const cv::KeyPoint& kPO = keysLeft.keyPoints[matchedIdxsB[i]];
         const cv::KeyPoint& kPL = prevKeys[i];
         float ang = atan2(kPO.pt.y - kPL.pt.y, kPO.pt.x - kPL.pt.x);
-        if (abs(ang - mapAngles[i]) <= 0.2 || (pow(kPO.pt.x - kPL.pt.x,2) + pow(kPO.pt.y - kPL.pt.y,2) < 25) )
+        if (abs(ang - mapAngles[i]) <= 0.2 || (pow(kPO.pt.x - kPL.pt.x,2) + pow(kPO.pt.y - kPL.pt.y,2) < maxDistAng) )
             continue;
         matchedIdxsN[matchedIdxsB[i]] = -1;
         matchedIdxsB[i] = -1;
@@ -4017,7 +4053,7 @@ void FeatureTracker::removeOutOfFrameMPs(const Eigen::Matrix4d& prevCameraPose, 
     activeMapPoints.resize(j);
 }
 
-Eigen::Matrix4d FeatureTracker::TrackImage(const cv::Mat& leftRect, const cv::Mat& rightRect, const Eigen::Matrix4d& prevCameraPose, const Eigen::Matrix4d& predPoseInv, std::vector<MapPoint*>& activeMpsTemp, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches, const int frameNumb)
+Eigen::Matrix4d FeatureTracker::TrackImage(const cv::Mat& leftRect, const cv::Mat& rightRect, const Eigen::Matrix4d& prevCameraPose, const Eigen::Matrix4d& predPoseInv, std::vector<MapPoint*>& activeMpsTemp, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches, const int frameNumb, bool& newKF)
 {
     const int imageH {zedPtr->mHeight};
     const int imageW {zedPtr->mWidth};
@@ -4025,6 +4061,13 @@ Eigen::Matrix4d FeatureTracker::TrackImage(const cv::Mat& leftRect, const cv::Ma
     curFrame = frameNumb;
     curFrameNumb++;
     predNPoseInv = predPoseInv;
+
+    // if ( map->keyFrameAdded )
+    // {
+    //     lastKFPose = prevCameraPose;
+    //     lastKFPoseInv = prevCameraPose.inverse();
+    //     lastKFImage = pLIm.im.clone();
+    // }
     
     if ( map->LBADone )
     {
@@ -4323,14 +4366,20 @@ Eigen::Matrix4d FeatureTracker::TrackImage(const cv::Mat& leftRect, const cv::Ma
     // Logging("inliers", nStIn.first,3);
     // Logging("stereo", nStIn.second,3);
     // Logging("lastKFTrackedNumb", 0.9* lastKFTrackedNumb,3);
+    // KeyFrame* kFCand;
     if ( nStIn.second < minNStereo || (nStIn.first < 0.9 * lastKFTrackedNumb && insertKeyFrameCount >= keyFrameCountEnd))
     {
+        newKF = true;
         insertKeyFrameCount = 0;
         insertKeyFrame(keysLeft, matchedIdxsN, nStIn.second, nMono, poseEst);
         Logging("New KeyFrame!","",3);
+        Logging("nStIn.first!",nStIn.first,3);
+        Logging("0.9 * lastKFTrackedNumb!",0.9 * lastKFTrackedNumb,3);
+        Logging("nStIn.second",nStIn.second,3);
     }
     else
     {
+        // kFCand = insertKeyFrameOut(keysLeft, poseEst);
         addFrame(keysLeft, matchedIdxsN, nStIn.second, poseEst);
     }
 
@@ -4349,6 +4398,357 @@ Eigen::Matrix4d FeatureTracker::TrackImage(const cv::Mat& leftRect, const cv::Ma
     }
 
     return poseEst;
+}
+
+std::pair<KeyFrame*,Eigen::Matrix4d> FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRect, const Eigen::Matrix4d& prevCameraPose, const Eigen::Matrix4d& predPoseInv, std::vector<MapPoint*>& activeMpsTemp, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches, bool& newKF, const int frameNumb, std::vector<int>& matchedIdxsN, int& nStereo, int& nMono)
+{
+    const int imageH {zedPtr->mHeight};
+    const int imageW {zedPtr->mWidth};
+    const int numbOfPixels {zedPtr->mHeight * zedPtr->mWidth};
+    curFrame = frameNumb;
+    curFrameNumb++;
+    predNPoseInv = predPoseInv;
+
+    if ( map->keyFrameAddedMain )
+    {
+        lastKFPose = prevCameraPose;
+        lastKFPoseInv = prevCameraPose.inverse();
+        lastKFImage = pLIm.im.clone();
+        lastKFTrackedNumb = activeKeyFrames.front()->nKeysTracked;
+        map->keyFrameAddedMain = false;
+    }
+    
+    if ( map->LBADone )
+    {
+        std::lock_guard<std::mutex> lock(map->mapMutex);
+        if ( map->activeKeyFrames.size() > actvKFMaxSize )
+        {
+            // removeKeyFrame(activeKeyFrames);
+            for ( size_t i{ actvKFMaxSize }, end{map->activeKeyFrames.size()}; i < end; i++)
+            {
+                map->activeKeyFrames[i]->active = false;
+            }
+            activeKeyFrames.resize(actvKFMaxSize);
+        }
+        map->LBADone = false;
+    }
+    // setLRImages(frameNumb);
+
+    lIm.rIm = leftRect.clone();
+    rIm.rIm = rightRect.clone();
+    // cv::imshow("color", lIm.rIm);
+    cv::cvtColor(lIm.rIm, lIm.im, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(rIm.rIm, rIm.im, cv::COLOR_BGR2GRAY);
+    // cv::imshow("gray", lIm.im);
+    TrackedKeys keysLeft;
+
+
+    if ( curFrameNumb == 0 )
+    {
+        extractORBStereoMatch(lIm.im, rIm.im, keysLeft);
+
+        initializeMap(keysLeft);
+        // addMapPnts(keysLeft);
+        setPreLImage();
+        setPreRImage();
+        return std::make_pair(nullptr,Eigen::Matrix4d::Identity());
+    }
+
+    removeOutOfFrameMPs(prevCameraPose, activeMapPoints);
+
+    extractORBStereoMatch(lIm.im, rIm.im, keysLeft);
+    // Timer lel3("after extract");
+    // Logging("2","",3);
+
+    // Eigen::Matrix4d currPose = predNPoseInv;
+    // Eigen::Matrix4d prevPose = zedPtr->cameraPose.poseInverse;
+    matchedIdxsN = std::vector<int>(keysLeft.keyPoints.size(), -1);
+    activeMpsTemp = activeMapPoints;
+    MPsOutliers = std::vector<bool>(activeMpsTemp.size(),false);
+    MPsMatches = std::vector<bool>(activeMpsTemp.size(),false);
+    // std::lock_guard<std::mutex> lock(map->mapMutex);
+    std::vector<int> matchedIdxsB(activeMpsTemp.size(), -1);
+    
+    
+    const double dif = cv::norm(lastKFImage,lIm.im, cv::NORM_L2);
+    const double similarity = 1 - dif/(numbOfPixels);
+
+
+    if ( curFrameNumb == 1 )
+        int nMatches = fm.matchByProjection(activeMpsTemp, keysLeft, matchedIdxsN, matchedIdxsB);
+    else
+    {
+        std::vector<cv::KeyPoint> ConVelPoints;
+        worldToImg(activeMpsTemp, ConVelPoints, predNPoseInv);
+        std::vector<float> mapAngles(activeMpsTemp.size(), -5.0);
+        std::vector<cv::KeyPoint> prevKeyPos;
+        drawKeys("convelPoints", lIm.rIm, ConVelPoints);
+        // worldToImg(activeMapPoints, prevKeyPos, zedPtr->cameraPose.poseInverse);
+        calculatePrevKeyPos(activeMpsTemp, prevKeyPos, zedPtr->cameraPose.poseInverse, predNPoseInv);
+        // if ( similarity < noMovementCheck )
+        calcAngles(activeMpsTemp, ConVelPoints, prevKeyPos, mapAngles);
+
+        int nNewMatches = fm.matchByProjectionConVelAng(activeMpsTemp, ConVelPoints, prevKeyPos, keysLeft, matchedIdxsN, matchedIdxsB, 2, mapAngles);
+        // int nIn;
+        // std::vector<float> weights;
+        // // calcWeights(prePnts, weights);
+        // weights.resize(activeMapPoints.size(), 1.0f);
+        // OutliersReprojErr(predNPoseInv, activeMapPoints, keysLeft, matchedIdxsB, 20.0, weights, nIn);
+
+        // for (size_t i{0}, end{matchedIdxsB.size()}; i < end; i++)
+        // {
+        //     if ( matchedIdxsB[i] < 0 )
+        //         continue;
+        //     MapPoint* mp = activeMapPoints[i];
+        //     if ( mp->GetIsOutlier() )
+        //     {
+        //         matchedIdxsN[matchedIdxsB[i]] = -1;
+        //         matchedIdxsB[i] = -1;
+        //     }
+        // }
+    }
+
+    // {
+    // std::vector<cv::KeyPoint>activeKeys;
+    // worldToImg(activeMapPoints, activeKeys, zedPtr->cameraPose.poseInverse);
+    // checkWithFund(activeKeys, keysLeft.keyPoints, matchedIdxsB, matchedIdxsN);
+    // }
+
+    Eigen::Matrix4d estimPose = predNPoseInv;
+    estimatePoseCeres(activeMpsTemp, keysLeft, matchedIdxsB, estimPose, MPsOutliers, true);
+    // Logging("3","",3);
+
+    // for (size_t i{0}, end{matchedIdxsB.size()}; i < end; i++)
+    // {
+    //     if ( activeMapPoints[i]->GetIsOutlier() && matchedIdxsB[i] >= 0)
+    //     {
+    //         matchedIdxsN[matchedIdxsB[i]] = -1;
+    //         matchedIdxsB[i] = -1;
+    //     }
+    // }
+
+    for (size_t i{0}, end{matchedIdxsB.size()}; i < end; i++)
+    {
+        if ( matchedIdxsB[i] < 0 )
+            continue;
+        MapPoint* mp = activeMpsTemp[i];
+        if ( mp->GetIsOutlier() )
+        {
+            matchedIdxsN[matchedIdxsB[i]] = -1;
+            matchedIdxsB[i] = -1;
+        }
+    }
+
+
+    // after last refine check all matches, change outliers to inliers if they are no more, and in the end remove all outliers from vector. they are already saved on mappoints.
+
+    // the outliers from first refine are not used on the next refines.
+
+    // check for big displacement, if there is, use constant velocity model
+    
+    // Timer lel("after first refine");
+    // Logging("similarity", similarity,3);
+
+    std::vector<cv::KeyPoint> projectedPoints, projectedPointsfromang, realPrevKeys;
+    worldToImg(activeMpsTemp, projectedPoints, estimPose);
+    worldToImg(activeMpsTemp, realPrevKeys, zedPtr->cameraPose.poseInverse);
+// #if DRAWMATCHES
+    std::vector<cv::Point2f> Nmpnts, Npnts2f;
+    for ( size_t i {0}, end{activeMpsTemp.size()}; i < end; i++)
+    {
+        if ( matchedIdxsB[i] >= 0 && !activeMpsTemp[i]->GetIsOutlier() )
+        {
+            if ( realPrevKeys[i].pt.x > 0)
+            {
+                Nmpnts.emplace_back(realPrevKeys[i].pt);
+                Npnts2f.emplace_back(keysLeft.keyPoints[matchedIdxsB[i]].pt);
+            }
+        }
+    }
+    drawPointsTemp<cv::Point2f>("first estimated matches", lIm.rIm, Nmpnts, Npnts2f);
+    cv::waitKey(1);
+// #endif
+    std::vector<cv::KeyPoint> prevKeyPos;
+
+    calculatePrevKeyPos(activeMpsTemp, prevKeyPos, zedPtr->cameraPose.poseInverse, estimPose);
+    
+    std::vector<float> mapAngles(activeMpsTemp.size(), -5.0);
+    // worldToImgAng(activeMapPoints, mapAngles, estimPose,prevKeyPos, projectedPointsfromang);
+    if ( similarity < noMovementCheck )
+    {
+        calcAngles(activeMpsTemp, projectedPoints, prevKeyPos, mapAngles);
+        checkPrevAngles(mapAngles, prevKeyPos, matchedIdxsN, matchedIdxsB, keysLeft);
+    }
+    int nNewMatches = fm.matchByProjectionPredWA(activeMpsTemp, projectedPoints, realPrevKeys, keysLeft, matchedIdxsN, matchedIdxsB, 10, mapAngles);
+    // Logging("4","",3);
+#if DRAWMATCHES
+    std::vector<cv::Point2f> prevpnts, projpnts, matchedpnts;
+    for ( size_t i {0}, end{activeMpsTemp.size()}; i < end; i++)
+    {
+        if ( projectedPoints[i].pt.x > 0)
+        {
+            if ( matchedIdxsB[i] >= 0 && !activeMpsTemp[i]->GetIsOutlier())
+            {
+                prevpnts.emplace_back(prevKeyPos[i].pt);
+                projpnts.emplace_back(projectedPoints[i].pt);
+                matchedpnts.emplace_back(keysLeft.keyPoints[matchedIdxsB[i]].pt);
+            }
+        }
+    }
+    draw3PointsTemp<cv::Point2f,cv::Point2f,cv::Point2f>("proj, matched",lIm.rIm,prevpnts,projpnts,matchedpnts);
+
+    std::vector<cv::Point2f> prevpnts2, projpnts2, matchedpnts2;
+    for ( size_t i {0}, end{activeMpsTemp.size()}; i < end; i++)
+    {
+        if ( projectedPoints[i].pt.x > 0)
+        {
+            if ( matchedIdxsB[i] >= 0 && !activeMpsTemp[i]->GetIsOutlier())
+            {
+                prevpnts2.emplace_back(realPrevKeys[i].pt);
+                projpnts2.emplace_back(projectedPoints[i].pt);
+                matchedpnts2.emplace_back(keysLeft.keyPoints[matchedIdxsB[i]].pt);
+            }
+        }
+    }
+    draw3PointsTemp<cv::Point2f,cv::Point2f,cv::Point2f>("realPrevKeys, matched",lIm.rIm,prevpnts2,projpnts2,matchedpnts2);
+    cv::waitKey(1);
+#endif
+    // drawPointsTemp<cv::Point2f>("projected matches", lIm.rIm, mpnts, pnts2f);
+
+    // std::vector<cv::Point2f> Nmpnts, Npnts2f;
+    // for ( size_t i {0}, end{activeMapPoints.size()}; i < end; i++)
+    // {
+    //     if ( matchedIdxsB[i] >= 0 && !activeMapPoints[i]->GetIsOutlier() )
+    //     {
+    //         if ( prevKeyPos[i].pt.x > 0)
+    //         {
+    //             Nmpnts.emplace_back(prevKeyPos[i].pt);
+    //             Npnts2f.emplace_back(keysLeft.keyPoints[matchedIdxsB[i]].pt);
+    //         }
+    //     }
+    // }
+    // drawPointsTemp<cv::Point2f>("real matches", lIm.rIm, Nmpnts, Npnts2f);
+    // cv::waitKey(0);
+
+    // {
+    // std::vector<cv::KeyPoint>activeKeys;
+    // worldToImg(activeMapPoints, activeKeys, zedPtr->cameraPose.poseInverse);
+    // checkWithFund(activeKeys, keysLeft.keyPoints, matchedIdxsB, matchedIdxsN);
+    // }
+
+
+
+    std::pair<int,int> nStIn = estimatePoseCeres(activeMpsTemp, keysLeft, matchedIdxsB, estimPose, MPsOutliers, true);
+    cv::waitKey(1);
+    std::vector<cv::KeyPoint> trckK;
+    trckK.reserve(matchedIdxsB.size());
+    for (size_t i{0}, end{matchedIdxsB.size()}; i < end; i++)
+    {
+        MapPoint* mp = activeMpsTemp[i];
+        if ( matchedIdxsB[i] < 0 )
+        {
+            continue;
+        }
+        if ( mp->GetIsOutlier() )
+        {
+            matchedIdxsN[matchedIdxsB[i]] = -1;
+            matchedIdxsB[i] = -1;
+        }
+        else
+        {
+            MPsMatches[i] = true;
+            trckK.emplace_back(keysLeft.keyPoints[matchedIdxsB[i]]);
+        }
+    }
+#if !DRAWMATCHES
+    drawKeys("TrackedKeys", lIm.rIm,trckK);
+#endif
+// #if DRAWMATCHES
+    std::vector<cv::Point2f> Nmpnts2, Npnts2f2;
+    for ( size_t i {0}, end{activeMpsTemp.size()}; i < end; i++)
+    {
+        if ( matchedIdxsB[i] >= 0 )
+        {
+            if ( realPrevKeys[i].pt.x > 0)
+            {
+                Nmpnts2.emplace_back(realPrevKeys[i].pt);
+                Npnts2f2.emplace_back(keysLeft.keyPoints[matchedIdxsB[i]].pt);
+            }
+        }
+    }
+    drawPointsTemp<cv::Point2f>("second estimated matches", lIm.rIm, Nmpnts2, Npnts2f2);
+    cv::waitKey(1);
+// #endif
+    // cv::waitKey(0);
+    // Logging("second refine pose", estimPose,3);
+
+    // Logging("nIn", nStIn.first,3);
+    // Logging("nStereo", nStIn.second,3);
+
+    // Timer lel2("after second refine");
+
+    poseEst = estimPose.inverse();
+
+    Eigen::Matrix4d poseDif = poseEst * zedPtr->cameraPose.poseInverse;
+
+    Eigen::Matrix3d Rdif = poseDif.block<3,3>(0,0);
+    Eigen::Matrix<double,3,1> tdif =  poseDif.block<3,1>(0,3);
+
+    Sophus::SE3<double> se3t(Rdif, tdif);
+    // Sophus::SE3;
+
+    Sophus::Vector6d prevDisp = displacement;
+
+    displacement = se3t.log();
+    // std::cout << "dif displacement " << displacement - prevDisp << std::endl;
+    // std::cout << "displacement " << displacement << std::endl;
+    // std::cout << "prevDisp " << prevDisp << std::endl;
+
+    // kalmanF(poseDif);
+
+    // poseEst = poseDif * zedPtr->cameraPose.pose;
+    // estimPose = poseEst.inverse();
+
+    // get percentage of displacement. keep the previous one and calculate the percentage.
+    insertKeyFrameCount ++;
+    nStereo = nStIn.second;
+    nMono = nStIn.first - nStIn.second;
+    Logging("inliers", nStIn.first,3);
+    Logging("stereo", nStIn.second,3);
+    Logging("lastKFTrackedNumb", 0.9* lastKFTrackedNumb,3);
+    KeyFrame* kFCand;
+
+    if ( nStIn.second < minNStereo || (nStIn.first < 0.9 * lastKFTrackedNumb && insertKeyFrameCount >= keyFrameCountEnd))
+    {
+        newKF = true;
+        insertKeyFrameCount = 0;
+        // insertKeyFrame(keysLeft, matchedIdxsN, nStIn.second, nMono, poseEst);
+        // Logging("New KeyFrame!","",3);
+        // Logging("nStIn.first!",nStIn.first,3);
+        // Logging("0.9 * lastKFTrackedNumb!",0.9 * lastKFTrackedNumb,3);
+        // Logging("nStIn.second",nStIn.second,3);
+    }
+    // else
+    // {
+    //     addFrame(keysLeft, matchedIdxsN, nStIn.second, poseEst);
+    // }
+    kFCand = insertKeyFrameOut(keysLeft, poseEst);
+
+    setPreLImage();
+    setPreRImage();
+
+
+
+    if ( frameNumb == zedPtr->numOfFrames - 1)
+
+    {
+        saveData();
+
+        datafile.close();
+        map->endOfFrames = true;
+    }
+
+    return std::make_pair(kFCand, poseEst);
 }
 
 void FeatureTracker::removeMapPoints(std::vector<MapPoint*>& activeMapPoints, std::vector<bool>& toRemove)

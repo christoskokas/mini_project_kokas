@@ -129,6 +129,7 @@ class FeatureTracker
         const int minNStereo {70};
         const int minNMono {20};
         const int maxActiveMPSize {800};
+        const int maxDistAng {4};
 
         int lastKFTrackedNumb {0};
 
@@ -158,6 +159,7 @@ class FeatureTracker
         bool addFeatures {false};
         bool bigRot {false};
         bool redo {false};
+        bool newKeyFrame {false};
         std::vector<KeyFrame*> allFrames;
         cv::Mat prevF;
 
@@ -202,7 +204,8 @@ class FeatureTracker
 
         void removeOutOfFrameMPs(const Eigen::Matrix4d& prevCameraPose, std::vector<MapPoint*>& activeMapPoints);
 
-        Eigen::Matrix4d TrackImage(const cv::Mat& leftRect, const cv::Mat& rightRect, const Eigen::Matrix4d& prevCameraPose, const Eigen::Matrix4d& predPoseInv, std::vector<MapPoint*>& activeMpsTemp, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches, const int frameNumb);
+        Eigen::Matrix4d TrackImage(const cv::Mat& leftRect, const cv::Mat& rightRect, const Eigen::Matrix4d& prevCameraPose, const Eigen::Matrix4d& predPoseInv, std::vector<MapPoint*>& activeMpsTemp, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches, const int frameNumb, bool& newKF);
+        std::pair<KeyFrame*,Eigen::Matrix4d> TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRect, const Eigen::Matrix4d& prevCameraPose, const Eigen::Matrix4d& predPoseInv, std::vector<MapPoint*>& activeMpsTemp, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches, bool& newKF, const int frameNumb, std::vector<int>& matchedIdxsN, int& nStereo, int& nMono);
 
         void checkPrevAngles(std::vector<float>& mapAngles, std::vector<cv::KeyPoint>& prevKeys, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const TrackedKeys& keysLeft);
 
@@ -215,6 +218,7 @@ class FeatureTracker
         void changePosesLBA();
         void publishPoseLBA();
         void insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const int nMono, const Eigen::Matrix4d& estimPose);
+        KeyFrame* insertKeyFrameOut(TrackedKeys& keysLeft, const Eigen::Matrix4d& estimPose);
         void insertFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const Eigen::Matrix4d& estimPose);
         void addFrame(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const Eigen::Matrix4d& estimPose);
         bool worldToFrame(MapPoint* mp, const Eigen::Matrix4d& pose);

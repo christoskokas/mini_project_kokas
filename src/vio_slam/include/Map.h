@@ -99,6 +99,7 @@ class Map
         unsigned long pIdx {0};
         
         bool keyFrameAdded {false};
+        bool keyFrameAddedMain {false};
         bool frameAdded {false};
         bool LBADone {false};
         int endLBAIdx {0};

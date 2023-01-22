@@ -58,7 +58,11 @@ class System
         
         FeatureMatcher* fm;
 
+        const int minNStereo {70};
+        const int minNMono {20};
+
         void setActiveOutliers(std::vector<MapPoint*>& activeMPs, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches);
+        void insertKF(KeyFrame* kF, std::vector<MapPoint*>& activeMapPoints, std::vector<int>& matchedIdxsN, const Eigen::Matrix4d& estimPose, const int nStereo, const int nMono);
 
 };
 
