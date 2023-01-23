@@ -2613,31 +2613,31 @@ int FeatureTracker::findOutliers(const Eigen::Matrix4d& estimatedP, std::vector<
         Eigen::Vector4d p4d = mp->getWordPose4d();
         p4d = estimatedP * p4d;
         const int nIdx {matchedIdxsB[i]};
-        if ( mp->close && keysLeft.close[nIdx] )
-        {
-            Eigen::Vector4d obs;
-            get3dFromKey(obs, keysLeft.keyPoints[nIdx], keysLeft.estimatedDepth[nIdx]);
-            bool outlier = check3dError(p4d, obs, 0.01 * thres, 1.0);
-            MPsOutliers[i] = outlier;
-            if ( !outlier )
-            {
-                nInliers++;
-                nStereo++;
-            }
+        // if ( mp->close && keysLeft.close[nIdx] )
+        // {
+        //     Eigen::Vector4d obs;
+        //     get3dFromKey(obs, keysLeft.keyPoints[nIdx], keysLeft.estimatedDepth[nIdx]);
+        //     bool outlier = check3dError(p4d, obs, 0.01 * thres, 1.0);
+        //     MPsOutliers[i] = outlier;
+        //     if ( !outlier )
+        //     {
+        //         nInliers++;
+        //         nStereo++;
+        //     }
 
-        }
-        else
-        {
+        // }
+        // else
+        // {
             bool outlier = check2dError(p4d, keysLeft.keyPoints[nIdx].pt, thres, 1.0);
             MPsOutliers[i] = outlier;
             if ( !outlier )
             {
                 nInliers++;
-                if ( keysLeft.close[nIdx] )
+                if ( mp->close && keysLeft.close[nIdx] )
                     nStereo++;
             }
 
-        }
+        // }
     }
 
 // #if PROJECTIM
@@ -2761,8 +2761,6 @@ std::pair<int,int> FeatureTracker::estimatePoseCeres(std::vector<MapPoint*>& act
     const size_t prevS { activeMapPoints.size()};
     const size_t newS { keysLeft.keyPoints.size()};
     const size_t startPrev {newS - prevS};
-    std::vector<bool> inliers(prevS,true);
-    std::vector<bool> prevInliers(prevS,true);
 
     std::vector<float> weights;
     // calcWeights(prePnts, weights);
@@ -2770,97 +2768,105 @@ std::pair<int,int> FeatureTracker::estimatePoseCeres(std::vector<MapPoint*>& act
     std::vector<double>thresholds = {15.6f,9.8f,7.815f,7.815f};
     double thresh = 7.815f;
 
-    ceres::Problem problem;
-    Eigen::Vector3d frame_tcw;
-    Eigen::Quaterniond frame_qcw;
-    // OutliersReprojErr(estimPose, activeMapPoints, keysLeft, matchedIdxsB, thresh, weights, nIn);
-    Eigen::Matrix4d prevPose = estimPose;
-    Eigen::Matrix4d frame_pose = estimPose;
-    Eigen::Matrix3d frame_R;
-    frame_R = frame_pose.block<3, 3>(0, 0);
-    frame_tcw = frame_pose.block<3, 1>(0, 3);
-    frame_qcw = Eigen::Quaterniond(frame_R);
-    std::vector<cv::Point2f> found, observed;
-    ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
-    ceres::LossFunction* loss_function = nullptr;
-    if ( first )
-        loss_function = new ceres::HuberLoss(sqrt(7.815f));
     // ceres::LossFunction* loss_function = nullptr;
-    for (size_t i{0}, end{matchedIdxsB.size()}; i < end; i++)
+    size_t maxIter {2};
+    int nIn {0}, nStereo {0};
+    // if ( first )
+    //     maxIter = 2;
+    for (size_t iter {0}; iter < maxIter; iter ++ )
     {
-        if ( matchedIdxsB[i] < 0 )
-            continue;
-        MapPoint* mp = activeMapPoints[i];
-        if  ( !mp->GetInFrame() || mp->GetIsOutlier() )
-            continue;
-        if ( MPsOutliers[i] )
-            continue;
-        const int nIdx {matchedIdxsB[i]};
-        if ( mp->close && keysLeft.close[nIdx] )
+        ceres::Problem problem;
+        Eigen::Vector3d frame_tcw;
+        Eigen::Quaterniond frame_qcw;
+        // OutliersReprojErr(estimPose, activeMapPoints, keysLeft, matchedIdxsB, thresh, weights, nIn);
+        Eigen::Matrix4d prevPose = estimPose;
+        Eigen::Matrix4d frame_pose = estimPose;
+        Eigen::Matrix3d frame_R;
+        frame_R = frame_pose.block<3, 3>(0, 0);
+        frame_tcw = frame_pose.block<3, 1>(0, 3);
+        frame_qcw = Eigen::Quaterniond(frame_R);
+        // std::vector<cv::Point2f> found, observed;
+        ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
+        ceres::LossFunction* loss_function = new ceres::HuberLoss(sqrt(7.815f));
+        for (size_t i{0}, end{matchedIdxsB.size()}; i < end; i++)
         {
-            Eigen::Vector4d np4d;
-            get3dFromKey(np4d, keysLeft.keyPoints[nIdx], keysLeft.estimatedDepth[nIdx]);
-            Eigen::Vector3d obs(np4d(0), np4d(1),np4d(2));
-            Eigen::Vector3d point = mp->getWordPose3d();
-            Eigen::Vector4d point4d = mp->getWordPose4d();
-            point4d = estimPose * point4d;
-            const double u {fx*point4d(0)/point4d(2) + cx};
-            const double v {fy*point4d(1)/point4d(2) + cy};
-            found.emplace_back((float)u, (float)v);
-            observed.emplace_back(keysLeft.keyPoints[nIdx].pt);
-            // Logging("obs", obs,3);
-            // Logging("point", point,3);
-            ceres::CostFunction* costf = OptimizePoseICP::Create(K, point, obs, (double)weights[i]);
-            problem.AddResidualBlock(costf, loss_function /* squared loss */,frame_tcw.data(), frame_qcw.coeffs().data());
+            if ( matchedIdxsB[i] < 0 )
+                continue;
+            MapPoint* mp = activeMapPoints[i];
+            if  ( !mp->GetInFrame() || mp->GetIsOutlier() )
+                continue;
+            if ( MPsOutliers[i] )
+                continue;
+            const int nIdx {matchedIdxsB[i]};
+            if ( mp->close && keysLeft.close[nIdx] )
+            {
+                Eigen::Vector4d np4d;
+                get3dFromKey(np4d, keysLeft.keyPoints[nIdx], keysLeft.estimatedDepth[nIdx]);
+                Eigen::Vector3d obs(np4d(0), np4d(1),np4d(2));
+                Eigen::Vector3d point = mp->getWordPose3d();
+                // Eigen::Vector4d point4d = mp->getWordPose4d();
+                // point4d = estimPose * point4d;
+                // const double u {fx*point4d(0)/point4d(2) + cx};
+                // const double v {fy*point4d(1)/point4d(2) + cy};
+                // found.emplace_back((float)u, (float)v);
+                // observed.emplace_back(keysLeft.keyPoints[nIdx].pt);
+                // Logging("obs", obs,3);
+                // Logging("point", point,3);
+                ceres::CostFunction* costf = OptimizePoseICP::Create(K, point, obs, (double)weights[i]);
+                problem.AddResidualBlock(costf, loss_function /* squared loss */,frame_tcw.data(), frame_qcw.coeffs().data());
 
-            problem.SetManifold(frame_qcw.coeffs().data(),
-                                        quaternion_local_parameterization);
-        }
-        else
-        {
-            Eigen::Vector2d obs((double)keysLeft.keyPoints[nIdx].pt.x, (double)keysLeft.keyPoints[nIdx].pt.y);
-            Eigen::Vector3d point = mp->getWordPose3d();
-            Eigen::Vector4d point4d = mp->getWordPose4d();
-            point4d = estimPose * point4d;
-            const double u {fx*point4d(0)/point4d(2) + cx};
-            const double v {fy*point4d(1)/point4d(2) + cy};
-            found.emplace_back((float)u, (float)v);
-            observed.emplace_back(keysLeft.keyPoints[nIdx].pt);
-            // if ( point4d(2) <= 0 || std::isnan(keysLeft.keyPoints[nIdx].pt.x) || std::isnan(keysLeft.keyPoints[nIdx].pt.y))
-            //     Logging("out", point4d,3);
-            // if (u < 0 || v < 0 || v > zedPtr->mHeight || u > zedPtr->mWidth)
-            //     Logging("out", point4d,3);
-            
-            ceres::CostFunction* costf = OptimizePose::Create(K, point, obs, (double)weights[i]);
-            // Logging("obs", obs,3);
-            // Logging("point", point,3);
-            problem.AddResidualBlock(costf, loss_function /* squared loss */,frame_tcw.data(), frame_qcw.coeffs().data());
+                problem.SetManifold(frame_qcw.coeffs().data(),
+                                            quaternion_local_parameterization);
+            }
+            else
+            {
+                Eigen::Vector2d obs((double)keysLeft.keyPoints[nIdx].pt.x, (double)keysLeft.keyPoints[nIdx].pt.y);
+                Eigen::Vector3d point = mp->getWordPose3d();
+                // Eigen::Vector4d point4d = mp->getWordPose4d();
+                // point4d = estimPose * point4d;
+                // const double u {fx*point4d(0)/point4d(2) + cx};
+                // const double v {fy*point4d(1)/point4d(2) + cy};
+                // found.emplace_back((float)u, (float)v);
+                // observed.emplace_back(keysLeft.keyPoints[nIdx].pt);
+                // // if ( point4d(2) <= 0 || std::isnan(keysLeft.keyPoints[nIdx].pt.x) || std::isnan(keysLeft.keyPoints[nIdx].pt.y))
+                // //     Logging("out", point4d,3);
+                // // if (u < 0 || v < 0 || v > zedPtr->mHeight || u > zedPtr->mWidth)
+                // //     Logging("out", point4d,3);
+                
+                ceres::CostFunction* costf = OptimizePose::Create(K, point, obs, (double)weights[i]);
+                // Logging("obs", obs,3);
+                // Logging("point", point,3);
+                problem.AddResidualBlock(costf, loss_function /* squared loss */,frame_tcw.data(), frame_qcw.coeffs().data());
 
-            problem.SetManifold(frame_qcw.coeffs().data(),
-                                        quaternion_local_parameterization);
+                problem.SetManifold(frame_qcw.coeffs().data(),
+                                            quaternion_local_parameterization);
+            }
         }
+        ceres::Solver::Options options;
+        options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+        // options.use_explicit_schur_complement = true;
+        options.max_num_iterations = 100;
+        // options.minimizer_progress_to_stdout = false;
+        ceres::Solver::Summary summary;
+        ceres::Solve(options, &problem, &summary);
+        // Logging("ceres report", summary.FullReport(),3);
+        Eigen::Matrix3d R = frame_qcw.normalized().toRotationMatrix();
+        estimPose.block<3, 3>(0, 0) = R;
+        estimPose.block<3, 1>(0, 3) = frame_tcw;
+        // if ( checkDisplacement(prevPose, estimPose) )
+        //     return std::pair<int,int>(0, nIn);
+        // if ( iter == maxIter - 1)
+        // {
+            nIn = 0;
+            nStereo = 0;
+            nStereo = findOutliers(estimPose, activeMapPoints, keysLeft, matchedIdxsB, thresh, MPsOutliers, weights, nIn);
+        // }
     }
-    ceres::Solver::Options options;
-    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-    // options.use_explicit_schur_complement = true;
-    options.max_num_iterations = 100;
-    // options.minimizer_progress_to_stdout = false;
-    ceres::Solver::Summary summary;
-    ceres::Solve(options, &problem, &summary);
-    // Logging("ceres report", summary.FullReport(),3);
-    Eigen::Matrix3d R = frame_qcw.normalized().toRotationMatrix();
-    estimPose.block<3, 3>(0, 0) = R;
-    estimPose.block<3, 1>(0, 3) = frame_tcw;
-#if DRAWMATCHES
-    drawPointsTemp<cv::Point2f, cv::Point2f>("ceres", lIm.rIm, found, observed);
-    cv::waitKey(1);
-#endif
-    // if ( checkDisplacement(prevPose, estimPose) )
-    //     return std::pair<int,int>(0, nIn);
-    
-    int nIn {0};
-    int nStereo = findOutliers(estimPose, activeMapPoints, keysLeft, matchedIdxsB, thresh, MPsOutliers, weights, nIn);
     // Logging("pose", estimPose,3);
+// #if DRAWMATCHES
+//     drawPointsTemp<cv::Point2f, cv::Point2f>("ceres", lIm.rIm, found, observed);
+//     cv::waitKey(1);
+// #endif
     return std::pair<int,int>(nIn, nStereo);
 }
 
@@ -4038,7 +4044,9 @@ void FeatureTracker::removeOutOfFrameMPs(const Eigen::Matrix4d& prevCameraPose, 
     for ( size_t i {0}; i < end; i++)
     {
         MapPoint* mp = activeMapPoints[i];
-        if (worldToFrame(mp, toCamera) && !mp->GetIsOutlier() )
+        if ( !mp )
+            continue;
+        if (worldToFrame(mp, toCamera) && !mp->GetIsOutlier())
         {
             mp->seenCnt++;
             mp->setActive(true);

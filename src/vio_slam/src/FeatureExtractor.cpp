@@ -1818,7 +1818,7 @@ void FeatureExtractor::computeKeypointsORBNew(cv::Mat& image, std::vector<std::v
                 if ( cEnd > maxX)
                     cEnd = maxX;
 
-                const cv::Mat& cellIm = imagePyramid[level].rowRange(rStart, rEnd).colRange(cStart, cEnd);
+                // const cv::Mat& cellIm = imagePyramid[level].rowRange(rStart, rEnd).colRange(cStart, cEnd);
 
                 // cv::Mat fl;
                 // cv::flip(cellIm, fl,-1);
@@ -1828,9 +1828,9 @@ void FeatureExtractor::computeKeypointsORBNew(cv::Mat& image, std::vector<std::v
 
                 std::vector<cv::KeyPoint> temp;
                 // temp.reserve(2 * featuresPerCell);
-                cv::FAST(cellIm, temp, maxFastThreshold,true);
+                cv::FAST(imagePyramid[level].rowRange(rStart, rEnd).colRange(cStart, cEnd), temp, maxFastThreshold,true);
                 if (temp.empty())
-                    cv::FAST(cellIm, temp, minFastThreshold,true);
+                    cv::FAST(imagePyramid[level].rowRange(rStart, rEnd).colRange(cStart, cEnd), temp, minFastThreshold,true);
                 if (!temp.empty())
                 {
                     // if ( temp.size() > featuresPerCell)

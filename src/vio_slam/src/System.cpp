@@ -60,11 +60,11 @@ System::System(ConfigFile* _mConf, bool multi)
     fm = new FeatureMatcher(mZedCamera, feLeft, feRight, mZedCamera->mHeight, feLeft->getGridRows(), feLeft->getGridCols());
     fmB = new FeatureMatcher(mZedCameraB, feLeftB, feRightB, mZedCameraB->mHeight, feLeftB->getGridRows(), feLeftB->getGridCols());
 
-    localMap = new LocalMapper(map, mZedCamera, fm);
+    localMap = new LocalMapper(map, mZedCamera, fm, mapB, mZedCameraB, fmB);
 
     Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera, map);
 
-    LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMapping, localMap);
+    LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMappingB, localMap);
     // Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera);
 
     // Tracking = new std::thread(&vio_slam::RobustMatcher2::beginTest, mRb);
@@ -80,7 +80,7 @@ void System::setActiveOutliers(Map* map, std::vector<MapPoint*>& activeMPs, std:
     std::lock_guard<std::mutex> lock(map->mapMutex);
     for ( size_t i{0}, end{MPsOutliers.size()}; i < end; i++)
     {
-        MapPoint* mp = activeMPs[i];
+        MapPoint*& mp = activeMPs[i];
         if ( MPsMatches[i] )
             mp->unMCnt = 0;
         else
@@ -88,6 +88,18 @@ void System::setActiveOutliers(Map* map, std::vector<MapPoint*>& activeMPs, std:
         if ( !MPsOutliers[i] && mp->unMCnt < 20 )
             continue;
         mp->SetIsOutlier( true );
+        // std::unordered_map<KeyFrame*,size_t>::iterator it;
+        // std::unordered_map<KeyFrame*,size_t>::const_iterator endmp(mp->kFWithFIdx.end());
+        // for ( it = mp->kFWithFIdx.begin(); it != endmp; it++)
+        // {
+        //     KeyFrame* kF = it->first;
+        //     size_t keyPos = it->second;
+        //     kF->eraseMPConnection(keyPos);
+        //     // kF->localMapPoints[keyPos] = nullptr;
+        //     // kF->unMatchedF[keyPos] = -1;
+        // }
+        // delete mp;
+        // mp = nullptr;
     }
 }
 
@@ -105,13 +117,14 @@ void System::insertKF(Map* map, KeyFrame* kF, std::vector<int>& matchedIdxsN, co
     activeMapPoints.reserve(activeMapPoints.size() + keysLeft.keyPoints.size());
     std::lock_guard<std::mutex> lock(map->mapMutex);
     int trckedKeys {0};
+    int newStereoKeys{0};
     for (size_t i{0}, end{keysLeft.keyPoints.size()}; i < end; i++)
     {
         // if ( keysLeft.close[i] >  )
         if ( matchedIdxsN[i] >= 0 )
         {
             MapPoint* mp = activeMapPoints[matchedIdxsN[i]];
-            if ( mp->GetIsOutlier() || !mp->GetInFrame() )
+            if ( mp->GetIsOutlier() || !mp->GetInFrame() || !mp)
             {
                 matchedIdxsN[i] = -1;
                 continue;
@@ -128,7 +141,7 @@ void System::insertKF(Map* map, KeyFrame* kF, std::vector<int>& matchedIdxsN, co
         }
         if ( nStereo > minNStereo )
             continue;
-        if ( keysLeft.close[i] || ( nMono <= minNMono && keysLeft.estimatedDepth[i] > 0) )
+        if ( keysLeft.close[i] && newStereoKeys < 100/*  || ( nMono <= minNMono && keysLeft.estimatedDepth[i] > 0)  */)
         {
             const double zp = (double)keysLeft.estimatedDepth[i];
             const double xp = (double)(((double)keysLeft.keyPoints[i].pt.x-cx)*zp/fx);
@@ -148,6 +161,7 @@ void System::insertKF(Map* map, KeyFrame* kF, std::vector<int>& matchedIdxsN, co
             activeMapPoints.emplace_back(mp);
             map->addMapPoint(mp);
             trckedKeys ++;
+            newStereoKeys++;
             // }
         }
     }
@@ -164,8 +178,8 @@ void System::insertKF(Map* map, KeyFrame* kF, std::vector<int>& matchedIdxsN, co
     // }
     // referencePose = Eigen::Matrix4d::Identity();
     // zedPtr->cameraPose.refPose = referencePose;
-    if ( map->activeKeyFrames.size() > 3 && front )
-        map->keyFrameAdded = true;
+    // if ( map->activeKeyFrames.size() > 3 && front )
+    //     map->keyFrameAdded = true;
 }
 
 void System::drawTrackedKeys(KeyFrame* kF, std::vector<int> matched, const char* com, cv::Mat& im)
@@ -288,12 +302,20 @@ void System::SLAM()
 
         setActiveOutliers(map, activeMpsTemp,MPsOutliers, MPsMatches);
 
+        if ( i == 0 )
+        {
+            
+            continue;
+        }
+
         if ( newKF )
         {
             insertKF(map, kFCandF, matchedIdxsN, estimPose, nStereo, nMono, true);
-            map->keyFrameAddedMain = true;
+            map->keyFrameAdded = true;
 
         }
+
+        drawTrackedKeys(kFCandF, matchedIdxsN, "tracked Keys", imLRect);
 
         currCameraPose = estimPose;
 
@@ -460,13 +482,38 @@ void System::MultiSLAM()
         setActiveOutliers(mapB, activeMpsTempB,MPsOutliersB, MPsMatchesB);
 
         if ( i == 0 )
+        {
+            KeyFrame* KF = map->activeKeyFrames.front();
+            KeyFrame* KFB = mapB->activeKeyFrames.front();
+            KF->KFBack = KFB;
+            KF->localMapPointsB = KFB->localMapPoints;
             continue;
+        }
+
+        Eigen::Matrix4d realPoseB = estimPoseB * transfC1C2inv;
+        // Logging("Front Pose", estimPose,3);
+        // Logging("Back Pose", estimPoseB,3);
+        // Logging("realPoseB", realPoseB,3);
+
+        Eigen::Matrix4d newPose = changePosesFromBoth(estimPose, realPoseB);
+
+        estimPose = newPose;
+        estimPoseB = newPose * transfC1C2;
+
+        kFCandF->pose.setPose(estimPose);
+        kFCandFB->pose.setPose(estimPoseB);
+
+        currCameraPose = estimPose;
+        currCameraPoseB = estimPoseB;
 
         if ( newKF || newKFB)
         {
             insertKF(map, kFCandF, matchedIdxsN, estimPose, nStereo, nMono, true);
             insertKF(mapB, kFCandFB, matchedIdxsNB, estimPoseB, nStereoB, nMonoB, false);
-            map->keyFrameAddedMain = true;
+            kFCandF->KFBack = kFCandFB;
+            kFCandF->localMapPointsB = kFCandFB->localMapPoints;
+            if ( map->activeKeyFrames.size() > 4 )
+                map->keyFrameAdded = true;
 
         }
         drawTrackedKeys(kFCandF, matchedIdxsN, "tracked Keys", imLRect);
@@ -484,15 +531,7 @@ void System::MultiSLAM()
         // displacement = se3t.log();
 
 
-        currCameraPose = estimPose;
-        currCameraPoseB = estimPoseB;
 
-        Eigen::Matrix4d realPoseB = estimPoseB * transfC1C2inv;
-        Logging("Front Pose", estimPose,3);
-        Logging("Back Pose", estimPoseB,3);
-        Logging("realPoseB", realPoseB,3);
-
-        changePosesFromBoth(estimPose, realPoseB);
 
         prevWPose = mZedCamera->cameraPose.pose;
         prevWPoseInv = mZedCamera->cameraPose.poseInverse;
@@ -521,7 +560,7 @@ void System::MultiSLAM()
     LocalMapping->join();
 }
 
-void System::changePosesFromBoth(Eigen::Matrix4d& estimPose, Eigen::Matrix4d& estimPoseB)
+Eigen::Matrix4d System::changePosesFromBoth(Eigen::Matrix4d& estimPose, Eigen::Matrix4d& estimPoseB)
 {
     Eigen::Matrix3d Rot = estimPose.block<3,3>(0,0);
     Eigen::Vector3d t = estimPose.block<3,1>(0,3);
@@ -529,15 +568,15 @@ void System::changePosesFromBoth(Eigen::Matrix4d& estimPose, Eigen::Matrix4d& es
     Eigen::Matrix3d RotB = estimPoseB.block<3,3>(0,0);
     Eigen::Vector3d tB = estimPoseB.block<3,1>(0,3);
     Eigen::Quaterniond qB(RotB);
-    q = q * qB;
-    q.normalize();
+    Eigen::Quaterniond qres = q.slerp(0.5, qB);
     Eigen::Vector3d tnew = (t + tB)/2;
 
     Eigen::Matrix4d newPose = Eigen::Matrix4d::Identity();
-    newPose.block<3,3>(0,0) = q.toRotationMatrix();
+    newPose.block<3,3>(0,0) = qres.toRotationMatrix();
     newPose.block<3,1>(0,3) = tnew;
 
     Logging("NEWPOSE", newPose,3);
+    return newPose;
     
 }
 

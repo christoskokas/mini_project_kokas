@@ -33,6 +33,7 @@ class LocalMapper
         const double fx,fy,cx,cy;
 
         Map* map;
+        Map* mapB;
 
         const float reprjThreshold {7.815f};
 
@@ -40,16 +41,21 @@ class LocalMapper
         const int minCount {3};
 
         Zed_Camera* zedPtr;
+        Zed_Camera* zedPtrB;
 
         FeatureMatcher* fm;
+        FeatureMatcher* fmB;
 
         LocalMapper(Map* _map, Zed_Camera* _zedPtr, FeatureMatcher* _fm);
+        LocalMapper(Map* _map, Zed_Camera* _zedPtr, FeatureMatcher* _fm, Map* _mapB, Zed_Camera* _zedPtrB, FeatureMatcher* _fmB);
 
         void predictKeysPos(TrackedKeys& keys, const Eigen::Matrix4d& curPose, const Eigen::Matrix4d& camPoseInv, std::vector<float>& keysAngles, const std::vector<Eigen::Vector4d>& p4d, std::vector<cv::Point2f>& predPoints);
         void calcp4d(KeyFrame* lastKF, std::vector<Eigen::Vector4d>& p4d);
         void beginLocalMapping();
+        void beginLocalMappingB();
         void computeAllMapPoints(std::vector<vio_slam::KeyFrame *>& actKeyF);
         void localBA(std::vector<vio_slam::KeyFrame *>& actKeyF);
+        void localBAB(std::vector<vio_slam::KeyFrame *>& actKeyF);
         Eigen::Vector3d TriangulateMultiViewPoint(
                 const std::vector<Eigen::Matrix<double, 3, 4>>& proj_matrices,
                 const std::vector<Eigen::Vector2d>& points);
@@ -62,15 +68,20 @@ class LocalMapper
         void calcAllMpsOfKF(std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, KeyFrame* lastKF, std::vector<vio_slam::KeyFrame *>& actKeyF, const int kFsize, std::vector<Eigen::Vector4d>& p4d);
 
         void processMatches(std::vector<std::pair<int, int>>& matchesOfPoint, std::unordered_map<int, Eigen::Matrix<double,3,4>>& allProjMatrices, std::vector<Eigen::Matrix<double, 3, 4>>& proj_matrices, std::vector<Eigen::Vector2d>& points, std::vector<KeyFrame*>& actKeyF);
+        void processMatchesB(Map* map, std::vector<std::pair<int, int>>& matchesOfPoint, std::unordered_map<int, Eigen::Matrix<double,3,4>>& allProjMatrices, std::vector<Eigen::Matrix<double, 3, 4>>& proj_matrices, std::vector<Eigen::Vector2d>& points, std::vector<KeyFrame*>& actKeyF);
         bool checkReprojErr(Eigen::Vector4d& calcVec, std::vector<std::pair<int, int>>& matchesOfPoint, const std::unordered_map<int, Eigen::Matrix<double,3,4>>& allProjMatrices);
         bool checkReprojErrNew(KeyFrame* lastKF, const int keyPos, Eigen::Vector4d& calcVec, std::vector<std::pair<int, int>>& matchesOfPoint, const std::unordered_map<int, Eigen::Matrix<double,3,4>>& allProjMatrices, std::vector<Eigen::Matrix<double, 3, 4>>& proj_mat, std::vector<Eigen::Vector2d>& pointsVec);
+        bool checkReprojErrNewB(Map* map, KeyFrame* lastKF, const int keyPos, Eigen::Vector4d& calcVec, std::vector<std::pair<int, int>>& matchesOfPoint, const std::unordered_map<int, Eigen::Matrix<double,3,4>>& allProjMatrices, std::vector<Eigen::Matrix<double, 3, 4>>& proj_mat, std::vector<Eigen::Vector2d>& pointsVec);
         void projectToPlane(Eigen::Vector4d& vec, cv::Point2f& p2f);
 
         void triangulateNewPoints(std::vector<vio_slam::KeyFrame *>& activeKF);
+        void triangulateNewPointsB(Map* map, std::vector<vio_slam::KeyFrame *>& activeKF);
 
         void addMultiViewMapPoints(const Eigen::Vector4d& posW, const std::vector<std::pair<int, int>>& matchesOfPoint, std::vector<MapPoint*>& pointsToAdd, KeyFrame* lastKF, const size_t& keyPos);
+        void addMultiViewMapPointsB(Map* map, const Eigen::Vector4d& posW, const std::vector<std::pair<int, int>>& matchesOfPoint, std::vector<MapPoint*>& pointsToAdd, KeyFrame* lastKF, const size_t& keyPos);
         void addToMap(KeyFrame* lastKF, const std::vector<MapPoint*>& pointsToAdd);
         void addToMapRemoveCon(KeyFrame* lastKF, std::vector<MapPoint*>& pointsToAdd, std::vector<std::vector<std::pair<int, int>>>& matchedIdxs);
+        void addToMapRemoveConB(Map* map, KeyFrame* lastKF, std::vector<MapPoint*>& pointsToAdd, std::vector<std::vector<std::pair<int, int>>>& matchedIdxs);
         void removeCon(MapPoint* mp, std::vector<std::pair<int, int>>& matchesOfPoint, const int lastKFNumb);
 
         void drawPred(KeyFrame* lastKF, std::vector<cv::KeyPoint>& keys,std::vector<cv::KeyPoint>& predKeys);

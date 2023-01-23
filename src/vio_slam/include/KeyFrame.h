@@ -36,6 +36,8 @@ class KeyFrame
         int closestKF {-1};
         bool visualize {true};
         std::vector<MapPoint*> localMapPoints;
+        std::vector<MapPoint*> localMapPointsB;
+        KeyFrame* KFBack;
         bool active {true};
         bool keyF {false};
         bool LBA {false};
