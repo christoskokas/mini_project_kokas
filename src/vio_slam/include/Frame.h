@@ -41,12 +41,12 @@ struct KeyFrameVars
     }
 };
 
-class Frame
+class ViewFrame
 {
     private:
 
     public:
-        Frame();
+        ViewFrame();
         std::list< KeyFrameVars > keyFrames;
         void pangoQuit(Zed_Camera* zedPtr, const Map* _map);                    
 

@@ -17,6 +17,10 @@
 namespace vio_slam
 {
 
+class Map;
+class MapPoint;
+class KeyFrame;
+
 struct MatchedKeysDist
 {
     std::vector<int> dist;
@@ -44,7 +48,7 @@ class FeatureMatcher
         const int matchDist {50};
         const int matchDistConVel {50};
         const int matchDistProj {100};
-        const int maxDistAng {4};
+        const int maxDistAng {25};
         // const int matchDistProj {40};
 
         // std::vector<std::vector<std::vector<int>>> leftIdxs;
@@ -59,15 +63,21 @@ class FeatureMatcher
 
         void matchPoints(const StereoDescriptors& desc, const std::vector<std::vector < int > >& indexes, std::vector <cv::DMatch>& tempMatches, SubPixelPoints& points, StereoKeypoints& keypoints);
 
-        int DescriptorDistance(const cv::Mat &a, const cv::Mat &b);
         
     public:
         const FeatureExtractor* feLeft, *feRight;
 
         FeatureMatcher(const Zed_Camera* _zed, const FeatureExtractor* _feLeft, const FeatureExtractor* _feRight, const int _imageHeight = 360, const int _gridRows = 5, const int _gridCols = 5, const int _stereoYSpan = 2);
 
+        void getMatchIdxs(cv::KeyPoint& predP, std::vector<int>& idxs, TrackedKeys& keysLeft, const int predictedScale, const float radius, bool right);
+
+        static int DescriptorDistance(const cv::Mat &a, const cv::Mat &b);
         void matchLocalBA(std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, KeyFrame* lastKF, KeyFrame* otherKF, const int aKFSize, const int timesGrid, bool first, std::vector<float>& keysAngles, const std::vector<cv::Point2f>& predPoints);
 
+        void findStereoMatchesORB2R(const cv::Mat& lImage, const cv::Mat& rImage, const cv::Mat& rightDesc,  std::vector<cv::KeyPoint>& rightKeys, TrackedKeys& keysLeft);
+
+
+        int matchByProjectionR(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<int>& matchedIdxsR, std::vector<int>& matchedIdxsB, std::vector<int>& matchedIdxsBR, const float rad);
         int matchByProjection(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB);
         
         int matchByProjectionPred(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const int timesGrid);
@@ -75,6 +85,7 @@ class FeatureMatcher
         int matchByProjectionConVel(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const int timesGrid);
         
         int matchByProjectionConVelAng(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, std::vector<cv::KeyPoint>& prevKeyPos, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const int timesGrid, const std::vector<float>& mapAngles);
+        int matchByProjectionConVelAngScale(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, std::vector<cv::KeyPoint>& prevKeyPos, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const int timesGrid, const std::vector<float>& mapAngles, const std::vector<int> scaleKeys);
 
         void stereoMatch(const cv::Mat& leftImage, const cv::Mat& rightImage, std::vector<cv::KeyPoint>& leftKeys, std::vector<cv::KeyPoint>& rightKeys, const cv::Mat& leftDesc, const cv::Mat& rightDesc, std::vector <cv::DMatch>& matches, SubPixelPoints& points);
 
@@ -83,6 +94,7 @@ class FeatureMatcher
         void findStereoMatchesORB2(const cv::Mat& lImage, const cv::Mat& rImage, const cv::Mat& rightDesc,  std::vector<cv::KeyPoint>& rightKeys, TrackedKeys& keysLeft);
         void matchORBPoints(TrackedKeys& prevLeftKeys, TrackedKeys& keysLeft);
         void destributeLeftKeys(TrackedKeys& keysLeft, std::vector<std::vector<std::vector<int>>>& leftIdxs, const int lnGrids, const int rnGrids);
+        void destributeLeftKeysoct(TrackedKeys& keysLeft, std::vector<std::vector<std::vector<int>>>& leftIdxs, const int lnGrids, const int rnGrids);
 
         void findMatchesWD(const cv::Mat& lImage, const cv::Mat& rImage, const StereoDescriptors& desc, PointsWD& points, StereoKeypoints& keypoints);
         void findStereoMatchesFAST(const cv::Mat& lImage, const cv::Mat& rImage, const StereoDescriptors& desc, SubPixelPoints& points, StereoKeypoints& keypoints);

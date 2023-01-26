@@ -4,12 +4,12 @@
 namespace vio_slam
 {
 
-Frame::Frame()
+ViewFrame::ViewFrame()
 {
     
 }
 
-void Frame::pangoQuit(Zed_Camera* zedPtr, const Map* _map)
+void ViewFrame::pangoQuit(Zed_Camera* zedPtr, const Map* _map)
 {
     using namespace std::literals::chrono_literals;
 

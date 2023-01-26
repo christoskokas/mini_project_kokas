@@ -10,7 +10,7 @@ System::System(ConfigFile* _mConf)
 
     mZedCamera = new Zed_Camera(mConf);
 
-    mFrame = new Frame;
+    mFrame = new ViewFrame;
 
     map = new Map();
 
@@ -23,7 +23,7 @@ System::System(ConfigFile* _mConf)
 
     localMap = new LocalMapper(map, mZedCamera, fm);
 
-    Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera, map);
+    Visual = new std::thread(&vio_slam::ViewFrame::pangoQuit, mFrame, mZedCamera, map);
 
     LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMapping, localMap);
     // Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera);
@@ -43,7 +43,7 @@ System::System(ConfigFile* _mConf, bool multi)
     mZedCamera = new Zed_Camera(mConf);
     mZedCameraB = new Zed_Camera(mConf);
 
-    mFrame = new Frame;
+    mFrame = new ViewFrame;
 
     map = new Map();
     mapB = new Map();
@@ -62,7 +62,7 @@ System::System(ConfigFile* _mConf, bool multi)
 
     localMap = new LocalMapper(map, mZedCamera, fm, mapB, mZedCameraB, fmB);
 
-    Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera, map);
+    Visual = new std::thread(&vio_slam::ViewFrame::pangoQuit, mFrame, mZedCamera, map);
 
     LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMappingB, localMap);
     // Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera);
@@ -87,6 +87,7 @@ void System::setActiveOutliers(Map* map, std::vector<MapPoint*>& activeMPs, std:
             mp->unMCnt++;
         if ( !MPsOutliers[i] && mp->unMCnt < 20 )
             continue;
+        // mp->desc.release();
         mp->SetIsOutlier( true );
         // std::unordered_map<KeyFrame*,size_t>::iterator it;
         // std::unordered_map<KeyFrame*,size_t>::const_iterator endmp(mp->kFWithFIdx.end());
@@ -103,14 +104,15 @@ void System::setActiveOutliers(Map* map, std::vector<MapPoint*>& activeMPs, std:
     }
 }
 
-void System::insertKF(Map* map, KeyFrame* kF, std::vector<int>& matchedIdxsN, const Eigen::Matrix4d& estimPose, const int nStereo, const int nMono, const bool front)
+void System::insertKF(Map* map, KeyFrame* kF, std::vector<int>& matchedIdxsN, const Eigen::Matrix4d& estimPose, const int nStereo, const int nMono, const bool front, const bool addKF)
 {
     const double fx {mZedCamera->cameraLeft.fx};
     const double fy {mZedCamera->cameraLeft.fy};
     const double cx {mZedCamera->cameraLeft.cx};
     const double cy {mZedCamera->cameraLeft.cy};
     TrackedKeys& keysLeft = kF->keys;
-    kF->keyF = true;
+    if ( addKF )
+        kF->keyF = true;
     kF->unMatchedF.resize(keysLeft.keyPoints.size(), -1);
     kF->localMapPoints.resize(keysLeft.keyPoints.size(), nullptr);
     std::vector<MapPoint*>& activeMapPoints = map->activeMapPoints;
@@ -135,13 +137,15 @@ void System::insertKF(Map* map, KeyFrame* kF, std::vector<int>& matchedIdxsN, co
                 mp->desc.push_back(keysLeft.rightDesc.row(keysLeft.rightIdxs[i]));
             mp->addTCnt();
             kF->localMapPoints[i] = mp;
+            mp->lastObsKF = kF;
+            mp->lastObsL = keysLeft.keyPoints[i];
             kF->unMatchedF[i] = mp->kdx;
             trckedKeys++;
             continue;
         }
         if ( nStereo > minNStereo )
             continue;
-        if ( keysLeft.close[i] && newStereoKeys < 100/*  || ( nMono <= minNMono && keysLeft.estimatedDepth[i] > 0)  */)
+        if ( keysLeft.close[i] /* && newStereoKeys < 100 *//*  || ( nMono <= minNMono && keysLeft.estimatedDepth[i] > 0)  */)
         {
             const double zp = (double)keysLeft.estimatedDepth[i];
             const double xp = (double)(((double)keysLeft.keyPoints[i].pt.x-cx)*zp/fx);
@@ -154,6 +158,8 @@ void System::insertKF(Map* map, KeyFrame* kF, std::vector<int>& matchedIdxsN, co
             // kF->unMatchedF[i] = false;
             // kF->localMapPoints.emplace_back(mp);
             kF->localMapPoints[i] = mp;
+            mp->lastObsKF = kF;
+            mp->lastObsL = keysLeft.keyPoints[i];
             // kF->unMatchedF[i] = mp->kdx;
             // if ( keysLeft.close[i] )
             // {
@@ -310,8 +316,9 @@ void System::SLAM()
 
         if ( newKF )
         {
-            insertKF(map, kFCandF, matchedIdxsN, estimPose, nStereo, nMono, true);
-            map->keyFrameAdded = true;
+            insertKF(map, kFCandF, matchedIdxsN, estimPose, nStereo, nMono, true, true);
+            if ( map->activeKeyFrames.size() > 4 )
+                map->keyFrameAdded = true;
 
         }
 
@@ -486,8 +493,35 @@ void System::MultiSLAM()
             KeyFrame* KF = map->activeKeyFrames.front();
             KeyFrame* KFB = mapB->activeKeyFrames.front();
             KF->KFBack = KFB;
+            KFB->KFBack = KF;
             KF->localMapPointsB = KFB->localMapPoints;
             continue;
+        }
+
+       
+
+        if ( i == 1 )
+        {
+            prevV = estimPose.block<3,1>(0,3);
+            prevVB = estimPoseB.block<3,1>(0,3);
+            prevT = estimPose.block<3,1>(0,3);
+            prevTB = estimPoseB.block<3,1>(0,3);
+        }
+        else
+        {
+            // if ( prevV.cwiseAbs().sum() > 0.05 )
+            //     if (!checkDisplacement(estimPose, estimPoseB, predNPose, transfC1C2inv, transfC1C2))
+            //     {
+            //         Logging("Pose Estimation Failed, Retrying..","",3);
+            //         continue;
+            //     }
+            // else
+            // {
+            //     prevV = (estimPose.block<3,1>(0,3) - prevT).cwiseAbs();
+            //     prevT = estimPose.block<3,1>(0,3);
+            //     prevVB = (estimPoseB.block<3,1>(0,3) - prevTB).cwiseAbs();
+            //     prevTB = estimPoseB.block<3,1>(0,3);
+            // }
         }
 
         Eigen::Matrix4d realPoseB = estimPoseB * transfC1C2inv;
@@ -506,15 +540,20 @@ void System::MultiSLAM()
         currCameraPose = estimPose;
         currCameraPoseB = estimPoseB;
 
-        if ( newKF || newKFB)
+        if ( newKF /* || newKFB */)
         {
-            insertKF(map, kFCandF, matchedIdxsN, estimPose, nStereo, nMono, true);
-            insertKF(mapB, kFCandFB, matchedIdxsNB, estimPoseB, nStereoB, nMonoB, false);
+            insertKF(map, kFCandF, matchedIdxsN, estimPose, nStereo, nMono, true, true);
+            insertKF(mapB, kFCandFB, matchedIdxsNB, estimPoseB, nStereoB, nMonoB, false, true);
             kFCandF->KFBack = kFCandFB;
+            kFCandFB->KFBack = kFCandF;
             kFCandF->localMapPointsB = kFCandFB->localMapPoints;
             if ( map->activeKeyFrames.size() > 4 )
                 map->keyFrameAdded = true;
 
+        }
+        else if ( newKFB )
+        {
+            insertKF(mapB, kFCandFB, matchedIdxsNB, estimPoseB, nStereoB, nMonoB, false, false);
         }
         drawTrackedKeys(kFCandF, matchedIdxsN, "tracked Keys", imLRect);
 
@@ -560,6 +599,33 @@ void System::MultiSLAM()
     LocalMapping->join();
 }
 
+bool System::checkDisplacement(Eigen::Matrix4d& estimPose, Eigen::Matrix4d& estimPoseB, Eigen::Matrix4d& predPose, Eigen::Matrix4d& transfC1C2Inv, Eigen::Matrix4d& transfC1C2)
+{
+    Eigen::Vector3d newV = (estimPose.block<3,1>(0,3) - prevT).cwiseAbs();
+    Eigen::Vector3d newVB = (estimPoseB.block<3,1>(0,3) - prevTB).cwiseAbs();
+    double perc = ((newV - prevV).cwiseAbs()).sum()/newV.sum();
+    double percB = ((newVB - prevVB).cwiseAbs()).sum()/newVB.sum();
+    if ( perc > maxPerc && percB > maxPerc )
+    {
+        return false;
+        estimPose = predPose;
+        estimPoseB = estimPose * transfC1C2;
+    }
+    else if ( perc > maxPerc )
+    {
+        estimPose = estimPoseB * transfC1C2Inv;
+    }
+    else if ( percB > maxPerc )
+    {
+        estimPoseB = estimPose * transfC1C2;
+    }
+    prevV = (estimPose.block<3,1>(0,3) - prevT).cwiseAbs();
+    prevT = estimPose.block<3,1>(0,3);
+    prevVB = (estimPoseB.block<3,1>(0,3) - prevTB).cwiseAbs();
+    prevTB = estimPoseB.block<3,1>(0,3);
+    return true;
+}
+
 Eigen::Matrix4d System::changePosesFromBoth(Eigen::Matrix4d& estimPose, Eigen::Matrix4d& estimPoseB)
 {
     Eigen::Matrix3d Rot = estimPose.block<3,3>(0,0);
@@ -575,7 +641,7 @@ Eigen::Matrix4d System::changePosesFromBoth(Eigen::Matrix4d& estimPose, Eigen::M
     newPose.block<3,3>(0,0) = qres.toRotationMatrix();
     newPose.block<3,1>(0,3) = tnew;
 
-    Logging("NEWPOSE", newPose,3);
+    // Logging("NEWPOSE", newPose,3);
     return newPose;
     
 }

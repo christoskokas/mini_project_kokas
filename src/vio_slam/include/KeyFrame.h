@@ -16,6 +16,46 @@ namespace vio_slam
 class Map;
 class MapPoint;
 
+class Frame
+{
+    private:
+
+    public:
+
+    Camera* lCam, rCam;
+    Camera* lCamB, rCamB;
+
+    CameraPose pose;
+    CameraPose poseB;
+
+    Eigen::Matrix4d Tc1c2;
+
+    cv::Mat lIm, rIm;
+    cv::Mat rLIm;
+    cv::Mat lImB, rImB;
+    cv::Mat rLImB;
+
+    int rN, lN;
+    int rNB, lNB;
+
+    std::vector<cv::KeyPoint> lKeys, rKeys;
+    std::vector<cv::KeyPoint> lKeysB, rKeysB;
+    std::vector<float> estDepth;
+    std::vector<float> estDepthB;
+    cv::Mat lDesc, rDesc;
+    cv::Mat lDescB, rDescB;
+
+    std::vector<MapPoint*> lMapPoints;
+    std::vector<MapPoint*> rMapPoints;
+    std::vector<MapPoint*> lMapPointsB;
+    std::vector<MapPoint*> rMapPointsB;
+
+    Frame(){};
+
+    Frame(Zed_Camera* zedPtr);
+
+};
+
 class KeyFrame
 {
     private:
@@ -28,6 +68,7 @@ class KeyFrame
         std::vector<int> connections;
         std::vector<int> connectionWeights;
         std::vector<int> unMatchedF;
+        std::vector<int> unMatchedFR;
         TrackedKeys keys;
         Eigen::MatrixXd homoPoints3D;
         const int numb;
@@ -36,6 +77,7 @@ class KeyFrame
         int closestKF {-1};
         bool visualize {true};
         std::vector<MapPoint*> localMapPoints;
+        std::vector<MapPoint*> localMapPointsR;
         std::vector<MapPoint*> localMapPointsB;
         KeyFrame* KFBack;
         bool active {true};

@@ -46,7 +46,7 @@ class System
         FeatureTracker* featTracker;
         FeatureTracker* featTrackerB;
 
-        Frame* mFrame;
+        ViewFrame* mFrame;
 
         Zed_Camera* mZedCamera;
         Zed_Camera* mZedCameraB;
@@ -69,9 +69,15 @@ class System
 
         const int minNStereo {70};
         const int minNMono {20};
+        const float maxPerc {0.5};
+
+        Eigen::Vector3d prevV, prevVB, prevT, prevTB;
+
+
+        bool checkDisplacement(Eigen::Matrix4d& estimPose, Eigen::Matrix4d& estimPoseB, Eigen::Matrix4d& predPose, Eigen::Matrix4d& transfC1C2Inv, Eigen::Matrix4d& transfC1C2);
 
         void setActiveOutliers(Map* map, std::vector<MapPoint*>& activeMPs, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches);
-        void insertKF(Map* map, KeyFrame* kF, std::vector<int>& matchedIdxsN, const Eigen::Matrix4d& estimPose, const int nStereo, const int nMono, const bool front);
+        void insertKF(Map* map, KeyFrame* kF, std::vector<int>& matchedIdxsN, const Eigen::Matrix4d& estimPose, const int nStereo, const int nMono, const bool front, const bool addKF);
         void drawTrackedKeys(KeyFrame* kF, std::vector<int> matched, const char* com, cv::Mat& im);
         Eigen::Matrix4d changePosesFromBoth(Eigen::Matrix4d& estimPose, Eigen::Matrix4d& estimPoseB);
 

@@ -7,6 +7,7 @@
 #include "KeyFrame.h"
 #include "PoseEstimator.h"
 #include "FeatureManager.h"
+#include "FeatureMatcher.h"
 #include "Settings.h"
 #include "Optimizer.h"
 #include <fstream>
@@ -40,15 +41,23 @@ class MapPoint
         int seenCnt {1};
         // std::vector<Observation> obs;
         std::vector<cv::KeyPoint> obs;
+        cv::KeyPoint lastObsL;
+        cv::KeyPoint lastObsR;
+        KeyFrame* lastObsKF;
         cv::Mat desc;
         std::unordered_map<KeyFrame*, size_t> kFWithFIdx;
+        std::unordered_map<KeyFrame*, std::pair<int,int>> kFMatches;
 
         bool isActive {true};
 
         bool inFrame {true};
+        bool inFrameR {true};
         bool isOutlier {false};
         bool close {true};
         bool added {false};
+
+        int scaleLevelL {0};
+        int scaleLevelR {0};
 
         int keyFrameNb {0};
         const unsigned long idx;
@@ -61,6 +70,7 @@ class MapPoint
         bool getActive() const;
         bool GetIsOutlier() const;
         bool GetInFrame() const;
+        void calcDescriptor();
         MapPoint(const Eigen::Vector4d& p, const cv::Mat& _desc, const cv::KeyPoint& obsK, const bool _close, const unsigned long _kdx, const unsigned long _idx);
         MapPoint(const unsigned long _idx, const unsigned long _kdx);
 

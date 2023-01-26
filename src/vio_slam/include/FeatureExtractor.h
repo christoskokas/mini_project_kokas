@@ -22,7 +22,10 @@ struct TrackedKeys
     std::vector<cv::KeyPoint> keyPoints;
     std::vector<cv::KeyPoint> rightKeyPoints;
     std::vector<cv::KeyPoint> predKeyPoints;
+    std::vector<std::vector<std::vector<int>>> lkeyGrid;
+    std::vector<std::vector<std::vector<int>>> rkeyGrid;
     std::vector<int> rightIdxs;
+    std::vector<int> leftIdxs;
     std::vector<int> mapPointIdx;
     std::vector<int> matchedIdxs;
     std::vector<float> estimatedDepth;
@@ -34,6 +37,9 @@ struct TrackedKeys
     std::vector<uchar> inliers2;
     std::vector<int> trackCnt;
     cv::Mat Desc, rightDesc;
+    float xMult, yMult;
+    int xGrids, yGrids;
+
 
     template <typename T>
     void reduce(std::vector<T>& check)
@@ -101,7 +107,10 @@ struct TrackedKeys
     {
         keyPoints = keysToClone.keyPoints;
         rightKeyPoints = keysToClone.rightKeyPoints;
+        lkeyGrid = keysToClone.lkeyGrid;
+        rkeyGrid = keysToClone.rkeyGrid;
         rightIdxs = keysToClone.rightIdxs;
+        leftIdxs = keysToClone.leftIdxs;
         angles = keysToClone.angles;
         Desc = keysToClone.Desc.clone();
         rightDesc = keysToClone.rightDesc.clone();

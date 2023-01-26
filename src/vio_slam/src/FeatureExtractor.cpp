@@ -395,28 +395,31 @@ void FeatureExtractor::findORB(cv::Mat& image, std::vector <cv::KeyPoint>& fastK
 
 float FeatureExtractor::computeOrientation(const cv::Mat& image, const cv::Point2f& point)
 {
-    int m10 {0}, m01{0};
-    const int step {(int)image.step1()};
-    const uchar* center = &image.at<uchar> (cvRound(point.y), cvRound(point.x));
+        int m_01 = 0, m_10 = 0;
 
-    for (int u = -halfPatchSize; u <= halfPatchSize; ++u)
-        m10 += u * center[u];
+        const uchar* center = &image.at<uchar> (cvRound(point.y), cvRound(point.x));
 
-    for (int32_t row = 1; row < halfPatchSize; row++)
-    {
-        int sumIntensities {0};
-        int d = umax[row];
+        // Treat the center line differently, v=0
+        for (int u = -halfPatchSize; u <= halfPatchSize; ++u)
+            m_10 += u * center[u];
 
-        for (int32_t col = -d; col <= d; col++)
+        // Go line by line in the circuI853lar patch
+        int step = (int)image.step1();
+        for (int v = 1; v <= halfPatchSize; ++v)
         {
-            const int centerP {center[col + row*step]}, centerM {center[col - row*step]};
-            sumIntensities += centerP - centerM;
-            m10 += col * (centerP + centerM);
+            // Proceed over the two lines
+            int v_sum = 0;
+            int d = umax[v];
+            for (int u = -d; u <= d; ++u)
+            {
+                int val_plus = center[u + v*step], val_minus = center[u - v*step];
+                v_sum += (val_plus - val_minus);
+                m_10 += u * (val_plus + val_minus);
+            }
+            m_01 += v * v_sum;
         }
-        m01 += row * sumIntensities;
-    }
 
-    return cv::fastAtan2((float)m01, (float)m10);
+        return cv::fastAtan2((float)m_01, (float)m_10);
 
 }
 
@@ -1657,7 +1660,7 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
     // Timer keys("computeKeys");
 
 {
-    Timer pyr("pyr");
+    // Timer pyr("pyr");
     computePyramid(image);
 }
     std::vector<std::vector<cv::KeyPoint>> allKeys;
@@ -1670,7 +1673,7 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
     // else
     //     computeKeypointsORBNewRight(image, allKeys);
 {
-    Timer keys("keys");
+    // Timer keys("keys");
     computeKeypointsORBNew(image, allKeys);
 }
 
@@ -1711,7 +1714,7 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
     //     }
     //     nF += allKeys[level].size();
     // }
-    Timer desc("desc");
+    // Timer desc("desc");
     int nF {0};
     for (size_t level {0}; level < nLevels; level++)
     {

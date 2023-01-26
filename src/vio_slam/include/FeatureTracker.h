@@ -129,7 +129,7 @@ class FeatureTracker
         const int minNStereo {70};
         const int minNMono {20};
         const int maxActiveMPSize {800};
-        const int maxDistAng {4};
+        const int maxDistAng {25};
 
         int lastKFTrackedNumb {0};
 
@@ -197,15 +197,24 @@ class FeatureTracker
 
     public :
 
-        
+        void initializeMapR(TrackedKeys& keysLeft);
+        void removeOutOfFrameMPsR(const Eigen::Matrix4d& prevCameraPose, std::vector<MapPoint*>& activeMapPoints);
+        bool worldToFrameR(MapPoint* mp, const bool right, const Eigen::Matrix4d& pose);
+        void assignKeysToGrids(TrackedKeys& keysLeft, std::vector<cv::KeyPoint>& keypoints,std::vector<std::vector<std::vector<int>>>& keyGrid, const int width, const int height);
+        void extractORBStereoMatchR(cv::Mat& leftIm, cv::Mat& rightIm, TrackedKeys& keysLeft);
+        void worldToImgScaleR(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, const Eigen::Matrix4d& currPose, const Eigen::Matrix4d& predPose, std::vector<int> scaleLevels);
+
 
         FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map);
         FeatureTracker(Zed_Camera* _zedPtr, Map* _map);
+
+        void calcScale(const double prevD, const double newD);
 
         void removeOutOfFrameMPs(const Eigen::Matrix4d& prevCameraPose, std::vector<MapPoint*>& activeMapPoints);
 
         Eigen::Matrix4d TrackImage(const cv::Mat& leftRect, const cv::Mat& rightRect, const Eigen::Matrix4d& prevCameraPose, const Eigen::Matrix4d& predPoseInv, std::vector<MapPoint*>& activeMpsTemp, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches, const int frameNumb, bool& newKF);
         void TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRect, const Eigen::Matrix4d& prevCameraPose, const Eigen::Matrix4d& predPoseInv, std::vector<MapPoint*>& activeMpsTemp, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches, bool& newKF, const int frameNumb, std::vector<int>& matchedIdxsN, int& nStereo, int& nMono, KeyFrame*& kFCandidate, Eigen::Matrix4d& framePose);
+        void TrackImageTBackUp(const cv::Mat& leftRect, const cv::Mat& rightRect, const Eigen::Matrix4d& prevCameraPose, const Eigen::Matrix4d& predPoseInv, std::vector<MapPoint*>& activeMpsTemp, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches, bool& newKF, const int frameNumb, std::vector<int>& matchedIdxsN, int& nStereo, int& nMono, KeyFrame*& kFCandidate, Eigen::Matrix4d& framePose);
 
         void checkPrevAngles(std::vector<float>& mapAngles, std::vector<cv::KeyPoint>& prevKeys, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const TrackedKeys& keysLeft);
 
@@ -245,6 +254,7 @@ class FeatureTracker
         void removePnPOut(std::vector<int>& idxs, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB);
         void worldToImg(std::vector<MapPoint*>& MapPointsVec, std::vector<cv::KeyPoint>& projectedPoints);
         void worldToImg(std::vector<MapPoint*>& MapPointsVec, std::vector<cv::KeyPoint>& projectedPoints, const Eigen::Matrix4d& currPoseInv);
+        void worldToImgScale(std::vector<MapPoint*>& MapPointsVec, std::vector<cv::KeyPoint>& projectedPoints, const Eigen::Matrix4d& currPoseInv, std::vector<int> scaleLevels);
         void worldToImgAng(std::vector<MapPoint*>& MapPointsVec, std::vector<float>& mapAngles, const Eigen::Matrix4d& currPoseInv, std::vector<cv::KeyPoint>& prevKeyPos, std::vector<cv::KeyPoint>& projectedPoints);
         void getPoints3dFromMapPoints(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<cv::Point3d>& points3d, std::vector<cv::Point2d>& points2d, std::vector<int>& matchedIdxs);
 
@@ -404,6 +414,7 @@ class FeatureTracker
         void drawOptical(const char* com, const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts);
         void drawPoints(const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts, const char* str);
         void draw2D3D(const cv::Mat& im, const std::vector<cv::Point2d>& p2Dfp3D, const std::vector<cv::Point2d>& p2D);
+        void drawMatchesNew(const char* com, const cv::Mat& lIm, const std::vector<cv::KeyPoint>& keys1, const std::vector<cv::KeyPoint>& keys2);
         template <typename T, typename U>
         void drawPointsTemp(const char* com, const cv::Mat& im, const std::vector<T>& p2Dfp3D, const std::vector<U>& p2D)
         {

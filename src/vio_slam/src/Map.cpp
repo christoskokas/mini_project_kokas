@@ -67,6 +67,72 @@ void MapPoint::copyMp(MapPoint* mp, const Zed_Camera* zedPtr)
     // obs = mp->obs;
 }
 
+void MapPoint::calcDescriptor()
+{
+        // Retrieve all observed descriptors
+    std::vector<cv::Mat> vDescriptors;
+
+    std::unordered_map<KeyFrame*,std::pair<int,int>> observations = kFMatches;
+
+    if(observations.empty())
+        return;
+
+    vDescriptors.reserve(observations.size());
+
+    for(std::unordered_map<KeyFrame*,std::pair<int,int>> ::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+    {
+        KeyFrame* pKF = mit->first;
+
+        std::pair<int,int> indexes = mit -> second;
+        int leftIndex = indexes.first, rightIndex = indexes.second;
+
+        if(leftIndex != -1){
+            vDescriptors.push_back(pKF->keys.Desc.row(leftIndex));
+        }
+        if(rightIndex != -1){
+            vDescriptors.push_back(pKF->keys.rightDesc.row(rightIndex));
+        }
+    }
+
+    if(vDescriptors.empty())
+        return;
+
+    // Compute distances between them
+    const size_t N = vDescriptors.size();
+
+    float Distances[N][N];
+    for(size_t i=0;i<N;i++)
+    {
+        Distances[i][i]=0;
+        for(size_t j=i+1;j<N;j++)
+        {
+            int distij = FeatureMatcher::DescriptorDistance(vDescriptors[i],vDescriptors[j]);
+            Distances[i][j]=distij;
+            Distances[j][i]=distij;
+        }
+    }
+
+    // Take the descriptor with least median distance to the rest
+    int BestMedian = INT_MAX;
+    int BestIdx = 0;
+    for(size_t i=0;i<N;i++)
+    {
+        std::vector<int> vDists(Distances[i],Distances[i]+N);
+        std::sort(vDists.begin(),vDists.end());
+        int median = vDists[0.5*(N-1)];
+
+        if(median<BestMedian)
+        {
+            BestMedian = median;
+            BestIdx = i;
+        }
+    }
+
+    {
+        desc = vDescriptors[BestIdx].clone();
+    }
+}
+
 void MapPoint::updatePos(const Eigen::Matrix4d& camPoseInv, const Zed_Camera* zedPtr)
 {
     // Eigen::Vector4d p = wp;

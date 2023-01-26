@@ -33,6 +33,10 @@ class CameraPose
     private:
         double vx {}, vy {}, vz {};
     public:
+        Eigen::Matrix4d Twc = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d Tcw = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d rTwc = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d rTcw = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d refPose = Eigen::Matrix4d::Identity();
         Eigen::Matrix3d Rv;
@@ -63,9 +67,9 @@ class Camera
         int counter;
         float camera_time;
         float imu_time;
-        ros::Publisher pub;
-        ros::Subscriber camera_subscriber;
-        ros::Subscriber imu_subscriber;
+        // ros::Publisher pub;
+        // ros::Subscriber camera_subscriber;
+        // ros::Subscriber imu_subscriber;
     public:
         double fx {},fy {},cx {}, cy {};
         double k1 {}, k2 {}, p1 {}, p2 {}, k3{};
