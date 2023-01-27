@@ -210,8 +210,6 @@ class FeatureExtractor
 {
 
     const int nFeatures;
-    const int nLevels;
-    const float imScale;
     const int edgeThreshold;
     const int patchSize;
     const int halfPatchSize {15};
@@ -241,6 +239,8 @@ class FeatureExtractor
 
 
     public:
+        const float imScale;
+        const int nLevels;
 
         int maskRadius {5};
     

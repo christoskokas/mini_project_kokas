@@ -69,6 +69,9 @@ class KeyFrame
         std::vector<int> connectionWeights;
         std::vector<int> unMatchedF;
         std::vector<int> unMatchedFR;
+        std::vector<float> scaleFactor;
+        float logScale;
+        int nScaleLev;
         TrackedKeys keys;
         Eigen::MatrixXd homoPoints3D;
         const int numb;
@@ -80,6 +83,7 @@ class KeyFrame
         std::vector<MapPoint*> localMapPointsR;
         std::vector<MapPoint*> localMapPointsB;
         KeyFrame* KFBack;
+        KeyFrame* KFFront;
         bool active {true};
         bool keyF {false};
         bool LBA {false};

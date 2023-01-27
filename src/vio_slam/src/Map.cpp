@@ -13,6 +13,40 @@ MapPoint::MapPoint(const Eigen::Vector4d& p, const cv::Mat& _desc, const cv::Key
 MapPoint::MapPoint(const unsigned long _idx, const unsigned long _kdx) : idx(_idx), kdx(_kdx)
 {}
 
+int MapPoint::predictScale(float dist)
+{
+    float dif = maxScaleDist/dist;
+    int scale = cvCeil(log(dif)/lastObsKF->logScale);
+    if ( scale < 0 )
+        scale = 0;
+    else if ( scale >= lastObsKF->nScaleLev )
+        scale = lastObsKF->nScaleLev - 1;
+    return scale;
+}
+
+void MapPoint::update(KeyFrame* kF)
+{
+    lastObsKF = kF;
+    Eigen::Vector3d pos = wp3d;
+    pos = pos - kF->pose.pose.block<3,1>(0,3);
+    const float dist = pos.norm();
+    const std::pair<int, int>& idxs = kFMatches[kF];
+    int level;
+    if ( idxs.first >= 0 )
+        level = lastObsL.octave;
+    else
+        level = lastObsR.octave;
+
+    const float scaleF = kF->scaleFactor[level];
+    const int maxLevels = kF->nScaleLev;
+
+    maxScaleDist = dist * scaleF;
+    minScaleDist = maxScaleDist * kF->scaleFactor[maxLevels - 1];
+
+    
+    // const int level
+}
+
 void MapPoint::copyMp(MapPoint* mp, const Zed_Camera* zedPtr)
 {
     // Eigen::Vector3d p3d = mp->getWordPose3d();

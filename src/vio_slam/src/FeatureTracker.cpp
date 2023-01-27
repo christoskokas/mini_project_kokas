@@ -88,7 +88,7 @@ void FeatureData::compute3DPoints(SubPixelPoints& prePnts, const int keyNumb)
     }
 }
 
-FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map) : zedPtr(_zedPtr), map(_map), fm(zedPtr, &feLeft, &feRight, zedPtr->mHeight,feLeft.getGridRows(), feLeft.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1.0f/(double)zedPtr->mFps), lkal(dt), datafile(filepath), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy), activeMapPoints(_map->activeMapPoints), activeKeyFrames(_map->activeKeyFrames)
+FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map) : zedPtr(_zedPtr), map(_map), fm(zedPtr, &feLeft, &feRight, zedPtr->mHeight,feLeft.getGridRows(), feLeft.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1.0f/(double)zedPtr->mFps), lkal(dt), datafile(filepath), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy), fxr(_zedPtr->cameraRight.fx), fyr(_zedPtr->cameraRight.fy), cxr(_zedPtr->cameraRight.cx), cyr(_zedPtr->cameraRight.cy), activeMapPoints(_map->activeMapPoints), activeKeyFrames(_map->activeKeyFrames)
 {
     // std::vector<MapPoint*>& temp = map->activeMapPoints;
     // activeMapPoints = map->activeMapPoints;
@@ -102,7 +102,7 @@ FeatureTracker::FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _m
     K(1,2) = cy;
 }
 
-FeatureTracker::FeatureTracker(Zed_Camera* _zedPtr, Map* _map) : zedPtr(_zedPtr), map(_map), fm(zedPtr, &feLeft, &feRight, zedPtr->mHeight,feLeft.getGridRows(), feLeft.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1.0f/(double)zedPtr->mFps), lkal(dt), datafile(filepath), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy), activeMapPoints(_map->activeMapPoints), activeKeyFrames(_map->activeKeyFrames)
+FeatureTracker::FeatureTracker(Zed_Camera* _zedPtr, Map* _map) : zedPtr(_zedPtr), map(_map), fm(zedPtr, &feLeft, &feRight, zedPtr->mHeight,feLeft.getGridRows(), feLeft.getGridCols()), pE(zedPtr), fd(zedPtr), dt(1.0f/(double)zedPtr->mFps), lkal(dt), datafile(filepath), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy), fxr(_zedPtr->cameraRight.fx), fyr(_zedPtr->cameraRight.fy), cxr(_zedPtr->cameraRight.cx), cyr(_zedPtr->cameraRight.cy), activeMapPoints(_map->activeMapPoints), activeKeyFrames(_map->activeKeyFrames)
 {
     allFrames.reserve(zedPtr->numOfFrames);
     K(0,0) = fx;
@@ -2391,6 +2391,8 @@ void FeatureTracker::Track3(const int frames)
 void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
 {
     KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx, curFrame);
+    kF->scaleFactor = fe.scalePyramid;
+    kF->nScaleLev = fe.nLevels;
     kF->keyF = true;
     kF->fixed = true;
     // KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, map->kIdx);
@@ -2440,8 +2442,11 @@ void FeatureTracker::initializeMap(TrackedKeys& keysLeft)
 void FeatureTracker::initializeMapR(TrackedKeys& keysLeft)
 {
     KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx, curFrame);
+    kF->scaleFactor = fe.scalePyramid;
+    kF->nScaleLev = fe.nLevels;
     kF->keyF = true;
     kF->fixed = true;
+    kF->logScale = log(fe.imScale);
     // KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, map->kIdx);
     // kF->unMatchedF.resize(keysLeft.keyPoints.size(), true);
     kF->unMatchedF.resize(keysLeft.keyPoints.size(), -1);
@@ -2477,6 +2482,7 @@ void FeatureTracker::initializeMapR(TrackedKeys& keysLeft)
             mp->scaleLevelL = keysLeft.keyPoints[i].octave;
             mp->lastObsR = keysLeft.rightKeyPoints[rIdx];
             mp->scaleLevelR = keysLeft.rightKeyPoints[rIdx].octave;
+            mp->update(kF);
             activeMapPoints.emplace_back(mp);
             kF->localMapPoints[i] = mp;
             kF->localMapPointsR[rIdx] = mp;
@@ -3364,6 +3370,88 @@ bool FeatureTracker::worldToFrameR(MapPoint* mp, const bool right, const Eigen::
             mp->inFrameR = true;
         else
             mp->inFrame = true;
+    return true;
+}
+
+bool FeatureTracker::worldToFrameRTrack(MapPoint* mp, const bool right, const Eigen::Matrix4d& predPoseInv, const Eigen::Matrix4d& tempPose)
+{
+    Eigen::Vector4d point = mp->getWordPose4d();
+    point = predPoseInv * point;
+
+    double fxc, fyc, cxc, cyc;
+    if ( right )
+    {
+        fxc = fxr;
+        fyc = fyr;
+        cxc = cxr;
+        cyc = cyr;
+    }
+    else
+    {
+        fxc = fx;
+        fyc = fy;
+        cxc = cx;
+        cyc = cy;
+    }
+
+
+    if ( point(2) <= 0.0 )
+    {
+        if ( right )
+            mp->inFrameR = false;
+        else
+            mp->inFrame = false;
+        return false;
+    }
+    const double invZ = 1.0f/point(2);
+
+    const double u {fxc*point(0)*invZ + cxc};
+    const double v {fyc*point(1)*invZ + cyc};
+
+    const int h {zedPtr->mHeight};
+    const int w {zedPtr->mWidth};
+    if ( u < 15 || v < 15 || u >= w - 15 || v >= h - 15)
+    {
+        if ( right )
+            mp->inFrameR = false;
+        else
+            mp->inFrame = false;
+        return false;
+    }
+
+    Eigen::Vector3d tPoint = point.block<3,1>(0,3);
+
+    const double mult = 0.1/point(2);
+
+
+
+    point = point*mult;
+    point(3) = 1;
+
+    point = tempPose * point;
+
+    double ua {fxc * point(0)/point(2) + cxc};
+    double va {fyc * point(1)/point(2) + cyc};
+
+
+    int dist = tPoint.norm();
+    int predScale = mp->predictScale(dist);
+
+    if ( right )
+    {
+        mp->predAngleR = atan2((float)v - (float)va, (float)u - (float)ua);
+        mp->scaleLevelR = predScale;
+        mp->inFrameR = true;
+        mp->predR = cv::Point2f((float)u, (float)v);
+    }
+    else
+    {
+        mp->predAngleL = atan2((float)v - (float)va, (float)u - (float)ua);
+        mp->scaleLevelL = predScale;
+        mp->inFrame = true;
+        mp->predL = cv::Point2f((float)u, (float)v);
+    }
+
     return true;
 }
 
@@ -4318,6 +4406,7 @@ void FeatureTracker::removeOutOfFrameMPsR(const Eigen::Matrix4d& prevCameraPose,
     Eigen::Matrix4d toRCamera = (prevCameraPose * zedPtr->extrinsics).inverse();
     Eigen::Matrix4d toCamera = prevCameraPose.inverse();
     int j {0};
+    Eigen::Matrix4d temp = prevCameraPose.inverse() * predNPose;
     std::lock_guard<std::mutex> lock(map->mapMutex);
     for ( size_t i {0}; i < end; i++)
     {
@@ -4694,6 +4783,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     curFrame = frameNumb;
     curFrameNumb++;
     predNPoseInv = predPoseInv;
+    predNPose = predNPoseInv.inverse();
 
     if ( map->keyFrameAdded )
     {

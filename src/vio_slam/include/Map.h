@@ -48,6 +48,8 @@ class MapPoint
         std::unordered_map<KeyFrame*, size_t> kFWithFIdx;
         std::unordered_map<KeyFrame*, std::pair<int,int>> kFMatches;
 
+        float maxScaleDist, minScaleDist;
+
         bool isActive {true};
 
         bool inFrame {true};
@@ -56,12 +58,20 @@ class MapPoint
         bool close {true};
         bool added {false};
 
+        cv::Point2f predL, predR;
+        float predAngleL, predAngleR;
+
+        int scaleLevel {0};
+        int prdScaleLevel {0};
         int scaleLevelL {0};
         int scaleLevelR {0};
 
         int keyFrameNb {0};
         const unsigned long idx;
         const unsigned long kdx;
+
+        void update(KeyFrame* kF);
+        int predictScale(float dist);
 
         void eraseKFConnection(KeyFrame* kF);
         void setActive(bool act);

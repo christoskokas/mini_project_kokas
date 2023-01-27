@@ -137,6 +137,7 @@ class FeatureTracker
         const double noMovementCheck {0.96};
 
         const double fx,fy,cx,cy;
+        const double fxr,fyr,cxr,cyr;
 
         const size_t gfmxCount {400};
         const double gfmnDist {30.0f};
@@ -200,6 +201,7 @@ class FeatureTracker
         void initializeMapR(TrackedKeys& keysLeft);
         void removeOutOfFrameMPsR(const Eigen::Matrix4d& prevCameraPose, std::vector<MapPoint*>& activeMapPoints);
         bool worldToFrameR(MapPoint* mp, const bool right, const Eigen::Matrix4d& pose);
+        bool worldToFrameRTrack(MapPoint* mp, const bool right, const Eigen::Matrix4d& predPoseInv, , const Eigen::Matrix4d& tempPose);
         void assignKeysToGrids(TrackedKeys& keysLeft, std::vector<cv::KeyPoint>& keypoints,std::vector<std::vector<std::vector<int>>>& keyGrid, const int width, const int height);
         void extractORBStereoMatchR(cv::Mat& leftIm, cv::Mat& rightIm, TrackedKeys& keysLeft);
         void worldToImgScaleR(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, const Eigen::Matrix4d& currPose, const Eigen::Matrix4d& predPose, std::vector<int> scaleLevels);
