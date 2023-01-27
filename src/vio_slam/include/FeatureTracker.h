@@ -199,12 +199,15 @@ class FeatureTracker
     public :
 
         void initializeMapR(TrackedKeys& keysLeft);
-        void removeOutOfFrameMPsR(const Eigen::Matrix4d& prevCameraPose, std::vector<MapPoint*>& activeMapPoints);
+        void removeOutOfFrameMPsR(const Eigen::Matrix4d& currCamPose, const Eigen::Matrix4d& predNPose, std::vector<MapPoint*>& activeMapPoints);
         bool worldToFrameR(MapPoint* mp, const bool right, const Eigen::Matrix4d& pose);
-        bool worldToFrameRTrack(MapPoint* mp, const bool right, const Eigen::Matrix4d& predPoseInv, , const Eigen::Matrix4d& tempPose);
+        bool worldToFrameRTrack(MapPoint* mp, const bool right, const Eigen::Matrix4d& predPoseInv, const Eigen::Matrix4d& tempPose);
         void assignKeysToGrids(TrackedKeys& keysLeft, std::vector<cv::KeyPoint>& keypoints,std::vector<std::vector<std::vector<int>>>& keyGrid, const int width, const int height);
         void extractORBStereoMatchR(cv::Mat& leftIm, cv::Mat& rightIm, TrackedKeys& keysLeft);
         void worldToImgScaleR(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, const Eigen::Matrix4d& currPose, const Eigen::Matrix4d& predPose, std::vector<int> scaleLevels);
+        void worldToImgR(std::vector<MapPoint*>& activeMapPoints, std::vector<std::pair<cv::Point2f,cv::Point2f>>& projectedPoints, const Eigen::Matrix4d& currPoseInv);
+        void insertKeyFrameR(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const int nMono, const Eigen::Matrix4d& estimPose);
+
 
 
         FeatureTracker(cv::Mat _rmap[2][2], Zed_Camera* _zedPtr, Map* _map);

@@ -16,11 +16,15 @@ MapPoint::MapPoint(const unsigned long _idx, const unsigned long _kdx) : idx(_id
 int MapPoint::predictScale(float dist)
 {
     float dif = maxScaleDist/dist;
+    // std::cout << "max" << maxScaleDist << std::endl;
+    // std::cout << "prev scaleL" << lastObsL.octave << std::endl;
+    // std::cout << "prev scaleR" << lastObsR.octave << std::endl;
     int scale = cvCeil(log(dif)/lastObsKF->logScale);
     if ( scale < 0 )
         scale = 0;
     else if ( scale >= lastObsKF->nScaleLev )
         scale = lastObsKF->nScaleLev - 1;
+    // std::cout << "scale" << scale << std::endl;
     return scale;
 }
 
@@ -39,6 +43,7 @@ void MapPoint::update(KeyFrame* kF)
 
     const float scaleF = kF->scaleFactor[level];
     const int maxLevels = kF->nScaleLev;
+
 
     maxScaleDist = dist * scaleF;
     minScaleDist = maxScaleDist * kF->scaleFactor[maxLevels - 1];

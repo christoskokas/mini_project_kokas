@@ -69,7 +69,7 @@ class FeatureMatcher
 
         FeatureMatcher(const Zed_Camera* _zed, const FeatureExtractor* _feLeft, const FeatureExtractor* _feRight, const int _imageHeight = 360, const int _gridRows = 5, const int _gridCols = 5, const int _stereoYSpan = 2);
 
-        void getMatchIdxs(cv::KeyPoint& predP, std::vector<int>& idxs, TrackedKeys& keysLeft, const int predictedScale, const float radius, bool right);
+        void getMatchIdxs(const cv::Point2f& predP, std::vector<int>& idxs, TrackedKeys& keysLeft, const int predictedScale, const float radius, bool right);
 
         static int DescriptorDistance(const cv::Mat &a, const cv::Mat &b);
         void matchLocalBA(std::vector<std::vector<std::pair<int, int>>>& matchedIdxs, KeyFrame* lastKF, KeyFrame* otherKF, const int aKFSize, const int timesGrid, bool first, std::vector<float>& keysAngles, const std::vector<cv::Point2f>& predPoints);
@@ -77,7 +77,8 @@ class FeatureMatcher
         void findStereoMatchesORB2R(const cv::Mat& lImage, const cv::Mat& rImage, const cv::Mat& rightDesc,  std::vector<cv::KeyPoint>& rightKeys, TrackedKeys& keysLeft);
 
 
-        int matchByProjectionR(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<int>& matchedIdxsR, std::vector<int>& matchedIdxsB, std::vector<int>& matchedIdxsBR, const float rad);
+        int matchByProjectionR(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<int>& matchedIdxsR, std::vector<std::pair<int,int>>& matchesIdxs, const float rad);
+        int matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<int>& matchedIdxsR, std::vector<std::pair<int,int>>& matchesIdxs, const float rad, std::vector<std::pair<cv::Point2f,cv::Point2f>>& prevKeyPositions, const bool pred);
         int matchByProjection(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB);
         
         int matchByProjectionPred(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, std::vector<int>& matchedIdxsB, const int timesGrid);

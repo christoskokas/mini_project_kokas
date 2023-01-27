@@ -84,6 +84,8 @@ class KeyFrame
         std::vector<MapPoint*> localMapPointsB;
         KeyFrame* KFBack;
         KeyFrame* KFFront;
+        KeyFrame* prevKF;
+        KeyFrame* nextKF;
         bool active {true};
         bool keyF {false};
         bool LBA {false};

@@ -1690,11 +1690,11 @@ int FeatureMatcher::matchByProjection(std::vector<MapPoint*>& activeMapPoints, T
     return nMatches;
 }
 
-void FeatureMatcher::getMatchIdxs(cv::KeyPoint& predP, std::vector<int>& idxs, TrackedKeys& keysLeft, const int predictedScale, const float radius, bool right)
+void FeatureMatcher::getMatchIdxs(const cv::Point2f& predP, std::vector<int>& idxs, TrackedKeys& keysLeft, const int predictedScale, const float radius, bool right)
 {
     idxs.reserve(200);
-    const float trackX = predP.pt.x;
-    const float trackY = predP.pt.y;
+    const float trackX = predP.x;
+    const float trackY = predP.y;
     const int minX = std::max(0, cvFloor((trackX - radius)* keysLeft.xMult));
     const int maxX = std::min(keysLeft.xGrids - 1, cvCeil((trackX + radius) * keysLeft.xMult));
     const int minY = std::max(0, cvFloor((trackY - radius)* keysLeft.yMult));
@@ -1739,7 +1739,7 @@ void FeatureMatcher::getMatchIdxs(cv::KeyPoint& predP, std::vector<int>& idxs, T
     
 }
 
-int FeatureMatcher::matchByProjectionR(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<int>& matchedIdxsR, std::vector<int>& matchedIdxsB, std::vector<int>& matchedIdxsBR, const float rad)
+int FeatureMatcher::matchByProjectionR(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<int>& matchedIdxsR, std::vector<std::pair<int,int>>& matchesIdxs, const float rad)
 {
 
     // const int predictedScale = 2;
@@ -1752,6 +1752,7 @@ int FeatureMatcher::matchByProjectionR(std::vector<MapPoint*>& activeMapPoints, 
     std::vector<int> rIdxs(newE, 256);
     for ( size_t i {0}; i < prevE; i++)
     {
+        std::pair<int,int>& keyPair = matchesIdxs[i];
         MapPoint* mp = activeMapPoints[i];
         const cv::Mat& mpDesc = mp->desc;
         cv::KeyPoint lastObs = mp->lastObsL;
@@ -1761,7 +1762,7 @@ int FeatureMatcher::matchByProjectionR(std::vector<MapPoint*>& activeMapPoints, 
         float radius = lastObs.octave * rad;
 
         std::vector<int> idxs;
-        getMatchIdxs(lastObs, idxs, keysLeft, predScaleLevel, radius, false);
+        getMatchIdxs(lastObs.pt, idxs, keysLeft, predScaleLevel, radius, false);
 
         int bestDist = 256;
         int bestIdx = -1;
@@ -1790,7 +1791,7 @@ int FeatureMatcher::matchByProjectionR(std::vector<MapPoint*>& activeMapPoints, 
         std::vector<int> idxsR;
         radius = lastObsR.octave * rad;
         predScaleLevel = mp->scaleLevelR;
-        getMatchIdxs(lastObsR, idxsR, keysLeft, predScaleLevel, radius, true);
+        getMatchIdxs(lastObsR.pt, idxsR, keysLeft, predScaleLevel, radius, true);
 
         int bestDistR = 256;
         int bestIdxR = -1;
@@ -1831,10 +1832,10 @@ int FeatureMatcher::matchByProjectionR(std::vector<MapPoint*>& activeMapPoints, 
             if ( right )
             {
                 matchedIdxsR[bestIdxR] = i;
-                matchedIdxsBR[i] = bestIdxR;
+                keyPair.second = bestIdxR;
                 if ( keysLeft.leftIdxs[bestIdxR] > 0 )
                 {
-                    matchedIdxsB[i] = keysLeft.leftIdxs[bestIdxR];
+                    keyPair.first = keysLeft.leftIdxs[bestIdxR];
                     matchedIdxsL[keysLeft.leftIdxs[bestIdxR]] = i;
 
                 }
@@ -1843,10 +1844,144 @@ int FeatureMatcher::matchByProjectionR(std::vector<MapPoint*>& activeMapPoints, 
             else
             {
                 matchedIdxsL[bestIdx] = i;
-                matchedIdxsB[i] = bestIdx;
+                keyPair.first = bestIdx;
                 if ( keysLeft.rightIdxs[bestIdx] > 0 )
                 {
-                    matchedIdxsBR[i] = keysLeft.rightIdxs[bestIdx];
+                    keyPair.second = keysLeft.rightIdxs[bestIdx];
+                    matchedIdxsR[keysLeft.rightIdxs[bestIdx]] = i;
+
+                }
+            }
+        }
+    }
+    return nMatches;
+}
+
+int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<int>& matchedIdxsR, std::vector<std::pair<int,int>>& matchesIdxs, const float rad, std::vector<std::pair<cv::Point2f,cv::Point2f>>& prevKeyPositions, const bool pred)
+{
+
+    // const int predictedScale = 2;
+    // const float radius = radius * feLeft->scalePyramid[predictedScale];
+
+    int nMatches {0};
+    const float angThresh = rad * 0.05;
+
+    for ( size_t i {0}, prevE{activeMapPoints.size()}; i < prevE; i++)
+    {
+        std::pair<int,int>& keyPair = matchesIdxs[i];
+        if ( keyPair.first >= 0 || keyPair.second >= 0 )
+            continue;
+        MapPoint* mp = activeMapPoints[i];
+        const cv::Mat& mpDesc = mp->desc;
+        int predScaleLevel = mp->scaleLevelL;
+
+        cv::Point2f& pLeft = mp->predL;
+
+        float radius = feLeft->scalePyramid[predScaleLevel] * rad;
+
+        std::vector<int> idxs;
+        getMatchIdxs(pLeft, idxs, keysLeft, predScaleLevel, radius, false);
+
+        int bestDist = 256;
+        int bestIdx = -1;
+        int secDist = 256;
+        if ( !idxs.empty() )
+        {
+            for (auto& idx : idxs)
+            {
+                if ( matchedIdxsL[idx] >= 0 )
+                    continue;
+                cv::KeyPoint& kPL = keysLeft.keyPoints[idx];
+                if ( pred && (pow(pLeft.x - kPL.pt.x,2) + pow(pLeft.y - kPL.pt.y,2) > maxDistAng) )
+                {
+                    float ang = atan2(pLeft.y - prevKeyPositions[i].first.y,pLeft.x - prevKeyPositions[i].first.x);
+                    if ( abs(mp->predAngleL - ang) > angThresh )
+                        continue;
+                }
+                int dist = DescriptorDistance(mpDesc, keysLeft.Desc.row(idx));
+                if ( dist < bestDist)
+                {
+                    // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
+                    secDist = bestDist;
+                    bestDist = dist;
+                    bestIdx = idx;
+                    continue;
+                }
+                if ( dist < secDist)
+                    secDist = dist;
+            }
+        }
+
+
+        std::vector<int> idxsR;
+        radius = feLeft->scalePyramid[predScaleLevel] * rad;
+        predScaleLevel = mp->scaleLevelR;
+        
+        cv::Point2f& pRight = mp->predR;
+        getMatchIdxs(pRight, idxsR, keysLeft, predScaleLevel, radius, true);
+
+        int bestDistR = 256;
+        int bestIdxR = -1;
+        int secDistR = 256;
+
+        if ( !idxsR.empty() )
+        {
+            for (auto& idx : idxsR)
+            {
+                if ( matchedIdxsR[idx] >= 0 )
+                    continue;
+                cv::KeyPoint& kPL = keysLeft.rightKeyPoints[idx];
+                if ( pred && (pow(pRight.x - kPL.pt.x,2) + pow(pRight.y - kPL.pt.y,2) > maxDistAng) )
+                {
+                    float ang = atan2(pRight.y - prevKeyPositions[i].second.y,pRight.x - prevKeyPositions[i].second.x);
+                    if ( abs(mp->predAngleL - ang) > angThresh )
+                        continue;
+                }
+                int dist = DescriptorDistance(mpDesc, keysLeft.rightDesc.row(idx));
+                if ( dist < bestDistR)
+                {
+                    // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
+                    secDistR = bestDistR;
+                    bestDistR = dist;
+                    bestIdxR = idx;
+                    continue;
+                }
+                if ( dist < secDistR)
+                    secDistR = dist;
+            }
+        }
+
+        bool right = false;
+        if ( bestDist > bestDistR)
+        {
+            bestDist = bestDistR;
+            secDist = secDistR;
+            right = true;
+        }
+
+
+        if ( bestDist < matchDistProj && bestDist < 0.9* secDist)
+        {
+            nMatches ++;
+            if ( right )
+            {
+                matchedIdxsR[bestIdxR] = i;
+                keyPair.second = bestIdxR;
+                if ( keysLeft.leftIdxs[bestIdxR] > 0 )
+                {
+                    keyPair.first = keysLeft.leftIdxs[bestIdxR];
+                    matchedIdxsL[keysLeft.leftIdxs[bestIdxR]] = i;
+
+                }
+
+            }
+            else
+            {
+                matchedIdxsL[bestIdx] = i;
+                keyPair.first = bestIdx;
+                if ( keysLeft.rightIdxs[bestIdx] > 0 )
+                {
+                    keyPair.second = keysLeft.rightIdxs[bestIdx];
                     matchedIdxsR[keysLeft.rightIdxs[bestIdx]] = i;
 
                 }
