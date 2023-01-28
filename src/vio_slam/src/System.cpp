@@ -322,7 +322,7 @@ void System::SLAM()
 
         }
 
-        drawTrackedKeys(kFCandF, matchedIdxsN, "tracked Keys", imLRect);
+        // drawTrackedKeys(kFCandF, matchedIdxsN, "tracked Keys", imLRect);
 
         currCameraPose = estimPose;
 

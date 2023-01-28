@@ -2061,9 +2061,9 @@ void LocalMapper::beginLocalMapping()
             
             // computeAllMapPoints(actKeyF);
             // Logging("Before Triang","",3);
-            // triangulateNewPoints(actKeyF);
-            // // Logging("After Triang","",3);
-            // localBA(actKeyF);
+            triangulateNewPoints(actKeyF);
+            // Logging("After Triang","",3);
+            localBA(actKeyF);
             // Logging("After Local","",3);
         }
         // else if( map->frameAdded )

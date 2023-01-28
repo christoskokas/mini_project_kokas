@@ -406,7 +406,7 @@ public:
         Eigen::Map<const Eigen::Quaternion<T>> q_frame(cameraR);
 
         Eigen::Matrix<T, 3, 1> p_cp =
-        q_frame * point_ + p_frame;
+        q_frame * point_.template cast<T>() + p_frame;
     // Compute the map point pose in pixel frame.
         Eigen::Matrix<T,3,1> pointc1c2 = qc1c2_ * p_cp + tc1c2_;
     // Compute the map point pose in pixel frame.

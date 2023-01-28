@@ -31,15 +31,25 @@ int MapPoint::predictScale(float dist)
 void MapPoint::update(KeyFrame* kF)
 {
     lastObsKF = kF;
+    const TrackedKeys& keysLeft = kF->keys;
     Eigen::Vector3d pos = wp3d;
     pos = pos - kF->pose.pose.block<3,1>(0,3);
     const float dist = pos.norm();
     const std::pair<int, int>& idxs = kFMatches[kF];
     int level;
+    lastObsKF = kF;
+    if ( idxs.second >= 0 )
+    {
+        lastObsR = keysLeft.rightKeyPoints[idxs.second];
+        scaleLevelR = keysLeft.rightKeyPoints[idxs.second].octave;
+        level = scaleLevelR;
+    }
     if ( idxs.first >= 0 )
-        level = lastObsL.octave;
-    else
-        level = lastObsR.octave;
+    {
+        lastObsL = keysLeft.keyPoints[idxs.first];
+        scaleLevelL = keysLeft.keyPoints[idxs.first].octave;
+        level = scaleLevelL;
+    }
 
     const float scaleF = kF->scaleFactor[level];
     const int maxLevels = kF->nScaleLev;
@@ -48,8 +58,7 @@ void MapPoint::update(KeyFrame* kF)
     maxScaleDist = dist * scaleF;
     minScaleDist = maxScaleDist * kF->scaleFactor[maxLevels - 1];
 
-    
-    // const int level
+    calcDescriptor();
 }
 
 void MapPoint::copyMp(MapPoint* mp, const Zed_Camera* zedPtr)

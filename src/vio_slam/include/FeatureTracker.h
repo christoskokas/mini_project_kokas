@@ -130,6 +130,7 @@ class FeatureTracker
         const int minNMono {20};
         const int maxActiveMPSize {800};
         const int maxDistAng {25};
+        const int maxAddedStereo {100};
 
         int lastKFTrackedNumb {0};
 
@@ -209,7 +210,7 @@ class FeatureTracker
         void extractORBStereoMatchR(cv::Mat& leftIm, cv::Mat& rightIm, TrackedKeys& keysLeft);
         void worldToImgScaleR(std::vector<MapPoint*>& activeMapPoints, std::vector<cv::KeyPoint>& projectedPoints, const Eigen::Matrix4d& currPose, const Eigen::Matrix4d& predPose, std::vector<int> scaleLevels);
         void worldToImgR(std::vector<MapPoint*>& activeMapPoints, std::vector<std::pair<cv::Point2f,cv::Point2f>>& projectedPoints, const Eigen::Matrix4d& currPoseInv);
-        void insertKeyFrameR(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsN, const int nStereo, const int nMono, const Eigen::Matrix4d& estimPose);
+        void insertKeyFrameR(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<std::pair<int,int>>& matchesIdxs, const int nStereo, const Eigen::Matrix4d& estimPose);
 
 
 
