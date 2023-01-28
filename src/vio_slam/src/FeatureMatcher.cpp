@@ -1869,9 +1869,9 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
     for ( size_t i {0}, prevE{activeMapPoints.size()}; i < prevE; i++)
     {
         std::pair<int,int>& keyPair = matchesIdxs[i];
+        MapPoint* mp = activeMapPoints[i];
         if ( keyPair.first >= 0 || keyPair.second >= 0 )
             continue;
-        MapPoint* mp = activeMapPoints[i];
         const cv::Mat& mpDesc = mp->desc;
         int predScaleLevel = mp->scaleLevelL;
 
@@ -1885,7 +1885,7 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
         int bestDist = 256;
         int bestIdx = -1;
         int secDist = 256;
-        if ( !idxs.empty() )
+        if ( !idxs.empty() && mp->inFrame )
         {
             for (auto& idx : idxs)
             {
@@ -1924,7 +1924,7 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
         int bestIdxR = -1;
         int secDistR = 256;
 
-        if ( !idxsR.empty() )
+        if ( !idxsR.empty() && mp->inFrameR )
         {
             for (auto& idx : idxsR)
             {
