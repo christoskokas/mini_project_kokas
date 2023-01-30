@@ -5227,8 +5227,8 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
         }
         drawMatchesNew("left", lIm.rIm,lm, lp);
         drawMatchesNew("right", rIm.rIm,rm, rp);
-        Logging("mappoints", activeMpsTemp.size(),3);
-        Logging("Matches", nMatches,3);
+        // Logging("mappoints", activeMpsTemp.size(),3);
+        // Logging("Matches", nMatches,3);
         cv::waitKey(1);
         // int nMatches = fm.matchByProjection(activeMpsTemp, keysLeft, matchedIdxsN, matchedIdxsB);
     }
@@ -5267,8 +5267,8 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
         }
         drawMatchesNew("left", lIm.rIm,lm, lp);
         drawMatchesNew("right", rIm.rIm,rm, rp);
-        Logging("mappoints convel", activeMpsTemp.size(),3);
-        Logging("Matches", nMatches,3);
+        // Logging("mappoints convel", activeMpsTemp.size(),3);
+        // Logging("Matches", nMatches,3);
         cv::waitKey(1);
 
     }
@@ -5299,8 +5299,8 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     }
     drawMatchesNew("left", lIm.rIm,lm, lp);
     drawMatchesNew("right", rIm.rIm,rm, rp);
-    Logging("mappoints convel", activeMpsTemp.size(),3);
-    Logging("Matches", nMatches,3);
+    // Logging("mappoints convel", activeMpsTemp.size(),3);
+    // Logging("Matches", nMatches,3);
     cv::waitKey(1);
 
     std::pair<int,int> nStIn = estimatePoseCeresR(activeMpsTemp, keysLeft, matchesIdxs, estimPose, MPsOutliers, true);
@@ -5481,10 +5481,10 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     nStereo = nStIn.second;
     nMono = nStIn.first - nStIn.second;
     // Logging("inliers", nStIn.first,3);
-    Logging("stereo", nStIn.second,3);
-    Logging("inliers", nStIn.first,3);
-    Logging("lastKFTrackedNumb", 0.9* lastKFTrackedNumb,3);
-    Logging("activeMpsTemp.size()",activeMpsTemp.size(),3);
+    // Logging("stereo", nStIn.second,3);
+    // Logging("inliers", nStIn.first,3);
+    // Logging("lastKFTrackedNumb", 0.9* lastKFTrackedNumb,3);
+    // Logging("activeMpsTemp.size()",activeMpsTemp.size(),3);
     KeyFrame* kFCand;
 
     if ( nStIn.second < minNStereo || (activeMpsTemp.size() < 0.9 * lastKFTrackedNumb && insertKeyFrameCount >= keyFrameCountEnd))

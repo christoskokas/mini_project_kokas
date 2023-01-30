@@ -1218,7 +1218,6 @@ void LocalMapper::calcAllMpsOfKFR(std::vector<std::vector<std::pair<KeyFrame*,st
     maxDistsScale.reserve(keysSize + RkeysSize);
     for ( size_t i{0}; i < keysSize; i++)
     {
-        matchedIdxs[i].reserve(300);
         MapPoint* mp = lastKF->localMapPoints[i];
         if ( !mp )
         {
@@ -1236,7 +1235,6 @@ void LocalMapper::calcAllMpsOfKFR(std::vector<std::vector<std::pair<KeyFrame*,st
             Eigen::Vector4d p4dcam(xp, yp, zp, 1);
             p4dcam = lastKF->pose.pose * p4dcam;
             p4d.emplace_back(p4dcam, std::make_pair((int)i, rIdx));
-            matchedIdxs[i].emplace_back(lastKF,std::make_pair((int)i, rIdx));
             Eigen::Vector3d pos = p4dcam.block<3,1>(0,0);
             pos = pos - lastKF->pose.pose.block<3,1>(0,3);
             float dist = pos.norm();
@@ -1248,30 +1246,37 @@ void LocalMapper::calcAllMpsOfKFR(std::vector<std::vector<std::pair<KeyFrame*,st
             continue;
         const int rIdx {keys.rightIdxs[i]};
         p4d.emplace_back(mp->getWordPose4d(), std::make_pair((int)i, rIdx));
-        matchedIdxs[i].emplace_back(lastKF,std::make_pair((int)i, rIdx));
         Eigen::Vector3d pos = mp->getWordPose4d().block<3,1>(0,0);
         pos = pos - lastKF->pose.pose.block<3,1>(0,3);
         float dist = pos.norm();
         dist *= keys.keyPoints[i].octave;
         maxDistsScale.emplace_back(dist);
     }
-    for ( size_t i{keysSize}; i < keysSize + RkeysSize; i++)
+    int realCount {0};
+    for ( size_t i{keysSize}; i < keysSize + RkeysSize; i++, realCount++)
     {
         if ( keys.leftIdxs[i] >= 0 )
             continue;
         const double zp = (double)keys.medianDepth;
-        const double xp = (double)(((double)keys.rightKeyPoints[i].pt.x-cx)*zp/fx);
-        const double yp = (double)(((double)keys.rightKeyPoints[i].pt.y-cy)*zp/fy);
+        const double xp = (double)(((double)keys.rightKeyPoints[realCount].pt.x-cx)*zp/fx);
+        const double yp = (double)(((double)keys.rightKeyPoints[realCount].pt.y-cy)*zp/fy);
         Eigen::Vector4d p4dcam(xp, yp, zp, 1);
         p4dcam = lastKF->pose.pose * p4dcam;
-        p4d.emplace_back(p4dcam, std::make_pair(-1, (int)i));
-        matchedIdxs[i].emplace_back(lastKF,std::make_pair(-1, (int)i));
+        p4d.emplace_back(p4dcam, std::make_pair(-1, (int)realCount));
         Eigen::Vector3d pos = p4dcam.block<3,1>(0,0);
         pos = pos - lastKF->pose.pose.block<3,1>(0,3);
         float dist = pos.norm();
-        dist *= keys.rightKeyPoints[i].octave;
+        dist *= keys.rightKeyPoints[realCount].octave;
         maxDistsScale.emplace_back(dist);
         
+    }
+    const size_t allp4dsize {p4d.size()};
+    matchedIdxs = std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>>(allp4dsize,std::vector<std::pair<KeyFrame*,std::pair<int, int>>>());
+    for ( size_t i {0}; i < allp4dsize; i++)
+    {
+        matchedIdxs[i].reserve(10);
+        std::pair<int,int> keyPos = p4d[i].second;
+        matchedIdxs[i].emplace_back(lastKF,keyPos);
     }
 }
 
@@ -1391,7 +1396,7 @@ void LocalMapper::triangulateNewPointsR(std::vector<vio_slam::KeyFrame *>& activ
     KeyFrame* lastKF = actKeyF.front();
     const int lastKFIdx = lastKF->numb;
     // std::vector<std::vector<std::pair<int, int>>> matchedIdxs(lastKF->keys.keyPoints.size(),std::vector<std::pair<int, int>>());
-    std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>> matchedIdxs(lastKF->keys.keyPoints.size(),std::vector<std::pair<KeyFrame*,std::pair<int, int>>>());
+    std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>> matchedIdxs;
 
     // std::vector<Eigen::Vector4d> p4d;
     std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>> p4d;
@@ -1412,7 +1417,8 @@ void LocalMapper::triangulateNewPointsR(std::vector<vio_slam::KeyFrame *>& activ
         predictKeysPosR(lastKF->keys, (*it)->pose.pose, (*it)->pose.poseInverse, keysAngles, p4d, predPoints);
         // predictKeysPos(lastKF->keys, lastKF->pose.pose, (*it)->pose.poseInverse, keysAngles, p4d, predPoints);
         // drawPred(lastKF, lastKF->keys.keyPoints, predPoints);
-        fm->matchByProjectionRPredLBA(lastKF, (*it), matchedIdxs, 5, predPoints, keysAngles, maxDistsScale, p4d);
+        int matches = fm->matchByProjectionRPredLBA(lastKF, (*it), matchedIdxs, 10, predPoints, keysAngles, maxDistsScale, p4d);
+        std::cout << "MATCHES LBA " << matches<< std::endl;
         // fm->matchLocalBA(matchedIdxs, lastKF, (*it), aKFsize, 10, first, keysAngles, predPoints);
         cv::waitKey(1);
         first = false;

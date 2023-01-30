@@ -1876,7 +1876,7 @@ int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* 
         if ( keyPair.first >= 0 )
         {
             const MapPoint* mp = lastKF->localMapPoints[keyPair.first];
-            if ( !mp )
+            if ( mp )
                 mpDesc = mp->desc.clone();
             else
                 mpDesc = lastKeys.Desc.row(keyPair.first).clone();
