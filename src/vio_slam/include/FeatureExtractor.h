@@ -37,6 +37,7 @@ struct TrackedKeys
     std::vector<uchar> inliers2;
     std::vector<int> trackCnt;
     cv::Mat Desc, rightDesc;
+    float medianDepth;
     float xMult, yMult;
     int xGrids, yGrids;
 
@@ -116,6 +117,7 @@ struct TrackedKeys
         rightDesc = keysToClone.rightDesc.clone();
         close = keysToClone.close;
         estimatedDepth = keysToClone.estimatedDepth;
+        medianDepth = keysToClone.medianDepth;
     }
 };
 

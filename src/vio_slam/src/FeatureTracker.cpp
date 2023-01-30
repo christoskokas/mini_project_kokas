@@ -4107,6 +4107,8 @@ void FeatureTracker::insertKeyFrameR(TrackedKeys& keysLeft, std::vector<int>& ma
             MapPoint* mp = new MapPoint(p, keysLeft.Desc.row(i), keysLeft.keyPoints[i], keysLeft.close[i], map->kIdx, map->pIdx);
             mp->kFMatches.insert(std::pair<KeyFrame*, std::pair<int,int>>(kF, std::pair<int,int>(lIdx,rIdx)));
             mp->update(kF);
+            kF->localMapPoints[lIdx] = mp;
+            kF->localMapPointsR[rIdx] = mp;
             activeMapPoints.emplace_back(mp);
             map->addMapPoint(mp);
             trckedKeys ++;
@@ -5227,7 +5229,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
         drawMatchesNew("right", rIm.rIm,rm, rp);
         Logging("mappoints", activeMpsTemp.size(),3);
         Logging("Matches", nMatches,3);
-        cv::waitKey(0);
+        cv::waitKey(1);
         // int nMatches = fm.matchByProjection(activeMpsTemp, keysLeft, matchedIdxsN, matchedIdxsB);
     }
     else
@@ -5267,7 +5269,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
         drawMatchesNew("right", rIm.rIm,rm, rp);
         Logging("mappoints convel", activeMpsTemp.size(),3);
         Logging("Matches", nMatches,3);
-        cv::waitKey(0);
+        cv::waitKey(1);
 
     }
 
@@ -5299,7 +5301,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     drawMatchesNew("right", rIm.rIm,rm, rp);
     Logging("mappoints convel", activeMpsTemp.size(),3);
     Logging("Matches", nMatches,3);
-    cv::waitKey(0);
+    cv::waitKey(1);
 
     std::pair<int,int> nStIn = estimatePoseCeresR(activeMpsTemp, keysLeft, matchesIdxs, estimPose, MPsOutliers, true);
 
