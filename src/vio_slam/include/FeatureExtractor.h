@@ -118,6 +118,10 @@ struct TrackedKeys
         close = keysToClone.close;
         estimatedDepth = keysToClone.estimatedDepth;
         medianDepth = keysToClone.medianDepth;
+        xMult = keysToClone.xMult;
+        yMult = keysToClone.yMult;
+        xGrids = keysToClone.xGrids;
+        yGrids = keysToClone.yGrids;
     }
 };
 

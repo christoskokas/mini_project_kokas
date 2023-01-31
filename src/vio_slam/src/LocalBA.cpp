@@ -1238,7 +1238,8 @@ void LocalMapper::calcAllMpsOfKFR(std::vector<std::vector<std::pair<KeyFrame*,st
             Eigen::Vector3d pos = p4dcam.block<3,1>(0,0);
             pos = pos - lastKF->pose.pose.block<3,1>(0,3);
             float dist = pos.norm();
-            dist *= keys.keyPoints[i].octave;
+            int level = keys.keyPoints[i].octave;
+            dist *= lastKF->scaleFactor[level];
             maxDistsScale.emplace_back(dist);
             continue;
         }
@@ -1249,7 +1250,8 @@ void LocalMapper::calcAllMpsOfKFR(std::vector<std::vector<std::pair<KeyFrame*,st
         Eigen::Vector3d pos = mp->getWordPose4d().block<3,1>(0,0);
         pos = pos - lastKF->pose.pose.block<3,1>(0,3);
         float dist = pos.norm();
-        dist *= keys.keyPoints[i].octave;
+        int level = keys.keyPoints[i].octave;
+        dist *= lastKF->scaleFactor[level];
         maxDistsScale.emplace_back(dist);
     }
     int realCount {0};
@@ -1266,7 +1268,8 @@ void LocalMapper::calcAllMpsOfKFR(std::vector<std::vector<std::pair<KeyFrame*,st
         Eigen::Vector3d pos = p4dcam.block<3,1>(0,0);
         pos = pos - lastKF->pose.pose.block<3,1>(0,3);
         float dist = pos.norm();
-        dist *= keys.rightKeyPoints[realCount].octave;
+        int level = keys.rightKeyPoints[realCount].octave;
+        dist *= lastKF->scaleFactor[level];
         maxDistsScale.emplace_back(dist);
         
     }
@@ -1425,48 +1428,48 @@ void LocalMapper::triangulateNewPointsR(std::vector<vio_slam::KeyFrame *>& activ
         
     }
 
-    // std::unordered_map<int, Eigen::Matrix<double,3,4>> allProjMatrices;
-    // allProjMatrices.reserve(2 * allSeenKF.size());
+    std::unordered_map<int, Eigen::Matrix<double,3,4>> allProjMatrices;
+    allProjMatrices.reserve(2 * allSeenKF.size());
 
-    // calcProjMatrices(allProjMatrices, allSeenKF);
-    // std::vector<MapPoint*> pointsToAdd;
-    // pointsToAdd.resize(lastKF->keys.keyPoints.size(),nullptr);
-    // for ( size_t i{0}, end {lastKF->keys.keyPoints.size()}; i < end; i ++)
-    // {
-    //     std::vector<std::pair<int, int>>& matchesOfPoint = matchedIdxs[i];
-    //     if (matchesOfPoint.size() < minCount)
-    //         continue;
-    //     std::vector<Eigen::Matrix<double, 3, 4>> proj_mat;
-    //     std::vector<Eigen::Vector2d> pointsVec;
-    //     processMatches(matchesOfPoint, allProjMatrices, proj_mat, pointsVec, actKeyF);
-    //     Eigen::Vector4d vecCalc = lastKF->pose.getInvPose() * p4d[i];
-    //     Eigen::Vector3d vec3d(vecCalc(0), vecCalc(1), vecCalc(2));
-    //     triangulateCeresNew(vec3d, proj_mat, pointsVec, lastKF->pose.pose, true);
-    //     vecCalc(0) = vec3d(0);
-    //     vecCalc(1) = vec3d(1);
-    //     vecCalc(2) = vec3d(2);
+    calcProjMatrices(allProjMatrices, allSeenKF);
+    std::vector<MapPoint*> pointsToAdd;
+    pointsToAdd.resize(lastKF->keys.keyPoints.size(),nullptr);
+    for ( size_t i{0}, end {lastKF->keys.keyPoints.size()}; i < end; i ++)
+    {
+        std::vector<std::pair<int, int>>& matchesOfPoint = matchedIdxs[i];
+        if (matchesOfPoint.size() < minCount)
+            continue;
+        std::vector<Eigen::Matrix<double, 3, 4>> proj_mat;
+        std::vector<Eigen::Vector2d> pointsVec;
+        processMatches(matchesOfPoint, allProjMatrices, proj_mat, pointsVec, actKeyF);
+        Eigen::Vector4d vecCalc = lastKF->pose.getInvPose() * p4d[i];
+        Eigen::Vector3d vec3d(vecCalc(0), vecCalc(1), vecCalc(2));
+        triangulateCeresNew(vec3d, proj_mat, pointsVec, lastKF->pose.pose, true);
+        vecCalc(0) = vec3d(0);
+        vecCalc(1) = vec3d(1);
+        vecCalc(2) = vec3d(2);
 
-    //     if ( !checkReprojErrNew(lastKF, i, vecCalc, matchesOfPoint, allProjMatrices, proj_mat, pointsVec) )
-    //         continue;
+        if ( !checkReprojErrNew(lastKF, i, vecCalc, matchesOfPoint, allProjMatrices, proj_mat, pointsVec) )
+            continue;
 
-    //     vecCalc = lastKF->pose.getInvPose() * vecCalc;
-    //     vec3d(0) = vecCalc(0);
-    //     vec3d(1) = vecCalc(1);
-    //     vec3d(2) = vecCalc(2);
+        vecCalc = lastKF->pose.getInvPose() * vecCalc;
+        vec3d(0) = vecCalc(0);
+        vec3d(1) = vecCalc(1);
+        vec3d(2) = vecCalc(2);
 
-    //     triangulateCeresNew(vec3d, proj_mat, pointsVec, lastKF->pose.pose, false);
-    //     vecCalc(0) = vec3d(0);
-    //     vecCalc(1) = vec3d(1);
-    //     vecCalc(2) = vec3d(2);
+        triangulateCeresNew(vec3d, proj_mat, pointsVec, lastKF->pose.pose, false);
+        vecCalc(0) = vec3d(0);
+        vecCalc(1) = vec3d(1);
+        vecCalc(2) = vec3d(2);
 
-    //     if ( !checkReprojErrNew(lastKF, i, vecCalc, matchesOfPoint, allProjMatrices, proj_mat, pointsVec) )
-    //         continue;
+        if ( !checkReprojErrNew(lastKF, i, vecCalc, matchesOfPoint, allProjMatrices, proj_mat, pointsVec) )
+            continue;
 
-    //     addMultiViewMapPoints(vecCalc, matchesOfPoint, pointsToAdd, lastKF, i);
+        addMultiViewMapPoints(vecCalc, matchesOfPoint, pointsToAdd, lastKF, i);
         
-    // }
-    // // addToMap(lastKF, pointsToAdd);
-    // addToMapRemoveCon(lastKF, pointsToAdd, matchedIdxs);
+    }
+    // addToMap(lastKF, pointsToAdd);
+    addToMapRemoveCon(lastKF, pointsToAdd, matchedIdxs);
 }
 
 void LocalMapper::triangulateNewPointsB(Map* map, std::vector<vio_slam::KeyFrame *>& activeKF)
