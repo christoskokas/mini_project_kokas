@@ -40,20 +40,10 @@ void MapPoint::addConnection(KeyFrame* kF, const std::pair<int,int>& keyPos)
         kF->localMapPoints[keyPos.first] = this;
         kF->unMatchedF[keyPos.first] = kdx;
     }
-    else
-    {
-        kF->localMapPoints[keyPos.first] = nullptr;
-        kF->unMatchedF[keyPos.first] = -1;
-    }
     if ( keyPos.second >= 0 )
     {
         kF->localMapPointsR[keyPos.second] = this;
         kF->unMatchedFR[keyPos.second] = kdx;
-    }
-    else
-    {
-        kF->localMapPointsR[keyPos.second] = nullptr;
-        kF->unMatchedFR[keyPos.second] = -1;
     }
 }
 
@@ -72,12 +62,22 @@ void MapPoint::update(KeyFrame* kF)
         lastObsR = keysLeft.rightKeyPoints[idxs.second];
         scaleLevelR = keysLeft.rightKeyPoints[idxs.second].octave;
         level = scaleLevelR;
+        if ( idxs.first < 0 )
+        {
+            lastObsL = lastObsR;
+            scaleLevelL = scaleLevelR;
+        }
     }
     if ( idxs.first >= 0 )
     {
         lastObsL = keysLeft.keyPoints[idxs.first];
         scaleLevelL = keysLeft.keyPoints[idxs.first].octave;
         level = scaleLevelL;
+        if ( idxs.second < 0 )
+        {
+            lastObsR = lastObsL;
+            scaleLevelR = scaleLevelL;
+        }
     }
 
     const float scaleF = kF->scaleFactor[level];

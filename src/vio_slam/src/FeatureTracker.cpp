@@ -2890,10 +2890,11 @@ int FeatureTracker::findOutliers(const Eigen::Matrix4d& estimatedP, std::vector<
     return nStereo;
 }
 
-int FeatureTracker::findOutliersR(const Eigen::Matrix4d& estimatedP, std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<std::pair<int,int>>& matchesIdxs, const double thres, std::vector<bool>& MPsOutliers, const std::vector<float>& weights, int& nInliers)
+int FeatureTracker::findOutliersR(const Eigen::Matrix4d& estimPose, std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<std::pair<int,int>>& matchesIdxs, const double thres, std::vector<bool>& MPsOutliers, const std::vector<float>& weights, int& nInliers)
 {
     // std::vector<cv::Point2f>out2d;
-    const Eigen::Matrix4d toCameraR = zedPtr->extrinsics.inverse();
+    const Eigen::Matrix4d estimPoseInv = estimPose.inverse();
+    const Eigen::Matrix4d toCameraR = (estimPoseInv * zedPtr->extrinsics).inverse();
     int nStereo = 0;
     for (size_t i {0}, end{matchesIdxs.size()}; i < end; i++)
     {
@@ -2902,13 +2903,13 @@ int FeatureTracker::findOutliersR(const Eigen::Matrix4d& estimatedP, std::vector
         if ( !mp )
             continue;
         Eigen::Vector4d p4d = mp->getWordPose4d();
-        p4d = estimatedP * p4d;
         int nIdx;
         cv::Point2f obs;
         if ( keyPos.first >= 0 )
         {
             if  ( !mp->inFrame )
                 continue;
+            p4d = estimPose * p4d;
             nIdx = keyPos.first;
             obs = keysLeft.keyPoints[nIdx].pt;
         }
@@ -4738,6 +4739,22 @@ void FeatureTracker::newPredictMPs(const Eigen::Matrix4d& currCamPose, const Eig
         if ( !mp )
             continue;
         std::pair<int,int>& keyPos = matchesIdxs[i];
+        if (!worldToFrameRTrack(mp, false, toCamera, temp))
+        {
+            if ( keyPos.first >=0 )
+            {
+                matchedIdxsL[keyPos.first] = -1;
+                keyPos.first = -1;
+            }
+        }
+        if (!worldToFrameRTrack(mp, true, toRCamera, tempR))
+        {
+            if ( keyPos.second >= 0 )
+            {
+                matchedIdxsR[keyPos.second] = -1;
+                keyPos.second = -1;
+            }
+        }
         if ( keyPos.first < 0 && keyPos.second < 0 )
             continue;
         if ( MPsOutliers[i] )
@@ -4753,22 +4770,6 @@ void FeatureTracker::newPredictMPs(const Eigen::Matrix4d& currCamPose, const Eig
                 keyPos.second = -1;
             }
             continue;
-        }
-        if ( keyPos.first >=0 )
-        {
-            if (!worldToFrameRTrack(mp, false, toCamera, temp))
-            {
-                matchedIdxsL[keyPos.first] = -1;
-                keyPos.first = -1;
-            }
-        }
-        if ( keyPos.second >= 0 )
-        {
-            if (!worldToFrameRTrack(mp, true, toRCamera, tempR))
-            {
-                matchedIdxsR[keyPos.second] = -1;
-                keyPos.second = -1;
-            }
         }
     }
 }
@@ -5234,17 +5235,17 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     }
     else
     {
-        std::vector<cv::KeyPoint> ConVelPoints;
-        std::vector<int>scaleKeys;
-        // worldToImg(activeMpsTemp, ConVelPoints, predNPoseInv);
-        worldToImgScale(activeMpsTemp, ConVelPoints, predNPoseInv, scaleKeys);
-        std::vector<float> mapAngles(activeMpsTemp.size(), -5.0);
-        std::vector<cv::KeyPoint> prevKeyPos;
-        // drawKeys("convelPoints", lIm.rIm, ConVelPoints);
-        // worldToImg(activeMapPoints, prevKeyPos, zedPtr->cameraPose.poseInverse);
-        calculatePrevKeyPos(activeMpsTemp, prevKeyPos, zedPtr->cameraPose.poseInverse, predNPoseInv);
-        // if ( similarity < noMovementCheck )
-        calcAngles(activeMpsTemp, ConVelPoints, prevKeyPos, mapAngles);
+        // std::vector<cv::KeyPoint> ConVelPoints;
+        // std::vector<int>scaleKeys;
+        // // worldToImg(activeMpsTemp, ConVelPoints, predNPoseInv);
+        // worldToImgScale(activeMpsTemp, ConVelPoints, predNPoseInv, scaleKeys);
+        // std::vector<float> mapAngles(activeMpsTemp.size(), -5.0);
+        // std::vector<cv::KeyPoint> prevKeyPos;
+        // // drawKeys("convelPoints", lIm.rIm, ConVelPoints);
+        // // worldToImg(activeMapPoints, prevKeyPos, zedPtr->cameraPose.poseInverse);
+        // calculatePrevKeyPos(activeMpsTemp, prevKeyPos, zedPtr->cameraPose.poseInverse, predNPoseInv);
+        // // if ( similarity < noMovementCheck )
+        // calcAngles(activeMpsTemp, ConVelPoints, prevKeyPos, mapAngles);
 
         float rad = 10;
         int nMatches = fm.matchByProjectionRPred(activeMpsTemp, keysLeft, matchedIdxsL, matchedIdxsR, matchesIdxs, rad, prevKeyPositions, true);

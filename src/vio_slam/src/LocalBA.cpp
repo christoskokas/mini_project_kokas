@@ -2478,6 +2478,8 @@ void LocalMapper::beginLocalMapping()
 
             // triangulateNewPoints(actKeyF);
             // localBA(actKeyF);
+            map->keyFrameAdded = false;
+            map->LBADone = true;
         }
         // else if( map->frameAdded )
         // {
