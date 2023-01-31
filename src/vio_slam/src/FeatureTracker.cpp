@@ -4756,7 +4756,7 @@ void FeatureTracker::newPredictMPs(const Eigen::Matrix4d& currCamPose, const Eig
         }
         if ( keyPos.first >=0 )
         {
-            if (worldToFrameRTrack(mp, false, toCamera, temp))
+            if (!worldToFrameRTrack(mp, false, toCamera, temp))
             {
                 matchedIdxsL[keyPos.first] = -1;
                 keyPos.first = -1;
@@ -4764,7 +4764,7 @@ void FeatureTracker::newPredictMPs(const Eigen::Matrix4d& currCamPose, const Eig
         }
         if ( keyPos.second >= 0 )
         {
-            if (worldToFrameRTrack(mp, true, toRCamera, tempR))
+            if (!worldToFrameRTrack(mp, true, toRCamera, tempR))
             {
                 matchedIdxsR[keyPos.second] = -1;
                 keyPos.second = -1;
@@ -5177,7 +5177,8 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
         // return std::make_pair(nullptr,Eigen::Matrix4d::Identity());
     }
 
-    removeOutOfFrameMPsR(prevCameraPose, predNPose, activeMapPoints);
+    activeMpsTemp = activeMapPoints;
+    removeOutOfFrameMPsR(zedPtr->cameraPose.pose, predNPose, activeMpsTemp);
 
     extractORBStereoMatchR(lIm.im, rIm.im, keysLeft);
     // Timer lel3("after extract");
@@ -5188,7 +5189,6 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     matchedIdxsN = std::vector<int>(keysLeft.keyPoints.size(), -1);
     std::vector<int> matchedIdxsL(keysLeft.keyPoints.size(), -1);
     std::vector<int> matchedIdxsR(keysLeft.rightKeyPoints.size(), -1);
-    activeMpsTemp = activeMapPoints;
     MPsOutliers = std::vector<bool>(activeMpsTemp.size(),false);
     MPsMatches = std::vector<bool>(activeMpsTemp.size(),false);
     // std::lock_guard<std::mutex> lock(map->mapMutex);
@@ -5197,7 +5197,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     std::vector<std::pair<int,int>> matchesIdxs(activeMpsTemp.size(), std::make_pair(-1,-1));
 
     std::vector<std::pair<cv::Point2f,cv::Point2f>> prevKeyPositions;
-    worldToImgR(activeMpsTemp, prevKeyPositions, zedPtr->cameraPose.poseInverse);
+    worldToImgR(activeMpsTemp, prevKeyPositions, zedPtr->cameraPose.pose);
     
     
     const double dif = cv::norm(lastKFImage,lIm.im, cv::NORM_L2);
@@ -5301,7 +5301,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     drawMatchesNew("right", rIm.rIm,rm, rp);
     // Logging("mappoints convel", activeMpsTemp.size(),3);
     // Logging("Matches", nMatches,3);
-    cv::waitKey(1);
+    cv::waitKey(0);
 
     std::pair<int,int> nStIn = estimatePoseCeresR(activeMpsTemp, keysLeft, matchesIdxs, estimPose, MPsOutliers, true);
 

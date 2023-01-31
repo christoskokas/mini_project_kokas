@@ -28,6 +28,35 @@ int MapPoint::predictScale(float dist)
     return scale;
 }
 
+void MapPoint::addConnection(KeyFrame* kF, const std::pair<int,int>& keyPos)
+{
+    if ( kFMatches.find(kF) == kFMatches.end() )
+        kFMatches.insert(std::pair<KeyFrame*, std::pair<int,int>>(kF, keyPos));
+    else
+        kFMatches[kF] = keyPos;
+
+    if ( keyPos.first >= 0 )
+    {
+        kF->localMapPoints[keyPos.first] = this;
+        kF->unMatchedF[keyPos.first] = kdx;
+    }
+    else
+    {
+        kF->localMapPoints[keyPos.first] = nullptr;
+        kF->unMatchedF[keyPos.first] = -1;
+    }
+    if ( keyPos.second >= 0 )
+    {
+        kF->localMapPointsR[keyPos.second] = this;
+        kF->unMatchedFR[keyPos.second] = kdx;
+    }
+    else
+    {
+        kF->localMapPointsR[keyPos.second] = nullptr;
+        kF->unMatchedFR[keyPos.second] = -1;
+    }
+}
+
 void MapPoint::update(KeyFrame* kF)
 {
     lastObsKF = kF;

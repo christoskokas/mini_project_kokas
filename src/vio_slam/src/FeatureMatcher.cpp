@@ -2000,7 +2000,7 @@ int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* 
             if ( right )
             {
                 int rIdx {bestIdxR}, lIdx {-1};
-                if ( keysLeft.leftIdxs[bestIdxR] > 0 )
+                if ( keysLeft.leftIdxs[bestIdxR] >= 0 )
                 {
                     lIdx = keysLeft.leftIdxs[bestIdxR];
                 }
@@ -2010,9 +2010,9 @@ int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* 
             else
             {
                 int rIdx {-1}, lIdx {bestIdx};
-                if ( keysLeft.rightIdxs[bestIdx] > 0 )
+                if ( keysLeft.rightIdxs[bestIdx] >= 0 )
                 {
-                    rIdx = keysLeft.rightIdxs[bestIdxR];
+                    rIdx = keysLeft.rightIdxs[bestIdx];
                 }
                 matchedIdxs[i].emplace_back(std::make_pair(newKF, std::make_pair(lIdx,rIdx)));
 
