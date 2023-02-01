@@ -103,6 +103,7 @@ void Zed_Camera::setCameraValues()
     {
          cameraLeft.setIntrinsicValuesR("Camera_l",confFile);
         cameraRight.setIntrinsicValuesR("Camera_r",confFile);
+        // mBaseline = confFile->getValue<float>("Camera","bl");
         mBaseline = setBaseline();
     }
     else

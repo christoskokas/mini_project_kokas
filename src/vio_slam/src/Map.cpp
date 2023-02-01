@@ -85,7 +85,7 @@ void MapPoint::update(KeyFrame* kF)
 
 
     maxScaleDist = dist * scaleF;
-    minScaleDist = maxScaleDist * kF->scaleFactor[maxLevels - 1];
+    minScaleDist = maxScaleDist / kF->scaleFactor[maxLevels - 1];
 
     calcDescriptor();
 }

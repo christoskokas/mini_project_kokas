@@ -2024,10 +2024,6 @@ int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* 
 
 int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<int>& matchedIdxsR, std::vector<std::pair<int,int>>& matchesIdxs, const float rad, std::vector<std::pair<cv::Point2f,cv::Point2f>>& prevKeyPositions, const bool pred)
 {
-
-    // const int predictedScale = 2;
-    // const float radius = radius * feLeft->scalePyramid[predictedScale];
-
     int nMatches {0};
     const float angThresh = rad * 0.05;
 
@@ -2066,7 +2062,6 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
                 int dist = DescriptorDistance(mpDesc, keysLeft.Desc.row(idx));
                 if ( dist < bestDist)
                 {
-                    // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
                     secDist = bestDist;
                     bestDist = dist;
                     bestIdx = idx;
@@ -2099,13 +2094,12 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
                 if ( pred && (pow(prevKeyPositions[i].second.x - kPL.pt.x,2) + pow(prevKeyPositions[i].second.y - kPL.pt.y,2) > maxDistAng) )
                 {
                     float ang = atan2(kPL.pt.y - prevKeyPositions[i].second.y,kPL.pt.x - prevKeyPositions[i].second.x);
-                    if ( abs(mp->predAngleL - ang) > angThresh )
+                    if ( abs(mp->predAngleR - ang) > angThresh )
                         continue;
                 }
                 int dist = DescriptorDistance(mpDesc, keysLeft.rightDesc.row(idx));
                 if ( dist < bestDistR)
                 {
-                    // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
                     secDistR = bestDistR;
                     bestDistR = dist;
                     bestIdxR = idx;
@@ -2132,7 +2126,7 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
             {
                 matchedIdxsR[bestIdxR] = i;
                 keyPair.second = bestIdxR;
-                if ( keysLeft.leftIdxs[bestIdxR] > 0 )
+                if ( keysLeft.leftIdxs[bestIdxR] >= 0 )
                 {
                     keyPair.first = keysLeft.leftIdxs[bestIdxR];
                     matchedIdxsL[keysLeft.leftIdxs[bestIdxR]] = i;
@@ -2144,7 +2138,7 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
             {
                 matchedIdxsL[bestIdx] = i;
                 keyPair.first = bestIdx;
-                if ( keysLeft.rightIdxs[bestIdx] > 0 )
+                if ( keysLeft.rightIdxs[bestIdx] >= 0 )
                 {
                     keyPair.second = keysLeft.rightIdxs[bestIdx];
                     matchedIdxsR[keysLeft.rightIdxs[bestIdx]] = i;

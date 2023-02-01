@@ -3,7 +3,7 @@ rectified: true
 numOfFrames: 978
 seq: "00"
 
-multi: true
+multi: false
 
 imagesPath: "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/simulation/"
 

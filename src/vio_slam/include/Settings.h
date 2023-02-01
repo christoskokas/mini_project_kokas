@@ -9,10 +9,10 @@
 #include <chrono>
 
 #define KITTI_DATASET true
-#define KITTI_SEQ "00"
+#define KITTI_SEQ "01"
 #define ZED_DATASET false
-#define ZED_DEMO true
-#define V1_02 true
+#define ZED_DEMO false
+#define V1_02 false
 #define SIMULATION true
 #define DRAWMATCHES true
 
