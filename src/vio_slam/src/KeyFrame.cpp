@@ -20,10 +20,24 @@ void KeyFrame::getConnectedKFs(const Map* map, std::vector<KeyFrame*>& activeKF,
     }
 }
 
+void KeyFrame::eraseMPConnection(const std::pair<int,int>& mpPos)
+{
+    if ( mpPos.first >= 0 )
+        eraseMPConnection(mpPos.first);
+    if ( mpPos.second >= 0 )
+        eraseMPConnectionR(mpPos.second);
+}
+
 void KeyFrame::eraseMPConnection(const int mpPos)
 {
     localMapPoints[mpPos] = nullptr;
     unMatchedF[mpPos] = -1;
+}
+
+void KeyFrame::eraseMPConnectionR(const int mpPos)
+{
+    localMapPointsR[mpPos] = nullptr;
+    unMatchedFR[mpPos] = -1;
 }
 
 KeyFrame::KeyFrame(Eigen::Matrix4d _pose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx) : numb(_numb), frameIdx(_frameIdx)

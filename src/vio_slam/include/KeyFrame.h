@@ -93,6 +93,8 @@ class KeyFrame
 
 
         void eraseMPConnection(const int mpPos);
+        void eraseMPConnection(const std::pair<int,int>& mpPos);
+        void eraseMPConnectionR(const int mpPos);
         KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, const int _numb = 0);
         KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, Eigen::MatrixXd _homoPoints3D, const int _numb = 0);
         KeyFrame(Eigen::Matrix4d _pose, const int _numb);

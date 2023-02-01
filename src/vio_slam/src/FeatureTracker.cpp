@@ -5272,7 +5272,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
         // // if ( similarity < noMovementCheck )
         // calcAngles(activeMpsTemp, ConVelPoints, prevKeyPos, mapAngles);
 
-        float rad = 5;
+        float rad = 10;
         int nMatches = fm.matchByProjectionRPred(activeMpsTemp, keysLeft, matchedIdxsL, matchedIdxsR, matchesIdxs, rad, prevKeyPositions, false);
         std::vector<cv::KeyPoint> lp,lm, rp, rm;
         for ( size_t i{0}; i < matchedIdxsL.size() ; i++)
