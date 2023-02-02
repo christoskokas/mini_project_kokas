@@ -324,17 +324,17 @@ void System::SLAM()
 
         // drawTrackedKeys(kFCandF, matchedIdxsN, "tracked Keys", imLRect);
 
-        currCameraPose = estimPose;
+        // currCameraPose = estimPose;
 
-        prevWPose = mZedCamera->cameraPose.pose;
-        prevWPoseInv = mZedCamera->cameraPose.poseInverse;
-        // referencePose = lastKFPoseInv * poseEst;
-        // Eigen::Matrix4d lKFP = activeKeyFrames.front()->pose.pose;
-        // zedPtr->cameraPose.setPose(referencePose, lKFP);
-        mZedCamera->cameraPose.setPose(estimPose);
-        mZedCamera->cameraPose.setInvPose(estimPose.inverse());
-        predNPose = estimPose * (prevWPoseInv * estimPose);
-        predNPoseInv = predNPose.inverse();
+        // prevWPose = mZedCamera->cameraPose.pose;
+        // prevWPoseInv = mZedCamera->cameraPose.poseInverse;
+        // // referencePose = lastKFPoseInv * poseEst;
+        // // Eigen::Matrix4d lKFP = activeKeyFrames.front()->pose.pose;
+        // // zedPtr->cameraPose.setPose(referencePose, lKFP);
+        // mZedCamera->cameraPose.setPose(estimPose);
+        // mZedCamera->cameraPose.setInvPose(estimPose.inverse());
+        // predNPose = estimPose * (prevWPoseInv * estimPose);
+        // predNPoseInv = predNPose.inverse();
 
     }
 

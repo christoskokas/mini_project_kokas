@@ -1690,7 +1690,7 @@ int FeatureMatcher::matchByProjection(std::vector<MapPoint*>& activeMapPoints, T
     return nMatches;
 }
 
-void FeatureMatcher::getMatchIdxs(const cv::Point2f& predP, std::vector<int>& idxs, const TrackedKeys& keysLeft, const int predictedScale, const float radius, bool right)
+void FeatureMatcher::getMatchIdxs(const cv::Point2f& predP, std::vector<int>& idxs, const TrackedKeys& keysLeft, const int predictedScale, const float radius, bool right, const bool pred)
 {
     idxs.reserve(200);
     const float trackX = predP.x;
@@ -1709,6 +1709,10 @@ void FeatureMatcher::getMatchIdxs(const cv::Point2f& predP, std::vector<int>& id
     if ( maxY < 0 )
         return;
 
+    int offset {1};
+    if ( !pred )
+        offset = 2;
+
 
     for ( int row {minY}; row <= maxY; row ++)
     {
@@ -1723,7 +1727,7 @@ void FeatureMatcher::getMatchIdxs(const cv::Point2f& predP, std::vector<int>& id
             {
                 const cv::KeyPoint kpCand = right ? keysLeft.rightKeyPoints[grid[i]] : keysLeft.keyPoints[grid[i]];
 
-                if (kpCand.octave >( predictedScale + 1) || kpCand.octave < (predictedScale - 1) )
+                if (kpCand.octave >( predictedScale + offset) || kpCand.octave < (predictedScale - offset) )
                     continue;
 
                 const float distx = kpCand.pt.x-trackX;
@@ -1762,7 +1766,7 @@ int FeatureMatcher::matchByProjectionR(std::vector<MapPoint*>& activeMapPoints, 
         float radius = lastObs.octave * rad;
 
         std::vector<int> idxs;
-        getMatchIdxs(lastObs.pt, idxs, keysLeft, predScaleLevel, radius, false);
+        getMatchIdxs(lastObs.pt, idxs, keysLeft, predScaleLevel, radius, false, false);
 
         int bestDist = 256;
         int bestIdx = -1;
@@ -1791,7 +1795,7 @@ int FeatureMatcher::matchByProjectionR(std::vector<MapPoint*>& activeMapPoints, 
         std::vector<int> idxsR;
         radius = lastObsR.octave * rad;
         predScaleLevel = mp->scaleLevelR;
-        getMatchIdxs(lastObsR.pt, idxsR, keysLeft, predScaleLevel, radius, true);
+        getMatchIdxs(lastObsR.pt, idxsR, keysLeft, predScaleLevel, radius, true, false);
 
         int bestDistR = 256;
         int bestIdxR = -1;
@@ -1857,7 +1861,7 @@ int FeatureMatcher::matchByProjectionR(std::vector<MapPoint*>& activeMapPoints, 
     return nMatches;
 }
 
-int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* newKF, std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>>& matchedIdxs, const float rad, const std::vector<std::pair<cv::Point2f, cv::Point2f>>& predPoints, const std::vector<std::pair<float, float>>& keysAngles, const std::vector<float>& maxDistsScale, std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>>& p4d)
+int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* newKF, std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>>& matchedIdxs, const float rad, const std::vector<std::pair<cv::Point2f, cv::Point2f>>& predPoints, const std::vector<std::pair<float, float>>& keysAngles, const std::vector<float>& maxDistsScale, std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>>& p4d, const bool pred)
 {
 
     // const int predictedScale = 2;
@@ -1906,7 +1910,7 @@ int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* 
             else
                 prevKeyPos = lastKeys.rightKeyPoints[keyPair.second].pt;
             std::vector<int> idxs;
-            getMatchIdxs(pLeft, idxs, keysLeft, predScale, radius, false);
+            getMatchIdxs(pLeft, idxs, keysLeft, predScale, radius, false, pred);
 
             if ( !idxs.empty() )
             {
@@ -1954,7 +1958,7 @@ int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* 
             else
                 prevKeyPos = lastKeys.keyPoints[keyPair.first].pt;
             std::vector<int> idxs;
-            getMatchIdxs(pRight, idxs, keysLeft, predScale, radius, true);
+            getMatchIdxs(pRight, idxs, keysLeft, predScale, radius, true, pred);
 
             if ( !idxs.empty() )
             {
@@ -2041,7 +2045,7 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
         float radius = feLeft->scalePyramid[predScaleLevel] * rad;
 
         std::vector<int> idxs;
-        getMatchIdxs(pLeft, idxs, keysLeft, predScaleLevel, radius, false);
+        getMatchIdxs(pLeft, idxs, keysLeft, predScaleLevel, radius, false, pred);
 
         int bestDist = 256;
         int bestIdx = -1;
@@ -2074,11 +2078,11 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
 
 
         std::vector<int> idxsR;
-        radius = feLeft->scalePyramid[predScaleLevel] * rad;
         predScaleLevel = mp->scaleLevelR;
+        radius = feLeft->scalePyramid[predScaleLevel] * rad;
         
         cv::Point2f& pRight = mp->predR;
-        getMatchIdxs(pRight, idxsR, keysLeft, predScaleLevel, radius, true);
+        getMatchIdxs(pRight, idxsR, keysLeft, predScaleLevel, radius, true, pred);
 
         int bestDistR = 256;
         int bestIdxR = -1;

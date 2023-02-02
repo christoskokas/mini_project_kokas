@@ -101,7 +101,7 @@ void Zed_Camera::setCameraValues()
     mFps = confFile->getValue<float>("Camera","fps");
     if ( rectified )
     {
-         cameraLeft.setIntrinsicValuesR("Camera_l",confFile);
+        cameraLeft.setIntrinsicValuesR("Camera_l",confFile);
         cameraRight.setIntrinsicValuesR("Camera_r",confFile);
         // mBaseline = confFile->getValue<float>("Camera","bl");
         mBaseline = setBaseline();

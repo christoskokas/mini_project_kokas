@@ -1618,7 +1618,7 @@ void LocalMapper::triangulateNewPointsR(std::vector<vio_slam::KeyFrame *>& activ
         std::vector<std::pair<cv::Point2f, cv::Point2f>> predPoints;
         // predict keys for both right and left camera
         predictKeysPosR(lastKF->keys, (*it)->pose.pose, (*it)->pose.poseInverse, keysAngles, p4d, predPoints);
-        int matches = fm->matchByProjectionRPredLBA(lastKF, (*it), matchedIdxs, 2, predPoints, keysAngles, maxDistsScale, p4d);
+        int matches = fm->matchByProjectionRPredLBA(lastKF, (*it), matchedIdxs, 5, predPoints, keysAngles, maxDistsScale, p4d, true);
         // std::cout << "MATCHES LBA " << matches<< std::endl;
         cv::waitKey(1);
         first = false;
