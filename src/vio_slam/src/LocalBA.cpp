@@ -1649,7 +1649,7 @@ void LocalMapper::triangulateNewPointsR(std::vector<vio_slam::KeyFrame *>& activ
         std::vector<std::pair<cv::Point2f, cv::Point2f>> predPoints;
         // predict keys for both right and left camera
         predictKeysPosR(lastKF->keys, (*it)->pose.pose, (*it)->pose.poseInverse, keysAngles, p4d, predPoints);
-        int matches = fm->matchByProjectionRPredLBA(lastKF, (*it), matchedIdxs, 5, predPoints, keysAngles, maxDistsScale, p4d, true);
+        int matches = fm->matchByProjectionRPredLBA(lastKF, (*it), matchedIdxs, 10, predPoints, keysAngles, maxDistsScale, p4d, true);
         // std::cout << "MATCHES LBA " << matches<< std::endl;
         cv::waitKey(1);
         first = false;
@@ -2810,7 +2810,6 @@ void LocalMapper::beginLocalMapping()
         // Logging("Local Mapping Thread Running...","",3);
         if ( map->keyFrameAdded && !map->LBADone )
         {
-            // Timer matchingInLBA("matching LBA");
             // std::vector<vio_slam::KeyFrame *> actKeyF = map->activeKeyFrames;
 
             std::vector<vio_slam::KeyFrame *> actKeyF;
@@ -2823,9 +2822,14 @@ void LocalMapper::beginLocalMapping()
             // Logging("Before Triang","",3);
             // Logging("After Triang","",3);
             // Logging("After Local","",3);
-            
+            {
+            Timer triang("triang");
             triangulateNewPointsR(actKeyF);
+            }
+            {
+            Timer ba("ba");
             localBAR(actKeyF);
+            }
 
             // triangulateNewPoints(actKeyF);
             // localBA(actKeyF);

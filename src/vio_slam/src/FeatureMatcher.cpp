@@ -1709,11 +1709,11 @@ void FeatureMatcher::getMatchIdxs(const cv::Point2f& predP, std::vector<int>& id
     if ( maxY < 0 )
         return;
 
-    int offset {0};
+    int offset {1};
     // if ( !pred )
     //     offset = 1;
-    int maxLevel {predictedScale + offset + 1};
-    int minLevel {predictedScale - offset};
+    const int maxLevel {predictedScale + offset};
+    const int minLevel {predictedScale - offset};
 
 
     for ( int row {minY}; row <= maxY; row ++)
@@ -1893,14 +1893,21 @@ int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* 
         Eigen::Vector3d pos = wPos.block<3,1>(0,0) - toFindPose.block<3,1>(0,3);
         const float dist = pos.norm();
         float dif = maxDistsScale[i]/dist;
+        // std::cout << "pos" << pos << std::endl;
+        // std::cout << "dist" << dist << std::endl;
+        // std::cout << "maxDistsScale[i]" << maxDistsScale[i] << std::endl;
         int predScale = cvCeil(log(dif)/lastKF->logScale);
         if ( predScale < 0 )
             predScale = 0;
         else if ( predScale >= lastKF->nScaleLev )
             predScale = lastKF->nScaleLev - 1;
 
+        // std::cout << "prevScale" << lastKeys.keyPoints[i].octave << std::endl;
+        // std::cout << "predScale" << predScale << std::endl;
         int bestDist = 256;
         int bestIdx = -1;
+        int bestLev = -1;
+        int bestLev2 = -1;
         int secDist = 256;
         const cv::Point2f& pLeft = predPoints[i].first;
         float radius = feLeft->scalePyramid[predScale] * rad;
@@ -1921,23 +1928,29 @@ int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* 
                     if ( newKF->unMatchedF[idx] >= 0 )
                         continue;
                     const cv::KeyPoint& kPL = keysLeft.keyPoints[idx];
-                    if ( keysAngles[i].first > -4.0 && (pow(prevKeyPos.x - kPL.pt.x,2) + pow(prevKeyPos.y - kPL.pt.y,2) > maxDistAng) )
-                    {
-                        float ang = atan2(kPL.pt.y - prevKeyPos.y,kPL.pt.x - prevKeyPos.x);
-                        if ( abs(keysAngles[i].first - ang) > angThresh )
-                            continue;
-                    }
+                    const int kpllevel = kPL.octave;
+                    // if ( keysAngles[i].first > -4.0 && (pow(prevKeyPos.x - kPL.pt.x,2) + pow(prevKeyPos.y - kPL.pt.y,2) > maxDistAng) )
+                    // {
+                    //     float ang = atan2(kPL.pt.y - prevKeyPos.y,kPL.pt.x - prevKeyPos.x);
+                    //     if ( abs(keysAngles[i].first - ang) > angThresh )
+                    //         continue;
+                    // }
                     int dist = DescriptorDistance(mpDesc, keysLeft.Desc.row(idx));
                     if ( dist < bestDist)
                     {
                         // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
                         secDist = bestDist;
+                        bestLev2 = bestLev;
                         bestDist = dist;
+                        bestLev = kpllevel;
                         bestIdx = idx;
                         continue;
                     }
                     if ( dist < secDist)
+                    {
                         secDist = dist;
+                        bestLev2 = bestLev;
+                    }
                 }
             }
 
@@ -1950,6 +1963,8 @@ int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* 
 
         int bestDistR = 256;
         int bestIdxR = -1;
+        int bestLevR = -1;
+        int bestLevR2 = -1;
         int secDistR = 256;
 
         if ( pRight.x > 0 && pRight.y > 0 )
@@ -1969,23 +1984,29 @@ int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* 
                     if ( newKF->unMatchedFR[idx] >= 0 )
                         continue;
                     const cv::KeyPoint& kPL = keysLeft.rightKeyPoints[idx];
-                    if ( keysAngles[i].second > -4.0 && (pow(prevKeyPos.x - kPL.pt.x,2) + pow(prevKeyPos.y - kPL.pt.y,2) > maxDistAng) )
-                    {
-                        float ang = atan2(kPL.pt.y - prevKeyPos.y,kPL.pt.x - prevKeyPos.x);
-                        if ( abs(keysAngles[i].second - ang) > angThresh )
-                            continue;
-                    }
+                    const int kpllevel = kPL.octave;
+                    // if ( keysAngles[i].second > -4.0 && (pow(prevKeyPos.x - kPL.pt.x,2) + pow(prevKeyPos.y - kPL.pt.y,2) > maxDistAng) )
+                    // {
+                    //     float ang = atan2(kPL.pt.y - prevKeyPos.y,kPL.pt.x - prevKeyPos.x);
+                    //     if ( abs(keysAngles[i].second - ang) > angThresh )
+                    //         continue;
+                    // }
                     int dist = DescriptorDistance(mpDesc, keysLeft.rightDesc.row(idx));
                     if ( dist < bestDistR)
                     {
                         // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
                         secDistR = bestDistR;
+                        bestLevR2 = bestLevR;
                         bestDistR = dist;
+                        bestLevR = kpllevel;
                         bestIdxR = idx;
                         continue;
                     }
                     if ( dist < secDistR)
+                    {
                         secDistR = dist;
+                        bestLevR2 = kpllevel;
+                    }
                 }
             }
 
@@ -1996,11 +2017,17 @@ int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* 
         {
             bestDist = bestDistR;
             secDist = secDistR;
+            bestLev = bestLevR;
+            bestLev2 = bestLevR2;
             right = true;
         }
 
-
-        if ( bestDist < matchDistProj && bestDist < 0.9* secDist)
+        if ( bestDist > matchDistProj )
+            continue;
+        
+        if (bestLev == bestLev2 && bestDist >= 0.8 * secDist )
+            continue;
+        if (bestLev != bestLev2 || bestDist < 0.8 * secDist)
         {
             nMatches ++;
             if ( right )
@@ -2051,7 +2078,10 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
 
         int bestDist = 256;
         int bestIdx = -1;
+        int bestLev = -1;
+        int bestLev2 = -1;
         int secDist = 256;
+        bool checkAng =  (pow(prevKeyPositions[i].first.x - pLeft.x,2) + pow(prevKeyPositions[i].first.y - pLeft.y,2) > maxDistAng);
         if ( !idxs.empty() && mp->inFrame )
         {
             for (auto& idx : idxs)
@@ -2059,22 +2089,28 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
                 if ( matchedIdxsL[idx] >= 0 )
                     continue;
                 cv::KeyPoint& kPL = keysLeft.keyPoints[idx];
-                if ( pred && (pow(prevKeyPositions[i].first.x - kPL.pt.x,2) + pow(prevKeyPositions[i].first.y - kPL.pt.y,2) > maxDistAng) )
-                {
-                    float ang = atan2(kPL.pt.y - prevKeyPositions[i].first.y,kPL.pt.x - prevKeyPositions[i].first.x);
-                    if ( abs(mp->predAngleL - ang) > angThresh )
-                        continue;
-                }
+                const int kpllevel = kPL.octave;
+                // if ( checkAng )
+                // {
+                //     float ang = atan2(kPL.pt.y - prevKeyPositions[i].first.y,kPL.pt.x - prevKeyPositions[i].first.x);
+                //     if ( abs(mp->predAngleL - ang) > angThresh )
+                //         continue;
+                // }
                 int dist = DescriptorDistance(mpDesc, keysLeft.Desc.row(idx));
                 if ( dist < bestDist)
                 {
                     secDist = bestDist;
+                    bestLev2 = bestLev;
                     bestDist = dist;
+                    bestLev = kpllevel;
                     bestIdx = idx;
                     continue;
                 }
                 if ( dist < secDist)
+                {
                     secDist = dist;
+                    bestLev2 = kpllevel;
+                }
             }
         }
 
@@ -2088,8 +2124,11 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
 
         int bestDistR = 256;
         int bestIdxR = -1;
+        int bestLevR = -1;
+        int bestLevR2 = -1;
         int secDistR = 256;
 
+        checkAng =  (pow(prevKeyPositions[i].second.x - pRight.x,2) + pow(prevKeyPositions[i].second.y - pRight.y,2) > maxDistAng);
         if ( !idxsR.empty() && mp->inFrameR )
         {
             for (auto& idx : idxsR)
@@ -2097,22 +2136,28 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
                 if ( matchedIdxsR[idx] >= 0 )
                     continue;
                 cv::KeyPoint& kPL = keysLeft.rightKeyPoints[idx];
-                if ( pred && (pow(prevKeyPositions[i].second.x - kPL.pt.x,2) + pow(prevKeyPositions[i].second.y - kPL.pt.y,2) > maxDistAng) )
-                {
-                    float ang = atan2(kPL.pt.y - prevKeyPositions[i].second.y,kPL.pt.x - prevKeyPositions[i].second.x);
-                    if ( abs(mp->predAngleR - ang) > angThresh )
-                        continue;
-                }
+                const int kpllevel = kPL.octave;
+                // if ( checkAng )
+                // {
+                //     float ang = atan2(kPL.pt.y - prevKeyPositions[i].second.y,kPL.pt.x - prevKeyPositions[i].second.x);
+                //     if ( abs(mp->predAngleR - ang) > angThresh )
+                //         continue;
+                // }
                 int dist = DescriptorDistance(mpDesc, keysLeft.rightDesc.row(idx));
                 if ( dist < bestDistR)
                 {
                     secDistR = bestDistR;
+                    bestLevR2 = bestLevR;
                     bestDistR = dist;
+                    bestLevR = kpllevel;
                     bestIdxR = idx;
                     continue;
                 }
                 if ( dist < secDistR)
+                {
                     secDistR = dist;
+                    bestLevR2 = kpllevel;
+                }
             }
         }
 
@@ -2121,11 +2166,17 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
         {
             bestDist = bestDistR;
             secDist = secDistR;
+            bestLev = bestLevR;
+            bestLev2 = bestLevR2;
             right = true;
         }
 
-
-        if ( bestDist < matchDistProj && bestDist < 0.9* secDist)
+        if ( bestDist > matchDistProj )
+            continue;
+        
+        if (bestLev == bestLev2 && bestDist >= 0.8 * secDist )
+            continue;
+        if (bestLev != bestLev2 || bestDist < 0.8* secDist)
         {
             nMatches ++;
             if ( right )

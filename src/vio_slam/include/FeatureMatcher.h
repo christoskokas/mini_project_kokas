@@ -47,8 +47,8 @@ class FeatureMatcher
         const int thDist {75};
         const int matchDist {50};
         const int matchDistConVel {50};
-        const int matchDistProj {100};
-        const int maxDistAng {25};
+        const int matchDistProj {80};
+        const int maxDistAng {4};
         // const int matchDistProj {40};
 
         // std::vector<std::vector<std::vector<int>>> leftIdxs;

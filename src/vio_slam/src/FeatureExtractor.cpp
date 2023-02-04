@@ -1677,7 +1677,6 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
     computeKeypointsORBNew(image, allKeys);
 }
 
-    int descriptorIdx {0};
     // Timer desc("desc");
 
     // std::vector<cv::KeyPoint>lel;
@@ -1731,6 +1730,7 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
 
     keypoints = std::vector<cv::KeyPoint>(nF);
     descriptors = cv::Mat(nF, 32, CV_8U);
+    int descriptorIdx {0};
     for (size_t level {0}; level < nLevels; level++)
     {
         
@@ -1869,88 +1869,6 @@ void FeatureExtractor::computeKeypointsORBNew(cv::Mat& image, std::vector<std::v
     }
 
 
-    // const int desiredFeaturesGrid = cvRound((float)(nFeatures - prevPntsSize)/gridsWKeys);
-
-
-    // for (size_t iR = 0; iR < gridRows; iR++)
-    // {
-    //     for (size_t iC = 0; iC < gridCols; iC++)
-    //     {
-    //         const size_t keyCellSize = cellKeys[iR][iC].size();
-    //         int desired;
-    //         desired = desiredFeaturesGrid - keyDestribution[iR][iC];
-    //         if ( keyCellSize == 0 || desired <= 0 )
-    //             continue;
-    //         if (keyCellSize > desired)
-    //         {
-    //             cv::KeyPointsFilter::retainBest(cellKeys[iR][iC], desired);
-    //             cellKeys[iR][iC].resize(desired);
-    //         }
-    //         std::vector<cv::KeyPoint>::iterator it;
-    //         std::vector<cv::KeyPoint>::const_iterator end(cellKeys[iR][iC].end());
-    //         for (it = cellKeys[iR][iC].begin(); it != end; it++)
-    //         {
-    //             const int oct = it->octave;
-    //             allKeypoints[oct].emplace_back(*it);
-    //         }
-    //     }
-    // }
-    // int descriptorIdx {0};
-    // Timer desc("desc");
-    // // Timer after("afterprocess");
-    // int nF {0};
-    // for (size_t level {0}; level < nLevels; level++)
-    // {
-    //     const int fPLevel = featurePerLevel[level];
-    //     if ( allKeys[level].size() > fPLevel )
-    //     {
-    //         cv::KeyPointsFilter::retainBest(allKeypoints[level],fPLevel);
-    //         allKeypoints[level].resize(fPLevel);
-    //     }
-    //     nF += allKeypoints[level].size();
-    // }
-    // descriptors = cv::Mat(nF, 32, CV_8U);
-    // for (size_t level {0}; level < nLevels; level++)
-    // {
-    //     float scale = scalePyramid[level];
-
-    //     cv::Mat im = imagePyramid[level].clone();
-    //     cv::Mat desc = cv::Mat(allKeypoints[level].size(), 32, CV_8U);
-
-    //     cv::GaussianBlur(im, im, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
-    //     computeDescriptors(im, allKeypoints[level], desc, pattern);
-
-    //     std::vector<cv::KeyPoint>::iterator it;
-    //     std::vector<cv::KeyPoint>::const_iterator end(allKeypoints[level].end());
-    //     int descCount {0};
-    //     for (it = allKeypoints[level].begin(); it != end; it++, descCount++)
-    //     {
-    //         const cv::Point2f scaled = it->pt * scale;
-    //         // if ( mask.at<uchar>(scaled) == 0 )
-    //         //     continue;
-    //         it->size = scaledPatchSize[level];
-    //         it->angle = computeOrientation(imagePyramid[level], it->pt);
-    //         if ( level != 0 )
-    //             it->pt = scaled;
-
-    //         desc.row(descCount).copyTo(descriptors.row(descriptorIdx));
-    //         descriptorIdx++;
-    //         keypoints.emplace_back(*it);
-
-    //     }
-    //     // descriptors.push_back(desc);
-
-    // }
-
-    // int descriptorIdx {0};
-    // // descriptors = cv::Mat(2*nFeatures, 32, CV_8U);
-    // descriptors = cv::Mat(2*nFeatures, 32, CV_8U);
-    // for (size_t level {0}; level < nLevels; level++)
-    // {
-
-    // detector->compute(image, keypoints, descriptors);
-    // }
-    // Logging("keys", keypoints.size(),3);
 }
 
 void FeatureExtractor::computeKeypointsORBNewRight(cv::Mat& image, std::vector<std::vector<cv::KeyPoint>>& allKeys)
