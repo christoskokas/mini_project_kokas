@@ -86,6 +86,7 @@ class MapPoint
         MapPoint(const unsigned long _idx, const unsigned long _kdx);
 
         void copyMp(MapPoint* mp, const Zed_Camera* zedPtr);
+        void changeMp(const MapPoint* mp);
 
 
         // MapPoint operator = (MapPoint const& obj)
@@ -98,7 +99,7 @@ class MapPoint
 
         Eigen::Vector4d getWordPose4d() const;
         Eigen::Vector3d getWordPose3d() const;
-        void updatePos(const Eigen::Matrix4d& camPoseInv, const Zed_Camera* zedPtr);
+        void updatePos(const Eigen::Vector3d& newPos, const Zed_Camera* zedPtr);
         void setWordPose4d(const Eigen::Vector4d& p);
         void setWordPose3d(const Eigen::Vector3d& p);
         void updateMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& _obs);

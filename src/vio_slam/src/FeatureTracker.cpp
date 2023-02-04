@@ -2926,7 +2926,6 @@ int FeatureTracker::findOutliersR(const Eigen::Matrix4d& estimPose, std::vector<
         else
             continue;
 
-        // change fx fy depending on right left on CHECK2DERROR
         bool outlier = check2dError(p4d, obs, thres, 1.0);
         MPsOutliers[i] = outlier;
         if ( !outlier )
@@ -3208,7 +3207,7 @@ std::pair<int,int> FeatureTracker::estimatePoseCeresR(std::vector<MapPoint*>& ac
             MapPoint* mp = activeMapPoints[i];
             if ( keyPos.first >= 0 )
             {
-                if  ( !mp->inFrame )
+                if  ( !mp->inFrame || mp->isOutlier )
                     continue;
                 const int nIdx {keyPos.first};
                 if ( /* mp->close && */ keysLeft.close[nIdx] )
@@ -4754,16 +4753,17 @@ void FeatureTracker::newPredictMPs(const Eigen::Matrix4d& currCamPose, const Eig
             continue;
         if ( MPsOutliers[i] )
         {
-            // if ( keyPos.first >=0 )
-            // {
-            //     matchedIdxsL[keyPos.first] = -1;
-            //     keyPos.first = -1;
-            // }
-            // if ( keyPos.second >= 0 )
-            // {
-            //     matchedIdxsR[keyPos.second] = -1;
-            //     keyPos.second = -1;
-            // }
+            MPsOutliers[i] = false;
+            if ( keyPos.first >=0 )
+            {
+                matchedIdxsL[keyPos.first] = -1;
+                keyPos.first = -1;
+            }
+            if ( keyPos.second >= 0 )
+            {
+                matchedIdxsR[keyPos.second] = -1;
+                keyPos.second = -1;
+            }
         }
     }
 }
@@ -5287,7 +5287,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
         drawMatchesNew("left", lIm.rIm,lm, lp);
         drawMatchesNew("right", rIm.rIm,rm, rp);
         // Logging("mappoints convel", activeMpsTemp.size(),3);
-        // Logging("Matches", nMatches,3);
+        Logging("Matches", nMatches,3);
         cv::waitKey(1);
 
     }
@@ -5297,7 +5297,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
 
     newPredictMPs(zedPtr->cameraPose.pose, estimPose.inverse(), activeMpsTemp, matchedIdxsL, matchedIdxsR, matchesIdxs, MPsOutliers);
 
-    float rad = 3;
+    float rad = 4;
     int nMatches = fm.matchByProjectionRPred(activeMpsTemp, keysLeft, matchedIdxsL, matchedIdxsR, matchesIdxs, rad, prevKeyPositions, true);
     std::vector<cv::KeyPoint> lp,lm, rp, rm;
     for ( size_t i{0}; i < matchedIdxsL.size() ; i++)
@@ -5319,7 +5319,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     drawMatchesNew("left", lIm.rIm,lm, lp);
     drawMatchesNew("right", rIm.rIm,rm, rp);
     // Logging("mappoints convel", activeMpsTemp.size(),3);
-    // Logging("Matches", nMatches,3);
+    Logging("NEWWWWW Matches", nMatches,3);
     cv::waitKey(1);
 
      std::pair<int,int> nStIn = estimatePoseCeresR(activeMpsTemp, keysLeft, matchesIdxs, estimPose, MPsOutliers, true);
@@ -5358,15 +5358,14 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     insertKeyFrameCount ++;
     nStereo = nStIn.second;
     nMono = nStIn.first - nStIn.second;
-    Logging("inliers", nStIn.first,3);
     Logging("stereo", nStIn.second,3);
     Logging("inliers", nStIn.first,3);
-    Logging("lastKFTrackedNumb", 0.9* lastKFTrackedNumb,3);
-    Logging("activeMpsTemp.size()",activeMpsTemp.size(),3);
-    Logging("zed extr", zedPtr->extrinsics,3);
+    Logging("lastKFTrackedNumb", 0.8* lastKFTrackedNumb,3);
+    // Logging("activeMpsTemp.size()",activeMpsTemp.size(),3);
+    // Logging("zed extr", zedPtr->extrinsics,3);
     KeyFrame* kFCand;
 
-    if ( nStIn.second < minNStereo || (activeMpsTemp.size() < 0.9 * lastKFTrackedNumb && insertKeyFrameCount >= keyFrameCountEnd))
+    if ( nStIn.second < minNStereo || (nStIn.first < 0.8 * lastKFTrackedNumb && insertKeyFrameCount >= keyFrameCountEnd))
     {
         // newKF = true;
         insertKeyFrameCount = 0;

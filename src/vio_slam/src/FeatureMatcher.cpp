@@ -1709,9 +1709,11 @@ void FeatureMatcher::getMatchIdxs(const cv::Point2f& predP, std::vector<int>& id
     if ( maxY < 0 )
         return;
 
-    int offset {1};
-    if ( !pred )
-        offset = 2;
+    int offset {0};
+    // if ( !pred )
+    //     offset = 1;
+    int maxLevel {predictedScale + offset + 1};
+    int minLevel {predictedScale - offset};
 
 
     for ( int row {minY}; row <= maxY; row ++)
@@ -1727,7 +1729,7 @@ void FeatureMatcher::getMatchIdxs(const cv::Point2f& predP, std::vector<int>& id
             {
                 const cv::KeyPoint kpCand = right ? keysLeft.rightKeyPoints[grid[i]] : keysLeft.keyPoints[grid[i]];
 
-                if (kpCand.octave >( predictedScale + offset) || kpCand.octave < (predictedScale - offset) )
+                if (kpCand.octave > maxLevel || kpCand.octave < minLevel )
                     continue;
 
                 const float distx = kpCand.pt.x-trackX;
