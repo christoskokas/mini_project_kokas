@@ -38,7 +38,7 @@ class LocalMapper
         const float reprjThreshold {7.815f};
 
         const int actvKFMaxSize {10};
-        const int minCount {3};
+        const int minCount {4};
 
         Zed_Camera* zedPtr;
         Zed_Camera* zedPtrB;

@@ -4253,6 +4253,12 @@ void FeatureTracker::changePosesLBA()
 
     lastKFPose = keyPose;
     lastKFPoseInv = lastKFPose.inverse();
+
+    Eigen::Matrix4d prevPose = prevKF->pose.pose * prevReferencePose;
+
+    predNPose = zedPtr->cameraPose.pose * (prevPose.inverse() * zedPtr->cameraPose.pose);
+    predNPoseInv = predNPose.inverse();
+
 }
 
 void FeatureTracker::checkWithFund(const std::vector<cv::KeyPoint>& activeKeys, const std::vector<cv::KeyPoint>& newKeys, std::vector<int>& matchedIdxsB, std::vector<int>& matchedIdxsN)
@@ -5284,7 +5290,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
         drawMatchesNew("left", lIm.rIm,lm, lp);
         drawMatchesNew("right", rIm.rIm,rm, rp);
         // Logging("mappoints convel", activeMpsTemp.size(),3);
-        Logging("Matches", nMatches,3);
+        // Logging("Matches", nMatches,3);
         cv::waitKey(1);
 
     }
@@ -5316,7 +5322,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     drawMatchesNew("left", lIm.rIm,lm, lp);
     drawMatchesNew("right", rIm.rIm,rm, rp);
     // Logging("mappoints convel", activeMpsTemp.size(),3);
-    Logging("NEWWWWW Matches", nMatches,3);
+    // Logging("NEWWWWW Matches", nMatches,3);
     cv::waitKey(1);
 
      std::pair<int,int> nStIn = estimatePoseCeresR(activeMpsTemp, keysLeft, matchesIdxs, estimPose, MPsOutliers, true);
@@ -5361,7 +5367,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     // Logging("activeMpsTemp.size()",activeMpsTemp.size(),3);
     // Logging("zed extr", zedPtr->extrinsics,3);
     KeyFrame* kFCand;
-
+    prevKF = activeKeyFrames.front();
     if ( nStIn.second < minNStereo || (nStIn.first < 0.8 * lastKFTrackedNumb && insertKeyFrameCount >= keyFrameCountEnd))
     {
         // newKF = true;
@@ -7764,7 +7770,7 @@ void FeatureTracker::convertToEigen(cv::Mat& Rvec, cv::Mat& tvec, Eigen::Matrix4
 
 void FeatureTracker::publishPoseNew()
 {
-
+    prevReferencePose = prevKF->pose.getInvPose() * zedPtr->cameraPose.pose;
     prevWPose = zedPtr->cameraPose.pose;
     prevWPoseInv = zedPtr->cameraPose.poseInverse;
     referencePose = lastKFPoseInv * poseEst;

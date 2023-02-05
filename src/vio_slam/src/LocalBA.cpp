@@ -1639,6 +1639,8 @@ void LocalMapper::triangulateNewPointsR(std::vector<vio_slam::KeyFrame *>& activ
     calcAllMpsOfKFR(matchedIdxs, lastKF, kFsize, p4d,maxDistsScale);
     // calcAllMpsOfKF(matchedIdxs, lastKF, allSeenKF, kFsize, p4d);
     const int aKFsize {actKeyF.size()};
+    {
+    Timer matching("matching LBA");
     bool first = true;
     std::vector<KeyFrame*>::const_iterator it, end(actKeyF.end());
     for ( it = actKeyF.begin(); it != end; it++)
@@ -1649,17 +1651,18 @@ void LocalMapper::triangulateNewPointsR(std::vector<vio_slam::KeyFrame *>& activ
         std::vector<std::pair<cv::Point2f, cv::Point2f>> predPoints;
         // predict keys for both right and left camera
         predictKeysPosR(lastKF->keys, (*it)->pose.pose, (*it)->pose.poseInverse, keysAngles, p4d, predPoints);
-        int matches = fm->matchByProjectionRPredLBA(lastKF, (*it), matchedIdxs, 10, predPoints, keysAngles, maxDistsScale, p4d, true);
+        int matches = fm->matchByProjectionRPredLBA(lastKF, (*it), matchedIdxs, 4, predPoints, keysAngles, maxDistsScale, p4d, true);
         // std::cout << "MATCHES LBA " << matches<< std::endl;
         cv::waitKey(1);
         first = false;
         
     }
+    }
 
     // std::unordered_map<int, Eigen::Matrix<double,3,4>> allProjMatrices;
     std::unordered_map<KeyFrame*, std::pair<Eigen::Matrix<double,3,4>,Eigen::Matrix<double,3,4>>> allProjMatrices;
     allProjMatrices.reserve(2 * actKeyF.size());
-
+    Timer addingmp("addingmp");
     calcProjMatricesR(allProjMatrices, actKeyF);
     std::vector<MapPoint*> pointsToAdd;
     const size_t mpCandSize {matchedIdxs.size()};

@@ -89,6 +89,8 @@ class FeatureTracker
 
         std::vector<int> reprojIdxs;
 
+        KeyFrame* prevKF = nullptr;
+        Eigen::Matrix4d prevReferencePose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d referencePose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d lastKFPose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d lastKFPoseInv = Eigen::Matrix4d::Identity();
