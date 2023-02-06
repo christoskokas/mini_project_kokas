@@ -37,6 +37,7 @@ class MapPoint
         Eigen::Vector4d wp;
         Eigen::Vector3d wp3d;
         int unMCnt {0};
+        int outLCnt {0};
         int trackCnt {0};
         int seenCnt {1};
         // std::vector<Observation> obs;

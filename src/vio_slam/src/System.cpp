@@ -82,10 +82,17 @@ void System::setActiveOutliers(Map* map, std::vector<MapPoint*>& activeMPs, std:
     {
         MapPoint*& mp = activeMPs[i];
         if ( MPsMatches[i] )
+        {
             mp->unMCnt = 0;
+            mp->outLCnt = 0;
+        }
         else
             mp->unMCnt++;
-        if ( !MPsOutliers[i] && mp->unMCnt < 20 )
+
+        if ( MPsOutliers[i] )
+            mp->outLCnt ++;
+        
+        if ( mp->outLCnt < 2 && mp->unMCnt < 20 )
         {
             continue;
         }

@@ -293,11 +293,11 @@ void FeatureTracker::extractORBStereoMatchR(cv::Mat& leftIm, cv::Mat& rightIm, T
     keysLeft.mapPointIdx.resize(keysLeft.keyPoints.size(), -1);
     keysLeft.trackCnt.resize(keysLeft.keyPoints.size(), 0);
     drawKeys("left Keys", lIm.rIm, keysLeft.keyPoints);
+    drawKeyPointsCloseFar("new method", lIm.rIm, keysLeft, keysLeft.rightKeyPoints);
     // drawKeys("right Keys AFTER", rIm.rIm, keysLeft.rightKeyPoints);
 #if DRAWMATCHES
 
 
-    // drawKeyPointsCloseFar("new method", lIm.rIm, keysLeft, keysLeft.rightKeyPoints);
 #endif
 }
 
@@ -5251,8 +5251,9 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
 
     if ( curFrameNumb == 1 )
     {
-        float rad = 25;
-        int nMatches = fm.matchByProjectionRPred(activeMpsTemp, keysLeft, matchedIdxsL, matchedIdxsR, matchesIdxs, rad, prevKeyPositions, false);
+        bool pred = false;
+        float rad = 120;
+        int nMatches = fm.matchByProjectionRPred(activeMpsTemp, keysLeft, matchedIdxsL, matchedIdxsR, matchesIdxs, rad, prevKeyPositions, pred);
     }
     else
     {
@@ -5267,9 +5268,10 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
         // calculatePrevKeyPos(activeMpsTemp, prevKeyPos, zedPtr->cameraPose.poseInverse, predNPoseInv);
         // // if ( similarity < noMovementCheck )
         // calcAngles(activeMpsTemp, ConVelPoints, prevKeyPos, mapAngles);
+        bool pred = true;
 
         float rad = 10;
-        int nMatches = fm.matchByProjectionRPred(activeMpsTemp, keysLeft, matchedIdxsL, matchedIdxsR, matchesIdxs, rad, prevKeyPositions, false);
+        int nMatches = fm.matchByProjectionRPred(activeMpsTemp, keysLeft, matchedIdxsL, matchedIdxsR, matchesIdxs, rad, prevKeyPositions, pred);
         std::vector<cv::KeyPoint> lp,lm, rp, rm;
         for ( size_t i{0}; i < matchedIdxsL.size() ; i++)
         {
@@ -5296,12 +5298,17 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     }
 
     Eigen::Matrix4d estimPose = predNPoseInv;
-    estimatePoseCeresR(activeMpsTemp, keysLeft, matchesIdxs, estimPose, MPsOutliers, true);
+    std::pair<int,int> nIn = estimatePoseCeresR(activeMpsTemp, keysLeft, matchesIdxs, estimPose, MPsOutliers, true);
+    int redo = 1;
+    bool pred = true;
+    Logging("inliers",nIn.first,3);
+    Logging("stereo",nIn.second,3);
+
 
     newPredictMPs(zedPtr->cameraPose.pose, estimPose.inverse(), activeMpsTemp, matchedIdxsL, matchedIdxsR, matchesIdxs, MPsOutliers);
 
     float rad = 4;
-    int nMatches = fm.matchByProjectionRPred(activeMpsTemp, keysLeft, matchedIdxsL, matchedIdxsR, matchesIdxs, rad, prevKeyPositions, true);
+    int nMatches = fm.matchByProjectionRPred(activeMpsTemp, keysLeft, matchedIdxsL, matchedIdxsR, matchesIdxs, rad, prevKeyPositions, pred);
     std::vector<cv::KeyPoint> lp,lm, rp, rm;
     for ( size_t i{0}; i < matchedIdxsL.size() ; i++)
     {

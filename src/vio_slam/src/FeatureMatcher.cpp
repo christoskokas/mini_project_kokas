@@ -1711,7 +1711,7 @@ void FeatureMatcher::getMatchIdxs(const cv::Point2f& predP, std::vector<int>& id
 
     int offset {1};
     // if ( !pred )
-    //     offset = 1;
+    //     offset = 2;
     const int maxLevel {predictedScale + offset};
     const int minLevel {predictedScale - offset};
 
@@ -2022,12 +2022,12 @@ int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* 
             right = true;
         }
 
-        if ( bestDist > matchDistProj )
+        if ( bestDist > matchDistLBA )
             continue;
         
-        if (bestLev == bestLev2 && bestDist >= 0.8 * secDist )
+        if (bestLev == bestLev2 && bestDist >= ratioLBA * secDist )
             continue;
-        if (bestLev != bestLev2 || bestDist < 0.8 * secDist)
+        if (bestLev != bestLev2 || bestDist < ratioLBA * secDist)
         {
             nMatches ++;
             if ( right )
@@ -2081,7 +2081,6 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
         int bestLev = -1;
         int bestLev2 = -1;
         int secDist = 256;
-        bool checkAng =  (pow(prevKeyPositions[i].first.x - pLeft.x,2) + pow(prevKeyPositions[i].first.y - pLeft.y,2) > maxDistAng);
         if ( !idxs.empty() && mp->inFrame )
         {
             for (auto& idx : idxs)
@@ -2128,7 +2127,6 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
         int bestLevR2 = -1;
         int secDistR = 256;
 
-        checkAng =  (pow(prevKeyPositions[i].second.x - pRight.x,2) + pow(prevKeyPositions[i].second.y - pRight.y,2) > maxDistAng);
         if ( !idxsR.empty() && mp->inFrameR )
         {
             for (auto& idx : idxsR)
@@ -2174,9 +2172,9 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
         if ( bestDist > matchDistProj )
             continue;
         
-        if (bestLev == bestLev2 && bestDist >= 0.8 * secDist )
+        if (bestLev == bestLev2 && bestDist >= ratioProj * secDist )
             continue;
-        if (bestLev != bestLev2 || bestDist < 0.8* secDist)
+        if (bestLev != bestLev2 || bestDist < ratioProj * secDist)
         {
             nMatches ++;
             if ( right )

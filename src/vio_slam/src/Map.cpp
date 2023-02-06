@@ -237,6 +237,8 @@ void MapPoint::updatePos(const Eigen::Vector3d& newPos, const Zed_Camera* zedPtr
         }
     }
 
+    calcDescriptor();
+
 }
 
 void MapPoint::eraseKFConnection(KeyFrame* kF)

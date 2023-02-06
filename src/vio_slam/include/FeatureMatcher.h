@@ -47,7 +47,10 @@ class FeatureMatcher
         const int thDist {75};
         const int matchDist {50};
         const int matchDistConVel {50};
-        const int matchDistProj {80};
+        const int matchDistProj {100};
+        const float ratioProj {0.8};
+        const int matchDistLBA {50};
+        const float ratioLBA {0.6};
         const int maxDistAng {4};
         // const int matchDistProj {40};
 
