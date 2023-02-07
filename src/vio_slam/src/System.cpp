@@ -267,7 +267,7 @@ void System::SLAM()
     Eigen::Matrix4d predNPoseInv = Eigen::Matrix4d::Identity();
     Eigen::Matrix4d currCameraPose = Eigen::Matrix4d::Identity();
     
-    double timeBetFrames = 1/mZedCamera->mFps;
+    double timeBetFrames = 1.0/mZedCamera->mFps;
 
     for ( size_t i{0}; i < nFrames; i++)
     {
@@ -319,7 +319,7 @@ void System::SLAM()
 
         auto end = std::chrono::high_resolution_clock::now();
         double duration = std::chrono::duration_cast<std::chrono::duration<double> >(end - start).count();
-        Logging("DURATION", duration,3);
+        // Logging("DURATION", duration,3);
 
         if ( duration < timeBetFrames )
             usleep((timeBetFrames-duration)*1e6);

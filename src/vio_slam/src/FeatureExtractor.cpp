@@ -1673,7 +1673,7 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
     // else
     //     computeKeypointsORBNewRight(image, allKeys);
 {
-    Timer keys("keys");
+    // Timer keys("keys");
     computeKeypointsORBNew(image, allKeys);
 }
 

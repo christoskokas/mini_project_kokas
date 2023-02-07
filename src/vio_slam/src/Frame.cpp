@@ -365,20 +365,21 @@ void CameraFrame::lineFromKeyFrameToCamera()
     {
         // if ( (*it).second->numb == lastActiveKeyF)
         //     glColor3f(1.0f,0.0f,0.0f);
-        if (!(*it).second->visualize)
+        const KeyFrame* kfCand = it->second;
+        if (!kfCand->visualize)
             continue;
-        if ((*it).second->active)
+        if (kfCand->active)
             glColor3f(0.0f,1.0f,0.0f);
         else
             glColor3f(1.0f,0.0f,0.0f);
-        for (size_t i{0}, end2{(*it).second->connections.size()}; i < end2; i++)
+        for ( std::vector<std::pair<int,KeyFrame*>>::const_iterator itw = kfCand->sortedKFWeights.begin(), endw(kfCand->sortedKFWeights.end()); itw != endw; itw++)
         {
-            if ((*it).second->connections[i] <= 50)
+            const KeyFrame* kfCon = itw->second;
+            if ( !kfCon->visualize )
                 continue;
-            if ( !mapKeyF.at(i)->visualize )
-                continue;
-            glVertex3f((GLfloat)mapKeyF.at(i)->pose.pose(0,3),(GLfloat)mapKeyF.at(i)->pose.pose(1,3),(GLfloat)mapKeyF.at(i)->pose.pose(2,3));
-            glVertex3f((GLfloat)(*it).second->pose.pose(0,3), (GLfloat)(*it).second->pose.pose(1,3), (GLfloat)(*it).second->pose.pose(2,3));
+            glVertex3f((GLfloat)kfCon->pose.pose(0,3),(GLfloat)kfCon->pose.pose(1,3),(GLfloat)kfCon->pose.pose(2,3));
+            glVertex3f((GLfloat)kfCand->pose.pose(0,3), (GLfloat)kfCand->pose.pose(1,3), (GLfloat)kfCand->pose.pose(2,3));
+
         }
     }
     glEnd();

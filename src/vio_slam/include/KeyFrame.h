@@ -72,8 +72,13 @@ class KeyFrame
         std::vector<float> scaleFactor;
         std::vector < float > sigmaFactor;
         std::vector < float > InvSigmaFactor;
+        std::unordered_map<KeyFrame*, int> weightsKF;
+        std::vector<std::pair<int,KeyFrame*>> sortedKFWeights;
         float logScale;
         int nScaleLev;
+
+        int LBAID {-1};
+
         TrackedKeys keys;
         Eigen::MatrixXd homoPoints3D;
         const int numb;
@@ -94,6 +99,11 @@ class KeyFrame
         bool fixed {false};
 
 
+        // Create Function that updates connections
+        void calcConnections();
+
+        // Create Function that updates connections
+
         void eraseMPConnection(const int mpPos);
         void eraseMPConnection(const std::pair<int,int>& mpPos);
         void eraseMPConnectionR(const int mpPos);
@@ -104,6 +114,7 @@ class KeyFrame
         KeyFrame(const Eigen::Matrix4d& _refPose, const Eigen::Matrix4d& realPose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx);
         Eigen::Vector4d getWorldPosition(int idx);
         void getConnectedKFs(const Map* map, std::vector<KeyFrame*>& activeKF, const int N);
+        void getConnectedKFs(std::vector<KeyFrame*>& activeKF, const int N);
 
         Eigen::Matrix4d getPose();
 };

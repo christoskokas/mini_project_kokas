@@ -4123,6 +4123,7 @@ void FeatureTracker::insertKeyFrameR(TrackedKeys& keysLeft, std::vector<int>& ma
         }
 
     }
+    kF->calcConnections();
     lastKFTrackedNumb = trckedKeys;
     kF->nKeysTracked = trckedKeys;
     map->addKeyFrame(kF);

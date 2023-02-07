@@ -20,6 +20,68 @@ void KeyFrame::getConnectedKFs(const Map* map, std::vector<KeyFrame*>& activeKF,
     }
 }
 
+void KeyFrame::getConnectedKFs(std::vector<KeyFrame*>& activeKF, const int N)
+{
+    // activeKF.reserve(20);
+    // activeKF.emplace_back(this);
+    int count {1};
+    for ( std::vector<std::pair<int,KeyFrame*>>::const_iterator it = sortedKFWeights.begin(), end = sortedKFWeights.end(); it != end; it++)
+    {
+        const std::pair<int,KeyFrame*>& conn = *it;
+        if ( conn.second != this )
+        {
+            activeKF.emplace_back(conn.second);
+            count++;
+        }
+        if ( count >= N )
+            break;
+    }
+}
+
+void KeyFrame::calcConnections()
+{
+    std::unordered_map<KeyFrame*, int> connWeights;
+    for (std::vector<MapPoint*>::const_iterator it = localMapPoints.begin(), end = localMapPoints.end(); it != end; it++)
+    {
+        MapPoint* mp = *it;
+        if ( !mp )
+            continue;
+        for (std::unordered_map<KeyFrame*, std::pair<int,int>>::const_iterator kf = mp->kFMatches.begin(), kfend = mp->kFMatches.end(); kf != kfend; kf++)
+        {
+            KeyFrame* kfCand = kf->first;
+            connWeights[kfCand] ++;
+        }
+    }
+
+    for (std::vector<MapPoint*>::const_iterator it = localMapPointsR.begin(), end = localMapPointsR.end(); it != end; it++)
+    {
+        MapPoint* mp = *it;
+        if ( !mp )
+            continue;
+        for (std::unordered_map<KeyFrame*, std::pair<int,int>>::const_iterator kf = mp->kFMatches.begin(), kfend = mp->kFMatches.end(); kf != kfend; kf++)
+        {
+            KeyFrame* kfCand = kf->first;
+            const std::pair<int,int>& keyPos = kf->second;
+            if ( keyPos.first >= 0 || keyPos.second < 0 )
+                continue;
+            connWeights[kfCand] ++;
+        }
+    }
+
+    const int threshold = 15;
+    std::vector<std::pair<int,KeyFrame*>> orderedConn;
+    orderedConn.reserve(connWeights.size());
+    for (std::unordered_map<KeyFrame*, int>::const_iterator it = connWeights.begin(), end(connWeights.end()); it != end; it ++)
+    {
+        KeyFrame* kfCand = it->first;
+        int weight = it->second;
+        if ( weight >= threshold )
+            orderedConn.emplace_back(weight, kfCand);
+    }
+    std::sort(orderedConn.rbegin(), orderedConn.rend());
+    sortedKFWeights = orderedConn;
+}
+
 void KeyFrame::eraseMPConnection(const std::pair<int,int>& mpPos)
 {
     if ( mpPos.first >= 0 )
