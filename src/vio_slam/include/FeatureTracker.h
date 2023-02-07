@@ -133,6 +133,7 @@ class FeatureTracker
         const int maxActiveMPSize {800};
         const int maxDistAng {25};
         const int maxAddedStereo {100};
+        const int minInliers {50};
 
         int lastKFTrackedNumb {0};
 
