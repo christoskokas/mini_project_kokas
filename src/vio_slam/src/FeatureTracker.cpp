@@ -4101,12 +4101,14 @@ void FeatureTracker::insertKeyFrameR(TrackedKeys& keysLeft, std::vector<int>& ma
                 allDepths.emplace_back(keysLeft.estimatedDepth[i], i);
         }
         std::sort(allDepths.begin(), allDepths.end());
-        if ( allDepths.size() > maxAddedStereo)
-            allDepths.resize(maxAddedStereo);
+        int count {0};
         for (size_t i{0}, end{allDepths.size()}; i < end; i++)
         {
             const int lIdx {allDepths[i].second};
             const int rIdx {keysLeft.rightIdxs[lIdx]};
+            if ( count >= maxAddedStereo && !keysLeft.close[lIdx] )
+                break;
+            count ++;
             const double zp = (double)keysLeft.estimatedDepth[lIdx];
             const double xp = (double)(((double)keysLeft.keyPoints[lIdx].pt.x-cx)*zp/fx);
             const double yp = (double)(((double)keysLeft.keyPoints[lIdx].pt.y-cy)*zp/fy);
@@ -5277,28 +5279,28 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
 
         float rad = 10;
         int nMatches = fm.matchByProjectionRPred(activeMpsTemp, keysLeft, matchedIdxsL, matchedIdxsR, matchesIdxs, rad, prevKeyPositions, pred);
-        std::vector<cv::KeyPoint> lp,lm, rp, rm;
-        for ( size_t i{0}; i < matchedIdxsL.size() ; i++)
-        {
-            if (matchedIdxsL[i] > 0 )
-            {
-                lp.emplace_back(keysLeft.keyPoints[i]);
-                lm.emplace_back(pointsMps[matchedIdxsL[i]]);
-            }
-        }
-        for ( size_t i{0}; i < matchedIdxsR.size() ; i++)
-        {
-            if (matchedIdxsR[i] > 0 )
-            {
-                rp.emplace_back(keysLeft.rightKeyPoints[i]);
-                rm.emplace_back(pointsMpsR[matchedIdxsR[i]]);
-            }
-        }
-        drawMatchesNew("left", lIm.rIm,lm, lp);
-        drawMatchesNew("right", rIm.rIm,rm, rp);
-        // Logging("mappoints convel", activeMpsTemp.size(),3);
-        // Logging("Matches", nMatches,3);
-        cv::waitKey(1);
+        // std::vector<cv::KeyPoint> lp,lm, rp, rm;
+        // for ( size_t i{0}; i < matchedIdxsL.size() ; i++)
+        // {
+        //     if (matchedIdxsL[i] > 0 )
+        //     {
+        //         lp.emplace_back(keysLeft.keyPoints[i]);
+        //         lm.emplace_back(pointsMps[matchedIdxsL[i]]);
+        //     }
+        // }
+        // for ( size_t i{0}; i < matchedIdxsR.size() ; i++)
+        // {
+        //     if (matchedIdxsR[i] > 0 )
+        //     {
+        //         rp.emplace_back(keysLeft.rightKeyPoints[i]);
+        //         rm.emplace_back(pointsMpsR[matchedIdxsR[i]]);
+        //     }
+        // }
+        // drawMatchesNew("left", lIm.rIm,lm, lp);
+        // drawMatchesNew("right", rIm.rIm,rm, rp);
+        // // Logging("mappoints convel", activeMpsTemp.size(),3);
+        // // Logging("Matches", nMatches,3);
+        // cv::waitKey(1);
 
     }
 
@@ -5306,8 +5308,8 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     std::pair<int,int> nIn = estimatePoseCeresR(activeMpsTemp, keysLeft, matchesIdxs, estimPose, MPsOutliers, true);
     int redo = 1;
     bool pred = true;
-    // Logging("inliers",nIn.first,3);
-    // Logging("stereo",nIn.second,3);
+    Logging("inliers",nIn.first,3);
+    Logging("stereo",nIn.second,3);
 
 
     newPredictMPs(zedPtr->cameraPose.pose, estimPose.inverse(), activeMpsTemp, matchedIdxsL, matchedIdxsR, matchesIdxs, MPsOutliers);

@@ -2886,6 +2886,7 @@ void LocalMapper::beginLocalMapping()
             actKeyF.reserve(20);
             actKeyF.emplace_back(lastKF);
             lastKF->getConnectedKFs(actKeyF, actvKFMaxSize);
+            // lastKF->getConnectedKFs(map, actKeyF, actvKFMaxSize);
             
             // computeAllMapPoints(actKeyF);
             // Logging("Before Triang","",3);

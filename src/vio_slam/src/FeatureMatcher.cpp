@@ -3062,7 +3062,7 @@ void FeatureMatcher::findStereoMatchesORB2R(const cv::Mat& lImage, const cv::Mat
     //     }
         
     // }
-    const int endDe {cvFloor(allDepths.size()*0.02)};
+    const int endDe {cvFloor(allDepths.size()*0.01)};
     for(int i=0;i < endDe;i++)
     {
         const int rIdx = keysLeft.rightIdxs[allDepths[i].second];
