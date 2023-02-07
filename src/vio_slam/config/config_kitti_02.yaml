@@ -3,6 +3,11 @@ rectified: true
 numOfFrames: 4661
 seq: "02"
 
+imagesPath: "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/kitti/02/"
+
+fileExtension: ".png"
+
+
 Camera_l:
   fx: 7.188560000000e+02
   fy: 7.188560000000e+02

@@ -292,8 +292,8 @@ void FeatureTracker::extractORBStereoMatchR(cv::Mat& leftIm, cv::Mat& rightIm, T
 
     keysLeft.mapPointIdx.resize(keysLeft.keyPoints.size(), -1);
     keysLeft.trackCnt.resize(keysLeft.keyPoints.size(), 0);
-    drawKeys("left Keys", lIm.rIm, keysLeft.keyPoints);
-    drawKeyPointsCloseFar("new method", lIm.rIm, keysLeft, keysLeft.rightKeyPoints);
+    // drawKeys("left Keys", lIm.rIm, keysLeft.keyPoints);
+    // drawKeyPointsCloseFar("new method", lIm.rIm, keysLeft, keysLeft.rightKeyPoints);
     // drawKeys("right Keys AFTER", rIm.rIm, keysLeft.rightKeyPoints);
 #if DRAWMATCHES
 
@@ -2443,6 +2443,8 @@ void FeatureTracker::initializeMapR(TrackedKeys& keysLeft)
 {
     KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx, curFrame);
     kF->scaleFactor = fe.scalePyramid;
+    kF->sigmaFactor = fe.sigmaFactor;
+    kF->InvSigmaFactor = fe.InvSigmaFactor;
     kF->nScaleLev = fe.nLevels;
     kF->logScale = log(fe.imScale);
     kF->keyF = true;
@@ -2764,7 +2766,7 @@ bool FeatureTracker::check2dError(Eigen::Vector4d& p4d, const cv::Point2f& obs, 
     const double errorU = weight * ((double)obs.x - u);
     const double errorV = weight * ((double)obs.y - v);
 
-    const double error = (errorU * errorU + errorV * errorV);
+    const double error = (errorU * errorU + errorV * errorV) * weight;
     if (error > thres)
         return true;
     else
@@ -3219,13 +3221,13 @@ std::pair<int,int> FeatureTracker::estimatePoseCeresR(std::vector<MapPoint*>& ac
                     get3dFromKey(np4d, keysLeft.keyPoints[nIdx], keysLeft.estimatedDepth[nIdx]);
                     Eigen::Vector3d point = mp->getWordPose3d();
                     Eigen::Vector3d obs(np4d(0), np4d(1),np4d(2));
-                    costf = OptimizePoseICP::Create(K, point, obs, (double)weights[i]);
+                    costf = OptimizePoseICP::Create(K, point, obs, 1.0f);
                 }
                 else
                 {
                     Eigen::Vector2d obs((double)keysLeft.keyPoints[nIdx].pt.x, (double)keysLeft.keyPoints[nIdx].pt.y);
                     Eigen::Vector3d point = mp->getWordPose3d();
-                    costf = OptimizePose::Create(K, point, obs, (double)weights[i]);
+                    costf = OptimizePose::Create(K, point, obs, 1.0f);
                 }
 
             }
@@ -3236,7 +3238,7 @@ std::pair<int,int> FeatureTracker::estimatePoseCeresR(std::vector<MapPoint*>& ac
                 const int nIdx {keyPos.second};
                 Eigen::Vector2d obs((double)keysLeft.rightKeyPoints[nIdx].pt.x, (double)keysLeft.rightKeyPoints[nIdx].pt.y);
                 Eigen::Vector3d point = mp->getWordPose3d();
-                costf = OptimizePoseR::Create(Kr,tc1c2, qc1c2, point, obs, (double)weights[i]);
+                costf = OptimizePoseR::Create(Kr,tc1c2, qc1c2, point, obs, 1.0f);
             }
             else
                 continue;
@@ -4026,6 +4028,8 @@ void FeatureTracker::insertKeyFrameR(TrackedKeys& keysLeft, std::vector<int>& ma
     // Logging("REALPOSE in keyframe", kF->getPose(),3);
     kF->closestKF = lastKF->numb;
     kF->scaleFactor = fe.scalePyramid;
+    kF->sigmaFactor = fe.sigmaFactor;
+    kF->InvSigmaFactor = fe.InvSigmaFactor;
     kF->nScaleLev = fe.nLevels;
     kF->logScale = log(fe.imScale);
     kF->keyF = true;
@@ -5218,12 +5222,12 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
         pointsMpsRPred.emplace_back(key);
 
     }
-    drawKeys("all Mps Proj",lIm.rIm, pointsMps);
-    drawKeys("all Mps Proj Right",rIm.rIm, pointsMpsR);
-    drawMatchesNew("left pred", lIm.rIm,pointsMps, pointsMpsPred);
-    drawMatchesNew("left pred PLEFT", lIm.rIm,pointsMps, pointsMpspLeft);
-    drawMatchesNew("right pred", rIm.rIm,pointsMpsR, pointsMpsRPred);
-    drawMatchesNew("right pred PLEFT", rIm.rIm,pointsMpsR, pointsMpspRight);
+    // drawKeys("all Mps Proj",lIm.rIm, pointsMps);
+    // drawKeys("all Mps Proj Right",rIm.rIm, pointsMpsR);
+    // drawMatchesNew("left pred", lIm.rIm,pointsMps, pointsMpsPred);
+    // drawMatchesNew("left pred PLEFT", lIm.rIm,pointsMps, pointsMpspLeft);
+    // drawMatchesNew("right pred", rIm.rIm,pointsMpsR, pointsMpsRPred);
+    // drawMatchesNew("right pred PLEFT", rIm.rIm,pointsMpsR, pointsMpspRight);
 
     extractORBStereoMatchR(lIm.im, rIm.im, keysLeft);
     // Timer lel3("after extract");
@@ -5301,8 +5305,8 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     std::pair<int,int> nIn = estimatePoseCeresR(activeMpsTemp, keysLeft, matchesIdxs, estimPose, MPsOutliers, true);
     int redo = 1;
     bool pred = true;
-    Logging("inliers",nIn.first,3);
-    Logging("stereo",nIn.second,3);
+    // Logging("inliers",nIn.first,3);
+    // Logging("stereo",nIn.second,3);
 
 
     newPredictMPs(zedPtr->cameraPose.pose, estimPose.inverse(), activeMpsTemp, matchedIdxsL, matchedIdxsR, matchesIdxs, MPsOutliers);

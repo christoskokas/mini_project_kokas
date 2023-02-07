@@ -70,6 +70,8 @@ class KeyFrame
         std::vector<int> unMatchedF;
         std::vector<int> unMatchedFR;
         std::vector<float> scaleFactor;
+        std::vector < float > sigmaFactor;
+        std::vector < float > InvSigmaFactor;
         float logScale;
         int nScaleLev;
         TrackedKeys keys;

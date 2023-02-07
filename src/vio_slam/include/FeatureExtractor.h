@@ -254,6 +254,8 @@ class FeatureExtractor
         std::vector<int>scaledPatchSize;
         std::vector < float > scalePyramid;
         std::vector < float > scaleInvPyramid;
+        std::vector < float > sigmaFactor;
+        std::vector < float > InvSigmaFactor;
         std::vector < int > featurePerLevel;
         std::vector<std::vector<int>> KeyDestrib;
         // std::vector<std::vector<int>> KeyDestribRight;

@@ -1673,7 +1673,7 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
     // else
     //     computeKeypointsORBNewRight(image, allKeys);
 {
-    // Timer keys("keys");
+    Timer keys("keys");
     computeKeypointsORBNew(image, allKeys);
 }
 
@@ -1769,34 +1769,39 @@ void FeatureExtractor::computeKeypointsORBNew(cv::Mat& image, std::vector<std::v
 
     int gridsWKeys {0};
     allKeys.resize(nLevels);
+    
+    const float W = 35;
 
+    const int minX = edgeThreshold - fastEdge;
+    const int minY = edgeThreshold - fastEdge;
 
     for (size_t level {0}; level < nLevels; level ++)
     {
         // Timer Levels2("Levels");
-        const int minX = edgeThreshold;
-        const int maxX = imagePyramid[level].cols - edgeThreshold;
-        const int minY = edgeThreshold;
-        const int maxY = imagePyramid[level].rows - edgeThreshold;
+        const int maxX = imagePyramid[level].cols - edgeThreshold + fastEdge;
+        const int maxY = imagePyramid[level].rows - edgeThreshold + fastEdge;
 
         const int wid = maxX - minX;
         const int hig = maxY - minY;
 
-        const int gridW = cvCeil((float)wid/gridCols);
-        const int gridH = cvCeil((float)hig/gridRows);
+        const int nCols = wid/W;
+        const int nRows = hig/W;
 
-        const int nGrids = gridCols * gridRows;
-        allKeys[level].reserve( 2 * nFeatures );
+        const int gridW = cvCeil((float)wid/nCols);
+        const int gridH = cvCeil((float)hig/nRows);
+
+        // const int nGrids = gridCols * gridRows;
+        allKeys[level].reserve( 10 * nFeatures );
         // const int featuresPerEachLevel = featurePerLevel[level];
         // const int featuresPerCell = cvCeil((float)featuresPerEachLevel/nGrids);
 
         
 
-        for (size_t iR = 0; iR < gridRows; iR++)
+        for (int iR = 0; iR < nRows; iR++)
         {
             
 
-            const float rStart = minY + iR * gridH - fastEdge;
+            const float rStart = minY + iR * gridH;
             float rEnd = rStart + gridH + 2 * fastEdge;
 
             if ( rStart >= maxY - 2 * fastEdge)
@@ -1806,14 +1811,14 @@ void FeatureExtractor::computeKeypointsORBNew(cv::Mat& image, std::vector<std::v
                 rEnd = maxY;
 
 
-            for (size_t iC = 0; iC < gridCols; iC++)
+            for (int iC = 0; iC < nCols; iC++)
             {
 
                 // if ( level == 0 )
                 //     cellKeys[iR][iC].reserve(100);
 
 
-                float cStart = minX + iC * gridW - fastEdge;
+                const float cStart = minX + iC * gridW;
                 float cEnd = cStart + gridW + 2 * fastEdge;
 
                 if ( cStart >= maxX - 2 * fastEdge)
@@ -1841,9 +1846,7 @@ void FeatureExtractor::computeKeypointsORBNew(cv::Mat& image, std::vector<std::v
                     //     cv::KeyPointsFilter::retainBest(temp,featuresPerCell);
                     //     temp.resize(featuresPerCell);
                     // }
-                    std::vector<cv::KeyPoint>::iterator it;
-                    std::vector<cv::KeyPoint>::const_iterator end(temp.end());
-                    for (it = temp.begin(); it != end; it++)
+                    for (std::vector<cv::KeyPoint>::iterator it = temp.begin(); it != temp.end(); it++)
                     {
                         it->pt.x += cStart;
                         it->pt.y += rStart;
@@ -1865,7 +1868,6 @@ void FeatureExtractor::computeKeypointsORBNew(cv::Mat& image, std::vector<std::v
             allKeys[level] = ssc(allKeys[level], fPLevel, 0.1, imagePyramid[level].cols, imagePyramid[level].rows);
         }
         computeAllOrientations(imagePyramid[level], allKeys[level]);
-
     }
 
 
@@ -3266,20 +3268,25 @@ FeatureExtractor::FeatureExtractor(const int _nfeatures, const int _nLevels, con
     scalePyramid.resize(nLevels);
     scaleInvPyramid.resize(nLevels);
     scaledPatchSize.resize(nLevels);
+    sigmaFactor.resize(nLevels);
     scalePyramid[0] = 1.0f;
     scaleInvPyramid[0] = 1.0f;
+    sigmaFactor[0] = 1.0f;
     scaledPatchSize[0] = patchSize;
     for(int i=1; i<nLevels; i++)
     {
         scalePyramid[i]=scalePyramid[i-1]*imScale;
         scaledPatchSize[i] = patchSize * scalePyramid[i];
+        sigmaFactor[i] = scalePyramid[i] * scalePyramid[i];
     }
 
     scaleInvPyramid.resize(nLevels);
+    InvSigmaFactor.resize(nLevels);
 
     for(int i=0; i<nLevels; i++)
     {
         scaleInvPyramid[i]=1.0f/scalePyramid[i];
+        InvSigmaFactor[i]=1.0f/sigmaFactor[i];
     }
 
     imagePyramid.resize(nLevels);

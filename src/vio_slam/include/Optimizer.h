@@ -421,8 +421,8 @@ public:
             observation_.template cast<T>()[1] - projected[1] / projected[2];
 
 
-        // residuals[0] = T(weight_) * residuals[0];
-        // residuals[1] = T(weight_) * residuals[1];
+        residuals[0] = T(weight_) * residuals[0];
+        residuals[1] = T(weight_) * residuals[1];
 
         return true;
     }

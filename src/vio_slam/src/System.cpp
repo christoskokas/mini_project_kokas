@@ -92,7 +92,11 @@ void System::setActiveOutliers(Map* map, std::vector<MapPoint*>& activeMPs, std:
         if ( MPsOutliers[i] )
             mp->outLCnt ++;
         
-        if ( mp->outLCnt < 2 && mp->unMCnt < 20 )
+        // if ( mp->outLCnt < 2 && mp->unMCnt < 20 )
+        // {
+        //     continue;
+        // }
+        if ( !MPsOutliers[i] && mp->unMCnt < 20 )
         {
             continue;
         }
@@ -263,10 +267,11 @@ void System::SLAM()
     Eigen::Matrix4d predNPoseInv = Eigen::Matrix4d::Identity();
     Eigen::Matrix4d currCameraPose = Eigen::Matrix4d::Identity();
     
+    double timeBetFrames = 1/mZedCamera->mFps;
 
     for ( size_t i{0}; i < nFrames; i++)
     {
-
+        auto start = std::chrono::high_resolution_clock::now();
         // if ( i%3 != 0 && i != 0  && i != 1 )
         //     continue;
 
@@ -303,47 +308,21 @@ void System::SLAM()
         bool newKF {false};
         std::pair<KeyFrame*, Eigen::Matrix4d> trckF;
 
-        // Eigen::Matrix4d estimPose = featTracker->TrackImage(imLRect, imRRect, currCameraPose, predNPoseInv, activeMpsTemp, MPsOutliers, MPsMatches, i, newKF);
-        // trckF = std::thread lel(&vio_slam::FeatureTracker::TrackImageT,)
 
         Eigen::Matrix4d estimPose = Eigen::Matrix4d::Identity();
         KeyFrame* kFCandF;
 
-        // featTracker->TrackImageT(imLRect, imRRect, currCameraPose, predNPoseInv, activeMpsTemp, MPsOutliers, MPsMatches, newKF, i, matchedIdxsN, nStereo, nMono, kFCandF, estimPose);
         FeatTrack = new std::thread(&vio_slam::FeatureTracker::TrackImageT, featTracker, std::ref(imLRect), std::ref(imRRect), std::ref(currCameraPose), std::ref(predNPoseInv), std::ref(activeMpsTemp), std::ref(MPsOutliers), std::ref(MPsMatches), std::ref(newKF), std::ref(i), std::ref(matchedIdxsN), std::ref(nStereo), std::ref(nMono), std::ref(kFCandF), std::ref(estimPose));
         FeatTrack->join();
-        // Eigen::Matrix4d estimPose = trckF.second;
-        // KeyFrame* kFCandF = trckF.first;
 
         setActiveOutliers(map, activeMpsTemp,MPsOutliers, MPsMatches);
 
-        if ( i == 0 )
-        {
-            
-            continue;
-        }
+        auto end = std::chrono::high_resolution_clock::now();
+        double duration = std::chrono::duration_cast<std::chrono::duration<double> >(end - start).count();
+        Logging("DURATION", duration,3);
 
-        if ( newKF )
-        {
-            insertKF(map, kFCandF, matchedIdxsN, estimPose, nStereo, nMono, true, true);
-            if ( map->activeKeyFrames.size() > 4 )
-                map->keyFrameAdded = true;
-
-        }
-
-        // drawTrackedKeys(kFCandF, matchedIdxsN, "tracked Keys", imLRect);
-
-        // currCameraPose = estimPose;
-
-        // prevWPose = mZedCamera->cameraPose.pose;
-        // prevWPoseInv = mZedCamera->cameraPose.poseInverse;
-        // // referencePose = lastKFPoseInv * poseEst;
-        // // Eigen::Matrix4d lKFP = activeKeyFrames.front()->pose.pose;
-        // // zedPtr->cameraPose.setPose(referencePose, lKFP);
-        // mZedCamera->cameraPose.setPose(estimPose);
-        // mZedCamera->cameraPose.setInvPose(estimPose.inverse());
-        // predNPose = estimPose * (prevWPoseInv * estimPose);
-        // predNPoseInv = predNPose.inverse();
+        if ( duration < timeBetFrames )
+            usleep((timeBetFrames-duration)*1e6);
 
     }
 
