@@ -427,6 +427,7 @@ class FeatureTracker
         void drawPoints(const cv::Mat& im, const std::vector<cv::Point2f>& prePnts,const std::vector<cv::Point2f>& pnts, const char* str);
         void draw2D3D(const cv::Mat& im, const std::vector<cv::Point2d>& p2Dfp3D, const std::vector<cv::Point2d>& p2D);
         void drawMatchesNew(const char* com, const cv::Mat& lIm, const std::vector<cv::KeyPoint>& keys1, const std::vector<cv::KeyPoint>& keys2);
+        void drawMatchesNewP(const char* com, const cv::Mat& lIm, const std::vector<cv::Point2f>& keys1, const std::vector<cv::Point2f>& keys2);
         template <typename T, typename U>
         void drawPointsTemp(const char* com, const cv::Mat& im, const std::vector<T>& p2Dfp3D, const std::vector<U>& p2D)
         {
