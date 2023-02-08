@@ -128,7 +128,7 @@ class FeatureTracker
         const int keyFrameInsertThresh {1};
         const int actvKFMaxSize {10};
         const int maxActvKFMaxSize {50};
-        const int minNStereo {70};
+        const int minNStereo {80};
         const int minNMono {20};
         const int maxActiveMPSize {800};
         const int maxDistAng {25};
@@ -201,6 +201,8 @@ class FeatureTracker
         void saveData();
 
     public :
+
+        void initialization(cv::Mat& leftIm, cv::Mat& rightIm, TrackedKeys& keysLeft);
 
         int findOutliersR(const Eigen::Matrix4d& estimatedP, std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<std::pair<int,int>>& matchesIdxs, const double thres, std::vector<bool>& MPsOutliers, const std::vector<float>& weights, int& nInliers);
         void initializeMapR(TrackedKeys& keysLeft);

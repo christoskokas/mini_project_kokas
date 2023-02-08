@@ -3600,31 +3600,31 @@ bool FeatureTracker::worldToFrameRTrack(MapPoint* mp, const bool right, const Ei
 
     // std::cout << "right" << right << std::endl;
 
-    const double mult = 0.1/point(2);
+    // const double mult = 0.1/point(2);
 
 
 
-    point = point*mult;
-    point(3) = 1;
+    // point = point*mult;
+    // point(3) = 1;
 
-    point = tempPose * point;
+    // point = tempPose * point;
 
-    double ua {fxc * point(0)/point(2) + cxc};
-    double va {fyc * point(1)/point(2) + cyc};
+    // double ua {fxc * point(0)/point(2) + cxc};
+    // double va {fyc * point(1)/point(2) + cyc};
 
 
     int predScale = mp->predictScale(dist);
 
     if ( right )
     {
-        mp->predAngleR = atan2((float)v - (float)va, (float)u - (float)ua);
+        // mp->predAngleR = atan2((float)v - (float)va, (float)u - (float)ua);
         mp->scaleLevelR = predScale;
         mp->inFrameR = true;
         mp->predR = cv::Point2f((float)u, (float)v);
     }
     else
     {
-        mp->predAngleL = atan2((float)v - (float)va, (float)u - (float)ua);
+        // mp->predAngleL = atan2((float)v - (float)va, (float)u - (float)ua);
         mp->scaleLevelL = predScale;
         mp->inFrame = true;
         mp->predL = cv::Point2f((float)u, (float)v);
@@ -5125,6 +5125,18 @@ Eigen::Matrix4d FeatureTracker::TrackImage(const cv::Mat& leftRect, const cv::Ma
     return poseEst;
 }
 
+void FeatureTracker::initialization(cv::Mat& leftIm, cv::Mat& rightIm, TrackedKeys& keysLeft)
+{
+    // for back camera 2 threads for extraction and initialize map on the main thread because the initialization adds mappoints on both activeMPs and activeMPsB
+    // insertKF is from both cameras on the main thread
+    extractORBStereoMatchR(leftIm, rightIm, keysLeft);
+
+    initializeMapR(keysLeft);
+    // addMapPnts(keysLeft);
+    setPreLImage();
+    setPreRImage();
+}
+
 void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRect, const Eigen::Matrix4d& prevCameraPose, const Eigen::Matrix4d& predPoseInv, std::vector<MapPoint*>& activeMpsTemp, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches, bool& newKF, const int frameNumb, std::vector<int>& matchedIdxsN, int& nStereo, int& nMono, KeyFrame*& kFCandidate, Eigen::Matrix4d& framePose)
 {
     const int imageH {zedPtr->mHeight};
@@ -5161,12 +5173,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
 
     if ( curFrameNumb == 0 )
     {
-        extractORBStereoMatchR(lIm.im, rIm.im, keysLeft);
-
-        initializeMapR(keysLeft);
-        // addMapPnts(keysLeft);
-        setPreLImage();
-        setPreRImage();
+        initialization(lIm.im, rIm.im, keysLeft);
         return;
     }
 
@@ -5283,7 +5290,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     nMono = nStIn.first - nStIn.second;
     KeyFrame* kFCand;
     prevKF = activeKeyFrames.front();
-    if ( nStIn.second < minNStereo || (nStIn.first < 0.8 * lastKFTrackedNumb && insertKeyFrameCount >= keyFrameCountEnd))
+    if ( (nStIn.second < minNStereo || insertKeyFrameCount >= keyFrameCountEnd) && nStIn.first < 0.9 * lastKFTrackedNumb )
     {
         insertKeyFrameCount = 0;
         insertKeyFrameR(keysLeft, matchedIdxsL,matchesIdxs, nStIn.second, poseEst, MPsOutliers);

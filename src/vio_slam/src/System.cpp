@@ -92,14 +92,14 @@ void System::setActiveOutliers(Map* map, std::vector<MapPoint*>& activeMPs, std:
         if ( MPsOutliers[i] )
             mp->outLCnt ++;
         
-        // if ( mp->outLCnt < 2 && mp->unMCnt < 20 )
-        // {
-        //     continue;
-        // }
-        if ( !MPsOutliers[i] && mp->unMCnt < 20 )
+        if ( mp->outLCnt < 2 && mp->unMCnt < 20 )
         {
             continue;
         }
+        // if ( !MPsOutliers[i] && mp->unMCnt < 20 )
+        // {
+        //     continue;
+        // }
         // mp->desc.release();
         mp->SetIsOutlier( true );
         // std::unordered_map<KeyFrame*,size_t>::iterator it;
