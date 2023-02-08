@@ -312,10 +312,11 @@ void System::SLAM()
         Eigen::Matrix4d estimPose = Eigen::Matrix4d::Identity();
         KeyFrame* kFCandF;
 
-        FeatTrack = new std::thread(&vio_slam::FeatureTracker::TrackImageT, featTracker, std::ref(imLRect), std::ref(imRRect), std::ref(currCameraPose), std::ref(predNPoseInv), std::ref(activeMpsTemp), std::ref(MPsOutliers), std::ref(MPsMatches), std::ref(newKF), std::ref(i), std::ref(matchedIdxsN), std::ref(nStereo), std::ref(nMono), std::ref(kFCandF), std::ref(estimPose));
+        FeatTrack = new std::thread(&vio_slam::FeatureTracker::TrackImageT, featTracker, std::ref(imLRect), std::ref(imRRect), std::ref(i));
+        // FeatTrack = new std::thread(&vio_slam::FeatureTracker::TrackImageTB, featTracker, std::ref(imLRect), std::ref(imRRect), std::ref(imLRect), std::ref(imRRect), std::ref(i));
         FeatTrack->join();
 
-        setActiveOutliers(map, activeMpsTemp,MPsOutliers, MPsMatches);
+        // setActiveOutliers(map, activeMpsTemp,MPsOutliers, MPsMatches);
 
         auto end = std::chrono::high_resolution_clock::now();
         double duration = std::chrono::duration_cast<std::chrono::duration<double> >(end - start).count();
@@ -466,8 +467,8 @@ void System::MultiSLAM()
         KeyFrame* kFCandFB;
 
         // featTracker->TrackImageT(imLRect, imRRect, currCameraPose, predNPoseInv, activeMpsTemp, MPsOutliers, MPsMatches, newKF, i, matchedIdxsN, nStereo, nMono, kFCandF, estimPose);
-        FeatTrack = new std::thread(&vio_slam::FeatureTracker::TrackImageT, featTracker, std::ref(imLRect), std::ref(imRRect), std::ref(currCameraPose), std::ref(predNPoseInv), std::ref(activeMpsTemp), std::ref(MPsOutliers), std::ref(MPsMatches), std::ref(newKF), std::ref(i), std::ref(matchedIdxsN), std::ref(nStereo), std::ref(nMono), std::ref(kFCandF), std::ref(estimPose));
-        FeatTrackB = new std::thread(&vio_slam::FeatureTracker::TrackImageT, featTrackerB, std::ref(imLRectB), std::ref(imRRectB), std::ref(currCameraPoseB), std::ref(predNPoseInvB), std::ref(activeMpsTempB), std::ref(MPsOutliersB), std::ref(MPsMatchesB), std::ref(newKFB), std::ref(i), std::ref(matchedIdxsNB), std::ref(nStereoB), std::ref(nMonoB), std::ref(kFCandFB), std::ref(estimPoseB));
+        FeatTrack = new std::thread(&vio_slam::FeatureTracker::TrackImageT, featTracker, std::ref(imLRect), std::ref(imRRect), std::ref(i));
+        FeatTrackB = new std::thread(&vio_slam::FeatureTracker::TrackImageT, featTrackerB, std::ref(imLRectB), std::ref(imRRectB), std::ref(i));
         FeatTrack->join();
         FeatTrackB->join();
         // Eigen::Matrix4d estimPose = trckF.second;

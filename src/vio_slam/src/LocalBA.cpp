@@ -2689,6 +2689,8 @@ void LocalMapper::localBAR(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 // Logging("2","",3);
                 continue;
             }
+            if ( itmp->first->GetIsOutlier() )
+                continue;
             KeyFrame* kftemp = kf->first;
             TrackedKeys& keys = kftemp->keys;
             std::pair<int,int>& keyPos = kf->second;
