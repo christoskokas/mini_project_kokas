@@ -116,6 +116,109 @@ void ViewFrame::pangoQuit(Zed_Camera* zedPtr, const Map* _map)
     }
 }
 
+void ViewFrame::pangoQuitMulti(Zed_Camera* zedPtr, Zed_Camera* zedPtrB, const Map* _map)
+{
+    using namespace std::literals::chrono_literals;
+
+    const int UI_WIDTH = 180;
+    
+    pangolin::CreateWindowAndBind("Main", 1024,768);
+    glEnable(GL_DEPTH_TEST);
+
+    // Define Projection and initial ModelView matrix
+    pangolin::OpenGlRenderState s_cam(
+        pangolin::ProjectionMatrix(1024,768,500.0,500.0,512,389,0.1,1000),
+        pangolin::ModelViewLookAt(0,-1,-2, 0,0,0, pangolin::AxisNegY)
+    );
+
+    pangolin::Renderable renders;
+    renders.Add(std::make_shared<pangolin::Axis>());
+    auto camera = std::make_shared<CameraFrame>();
+    camera->color = "G";
+    // camera->Subscribers(nh);
+    camera->zedCamera = zedPtr;
+    camera->zedCameraB = zedPtrB;
+    camera->map = _map;
+    
+    // Create Interactive View in window
+    pangolin::SceneHandler handler(renders, s_cam);
+    pangolin::View& d_cam = pangolin::CreateDisplay()
+            .SetBounds(0.0, 1.0, pangolin::Attach::Pix(UI_WIDTH), 1.0, -640.0f/480.0f)
+            .SetHandler(&handler);
+
+    d_cam.SetDrawFunction([&](pangolin::View& view){
+        view.Activate(s_cam);
+        renders.Render();
+    });
+    pangolin::OpenGlMatrix Twc, Twr;
+    Twc.SetIdentity();
+    pangolin::OpenGlMatrix Ow; // Oriented with g in the z axis
+    Ow.SetIdentity();
+    camera->getOpenGLMatrix(Ow);
+    camera->drawCamera();
+    pangolin::CreatePanel("ui").SetBounds(0.0, 1.0, 0.0, pangolin::Attach::Pix(UI_WIDTH));
+    pangolin::Var<bool> a_button("ui.Button", false, false);
+    while(!pangolin::ShouldQuit() )
+    {
+        // Clear screen and activate view to render into
+        // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // // glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+        // auto lines = std::make_shared<Lines>();    
+        // lines->getValues(temp.mT,camera->T_pc.m);
+        // if (zedPtr->addKeyFrame)
+        // {
+        //     {
+        //         zedPtr->addKeyFrame = false;
+        //         auto keyframe = std::make_shared<CameraFrame>();
+        //         keyframe->T_pc = camera->T_pc;
+        //         // keyframe->mPointCloud = camera->mPointCloud;
+        //         keyframe->color = "B";
+        //         // renders.Add(keyframe);
+        //     }
+        //     renders.Add(lines);
+        //     temp.clear();
+        //     for (size_t i = 0; i < 16; i++)
+        //     {
+        //         temp.mT.push_back(camera->T_pc.m[i]);
+        //     }
+        //     // temp.pointCloud.push_back(keyframe->mPointCloud);
+        //     keyFrames.push_back(temp);
+            
+        //     d_cam.Activate(s_cam);
+        //     d_cam.SetDrawFunction([&](pangolin::View& view){
+        //         view.Activate(s_cam);
+        //         renders.Render();
+        //         camera->lineFromKeyFrameToCamera();
+        //         camera->drawPoints();
+        //     });
+
+            
+        // }
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // d_cam.Activate(s_cam);
+        // d_cam.SetDrawFunction([&](pangolin::View& view){
+        //     view.Activate(s_cam);
+        //     renders.Render();
+        //     camera->lineFromKeyFrameToCamera();
+        //     camera->drawPoints();
+        // });
+        d_cam.Activate(s_cam);
+        camera->getOpenGLMatrix(Ow);
+        camera->drawCamera();
+        camera->drawBackCamera();
+        camera->drawKeyFrames();
+        camera->lineFromKeyFrameToCamera();
+        camera->drawPoints();
+        s_cam.Follow(Ow);
+
+
+        // Swap frames and Process Events
+        pangolin::FinishFrame();
+
+        // std::this_thread::sleep_for(10ms);
+    }
+}
+
 void CameraFrame::Render(const pangolin::RenderParams&)
 {
 
@@ -299,6 +402,44 @@ void CameraFrame::drawCamera()
 
 
     glMultMatrixd((GLdouble*)zedCamera->cameraPose.pose.data());
+    glLineWidth(2);
+    glBegin(GL_LINES);
+    glVertex3f(0,0,0);
+    glVertex3f(w,h,z);
+    glVertex3f(0,0,0);
+    glVertex3f(w,-h,z);
+    glVertex3f(0,0,0);
+    glVertex3f(-w,-h,z);
+    glVertex3f(0,0,0);
+    glVertex3f(-w,h,z);
+
+    glVertex3f(w,h,z);
+    glVertex3f(w,-h,z);
+
+    glVertex3f(-w,h,z);
+    glVertex3f(-w,-h,z);
+
+    glVertex3f(-w,h,z);
+    glVertex3f(w,h,z);
+
+    glVertex3f(-w,-h,z);
+    glVertex3f(w,-h,z);
+    glEnd();
+
+    glPopMatrix();
+}
+
+void CameraFrame::drawBackCamera()
+{
+
+    const float w = 2.0*cameraWidth;
+    const float h = w*0.75;
+    const float z = w*0.3;
+
+    glPushMatrix();
+    glColor3f(1.0f,1.0f,0.0f);
+
+    glMultMatrixd((GLdouble*)zedCameraB->cameraPose.pose.data());
     glLineWidth(2);
     glBegin(GL_LINES);
     glVertex3f(0,0,0);

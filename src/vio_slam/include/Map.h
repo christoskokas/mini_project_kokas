@@ -48,6 +48,7 @@ class MapPoint
         cv::Mat desc;
         std::unordered_map<KeyFrame*, size_t> kFWithFIdx;
         std::unordered_map<KeyFrame*, std::pair<int,int>> kFMatches;
+        std::unordered_map<KeyFrame*, std::pair<int,int>> kFMatchesB;
 
         int LBAID {-1};
 

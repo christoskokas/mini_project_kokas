@@ -40,16 +40,14 @@ System::System(ConfigFile* _mConf, bool multi)
 {
     mConf = _mConf;
 
-    mZedCamera = new Zed_Camera(mConf);
-    mZedCameraB = new Zed_Camera(mConf);
+    mZedCamera = new Zed_Camera(mConf, false);
+    mZedCameraB = new Zed_Camera(mConf, true);
 
     mFrame = new ViewFrame;
 
     map = new Map();
-    mapB = new Map();
 
-    featTracker = new FeatureTracker(mZedCamera,map);
-    featTrackerB = new FeatureTracker(mZedCameraB,mapB);
+    featTracker = new FeatureTracker(mZedCamera, mZedCameraB,map);
 
     feLeft = new FeatureExtractor(nFeatures/2);
     feRight = new FeatureExtractor(nFeatures/2);
@@ -58,13 +56,12 @@ System::System(ConfigFile* _mConf, bool multi)
     feRightB = new FeatureExtractor(nFeatures/2);
 
     fm = new FeatureMatcher(mZedCamera, feLeft, feRight, mZedCamera->mHeight, feLeft->getGridRows(), feLeft->getGridCols());
-    fmB = new FeatureMatcher(mZedCameraB, feLeftB, feRightB, mZedCameraB->mHeight, feLeftB->getGridRows(), feLeftB->getGridCols());
 
-    localMap = new LocalMapper(map, mZedCamera, fm, mapB, mZedCameraB, fmB);
+    localMap = new LocalMapper(map, mZedCamera, mZedCameraB, fm);
 
-    Visual = new std::thread(&vio_slam::ViewFrame::pangoQuit, mFrame, mZedCamera, map);
+    Visual = new std::thread(&vio_slam::ViewFrame::pangoQuitMulti, mFrame, mZedCamera, mZedCameraB, map);
 
-    LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMappingB, localMap);
+    LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMapping, localMap);
     // Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera);
 
     // Tracking = new std::thread(&vio_slam::RobustMatcher2::beginTest, mRb);
@@ -256,28 +253,17 @@ void System::SLAM()
         cv::Mat R1,R2;
         cv::initUndistortRectifyMap(mZedCamera->cameraLeft.K, mZedCamera->cameraLeft.D, mZedCamera->cameraLeft.R, mZedCamera->cameraLeft.P.rowRange(0,3).colRange(0,3), cv::Size(width, height), CV_32F, rectMap[0][0], rectMap[0][1]);
         cv::initUndistortRectifyMap(mZedCamera->cameraRight.K, mZedCamera->cameraRight.D, mZedCamera->cameraRight.R, mZedCamera->cameraRight.P.rowRange(0,3).colRange(0,3), cv::Size(width, height), CV_32F, rectMap[1][0], rectMap[1][1]);
-        // std::cout << "mZedCamera->cameraRight.P " << mZedCamera->cameraRight.P.rowRange(0,3).colRange(0,3) << std::endl;
-        // std::cout << "mZedCamera->cameraRight.cameraMatrix " << mZedCamera->cameraRight.cameraMatrix << std::endl;
 
     }
-
-    Eigen::Matrix4d prevWPose = Eigen::Matrix4d::Identity();
-    Eigen::Matrix4d prevWPoseInv = Eigen::Matrix4d::Identity();
-    Eigen::Matrix4d predNPose = Eigen::Matrix4d::Identity();
-    Eigen::Matrix4d predNPoseInv = Eigen::Matrix4d::Identity();
-    Eigen::Matrix4d currCameraPose = Eigen::Matrix4d::Identity();
     
     double timeBetFrames = 1.0/mZedCamera->mFps;
 
     for ( size_t i{0}; i < nFrames; i++)
     {
         auto start = std::chrono::high_resolution_clock::now();
-        // if ( i%3 != 0 && i != 0  && i != 1 )
-        //     continue;
 
         cv::Mat imageLeft = cv::imread(leftImagesStr[i],cv::IMREAD_COLOR);
         cv::Mat imageRight = cv::imread(rightImagesStr[i],cv::IMREAD_COLOR);
-        // std::cout << "channels" <<imageLeft.channels() << std::endl;
 
         cv::Mat imLRect, imRRect;
 
@@ -285,32 +271,12 @@ void System::SLAM()
         {
             cv::remap(imageLeft, imLRect, rectMap[0][0], rectMap[0][1], cv::INTER_LINEAR);
             cv::remap(imageRight, imRRect, rectMap[1][0], rectMap[1][1], cv::INTER_LINEAR);
-            // cv::imshow("right rect", imRRect);
-            // cv::imshow("left rect", imLRect);
-            // cv::imshow("right", imageRight);
-            // cv::imshow("left", imageLeft);
-            // cv::waitKey(1);
         }
         else
         {
             imLRect = imageLeft.clone();
             imRRect = imageRight.clone();
         }
-
-        std::vector<MapPoint*> activeMpsTemp;
-
-        std::vector<bool> MPsOutliers;
-        std::vector<bool> MPsMatches;
-        std::vector<int> matchedIdxsN;
-
-
-        int nStereo {0}, nMono {0};
-        bool newKF {false};
-        std::pair<KeyFrame*, Eigen::Matrix4d> trckF;
-
-
-        Eigen::Matrix4d estimPose = Eigen::Matrix4d::Identity();
-        KeyFrame* kFCandF;
 
         FeatTrack = new std::thread(&vio_slam::FeatureTracker::TrackImageT, featTracker, std::ref(imLRect), std::ref(imRRect), std::ref(i));
         // FeatTrack = new std::thread(&vio_slam::FeatureTracker::TrackImageTB, featTracker, std::ref(imLRect), std::ref(imRRect), std::ref(imLRect), std::ref(imRRect), std::ref(i));
@@ -586,6 +552,116 @@ void System::MultiSLAM()
     Visual->join();
     // Tracking->join();
     LocalMapping->join();
+}
+
+void System::MultiSLAM2()
+{
+    
+
+    const int nFrames {mZedCamera->numOfFrames};
+    std::vector<std::string>leftImagesStr, rightImagesStr, leftImagesStrB, rightImagesStrB;
+    leftImagesStr.reserve(nFrames);
+    rightImagesStr.reserve(nFrames);
+    leftImagesStrB.reserve(nFrames);
+    rightImagesStrB.reserve(nFrames);
+
+    const std::string imagesPath = mConf->getValue<std::string>("imagesPath");
+
+    const std::string leftPath = imagesPath + "left/";
+    const std::string rightPath = imagesPath + "right/";
+    const std::string leftPathB = imagesPath + "leftBack/";
+    const std::string rightPathB = imagesPath + "rightBack/";
+    const std::string fileExt = mConf->getValue<std::string>("fileExtension");
+
+    const size_t imageNumbLength = 6;
+
+    for ( size_t i {0}; i < nFrames; i++)
+    {
+        std::string frameNumb = std::to_string(i);
+        std::string frameStr = std::string(imageNumbLength - std::min(imageNumbLength, frameNumb.length()), '0') + frameNumb;
+        leftImagesStr.emplace_back(leftPath + frameStr + fileExt);
+        rightImagesStr.emplace_back(rightPath + frameStr + fileExt);
+        leftImagesStrB.emplace_back(leftPathB + frameStr + fileExt);
+        rightImagesStrB.emplace_back(rightPathB + frameStr + fileExt);
+    }
+
+    cv::Mat rectMap[2][2], rectMapB[2][2];
+    const int width = mZedCamera->mWidth;
+    const int height = mZedCamera->mHeight;
+
+    if ( !mZedCamera->rectified )
+    {
+        cv::initUndistortRectifyMap(mZedCamera->cameraLeft.K, mZedCamera->cameraLeft.D, mZedCamera->cameraLeft.R, mZedCamera->cameraLeft.P.rowRange(0,3).colRange(0,3), cv::Size(width, height), CV_32F, rectMap[0][0], rectMap[0][1]);
+        cv::initUndistortRectifyMap(mZedCamera->cameraRight.K, mZedCamera->cameraRight.D, mZedCamera->cameraRight.R, mZedCamera->cameraRight.P.rowRange(0,3).colRange(0,3), cv::Size(width, height), CV_32F, rectMap[1][0], rectMap[1][1]);
+    }
+
+    if ( !mZedCameraB->rectified)
+    {
+        cv::initUndistortRectifyMap(mZedCameraB->cameraLeft.K, mZedCameraB->cameraLeft.D, mZedCameraB->cameraLeft.R, mZedCameraB->cameraLeft.P.rowRange(0,3).colRange(0,3), cv::Size(width, height), CV_32F, rectMapB[0][0], rectMapB[0][1]);
+        cv::initUndistortRectifyMap(mZedCameraB->cameraRight.K, mZedCameraB->cameraRight.D, mZedCameraB->cameraRight.R, mZedCameraB->cameraRight.P.rowRange(0,3).colRange(0,3), cv::Size(width, height), CV_32F, rectMapB[1][0], rectMapB[1][1]);
+    }
+    
+    double timeBetFrames = 1.0/mZedCamera->mFps;
+
+    for ( size_t i{0}; i < nFrames; i++)
+    {
+        auto start = std::chrono::high_resolution_clock::now();
+
+        cv::Mat imageLeft = cv::imread(leftImagesStr[i],cv::IMREAD_COLOR);
+        cv::Mat imageRight = cv::imread(rightImagesStr[i],cv::IMREAD_COLOR);
+        cv::Mat imageLeftB = cv::imread(leftImagesStrB[i],cv::IMREAD_COLOR);
+        cv::Mat imageRightB = cv::imread(rightImagesStrB[i],cv::IMREAD_COLOR);
+
+        cv::Mat imLRect, imRRect;
+        cv::Mat imLRectB, imRRectB;
+
+        if ( !mZedCamera->rectified )
+        {
+            cv::remap(imageLeft, imLRect, rectMap[0][0], rectMap[0][1], cv::INTER_LINEAR);
+            cv::remap(imageRight, imRRect, rectMap[1][0], rectMap[1][1], cv::INTER_LINEAR);
+        }
+        else
+        {
+            imLRect = imageLeft.clone();
+            imRRect = imageRight.clone();
+        }
+
+        if ( !mZedCameraB->rectified )
+        {
+            cv::remap(imageLeftB, imLRectB, rectMapB[0][0], rectMapB[0][1], cv::INTER_LINEAR);
+            cv::remap(imageRightB, imRRectB, rectMapB[1][0], rectMapB[1][1], cv::INTER_LINEAR);
+        }
+        else
+        {
+            imLRectB = imageLeftB.clone();
+            imRRectB = imageRightB.clone();
+        }
+
+        // FeatTrack = new std::thread(&vio_slam::FeatureTracker::TrackImageT, featTracker, std::ref(imLRect), std::ref(imRRect), std::ref(i));
+        FeatTrack = new std::thread(&vio_slam::FeatureTracker::TrackImageTB, featTracker, std::ref(imLRect), std::ref(imRRect), std::ref(imLRectB), std::ref(imRRectB), std::ref(i));
+        FeatTrack->join();
+
+        // setActiveOutliers(map, activeMpsTemp,MPsOutliers, MPsMatches);
+
+        auto end = std::chrono::high_resolution_clock::now();
+        double duration = std::chrono::duration_cast<std::chrono::duration<double> >(end - start).count();
+        // Logging("DURATION", duration,3);
+
+        if ( duration < timeBetFrames )
+            usleep((timeBetFrames-duration)*1e6);
+
+    }
+
+
+    // Tracking = new std::thread(&vio_slam::RobustMatcher2::beginTest, mRb, map);
+
+
+
+
+    Visual->join();
+    // Tracking->join();
+    LocalMapping->join();
+
 }
 
 bool System::checkDisplacement(Eigen::Matrix4d& estimPose, Eigen::Matrix4d& estimPoseB, Eigen::Matrix4d& predPose, Eigen::Matrix4d& transfC1C2Inv, Eigen::Matrix4d& transfC1C2)

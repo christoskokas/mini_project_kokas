@@ -13,6 +13,11 @@ LocalMapper::LocalMapper(Map* _map, Zed_Camera* _zedPtr, FeatureMatcher* _fm, Ma
 
 }
 
+LocalMapper::LocalMapper(Map* _map, Zed_Camera* _zedPtr, Zed_Camera* _zedPtrB, FeatureMatcher* _fm) : map(_map), zedPtr(_zedPtr), zedPtrB(_zedPtrB), fm(_fm), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy)
+{
+
+}
+
 
 // From ColMap/src/base/triangulation.cc
 

@@ -49,6 +49,8 @@ class LocalMapper
         LocalMapper(Map* _map, Zed_Camera* _zedPtr, FeatureMatcher* _fm);
         LocalMapper(Map* _map, Zed_Camera* _zedPtr, FeatureMatcher* _fm, Map* _mapB, Zed_Camera* _zedPtrB, FeatureMatcher* _fmB);
 
+        LocalMapper(Map* _map, Zed_Camera* _zedPtr, Zed_Camera* _zedPtrB, FeatureMatcher* _fm);
+
         void processMatchesRW(std::vector<std::pair<vio_slam::KeyFrame *, std::pair<int, int>>>& matchesOfPoint, std::unordered_map<KeyFrame*, std::pair<Eigen::Matrix<double,3,4>,Eigen::Matrix<double,3,4>>>& allProjMatrices, std::vector<Eigen::Matrix<double, 3, 4>>& proj_matrices, std::vector<Eigen::Vector2d>& points, std::vector<float>& weights);
         void triangulateCeresNewR(Eigen::Vector3d& p3d, const std::vector<Eigen::Matrix<double, 3, 4>>& proj_matrices, const std::vector<Eigen::Vector2d>& obs, const std::vector<float>& weights, const Eigen::Matrix4d& lastKFPose, bool first);
         void triangulateNewPointsR(std::vector<vio_slam::KeyFrame *>& activeKF);

@@ -69,6 +69,8 @@ class KeyFrame
         std::vector<int> connectionWeights;
         std::vector<int> unMatchedF;
         std::vector<int> unMatchedFR;
+        std::vector<int> unMatchedFB;
+        std::vector<int> unMatchedFRB;
         std::vector<float> scaleFactor;
         std::vector < float > sigmaFactor;
         std::vector < float > InvSigmaFactor;
@@ -79,7 +81,7 @@ class KeyFrame
 
         int LBAID {-1};
 
-        TrackedKeys keys;
+        TrackedKeys keys, keysB;
         Eigen::MatrixXd homoPoints3D;
         const int numb;
         const int frameIdx;
@@ -89,6 +91,7 @@ class KeyFrame
         std::vector<MapPoint*> localMapPoints;
         std::vector<MapPoint*> localMapPointsR;
         std::vector<MapPoint*> localMapPointsB;
+        std::vector<MapPoint*> localMapPointsRB;
         KeyFrame* KFBack = nullptr;
         KeyFrame* KFFront = nullptr;
         KeyFrame* prevKF = nullptr;

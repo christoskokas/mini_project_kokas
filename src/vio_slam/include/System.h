@@ -35,6 +35,7 @@ class System
 
         void SLAM();
         void MultiSLAM();
+        void MultiSLAM2();
 
         std::thread* Visual;
         std::thread* Tracking;

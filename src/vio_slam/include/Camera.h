@@ -113,12 +113,16 @@ class Zed_Camera
 
         ConfigFile* confFile;
         Eigen::Matrix<double,4,4> extrinsics = Eigen::Matrix<double,4,4>::Identity();
+        Eigen::Matrix<double,4,4> TCamToCam = Eigen::Matrix<double,4,4>::Identity();
+        Eigen::Matrix<double,4,4> TCamToCamInv = Eigen::Matrix<double,4,4>::Identity();
         cv::Mat sensorsTranslate {};
         cv::Mat sensorsRotate {};
         Zed_Camera(ConfigFile* yamlFile);
+        Zed_Camera(ConfigFile* yamlFile, bool backCamera);
         ~Zed_Camera();
         void setCameraMatrices();
-        void setCameraValues();
+        void setBackCameraT(const bool backCamera);
+        void setCameraValues(const std::string& camPath);
         float setBaseline();
 
 };

@@ -63,14 +63,61 @@ void CameraPose::setInvPose(const Eigen::Matrix4d poseT)
 Zed_Camera::Zed_Camera(ConfigFile* yamlFile)
 {
     confFile = yamlFile;
-    this->rectified = confFile->getValue<bool>("rectified");
+    rectified = confFile->getValue<bool>("rectified");
     numOfFrames = confFile->getValue<int>("numOfFrames");
 #if KITTI_DATASET
     seq = confFile->getValue<std::string>("seq");
 #endif
-    setCameraValues();
+    setCameraValues("Camera");
     setCameraMatrices();
 
+}
+
+Zed_Camera::Zed_Camera(ConfigFile* yamlFile, bool backCamera)
+{
+    confFile = yamlFile;
+    numOfFrames = confFile->getValue<int>("numOfFrames");
+    try{
+        seq = confFile->getValue<std::string>("seq");
+    }
+    catch(std::exception& e)
+    {
+        seq = "";
+    }
+    if ( !backCamera )
+    {
+        rectified = confFile->getValue<bool>("rectified");
+        setCameraValues("Camera");
+    }
+    else
+    {
+        rectified = confFile->getValue<bool>("rectifiedB");
+        setCameraValues("CameraB");
+    }
+    setBackCameraT(backCamera);
+    setCameraMatrices();
+
+}
+
+void Zed_Camera::setBackCameraT(const bool backCamera)
+{
+    std::vector<float> Tc1_c2 = confFile->getValue<std::vector<float>>("Multi", "T_c1_c2", "data");
+
+    Eigen::Matrix4d transfC1C2;
+    transfC1C2 << Tc1_c2[0],Tc1_c2[1],Tc1_c2[2],Tc1_c2[3],Tc1_c2[4],Tc1_c2[5],Tc1_c2[6],Tc1_c2[7],Tc1_c2[8],Tc1_c2[9],Tc1_c2[10],Tc1_c2[11],Tc1_c2[12],Tc1_c2[13],Tc1_c2[14],Tc1_c2[15];
+    Eigen::Matrix4d transfC1C2inv = transfC1C2.inverse();
+
+    if ( backCamera )
+    {
+        cameraPose.setPose(transfC1C2);
+        TCamToCam = transfC1C2inv;
+        TCamToCamInv = transfC1C2;
+    }
+    else
+    {
+        TCamToCam = transfC1C2;
+        TCamToCamInv = transfC1C2inv;
+    }
 }
 
 void Zed_Camera::setCameraMatrices()
@@ -90,28 +137,22 @@ void Zed_Camera::setCameraMatrices()
     sensorsRotate = (cv::Mat_<double>(3,3) << transf[0], transf[1], transf[2], transf[4], transf[5], transf[6], transf[8], transf[9], transf[10]);
 }
 
-void Zed_Camera::setCameraValues()
+void Zed_Camera::setCameraValues(const std::string& camPath)
 {
-    // nh->getParam("/Camera/width",mWidth);
-    // nh->getParam("/Camera/height",mHeight);
-    // nh->getParam("/Camera/fps",mFps);
-    // nh->getParam("/Camera/bl",mBaseline);
-    mWidth = confFile->getValue<int>("Camera","width");
-    mHeight = confFile->getValue<int>("Camera","height");
-    mFps = confFile->getValue<float>("Camera","fps");
+    mWidth = confFile->getValue<int>(camPath,"width");
+    mHeight = confFile->getValue<int>(camPath,"height");
+    mFps = confFile->getValue<float>(camPath,"fps");
     if ( rectified )
     {
-        cameraLeft.setIntrinsicValuesR("Camera_l",confFile);
-        cameraRight.setIntrinsicValuesR("Camera_r",confFile);
-        // mBaseline = confFile->getValue<float>("Camera","bl");
-        mBaseline = setBaseline();
+        cameraLeft.setIntrinsicValuesR(camPath + "_l",confFile);
+        cameraRight.setIntrinsicValuesR(camPath + "_r",confFile);
     }
     else
     {
-        cameraLeft.setIntrinsicValuesUnR("Camera_l",confFile);
-        cameraRight.setIntrinsicValuesUnR("Camera_r",confFile);
-        mBaseline = confFile->getValue<float>("Camera","bl");
+        cameraLeft.setIntrinsicValuesUnR(camPath + "_l",confFile);
+        cameraRight.setIntrinsicValuesUnR(camPath + "_r",confFile);
     }
+    mBaseline = confFile->getValue<float>(camPath ,"bl");
     extrinsics(0,3) = (double)mBaseline;
 }
 
@@ -194,18 +235,10 @@ void Camera::setIntrinsicValuesUnR(const std::string& cameraPath, ConfigFile* co
 void Camera::setIntrinsicValuesR(const std::string& cameraPath, ConfigFile* confFile)
 {
 
-#if KITTI_DATASET
-    std::vector < double > P {confFile->getValue<std::vector<double>>(cameraPath,"P","data")};
-    fx = P[0];
-    fy = P[5];
-    cx = P[2];
-    cy = P[6];
-#else
     fx = confFile->getValue<double>(cameraPath,"fx");
     fy = confFile->getValue<double>(cameraPath,"fy");
     cx = confFile->getValue<double>(cameraPath,"cx");
     cy = confFile->getValue<double>(cameraPath,"cy");
-#endif
     k1 = 0;
     k2 = 0;
     p1 = 0;

@@ -68,7 +68,7 @@ int main (int argc, char **argv)
     
 
     if ( multi )
-        voSLAM->MultiSLAM();
+        voSLAM->MultiSLAM2();
     else
         voSLAM->SLAM();
 

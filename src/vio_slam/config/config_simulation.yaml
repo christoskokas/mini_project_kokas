@@ -1,9 +1,10 @@
 rectified: true
+rectifiedB: true
 
 numOfFrames: 978
 seq: "00"
 
-multi: false
+multi: true
 
 imagesPath: "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/simulation/"
 
@@ -20,10 +21,6 @@ Camera_l:
   p2: 0
   k3: 0
 
-Camera_l_path: /zed2i/zed_node/left_raw/image_raw_color
-# /zed2i/zed_node/left_raw/image_raw_color
-# /camera_1/left/image_raw
-
 Camera_r:
   fx: 263.2786443617774
   fy: 263.2786443617774
@@ -34,12 +31,36 @@ Camera_r:
   p1: 0
   p2: 0
   k3: 0
-  
-Camera_r_path: /zed2i/zed_node/right_raw/image_raw_color
-# /zed2i/zed_node/right_raw/image_raw_color
-# /camera_1/right/image_raw
 
 Camera:
+  width: 752
+  height: 480
+  fps: 15.0
+  bl: 0.12
+
+CameraB_l:
+  fx: 263.2786443617774
+  fy: 263.2786443617774
+  cx: 376.5
+  cy: 240.5
+  k1: 0
+  k2: 0
+  p1: 0
+  p2: 0
+  k3: 0
+
+CameraB_r:
+  fx: 263.2786443617774
+  fy: 263.2786443617774
+  cx: 376.5
+  cy: 240.5
+  k1: 0
+  k2: 0
+  p1: 0
+  p2: 0
+  k3: 0
+
+CameraB:
   width: 752
   height: 480
   fps: 15.0

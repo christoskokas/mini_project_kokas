@@ -49,6 +49,7 @@ class ViewFrame
         ViewFrame();
         std::list< KeyFrameVars > keyFrames;
         void pangoQuit(Zed_Camera* zedPtr, const Map* _map);                    
+        void pangoQuitMulti(Zed_Camera* zedPtr, Zed_Camera* zedPtrB, const Map* _map);                    
 
 
 };
@@ -77,6 +78,7 @@ struct CameraFrame : public pangolin::Renderable
     const float cameraWidth = 0.0575f;
 
     Zed_Camera* zedCamera;
+    Zed_Camera* zedCameraB = nullptr;
 
     const Map* map;
 
@@ -91,6 +93,7 @@ struct CameraFrame : public pangolin::Renderable
     void lineFromKeyFrameToCamera();
     void Render(const pangolin::RenderParams&) override;
     void drawCamera();
+    void drawBackCamera();
     void drawPoints();
     void drawKeyFrames();
     void getOpenGLMatrix(pangolin::OpenGlMatrix &MOw);
