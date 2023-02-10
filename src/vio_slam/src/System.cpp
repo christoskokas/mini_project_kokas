@@ -49,11 +49,11 @@ System::System(ConfigFile* _mConf, bool multi)
 
     featTracker = new FeatureTracker(mZedCamera, mZedCameraB,map);
 
-    feLeft = new FeatureExtractor(nFeatures/2);
-    feRight = new FeatureExtractor(nFeatures/2);
+    feLeft = new FeatureExtractor(nFeatures);
+    feRight = new FeatureExtractor(nFeatures);
 
-    feLeftB = new FeatureExtractor(nFeatures/2);
-    feRightB = new FeatureExtractor(nFeatures/2);
+    feLeftB = new FeatureExtractor(nFeatures);
+    feRightB = new FeatureExtractor(nFeatures);
 
     fm = new FeatureMatcher(mZedCamera, feLeft, feRight, mZedCamera->mHeight, feLeft->getGridRows(), feLeft->getGridCols());
 
@@ -61,7 +61,7 @@ System::System(ConfigFile* _mConf, bool multi)
 
     Visual = new std::thread(&vio_slam::ViewFrame::pangoQuitMulti, mFrame, mZedCamera, mZedCameraB, map);
 
-    LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMapping, localMap);
+    LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMappingB, localMap);
     // Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera);
 
     // Tracking = new std::thread(&vio_slam::RobustMatcher2::beginTest, mRb);

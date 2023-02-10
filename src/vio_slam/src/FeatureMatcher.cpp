@@ -2032,6 +2032,191 @@ int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* 
     return nMatches;
 }
 
+int FeatureMatcher::matchByProjectionRPredLBAB(const Zed_Camera* zedCam, const KeyFrame* lastKF, KeyFrame* newKF, TrackedKeys& lastKeys, TrackedKeys& keysLeft, std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>>& matchedIdxs, const float rad, const std::vector<std::pair<cv::Point2f, cv::Point2f>>& predPoints, const std::vector<float>& maxDistsScale, std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>>& p4d, const bool back)
+{
+    int nMatches {0};
+    Eigen::Matrix4d toFindPose;
+    std::vector<MapPoint*> localMps;
+    std::vector<int> unMatchVec;
+    std::vector<int> unMatchVecR;
+    if ( back )
+    {
+        localMps = lastKF->localMapPointsB;
+        toFindPose = newKF->pose.pose * zedCam->TCamToCamInv;
+        unMatchVec = newKF->unMatchedFB;
+        unMatchVecR = newKF->unMatchedFRB;
+    }
+    else
+    {
+        localMps = lastKF->localMapPoints;
+        toFindPose = newKF->pose.pose;
+        unMatchVec = newKF->unMatchedF;
+        unMatchVecR = newKF->unMatchedFR;
+    }
+    for ( size_t i {0}, end{p4d.size()}; i < end; i++)
+    {
+        const Eigen::Vector4d& wPos = p4d[i].first;
+        const std::pair<int,int>& keyPair = p4d[i].second;
+        cv::Mat mpDesc;
+        if ( keyPair.first >= 0 )
+        {
+            const MapPoint* mp = localMps[keyPair.first];
+            if ( mp )
+                mpDesc = mp->desc.clone();
+            else
+                mpDesc = lastKeys.Desc.row(keyPair.first).clone();
+        }
+        else
+            mpDesc = lastKeys.rightDesc.row(keyPair.second).clone();
+        
+        Eigen::Vector3d pos = wPos.block<3,1>(0,0) - toFindPose.block<3,1>(0,3);
+        const float dist = pos.norm();
+        float dif = maxDistsScale[i]/dist;
+        int predScale = cvCeil(log(dif)/lastKF->logScale);
+        if ( predScale < 0 )
+            predScale = 0;
+        else if ( predScale >= lastKF->nScaleLev )
+            predScale = lastKF->nScaleLev - 1;
+
+        int bestDist = 256;
+        int bestIdx = -1;
+        int bestLev = -1;
+        int bestLev2 = -1;
+        int secDist = 256;
+        const cv::Point2f& pLeft = predPoints[i].first;
+        float radius = feLeft->scalePyramid[predScale] * rad;
+        if ( pLeft.x > 0 && pLeft.y > 0 )
+        {
+            cv::Point2f prevKeyPos;
+            if ( keyPair.first >= 0 )
+                prevKeyPos = lastKeys.keyPoints[keyPair.first].pt;
+            else
+                prevKeyPos = lastKeys.rightKeyPoints[keyPair.second].pt;
+            std::vector<int> idxs;
+            getMatchIdxs(pLeft, idxs, keysLeft, predScale, radius, false);
+
+            if ( !idxs.empty() )
+            {
+                for (auto& idx : idxs)
+                {
+                    if ( unMatchVec[idx] >= 0 )
+                        continue;
+                    const cv::KeyPoint& kPL = keysLeft.keyPoints[idx];
+                    const int kpllevel = kPL.octave;
+                    int dist = DescriptorDistance(mpDesc, keysLeft.Desc.row(idx));
+                    if ( dist < bestDist)
+                    {
+                        // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
+                        secDist = bestDist;
+                        bestLev2 = bestLev;
+                        bestDist = dist;
+                        bestLev = kpllevel;
+                        bestIdx = idx;
+                        continue;
+                    }
+                    if ( dist < secDist)
+                    {
+                        secDist = dist;
+                        bestLev2 = bestLev;
+                    }
+                }
+            }
+
+        }
+
+
+        radius = feLeft->scalePyramid[predScale] * rad;
+        
+        const cv::Point2f& pRight = predPoints[i].second;
+
+        int bestDistR = 256;
+        int bestIdxR = -1;
+        int bestLevR = -1;
+        int bestLevR2 = -1;
+        int secDistR = 256;
+
+        if ( pRight.x > 0 && pRight.y > 0 )
+        {
+            cv::Point2f prevKeyPos;
+            if ( keyPair.second >= 0 )
+                prevKeyPos = lastKeys.rightKeyPoints[keyPair.second].pt;
+            else
+                prevKeyPos = lastKeys.keyPoints[keyPair.first].pt;
+            std::vector<int> idxs;
+            getMatchIdxs(pRight, idxs, keysLeft, predScale, radius, true);
+
+            if ( !idxs.empty() )
+            {
+                for (auto& idx : idxs)
+                {
+                    if ( unMatchVecR[idx] >= 0 )
+                        continue;
+                    const cv::KeyPoint& kPL = keysLeft.rightKeyPoints[idx];
+                    const int kpllevel = kPL.octave;
+                    int dist = DescriptorDistance(mpDesc, keysLeft.rightDesc.row(idx));
+                    if ( dist < bestDistR)
+                    {
+                        secDistR = bestDistR;
+                        bestLevR2 = bestLevR;
+                        bestDistR = dist;
+                        bestLevR = kpllevel;
+                        bestIdxR = idx;
+                        continue;
+                    }
+                    if ( dist < secDistR)
+                    {
+                        secDistR = dist;
+                        bestLevR2 = kpllevel;
+                    }
+                }
+            }
+
+        }
+
+        bool right = false;
+        if ( bestDist > bestDistR)
+        {
+            bestDist = bestDistR;
+            secDist = secDistR;
+            bestLev = bestLevR;
+            bestLev2 = bestLevR2;
+            right = true;
+        }
+
+        if ( bestDist > matchDistLBA )
+            continue;
+        
+        if (bestLev == bestLev2 && bestDist >= ratioLBA * secDist )
+            continue;
+        if (bestLev != bestLev2 || bestDist < ratioLBA * secDist)
+        {
+            nMatches ++;
+            if ( right )
+            {
+                int rIdx {bestIdxR}, lIdx {-1};
+                if ( keysLeft.leftIdxs[bestIdxR] >= 0 )
+                {
+                    lIdx = keysLeft.leftIdxs[bestIdxR];
+                }
+                matchedIdxs[i].emplace_back(std::make_pair(newKF, std::make_pair(lIdx,rIdx)));
+
+            }
+            else
+            {
+                int rIdx {-1}, lIdx {bestIdx};
+                if ( keysLeft.rightIdxs[bestIdx] >= 0 )
+                {
+                    rIdx = keysLeft.rightIdxs[bestIdx];
+                }
+                matchedIdxs[i].emplace_back(std::make_pair(newKF, std::make_pair(lIdx,rIdx)));
+
+            }
+        }
+    }
+    return nMatches;
+}
+
+
 int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<int>& matchedIdxsR, std::vector<std::pair<int,int>>& matchesIdxs, const float rad, const bool pred)
 {
     int nMatches {0};

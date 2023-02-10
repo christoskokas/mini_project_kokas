@@ -157,11 +157,12 @@ void MapPoint::calcDescriptor()
     std::vector<cv::Mat> vDescriptors;
 
     std::unordered_map<KeyFrame*,std::pair<int,int>> observations = kFMatches;
+    std::unordered_map<KeyFrame*,std::pair<int,int>> observationsB = kFMatchesB;
 
     if(observations.empty())
         return;
 
-    vDescriptors.reserve(observations.size());
+    vDescriptors.reserve(observations.size() + observationsB.size());
 
     for(std::unordered_map<KeyFrame*,std::pair<int,int>> ::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
     {
@@ -177,6 +178,22 @@ void MapPoint::calcDescriptor()
             vDescriptors.push_back(pKF->keys.rightDesc.row(rightIndex));
         }
     }
+
+    for(std::unordered_map<KeyFrame*,std::pair<int,int>> ::iterator mit=observationsB.begin(), mend=observationsB.end(); mit!=mend; mit++)
+    {
+        KeyFrame* pKF = mit->first;
+
+        std::pair<int,int> indexes = mit -> second;
+        int leftIndex = indexes.first, rightIndex = indexes.second;
+
+        if(leftIndex != -1){
+            vDescriptors.push_back(pKF->keysB.Desc.row(leftIndex));
+        }
+        if(rightIndex != -1){
+            vDescriptors.push_back(pKF->keysB.rightDesc.row(rightIndex));
+        }
+    }
+
 
     if(vDescriptors.empty())
         return;

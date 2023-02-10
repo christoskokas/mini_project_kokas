@@ -6197,7 +6197,7 @@ void FeatureTracker::TrackImageTB(const cv::Mat& leftRect, const cv::Mat& rightR
     }
     drawKeys("leftB", realLeftImB, lp);
     drawKeys("rightB", realRightImB,rp);
-    cv::waitKey(0);
+    cv::waitKey(1);
 
     both = estimatePoseCeresRB(activeMpsTemp, keysLeft, matchesIdxs, MPsOutliers, activeMpsTempB, keysLeftB, matchesIdxsB, MPsOutliersB, estimPose);
 
