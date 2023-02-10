@@ -72,7 +72,7 @@ class FeatureMatcher
 
         FeatureMatcher(const Zed_Camera* _zed, const FeatureExtractor* _feLeft, const FeatureExtractor* _feRight, const int _imageHeight = 360, const int _gridRows = 5, const int _gridCols = 5, const int _stereoYSpan = 2);
 
-        int matchByProjectionRPredLBAB(const Zed_Camera* zedCam, const KeyFrame* lastKF, KeyFrame* newKF, TrackedKeys& lastKeys, TrackedKeys& keysLeft, std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>>& matchedIdxs, const float rad, const std::vector<std::pair<cv::Point2f, cv::Point2f>>& predPoints, const std::vector<float>& maxDistsScale, std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>>& p4d, const bool back);
+        int matchByProjectionRPredLBAB(const Zed_Camera* zedCam, const KeyFrame* lastKF, KeyFrame* newKF, const TrackedKeys& lastKeys,  const TrackedKeys& keysLeft, std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>>& matchedIdxs, const float rad, const std::vector<std::pair<cv::Point2f, cv::Point2f>>& predPoints, const std::vector<float>& maxDistsScale, std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>>& p4d, const bool back);
         void getMatchIdxs(const cv::Point2f& predP, std::vector<int>& idxs, const TrackedKeys& keysLeft, const int predictedScale, const float radius, bool right);
 
         static int DescriptorDistance(const cv::Mat &a, const cv::Mat &b);

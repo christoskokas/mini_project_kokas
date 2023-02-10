@@ -2032,7 +2032,7 @@ int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* 
     return nMatches;
 }
 
-int FeatureMatcher::matchByProjectionRPredLBAB(const Zed_Camera* zedCam, const KeyFrame* lastKF, KeyFrame* newKF, TrackedKeys& lastKeys, TrackedKeys& keysLeft, std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>>& matchedIdxs, const float rad, const std::vector<std::pair<cv::Point2f, cv::Point2f>>& predPoints, const std::vector<float>& maxDistsScale, std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>>& p4d, const bool back)
+int FeatureMatcher::matchByProjectionRPredLBAB(const Zed_Camera* zedCam, const KeyFrame* lastKF, KeyFrame* newKF, const TrackedKeys& lastKeys, const TrackedKeys& keysLeft, std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>>& matchedIdxs, const float rad, const std::vector<std::pair<cv::Point2f, cv::Point2f>>& predPoints, const std::vector<float>& maxDistsScale, std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>>& p4d, const bool back)
 {
     int nMatches {0};
     Eigen::Matrix4d toFindPose;

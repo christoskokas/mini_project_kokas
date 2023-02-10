@@ -75,8 +75,10 @@ class MapPoint
         const unsigned long kdx;
 
         void update(KeyFrame* kF);
+        void update(KeyFrame* kF, const bool back);
         int predictScale(float dist);
         void addConnection(KeyFrame* kF, const std::pair<int,int>& keyPos);
+        void addConnectionB(KeyFrame* kF, const std::pair<int,int>& keyPos);
 
         void eraseKFConnection(KeyFrame* kF);
         void setActive(bool act);

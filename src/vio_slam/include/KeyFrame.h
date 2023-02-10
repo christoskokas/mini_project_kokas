@@ -62,6 +62,8 @@ class KeyFrame
 
     public:
         CameraPose pose;
+        Eigen::Matrix4d backPose;
+        Eigen::Matrix4d backPoseInv;
         cv::Mat leftIm, rightIm;
         cv::Mat rLeftIm;
         std::vector<cv::Point3d> points3D;
@@ -107,6 +109,7 @@ class KeyFrame
 
         // Create Function that updates connections
 
+        void setBackPose(const Eigen::Matrix4d& _backPose);
         void eraseMPConnection(const int mpPos);
         void eraseMPConnection(const std::pair<int,int>& mpPos);
         void eraseMPConnectionR(const int mpPos);

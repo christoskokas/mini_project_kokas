@@ -20,6 +20,12 @@ void KeyFrame::getConnectedKFs(const Map* map, std::vector<KeyFrame*>& activeKF,
     }
 }
 
+void KeyFrame::setBackPose(const Eigen::Matrix4d& _backPose)
+{
+    backPose = _backPose;
+    backPoseInv = backPose.inverse();
+}
+
 void KeyFrame::getConnectedKFs(std::vector<KeyFrame*>& activeKF, const int N)
 {
     // activeKF.reserve(20);
