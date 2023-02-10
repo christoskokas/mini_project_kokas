@@ -2032,27 +2032,15 @@ int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* 
     return nMatches;
 }
 
-int FeatureMatcher::matchByProjectionRPredLBAB(const Zed_Camera* zedCam, const KeyFrame* lastKF, KeyFrame* newKF, const TrackedKeys& lastKeys, const TrackedKeys& keysLeft, std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>>& matchedIdxs, const float rad, const std::vector<std::pair<cv::Point2f, cv::Point2f>>& predPoints, const std::vector<float>& maxDistsScale, std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>>& p4d, const bool back)
+int FeatureMatcher::matchByProjectionRPredLBAB(const Zed_Camera* zedCam, const KeyFrame* lastKF, KeyFrame* newKF, std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>>& matchedIdxs, const float rad, const std::vector<std::pair<cv::Point2f, cv::Point2f>>& predPoints, const std::vector<float>& maxDistsScale, std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>>& p4d, const bool back)
 {
     int nMatches {0};
-    Eigen::Matrix4d toFindPose;
-    std::vector<MapPoint*> localMps;
-    std::vector<int> unMatchVec;
-    std::vector<int> unMatchVecR;
-    if ( back )
-    {
-        localMps = lastKF->localMapPointsB;
-        toFindPose = newKF->pose.pose * zedCam->TCamToCamInv;
-        unMatchVec = newKF->unMatchedFB;
-        unMatchVecR = newKF->unMatchedFRB;
-    }
-    else
-    {
-        localMps = lastKF->localMapPoints;
-        toFindPose = newKF->pose.pose;
-        unMatchVec = newKF->unMatchedF;
-        unMatchVecR = newKF->unMatchedFR;
-    }
+    const Eigen::Matrix4d& toFindPose = (back) ? newKF->backPose : newKF->pose.pose;
+    const std::vector<MapPoint*>& localMps = (back) ? lastKF->localMapPointsB : lastKF->localMapPoints;
+    const std::vector<int>& unMatchVec = (back) ? newKF->unMatchedFB : newKF->unMatchedF;
+    const std::vector<int>& unMatchVecR = (back) ? newKF->unMatchedFRB : newKF->unMatchedFR;
+    const TrackedKeys& lastKeys = (back) ? lastKF->keysB : lastKF->keys;
+    const TrackedKeys& keysLeft = (back) ? newKF->keysB : newKF->keys;
     for ( size_t i {0}, end{p4d.size()}; i < end; i++)
     {
         const Eigen::Vector4d& wPos = p4d[i].first;
