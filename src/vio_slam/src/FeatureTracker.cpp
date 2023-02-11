@@ -4544,7 +4544,7 @@ void FeatureTracker::insertKeyFrameR(TrackedKeys& keysLeft, std::vector<int>& ma
 
 }
 
-void FeatureTracker::insertKeyFrameRB(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<std::pair<int,int>>& matchesIdxs, std::vector<bool>& MPsOutliers, TrackedKeys& keysLeftB, std::vector<int>& matchedIdxsLB, std::vector<std::pair<int,int>>& matchesIdxsB, std::vector<bool>& MPsOutliersB, const int nStereo, const Eigen::Matrix4d& estimPose, const cv::Mat& leftIm)
+void FeatureTracker::insertKeyFrameRB(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<std::pair<int,int>>& matchesIdxs, std::vector<bool>& MPsOutliers, TrackedKeys& keysLeftB, std::vector<int>& matchedIdxsLB, std::vector<std::pair<int,int>>& matchesIdxsB, std::vector<bool>& MPsOutliersB, const int nStereo, const int nStereoB, const Eigen::Matrix4d& estimPose, const cv::Mat& leftIm)
 {
     KeyFrame* lastKF = activeKeyFrames.front();
     referencePose = lastKF->pose.getInvPose() * estimPose;
@@ -4667,8 +4667,10 @@ void FeatureTracker::insertKeyFrameRB(TrackedKeys& keysLeft, std::vector<int>& m
             map->addMapPoint(mp);
             trckedKeys ++;
         }
-
-        allDepths.clear();
+    }
+    if ( nStereoB < minNStereo)
+    {
+        std::vector<std::pair<float, int>> allDepths;
         allDepths.reserve(keysLeftB.keyPoints.size());
         for (size_t i{0}, end{keysLeftB.keyPoints.size()}; i < end; i++)
         {
@@ -4676,7 +4678,7 @@ void FeatureTracker::insertKeyFrameRB(TrackedKeys& keysLeft, std::vector<int>& m
                 allDepths.emplace_back(keysLeftB.estimatedDepth[i], i);
         }
         std::sort(allDepths.begin(), allDepths.end());
-        count = 0;
+        int count = 0;
         for (size_t i{0}, end{allDepths.size()}; i < end; i++)
         {
             const int lIdx {allDepths[i].second};
@@ -6206,7 +6208,8 @@ void FeatureTracker::TrackImageTB(const cv::Mat& leftRect, const cv::Mat& rightR
 
     both = estimatePoseCeresRB(activeMpsTemp, keysLeft, matchesIdxs, MPsOutliers, activeMpsTempB, keysLeftB, matchesIdxsB, MPsOutliersB, estimPose);
 
-    std::pair<int,int> nStIn = std::make_pair(both.first.first + both.second.first,both.first.second + both.second.second);
+    std::pair<int,int>& nStIn = both.first;
+    std::pair<int,int>& nStInB = both.second;
     poseEst = estimPose.inverse();
 
     for ( size_t i{0}, endmp {activeMpsTemp.size()}; i < endmp; i++)
@@ -6224,10 +6227,10 @@ void FeatureTracker::TrackImageTB(const cv::Mat& leftRect, const cv::Mat& rightR
 
     insertKeyFrameCount ++;
     prevKF = activeKeyFrames.front();
-    if ( (nStIn.second < minNStereo || insertKeyFrameCount >= keyFrameCountEnd) && nStIn.first < 0.9 * lastKFTrackedNumb )
+    if ( ((nStIn.second < minNStereo || nStInB.second < minNStereo) || insertKeyFrameCount >= keyFrameCountEnd) && nStIn.first < 0.9 * lastKFTrackedNumb )
     {
         insertKeyFrameCount = 0;
-        insertKeyFrameRB(keysLeft, matchedIdxsL,matchesIdxs,MPsOutliers, keysLeftB, matchedIdxsLB,matchesIdxsB,MPsOutliersB, nStIn.second, poseEst, leftIm);
+        insertKeyFrameRB(keysLeft, matchedIdxsL,matchesIdxs,MPsOutliers, keysLeftB, matchedIdxsLB,matchesIdxsB,MPsOutliersB, nStIn.second, nStInB.second, poseEst, leftIm);
         // insertKeyFrameR(keysLeft, matchedIdxsL,matchesIdxs, nStIn.second, poseEst, MPsOutliers, leftIm);
     }
     publishPoseNewB();

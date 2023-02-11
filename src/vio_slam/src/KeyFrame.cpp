@@ -96,16 +96,36 @@ void KeyFrame::eraseMPConnection(const std::pair<int,int>& mpPos)
         eraseMPConnectionR(mpPos.second);
 }
 
+void KeyFrame::eraseMPConnectionB(const std::pair<int,int>& mpPos)
+{
+    if ( mpPos.first >= 0 )
+        eraseMPConnectionB(mpPos.first);
+    if ( mpPos.second >= 0 )
+        eraseMPConnectionRB(mpPos.second);
+}
+
 void KeyFrame::eraseMPConnection(const int mpPos)
 {
     localMapPoints[mpPos] = nullptr;
     unMatchedF[mpPos] = -1;
 }
 
+void KeyFrame::eraseMPConnectionB(const int mpPos)
+{
+    localMapPointsB[mpPos] = nullptr;
+    unMatchedFB[mpPos] = -1;
+}
+
 void KeyFrame::eraseMPConnectionR(const int mpPos)
 {
     localMapPointsR[mpPos] = nullptr;
     unMatchedFR[mpPos] = -1;
+}
+
+void KeyFrame::eraseMPConnectionRB(const int mpPos)
+{
+    localMapPointsRB[mpPos] = nullptr;
+    unMatchedFRB[mpPos] = -1;
 }
 
 KeyFrame::KeyFrame(Eigen::Matrix4d _pose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx) : numb(_numb), frameIdx(_frameIdx)

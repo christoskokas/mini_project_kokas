@@ -81,6 +81,7 @@ class MapPoint
         void addConnectionB(KeyFrame* kF, const std::pair<int,int>& keyPos);
 
         void eraseKFConnection(KeyFrame* kF);
+        void eraseKFConnectionB(KeyFrame* kF);
         void setActive(bool act);
         void SetInFrame(bool infr);
         void SetIsOutlier(bool isOut);

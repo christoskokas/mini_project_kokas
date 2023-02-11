@@ -317,9 +317,8 @@ void MapPoint::updatePos(const Eigen::Vector3d& newPos, const Zed_Camera* zedPtr
         }
     }
 
-    std::unordered_map<KeyFrame*, std::pair<int,int>>::iterator itB;
     std::unordered_map<KeyFrame*, std::pair<int,int>>::const_iterator endB(kFMatchesB.end());
-    for ( itB = kFMatchesB.begin(); itB != endB; itB++)
+    for ( it = kFMatchesB.begin(); it != endB; it++)
     {
         KeyFrame* kFcand = it->first;
         const std::pair<int,int> keyPos = it->second;
@@ -340,7 +339,12 @@ void MapPoint::updatePos(const Eigen::Vector3d& newPos, const Zed_Camera* zedPtr
 
 void MapPoint::eraseKFConnection(KeyFrame* kF)
 {
-    kFWithFIdx.erase(kF);
+    kFMatches.erase(kF);
+}
+
+void MapPoint::eraseKFConnectionB(KeyFrame* kF)
+{
+    kFMatchesB.erase(kF);
 }
 
 bool MapPoint::GetInFrame() const
