@@ -1598,11 +1598,11 @@ void LocalMapper::predictKeysPosRB(const Zed_Camera* zedCam, const Eigen::Matrix
 
         cv::Point2f predL((float)u, (float)v), predR((float)uR, (float)vR);
 
-        if ( u < 15 || v < 15 || u >= w - 15 || v >= h - 15 )
+        if ( u < 0 || v < 0 || u >= w || v >= h )
         {
             predL = noPoint;
         }
-        if ( uR < 15 || vR < 15 || uR >= w - 15 || vR >= h - 15 )
+        if ( uR < 0 || vR < 0 || uR >= w || vR >= h )
         {
             predR = noPoint;
         }
@@ -2998,7 +2998,7 @@ void LocalMapper::localBAR(std::vector<vio_slam::KeyFrame *>& actKeyF)
             if ( !kf->first->keyF )
                     continue;
             if ( mpOutliers[mpCount] || (!itmp->first->GetInFrame() && itmp->first->kFMatches.size() < minCount) )
-                continue;
+                break;
             // Logging("1","",3);
             if ( !wrongMatches.empty() && std::find(wrongMatches.begin(), wrongMatches.end(), std::make_pair(kf->first, itmp->first)) != wrongMatches.end())
             {
@@ -3006,7 +3006,7 @@ void LocalMapper::localBAR(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 continue;
             }
             if ( itmp->first->GetIsOutlier() )
-                continue;
+                break;
             KeyFrame* kftemp = kf->first;
             TrackedKeys& keys = kftemp->keys;
             std::pair<int,int>& keyPos = kf->second;
@@ -3262,7 +3262,7 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
     const Eigen::Matrix3d& KB = zedPtrB->cameraLeft.intrisics;
     const Eigen::Matrix4d estimPoseRInv = zedPtr->extrinsics.inverse();
     const Eigen::Matrix3d qcr = estimPoseRInv.block<3,3>(0,0);
-    const Eigen::Matrix<double,3,1> tc1c2 = estimPoseRInv.block<3,1>(0,3);
+    const Eigen::Matrix<double,3,1> tcr = estimPoseRInv.block<3,1>(0,3);
 
     const Eigen::Matrix4d estimPoseBInv = zedPtr->TCamToCamInv;
     const Eigen::Matrix4d estimPoseBRInv = zedPtrB->extrinsics.inverse() * estimPoseBInv;
@@ -3293,7 +3293,7 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
             if ( !kf->first->keyF )
                     continue;
             if ( mpOutliers[mpCount] || (!itmp->first->GetInFrame() && itmp->first->kFMatches.size() < minCount) )
-                continue;
+                break;
             // Logging("1","",3);
             if ( !wrongMatches.empty() && std::find(wrongMatches.begin(), wrongMatches.end(), std::make_pair(kf->first, itmp->first)) != wrongMatches.end())
             {
@@ -3301,7 +3301,7 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 continue;
             }
             if ( itmp->first->GetIsOutlier() )
-                continue;
+                break;
             KeyFrame* kftemp = kf->first;
             TrackedKeys& keys = kftemp->keys;
             std::pair<int,int>& keyPos = kf->second;
@@ -3321,15 +3321,15 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
             bool right {false};
             if ( keyPos.first >= 0 )
             {
-                const cv::KeyPoint& obs = kf->first->keys.keyPoints[keyPos.first];
+                const cv::KeyPoint& obs = keys.keyPoints[keyPos.first];
                 Eigen::Vector2d obs2d((double)obs.pt.x, (double)obs.pt.y);
                 costf = LocalBundleAdjustment::Create(K, obs2d, 1.0f);
             }
             else if ( keyPos.second >= 0 )
             {
-                const cv::KeyPoint& obs = kf->first->keys.rightKeyPoints[keyPos.second];
+                const cv::KeyPoint& obs = keys.rightKeyPoints[keyPos.second];
                 Eigen::Vector2d obs2d((double)obs.pt.x, (double)obs.pt.y);
-                costf = LocalBundleAdjustmentR::Create(K,tc1c2, qcr, obs2d, 1.0f);
+                costf = LocalBundleAdjustmentR::Create(K,tcr, qcr, obs2d, 1.0f);
                 right = true;
             }
             // }
@@ -3366,7 +3366,7 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
             if ( !kf->first->keyF )
                     continue;
             if ( mpOutliers[mpCount] || (!itmp->first->GetInFrame() && itmp->first->kFMatchesB.size() < minCount) )
-                continue;
+                break;
             // Logging("1","",3);
             if ( !wrongMatches.empty() && std::find(wrongMatches.begin(), wrongMatches.end(), std::make_pair(kf->first, itmp->first)) != wrongMatches.end())
             {
@@ -3374,7 +3374,7 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 continue;
             }
             if ( itmp->first->GetIsOutlier() )
-                continue;
+                break;
             KeyFrame* kftemp = kf->first;
             TrackedKeys& keys = kftemp->keysB;
             std::pair<int,int>& keyPos = kf->second;
@@ -3481,7 +3481,7 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
             Eigen::Quaterniond qcw(q_xyzw[3], q_xyzw[0], q_xyzw[1], q_xyzw[2]);
             bool outlier {false};
             if ( right )
-                outlier = checkOutlierR(K,qcr, tc1c2, obs, allmp->second, tcw, qcw, reprjThreshold);
+                outlier = checkOutlierR(K,qcr, tcr, obs, allmp->second, tcw, qcw, reprjThreshold);
             else
                 outlier = checkOutlier(K, obs, allmp->second, tcw, qcw, reprjThreshold);
 
@@ -3511,9 +3511,9 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
             Eigen::Quaterniond qcw(q_xyzw[3], q_xyzw[0], q_xyzw[1], q_xyzw[2]);
             bool outlier {false};
             if ( right )
-                outlier = checkOutlierR(K,qc1c2BR, tc1c2BR, obs, allmp->second, tcw, qcw, reprjThreshold);
+                outlier = checkOutlierR(KB,qc1c2BR, tc1c2BR, obs, allmp->second, tcw, qcw, reprjThreshold);
             else
-                outlier = checkOutlierR(K,qc1c2B, tc1c2B, obs, allmp->second, tcw, qcw, reprjThreshold);
+                outlier = checkOutlierR(KB,qc1c2B, tc1c2B, obs, allmp->second, tcw, qcw, reprjThreshold);
 
             if ( outlier )
                 wrongMatches.emplace_back(std::pair<KeyFrame*, MapPoint*>(kfCand, mp));
@@ -3536,7 +3536,7 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 kF->eraseMPConnection(keyPos);
                 mp->eraseKFConnection(kF);
             }
-            else if ( mp->kFMatchesB.size() > 0 )
+            if ( mp->kFMatchesB.size() > 0 )
             {
                 const std::pair<int,int>& keyPos = mp->kFMatchesB.at(kF);
                 kF->eraseMPConnectionB(keyPos);
@@ -3562,7 +3562,7 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
     std::unordered_map<MapPoint*, Eigen::Vector3d>::iterator itmp, mpend(allMapPoints.end());
     for ( itmp = allMapPoints.begin(); itmp != mpend; itmp++, mpCount ++)
     {
-        if ( mpOutliers[mpCount] || (!itmp->first->GetInFrame() && itmp->first->kFMatches.size() < minCount) || (!itmp->first->GetInFrame() && itmp->first->kFMatchesB.size() < minCount) )
+        if ( mpOutliers[mpCount] || (!itmp->first->GetInFrame() && itmp->first->kFMatches.size() < minCount && itmp->first->kFMatchesB.size() < minCount) )
             itmp->first->SetIsOutlier(true);
         else
         {
@@ -3662,9 +3662,6 @@ void LocalMapper::beginLocalMappingB()
             std::thread back(&LocalMapper::triangulateNewPointsRB, this, std::ref(zedPtrB), std::ref(actKeyF), true);
             front.join();
             back.join();
-            // triangulateNewPointsRB(zedPtr,actKeyF, false);
-            // triangulateNewPointsRB(zedPtrB,actKeyF, true);
-            // triangulateNewPointsR(actKeyF);
             }
             {
             Timer ba("ba");
