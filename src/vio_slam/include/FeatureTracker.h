@@ -211,9 +211,9 @@ class FeatureTracker
         void initialization(cv::Mat& leftIm, cv::Mat& rightIm, TrackedKeys& keysLeft);
         void setActiveOutliers(std::vector<MapPoint*>& activeMPs, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches);
         void TrackImageTB(const cv::Mat& leftRect, const cv::Mat& rightRect, const cv::Mat& leftRectB, const cv::Mat& rightRectB, const int frameNumb);
-        void extractORBStereoMatchRB(cv::Mat& leftIm, cv::Mat& rightIm, FeatureExtractor& feLeft, FeatureExtractor& feRight, FeatureMatcher& fm, TrackedKeys& keysLeft);
+        void extractORBStereoMatchRB(const Zed_Camera* zedCam, cv::Mat& leftIm, cv::Mat& rightIm, FeatureExtractor& feLeft, FeatureExtractor& feRight, FeatureMatcher& fm, TrackedKeys& keysLeft);
         void initializeMapRB(TrackedKeys& keysLeft, TrackedKeys& keysLeftB);
-        void removeOutOfFrameMPsRB(const Zed_Camera* zedCam, const Eigen::Matrix4d& predNPose, std::vector<MapPoint*>& activeMapPoints, const bool front);
+        void removeOutOfFrameMPsRB(const Zed_Camera* zedCam, const Eigen::Matrix4d& predNPose, std::vector<MapPoint*>& activeMapPoints);
         bool worldToFrameRTrackB(MapPoint* mp, const Zed_Camera* zedCam, const bool right, const Eigen::Matrix4d& predPoseInv);
         void publishPoseNewB();
         void changePosesLBAB();
@@ -442,6 +442,7 @@ class FeatureTracker
         void rectifyLImage();
 
         void drawKeys(const char* com, cv::Mat& im, std::vector<cv::KeyPoint>& keys);
+        void drawKeys(const char* com, cv::Mat& im, std::vector<cv::KeyPoint>& keys, std::vector<bool>& close);
         void drawMatches(const cv::Mat& lIm, const SubPixelPoints& pnts, const std::vector<cv::DMatch> matches);
         void drawMatchesGoodFeatures(const cv::Mat& lIm, const SubPixelPoints& pnts);
         void drawMatchesKeys(const cv::Mat& lIm, const std::vector<cv::Point2f>& keys1, const std::vector<cv::Point2f>& keys2, const std::vector<cv::DMatch> matches);

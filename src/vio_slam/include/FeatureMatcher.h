@@ -43,7 +43,6 @@ class FeatureMatcher
         const int gridRows, gridCols;
         const int maxMatches {1000};
         const int mnDisp;
-        const int closeNumber {40};
         const int thDist {75};
         const int matchDist {50};
         const int matchDistConVel {50};
@@ -68,6 +67,7 @@ class FeatureMatcher
 
         
     public:
+        const int closeNumber {40};
         const FeatureExtractor* feLeft, *feRight;
 
         FeatureMatcher(const Zed_Camera* _zed, const FeatureExtractor* _feLeft, const FeatureExtractor* _feRight, const int _imageHeight = 360, const int _gridRows = 5, const int _gridCols = 5, const int _stereoYSpan = 2);

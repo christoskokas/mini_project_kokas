@@ -2204,7 +2204,6 @@ int FeatureMatcher::matchByProjectionRPredLBAB(const Zed_Camera* zedCam, const K
     return nMatches;
 }
 
-
 int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<int>& matchedIdxsR, std::vector<std::pair<int,int>>& matchesIdxs, const float rad, const bool pred)
 {
     int nMatches {0};
@@ -2215,6 +2214,8 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
         std::pair<int,int>& keyPair = matchesIdxs[i];
         MapPoint* mp = activeMapPoints[i];
         if ( keyPair.first >= 0 || keyPair.second >= 0 )
+            continue;
+        if ( mp->desc.empty() )
             continue;
         const cv::Mat& mpDesc = mp->desc;
         int predScaleLevel = mp->scaleLevelL;
@@ -3030,7 +3031,7 @@ void FeatureMatcher::findStereoMatchesORB2R(const cv::Mat& lImage, const cv::Mat
     keysLeft.estimatedDepth.resize(leftEnd, -1.0f);
     keysLeft.close.resize(leftEnd, false);
     keysLeft.rightIdxs.resize(leftEnd, -1);
-    keysLeft.leftIdxs.resize(keysLeft.rightKeyPoints.size(), -1);
+    keysLeft.leftIdxs.resize(rightKeys.size(), -1);
 
     int leftRow {0};
     int matchesCount {0};
@@ -3039,9 +3040,7 @@ void FeatureMatcher::findStereoMatchesORB2R(const cv::Mat& lImage, const cv::Mat
     const float minD = 0;
     const float maxD = zedptr->cameraLeft.fx;
 
-    // Because we use FAST to detect Features the sliding window will get a window of side 11 pixels (5 (3 + 2offset) pixels radius + 1 which is the feature)
     const int windowRadius {5};
-    // Because of the EdgeThreshold used around the image we dont need to check out of bounds
 
     const int windowMovementX {5};
     std::vector<std::pair<float,int>> allDepths;

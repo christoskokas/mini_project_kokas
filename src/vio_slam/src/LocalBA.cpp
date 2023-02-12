@@ -758,7 +758,7 @@ void LocalMapper::addMultiViewMapPointsRB(const Eigen::Vector4d& posW, const std
             }
             else if ( keyPos.second >= 0 )
             {
-                mp = new MapPoint(posW, temp.rightDesc.row(keyPos.second),temp.rightKeyPoints[keyPos.second], temp.close[keyPos.second], lastKF->numb, mpIdx);
+                mp = new MapPoint(posW, temp.rightDesc.row(keyPos.second),temp.rightKeyPoints[keyPos.second], false, lastKF->numb, mpIdx);
             }
             break;
         }
