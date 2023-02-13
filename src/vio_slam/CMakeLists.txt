@@ -143,3 +143,6 @@ target_link_libraries(VSLAMTwoCam ${PROJECT_NAME})
 
 add_executable(VSLAMOneCamRT src/VSLAMOneCamRT.cpp)
 target_link_libraries(VSLAMOneCamRT ${PROJECT_NAME})
+
+add_executable(VSLAMTwoCamRT src/VSLAMTwoCamRT.cpp)
+target_link_libraries(VSLAMTwoCamRT ${PROJECT_NAME})

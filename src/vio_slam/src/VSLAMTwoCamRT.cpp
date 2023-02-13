@@ -123,8 +123,8 @@ int main (int argc, char **argv)
 
     ros::NodeHandle nh;
 
-    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/kitti/camera_gray/left/image_rect", 1);
-    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/kitti/camera_gray/right/image_rect", 1);
+    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/camera_1/left/image_rect", 1);
+    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/camera_1/right/image_rect", 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub);
     sync.registerCallback(boost::bind(&GetImagesROS::getImages,&imgROS,_1,_2));

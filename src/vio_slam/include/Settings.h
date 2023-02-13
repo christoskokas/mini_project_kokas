@@ -8,8 +8,8 @@
 #include <yaml-cpp/yaml.h>
 #include <chrono>
 
-#define KITTI_DATASET true
-#define KITTI_SEQ "01"
+#define KITTI_DATASET false
+#define KITTI_SEQ "00"
 #define ZED_DATASET false
 #define ZED_DEMO false
 #define V1_02 false

@@ -5872,11 +5872,24 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     cv::Mat realLeftIm, realRightIm;
     cv::Mat leftIm, rightIm;
 
-    realLeftIm = leftRect.clone();
-    realRightIm = rightRect.clone();
+    realLeftIm = leftRect;
+    realRightIm = rightRect;
 
-    cv::cvtColor(realLeftIm, leftIm, cv::COLOR_BGR2GRAY);
-    cv::cvtColor(realRightIm, rightIm, cv::COLOR_BGR2GRAY);
+    if(realLeftIm.channels()==3)
+    {
+        cvtColor(realLeftIm,leftIm,cv::COLOR_BGR2GRAY);
+        cvtColor(realRightIm,rightIm,cv::COLOR_BGR2GRAY);
+    }
+    else if(realLeftIm.channels()==4)
+    {
+        cvtColor(realLeftIm,leftIm,cv::COLOR_BGRA2GRAY);
+        cvtColor(realRightIm,rightIm,cv::COLOR_BGRA2GRAY);
+    }
+    else
+    {
+        leftIm = realLeftIm.clone();
+        rightIm = realRightIm.clone();
+    }
     
     TrackedKeys keysLeft;
 
