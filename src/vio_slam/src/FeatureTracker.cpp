@@ -2894,8 +2894,8 @@ bool FeatureTracker::check2dError(Eigen::Vector4d& p4d, const cv::Point2f& obs, 
     const double u {fx*p4d(0)*invZ + cx};
     const double v {fy*p4d(1)*invZ + cy};
 
-    const double errorU = weight * ((double)obs.x - u);
-    const double errorV = weight * ((double)obs.y - v);
+    const double errorU = ((double)obs.x - u);
+    const double errorV = ((double)obs.y - v);
 
     const double error = (errorU * errorU + errorV * errorV) * weight;
     if (error > thres)

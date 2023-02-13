@@ -20,9 +20,15 @@ namespace vio_slam
 class System
 {
 
-    private:
+        private:
 
-    public:
+        // image_transport::ImageTransport m_it;
+        // message_filters::Subscriber<sensor_msgs::Image> subLeftIm;
+        // message_filters::Subscriber<sensor_msgs::Image> subRightIm;
+        // message_filters::Synchronizer<MySyncPolicy> img_sync;
+                
+
+        public:
 
 #if KITTI_DATASET
         const int nFeatures {2000};
@@ -36,6 +42,12 @@ class System
         void SLAM();
         void MultiSLAM();
         void MultiSLAM2();
+        void trackNewImage(const cv::Mat& imLRect, const cv::Mat& imRRect, const int frameNumb);
+        void trackNewImageMutli(const cv::Mat& imLRect, const cv::Mat& imRRect, const cv::Mat& imLRectB, const cv::Mat& imRRectB, const int frameNumb);
+
+        void exitSystem();
+
+        // void ImagesCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
 
         std::thread* Visual;
         std::thread* Tracking;

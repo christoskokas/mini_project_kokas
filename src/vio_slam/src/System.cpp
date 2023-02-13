@@ -664,6 +664,22 @@ void System::MultiSLAM2()
 
 }
 
+void System::trackNewImage(const cv::Mat& imLRect, const cv::Mat& imRRect, const int frameNumb)
+{
+    featTracker->TrackImageT(imLRect, imRRect, frameNumb);
+}
+
+void System::trackNewImageMutli(const cv::Mat& imLRect, const cv::Mat& imRRect, const cv::Mat& imLRectB, const cv::Mat& imRRectB, const int frameNumb)
+{
+    featTracker->TrackImageTB(imLRect, imRRect, imLRectB, imRRectB, frameNumb);
+}
+
+void System::exitSystem()
+{
+    Visual->join();
+    LocalMapping->join();
+}
+
 bool System::checkDisplacement(Eigen::Matrix4d& estimPose, Eigen::Matrix4d& estimPoseB, Eigen::Matrix4d& predPose, Eigen::Matrix4d& transfC1C2Inv, Eigen::Matrix4d& transfC1C2)
 {
     Eigen::Vector3d newV = (estimPose.block<3,1>(0,3) - prevT).cwiseAbs();

@@ -134,3 +134,12 @@ target_link_libraries(Trial ${PROJECT_NAME})
 
 add_executable(MultiSlam src/MultiSlam.cpp)
 target_link_libraries(MultiSlam ${PROJECT_NAME})
+
+add_executable(VSLAMOneCam src/VSLAMOneCam.cpp)
+target_link_libraries(VSLAMOneCam ${PROJECT_NAME})
+
+add_executable(VSLAMTwoCam src/VSLAMTwoCam.cpp)
+target_link_libraries(VSLAMTwoCam ${PROJECT_NAME})
+
+add_executable(VSLAMOneCamRT src/VSLAMOneCamRT.cpp)
+target_link_libraries(VSLAMOneCamRT ${PROJECT_NAME})

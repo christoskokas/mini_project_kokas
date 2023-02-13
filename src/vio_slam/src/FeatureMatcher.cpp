@@ -2311,9 +2311,9 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
         if ( bestDist > matchDistProj )
             continue;
         
-        if (bestLev == bestLev2 && bestDist >= ratioProj * secDist )
+        if ( bestLev == bestLev2 && bestDist >= ratioProj * secDist )
             continue;
-        if (bestLev != bestLev2 || bestDist < ratioProj * secDist)
+        if ( bestLev != bestLev2 || bestDist < ratioProj * secDist )
         {
             nMatches ++;
             if ( right )
