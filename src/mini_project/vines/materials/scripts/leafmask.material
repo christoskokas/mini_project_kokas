@@ -101,3 +101,59 @@ material Vine/Bark
         }
     }
 }
+
+material Obj/Radiator
+{
+    technique
+    {
+        pass
+        {
+            texture_unit
+            {
+                texture radiatior.png
+            }
+        }
+    }
+}
+
+material Obj/Table
+{
+    technique
+    {
+        pass
+        {
+            texture_unit
+            {
+                texture table.jpeg
+            }
+        }
+    }
+}
+
+material Obj/Wall
+{
+    technique
+    {
+        pass
+        {
+            texture_unit
+            {
+                texture wall.png
+            }
+        }
+    }
+}
+
+material Obj/Floor
+{
+    technique
+    {
+        pass
+        {
+            texture_unit
+            {
+                texture floor.jpg
+            }
+        }
+    }
+}
