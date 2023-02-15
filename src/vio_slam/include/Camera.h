@@ -33,10 +33,6 @@ class CameraPose
     private:
         double vx {}, vy {}, vz {};
     public:
-        Eigen::Matrix4d Twc = Eigen::Matrix4d::Identity();
-        Eigen::Matrix4d Tcw = Eigen::Matrix4d::Identity();
-        Eigen::Matrix4d rTwc = Eigen::Matrix4d::Identity();
-        Eigen::Matrix4d rTcw = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d refPose = Eigen::Matrix4d::Identity();
         Eigen::Matrix3d Rv;

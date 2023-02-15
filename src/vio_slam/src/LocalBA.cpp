@@ -1059,50 +1059,9 @@ void LocalMapper::addNewMapPoints(KeyFrame* lastKF, std::vector<MapPoint*>& poin
     std::lock_guard<std::mutex> lock(map->mapMutex);
     for (size_t i{0}, end{pointsToAdd.size()}; i < end; i++ )
     {
-        // const KeyFrame* kFmatch = matchedIdxs[i][0].first;
-        // const std::pair<int,int>& keyPos = matchedIdxs[i][0].second;
-        // MapPoint* mp = nullptr;
-        // if ( kFmatch->numb == lastKFNumb)
-        // {
-        //     if (keyPos.first >= 0 )
-        //         mp = lastKF->localMapPoints[keyPos.first];
-        // }
-        // MapPoint* mp = nullptr;
-        // MapPoint* mpR = nullptr;
         MapPoint* newMp = pointsToAdd[i];
         if (!newMp )
             continue;
-        // std::unordered_map<vio_slam::KeyFrame *, std::pair<int, int>>::iterator it, endMp(newMp->kFMatches.end());
-        // for ( it = newMp->kFMatches.begin(); it != endMp; it++)
-        // {
-        //     KeyFrame* kFCand = it->first;
-        //     std::pair<int,int>& keyPos = it->second;
-        //     if ( kFCand->numb == lastKFNumb )
-        //     {
-        //         if ( keyPos.first >= 0 )
-        //             mp = kFCand->localMapPoints[keyPos.first];
-        //         if ( keyPos.second >= 0 )
-        //             mpR = kFCand->localMapPointsR[keyPos.second];
-        //         break;
-        //     }
-        // }
-        // bool add {false};
-        // if ( mp )
-        // {
-        //     mp->changeMp(newMp);
-        //     delete newMp;
-        // }
-        // else if ( mpR )
-        // {
-        //     mpR->changeMp(newMp);
-        //     mp = mpR;
-        //     delete newMp;
-        // }
-        // else
-        // {
-        //     add = true;
-        //     mp = newMp;
-        // }
         std::unordered_map<vio_slam::KeyFrame *, std::pair<int, int>>::iterator it, endMp(newMp->kFMatches.end());
         for ( it = newMp->kFMatches.begin(); it != endMp; it++)
         {
@@ -1114,7 +1073,6 @@ void LocalMapper::addNewMapPoints(KeyFrame* lastKF, std::vector<MapPoint*>& poin
         map->addMapPoint(newMp);
         newMapPointsCount ++;
     }
-    Logging("Success!", newMapPointsCount, 3);
 
 }
 
@@ -1147,7 +1105,6 @@ void LocalMapper::addNewMapPointsB(KeyFrame* lastKF, std::vector<MapPoint*>& poi
         map->addMapPoint(newMp);
         newMapPointsCount ++;
     }
-    std::cout << "back " << back << " new mps : " << newMapPointsCount << std::endl;
 }
 
 void LocalMapper::addToMapRemoveConB(Map* map, KeyFrame* lastKF, std::vector<MapPoint*>& pointsToAdd, std::vector<std::vector<std::pair<int, int>>>& matchedIdxs)
@@ -1943,7 +1900,6 @@ void LocalMapper::triangulateNewPointsR(std::vector<vio_slam::KeyFrame *>& activ
     // calcAllMpsOfKF(matchedIdxs, lastKF, allSeenKF, kFsize, p4d);
     const int aKFsize {actKeyF.size()};
     {
-    Timer matching("matching LBA");
     bool first = true;
     std::vector<KeyFrame*>::const_iterator it, end(actKeyF.end());
     for ( it = actKeyF.begin(); it != end; it++)
@@ -1955,8 +1911,6 @@ void LocalMapper::triangulateNewPointsR(std::vector<vio_slam::KeyFrame *>& activ
         // predict keys for both right and left camera
         predictKeysPosR(lastKF->keys, (*it)->pose.pose, (*it)->pose.poseInverse, keysAngles, p4d, predPoints);
         int matches = fm->matchByProjectionRPredLBA(lastKF, (*it), matchedIdxs, 4, predPoints, keysAngles, maxDistsScale, p4d, true);
-        // std::cout << "MATCHES LBA " << matches<< std::endl;
-        cv::waitKey(1);
         first = false;
         
     }
@@ -1965,7 +1919,6 @@ void LocalMapper::triangulateNewPointsR(std::vector<vio_slam::KeyFrame *>& activ
     // std::unordered_map<int, Eigen::Matrix<double,3,4>> allProjMatrices;
     std::unordered_map<KeyFrame*, std::pair<Eigen::Matrix<double,3,4>,Eigen::Matrix<double,3,4>>> allProjMatrices;
     allProjMatrices.reserve(2 * actKeyF.size());
-    Timer addingmp("addingmp");
     calcProjMatricesR(allProjMatrices, actKeyF);
     std::vector<MapPoint*> pointsToAdd;
     const size_t mpCandSize {matchedIdxs.size()};
@@ -2019,7 +1972,6 @@ void LocalMapper::triangulateNewPointsRB(const Zed_Camera* zedCam,std::vector<vi
 
     const int aKFsize {actKeyF.size()};
     {
-    Timer matching("matching LBA");
     std::vector<KeyFrame*>::const_iterator it, end(actKeyF.end());
     for ( it = actKeyF.begin(); it != end; it++)
     {
@@ -2037,7 +1989,6 @@ void LocalMapper::triangulateNewPointsRB(const Zed_Camera* zedCam,std::vector<vi
     // std::unordered_map<int, Eigen::Matrix<double,3,4>> allProjMatrices;
     std::unordered_map<KeyFrame*, std::pair<Eigen::Matrix<double,3,4>,Eigen::Matrix<double,3,4>>> allProjMatrices;
     allProjMatrices.reserve(2 * actKeyF.size());
-    Timer addingmp("addingmp");
     calcProjMatricesRB(zedCam,allProjMatrices, actKeyF, back);
     std::vector<MapPoint*> pointsToAdd;
     const size_t mpCandSize {matchedIdxs.size()};
@@ -2964,8 +2915,6 @@ void LocalMapper::localBAR(std::vector<vio_slam::KeyFrame *>& actKeyF)
         localKFs.erase(lastKF);
         fixedKFs[lastKF] = Converter::Matrix4dToMatrix_7_1(lastKF->pose.getInvPose());
     }
-    Logging("fixed size", fixedKFs.size(),3);
-    Logging("local size", localKFs.size(),3);
     std::vector<std::pair<KeyFrame*, MapPoint*>> wrongMatches;
     wrongMatches.reserve(blocks);
     std::vector<bool>mpOutliers;
@@ -2980,7 +2929,7 @@ void LocalMapper::localBAR(std::vector<vio_slam::KeyFrame *>& actKeyF)
     ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
     for (size_t iterations{0}; iterations < 2; iterations++)
     {
-    Timer baiter("baITER");
+    // Timer baiter("baITER");
     ceres::LossFunction* loss_function = nullptr;
     if (first)
         loss_function = new ceres::HuberLoss(sqrt(7.815f));
@@ -3085,7 +3034,8 @@ void LocalMapper::localBAR(std::vector<vio_slam::KeyFrame *>& actKeyF)
     // if ( !first )
         // Logging("summ", summary.FullReport(),3);
     // Logging("lelout", lelout, 3);
-    wrongMatches.clear();
+    std::vector<std::pair<KeyFrame*, MapPoint*>> emptyVec;
+    wrongMatches.swap(emptyVec);
 
     std::unordered_map<MapPoint*, Eigen::Vector3d>::iterator allmp, allmpend(allMapPoints.end());
     for (allmp = allMapPoints.begin(); allmp != allmpend; allmp ++)
@@ -3148,7 +3098,6 @@ void LocalMapper::localBAR(std::vector<vio_slam::KeyFrame *>& actKeyF)
         // localkf->first->active = true;
         localkf->first->LBA = true;
     }
-    Logging("MAPPOINTS SIZE LBA", allMapPoints.size(),3);
 
     int mpCount {0};
     std::unordered_map<MapPoint*, Eigen::Vector3d>::iterator itmp, mpend(allMapPoints.end());
@@ -3251,8 +3200,6 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
         localKFs.erase(lastKF);
         fixedKFs[lastKF] = Converter::Matrix4dToMatrix_7_1(lastKF->pose.getInvPose());
     }
-    Logging("fixed size", fixedKFs.size(),3);
-    Logging("local size", localKFs.size(),3);
     std::vector<std::pair<KeyFrame*, MapPoint*>> wrongMatches;
     wrongMatches.reserve(blocks);
     std::vector<bool>mpOutliers;
@@ -3275,7 +3222,6 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
     ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
     for (size_t iterations{0}; iterations < 2; iterations++)
     {
-    Timer baiter("baITER");
     ceres::LossFunction* loss_function = nullptr;
     if (first)
         loss_function = new ceres::HuberLoss(sqrt(7.815f));
@@ -3453,7 +3399,9 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
     // if ( !first )
         // Logging("summ", summary.FullReport(),3);
     // Logging("lelout", lelout, 3);
-    wrongMatches.clear();
+    std::vector<std::pair<KeyFrame*, MapPoint*>> emptyVec;
+    wrongMatches.swap(emptyVec);
+    // wrongMatches.clear();
 
     std::unordered_map<MapPoint*, Eigen::Vector3d>::iterator allmp, allmpend(allMapPoints.end());
     for (allmp = allMapPoints.begin(); allmp != allmpend; allmp ++)
@@ -3556,7 +3504,6 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
         // localkf->first->active = true;
         localkf->first->LBA = true;
     }
-    Logging("MAPPOINTS SIZE LBA", allMapPoints.size(),3);
 
     int mpCount {0};
     std::unordered_map<MapPoint*, Eigen::Vector3d>::iterator itmp, mpend(allMapPoints.end());
@@ -3612,32 +3559,16 @@ void LocalMapper::beginLocalMapping()
             actKeyF.reserve(20);
             actKeyF.emplace_back(lastKF);
             lastKF->getConnectedKFs(actKeyF, actvKFMaxSize);
-            // lastKF->getConnectedKFs(map, actKeyF, actvKFMaxSize);
             
-            // computeAllMapPoints(actKeyF);
-            // Logging("Before Triang","",3);
-            // Logging("After Triang","",3);
-            // Logging("After Local","",3);
             {
-            Timer triang("triang");
             triangulateNewPointsR(actKeyF);
             }
             {
-            Timer ba("ba");
             localBAR(actKeyF);
             }
 
-            // triangulateNewPoints(actKeyF);
-            // localBA(actKeyF);
-            // map->keyFrameAdded = false;
-            // map->LBADone = true;
         }
-        // else if( map->frameAdded )
-        // {
-        //     triangulateNewPoints();
-        //     map->frameAdded = false;
-        // }
-        std::this_thread::sleep_for(20ms);
+        std::this_thread::sleep_for(2ms);
     }
 }
 
@@ -3657,19 +3588,19 @@ void LocalMapper::beginLocalMappingB()
             actKeyF.emplace_back(lastKF);
             lastKF->getConnectedKFs(actKeyF, actvKFMaxSize);
             {
-            Timer triang("triang");
+            // Timer triang("triang");
             std::thread front(&LocalMapper::triangulateNewPointsRB, this, std::ref(zedPtr), std::ref(actKeyF), false);
             std::thread back(&LocalMapper::triangulateNewPointsRB, this, std::ref(zedPtrB), std::ref(actKeyF), true);
             front.join();
             back.join();
             }
             {
-            Timer ba("ba");
+            // Timer ba("ba");
             localBARB(actKeyF);
             }
 
         }
-        std::this_thread::sleep_for(20ms);
+        std::this_thread::sleep_for(2ms);
     }
 }
 

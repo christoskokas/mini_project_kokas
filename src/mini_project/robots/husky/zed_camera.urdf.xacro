@@ -101,7 +101,7 @@
 
     <gazebo reference="left_camera_frame_${numb}">
         <sensor type="multicamera" name="stereo_camera">
-        <update_rate>15.0</update_rate>
+        <update_rate>10.0</update_rate>
         <camera name="left">
             <horizontal_fov>1.91986218</horizontal_fov>
             <vertical_fov>1.22173048</vertical_fov>

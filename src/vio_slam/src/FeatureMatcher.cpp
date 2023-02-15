@@ -2207,15 +2207,12 @@ int FeatureMatcher::matchByProjectionRPredLBAB(const Zed_Camera* zedCam, const K
 int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<int>& matchedIdxsR, std::vector<std::pair<int,int>>& matchesIdxs, const float rad, const bool pred)
 {
     int nMatches {0};
-    const float angThresh = rad * 0.05;
 
     for ( size_t i {0}, prevE{activeMapPoints.size()}; i < prevE; i++)
     {
         std::pair<int,int>& keyPair = matchesIdxs[i];
         MapPoint* mp = activeMapPoints[i];
         if ( keyPair.first >= 0 || keyPair.second >= 0 )
-            continue;
-        if ( mp->desc.empty() )
             continue;
         const cv::Mat& mpDesc = mp->desc;
         int predScaleLevel = mp->scaleLevelL;

@@ -666,11 +666,15 @@ void System::MultiSLAM2()
 
 void System::trackNewImage(const cv::Mat& imLRect, const cv::Mat& imRRect, const int frameNumb)
 {
+    // std::thread track(&FeatureTracker::TrackImageT, featTracker,std::ref(imLRect), std::ref(imRRect), std::ref(frameNumb));
+    // track.join();
     featTracker->TrackImageT(imLRect, imRRect, frameNumb);
 }
 
 void System::trackNewImageMutli(const cv::Mat& imLRect, const cv::Mat& imRRect, const cv::Mat& imLRectB, const cv::Mat& imRRectB, const int frameNumb)
 {
+    // std::thread track(&FeatureTracker::TrackImageTB, featTracker,std::ref(imLRect), std::ref(imRRect),std::ref(imLRectB), std::ref(imRRectB), std::ref(frameNumb));
+    // track.join();
     featTracker->TrackImageTB(imLRect, imRRect, imLRectB, imRRectB, frameNumb);
 }
 

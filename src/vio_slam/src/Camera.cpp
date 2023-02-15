@@ -25,7 +25,6 @@ void CameraPose::setPose(const Eigen::Matrix4d& poseT)
 {
     pose = poseT;
     poseInverse = poseT.inverse();
-    separatePose();
     // Eigen::Matrix4d temp = poseT.inverse();
     // poseInverse = temp;
     timestamp = std::chrono::high_resolution_clock::now();

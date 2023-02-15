@@ -87,28 +87,9 @@ int main (int argc, char **argv)
 
     GetImagesROS imgROS(voSLAM);
 
-    const vio_slam::Zed_Camera* mZedCamera = voSLAM->mZedCamera;
+    vio_slam::Zed_Camera* mZedCamera = voSLAM->mZedCamera;
 
-    const int nFrames {mZedCamera->numOfFrames};
-    std::vector<std::string>leftImagesStr, rightImagesStr;
-    leftImagesStr.reserve(nFrames);
-    rightImagesStr.reserve(nFrames);
-
-    const std::string imagesPath = confFile->getValue<std::string>("imagesPath");
-
-    const std::string leftPath = imagesPath + "left/";
-    const std::string rightPath = imagesPath + "right/";
-    const std::string fileExt = confFile->getValue<std::string>("fileExtension");
-
-    const size_t imageNumbLength = 6;
-
-    for ( size_t i {0}; i < nFrames; i++)
-    {
-        std::string frameNumb = std::to_string(i);
-        std::string frameStr = std::string(imageNumbLength - std::min(imageNumbLength, frameNumb.length()), '0') + frameNumb;
-        leftImagesStr.emplace_back(leftPath + frameStr + fileExt);
-        rightImagesStr.emplace_back(rightPath + frameStr + fileExt);
-    }
+    mZedCamera->numOfFrames = INT_MAX;
 
     const int width = mZedCamera->mWidth;
     const int height = mZedCamera->mHeight;
@@ -121,10 +102,19 @@ int main (int argc, char **argv)
 
     }
 
+    cv::Mat im(mZedCamera->mHeight, mZedCamera->mWidth, CV_8UC3, cv::Scalar(0, 0, 0));
+    cv::namedWindow("Tracked KeyPoints");
+    cv::imshow("Tracked KeyPoints", im);
+    cv::waitKey(1000);
+
+
     ros::NodeHandle nh;
 
-    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/kitti/camera_gray/left/image_rect", 1);
-    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/kitti/camera_gray/right/image_rect", 1);
+    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/camera_1/left/image_rect", 1);
+    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/camera_1/right/image_rect", 1);
+
+    // message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/kitti/camera_gray/left/image_rect", 1);
+    // message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/kitti/camera_gray/right/image_rect", 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub);
     sync.registerCallback(boost::bind(&GetImagesROS::getImages,&imgROS,_1,_2));

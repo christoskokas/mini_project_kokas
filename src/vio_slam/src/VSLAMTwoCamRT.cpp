@@ -33,11 +33,12 @@ class GetImagesROS
     public:
         GetImagesROS(vio_slam::System* _voSLAM) : voSLAM(_voSLAM){};
 
-        void getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight);
+        void getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight, const sensor_msgs::ImageConstPtr& msgLeftB,const sensor_msgs::ImageConstPtr& msgRightB);
 
         vio_slam::System* voSLAM;
 
         cv::Mat rectMap[2][2];
+        cv::Mat rectMapB[2][2];
         int frameNumb {0};
 };
 
@@ -87,28 +88,12 @@ int main (int argc, char **argv)
 
     GetImagesROS imgROS(voSLAM);
 
-    const vio_slam::Zed_Camera* mZedCamera = voSLAM->mZedCamera;
+    vio_slam::Zed_Camera* mZedCamera = voSLAM->mZedCamera;
+    vio_slam::Zed_Camera* mZedCameraB = voSLAM->mZedCameraB;
 
-    const int nFrames {mZedCamera->numOfFrames};
-    std::vector<std::string>leftImagesStr, rightImagesStr;
-    leftImagesStr.reserve(nFrames);
-    rightImagesStr.reserve(nFrames);
+    mZedCamera->numOfFrames = INT_MAX;
+    mZedCameraB->numOfFrames = INT_MAX;
 
-    const std::string imagesPath = confFile->getValue<std::string>("imagesPath");
-
-    const std::string leftPath = imagesPath + "left/";
-    const std::string rightPath = imagesPath + "right/";
-    const std::string fileExt = confFile->getValue<std::string>("fileExtension");
-
-    const size_t imageNumbLength = 6;
-
-    for ( size_t i {0}; i < nFrames; i++)
-    {
-        std::string frameNumb = std::to_string(i);
-        std::string frameStr = std::string(imageNumbLength - std::min(imageNumbLength, frameNumb.length()), '0') + frameNumb;
-        leftImagesStr.emplace_back(leftPath + frameStr + fileExt);
-        rightImagesStr.emplace_back(rightPath + frameStr + fileExt);
-    }
 
     const int width = mZedCamera->mWidth;
     const int height = mZedCamera->mHeight;
@@ -121,13 +106,32 @@ int main (int argc, char **argv)
 
     }
 
+    if ( !mZedCameraB->rectified )
+    {
+        cv::Mat R1,R2;
+        cv::initUndistortRectifyMap(mZedCameraB->cameraLeft.K, mZedCameraB->cameraLeft.D, mZedCameraB->cameraLeft.R, mZedCameraB->cameraLeft.P.rowRange(0,3).colRange(0,3), cv::Size(width, height), CV_32F, imgROS.rectMapB[0][0], imgROS.rectMapB[0][1]);
+        cv::initUndistortRectifyMap(mZedCameraB->cameraRight.K, mZedCameraB->cameraRight.D, mZedCameraB->cameraRight.R, mZedCameraB->cameraRight.P.rowRange(0,3).colRange(0,3), cv::Size(width, height), CV_32F, imgROS.rectMapB[1][0], imgROS.rectMapB[1][1]);
+
+    }
+
+    cv::Mat im(mZedCamera->mHeight, mZedCamera->mWidth, CV_8UC3, cv::Scalar(0, 0, 0));
+    cv::namedWindow("Tracked KeyPoints");
+    cv::imshow("Tracked KeyPoints", im);
+    cv::waitKey(1);
+
+    cv::namedWindow("Tracked KeyPointsB");
+    cv::imshow("Tracked KeyPointsB", im);
+    cv::waitKey(1000);
+
     ros::NodeHandle nh;
 
     message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/camera_1/left/image_rect", 1);
     message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/camera_1/right/image_rect", 1);
-    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
-    message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub);
-    sync.registerCallback(boost::bind(&GetImagesROS::getImages,&imgROS,_1,_2));
+    message_filters::Subscriber<sensor_msgs::Image> left_subB(nh, "/camera_4/left/image_rect", 1);
+    message_filters::Subscriber<sensor_msgs::Image> right_subB(nh, "/camera_4/right/image_rect", 1);
+    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::Image> sync_pol;
+    message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub, left_subB,right_subB);
+    sync.registerCallback(boost::bind(&GetImagesROS::getImages,&imgROS,_1,_2, _3,_4));
 
     ros::spin();
 
@@ -138,7 +142,7 @@ int main (int argc, char **argv)
     return 0;
 }
 
-void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight)
+void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight, const sensor_msgs::ImageConstPtr& msgLeftB,const sensor_msgs::ImageConstPtr& msgRightB)
 {
     // Copy the ros image message to cv::Mat.
     cv_bridge::CvImageConstPtr cv_ptrLeft;
@@ -163,26 +167,60 @@ void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sen
         return;
     }
 
+    cv_bridge::CvImageConstPtr cv_ptrLeftB;
+    try
+    {
+        cv_ptrLeftB = cv_bridge::toCvShare(msgLeftB);
+    }
+    catch (cv_bridge::Exception& e)
+    {
+        ROS_ERROR("cv_bridge exception: %s", e.what());
+        return;
+    }
+
+    cv_bridge::CvImageConstPtr cv_ptrRightB;
+    try
+    {
+        cv_ptrRightB = cv_bridge::toCvShare(msgRightB);
+    }
+    catch (cv_bridge::Exception& e)
+    {
+        ROS_ERROR("cv_bridge exception: %s", e.what());
+        return;
+    }
+
     cv::Mat imLeft, imRight;
+    cv::Mat imLeftB, imRightB;
     if( !voSLAM->mZedCamera->rectified )
     {
         cv::remap(cv_ptrLeft->image,imLeft, rectMap[0][0],rectMap[0][1],cv::INTER_LINEAR);
         cv::remap(cv_ptrRight->image,imRight,rectMap[1][0],rectMap[1][1],cv::INTER_LINEAR);
-        voSLAM->trackNewImage(imLeft, imRight, frameNumb);
+    }
+    if( !voSLAM->mZedCameraB->rectified )
+    {
+        cv::remap(cv_ptrLeftB->image,imLeftB, rectMapB[0][0],rectMapB[0][1],cv::INTER_LINEAR);
+        cv::remap(cv_ptrRightB->image,imRightB,rectMapB[1][0],rectMapB[1][1],cv::INTER_LINEAR);
+    }
+    if ( cv_ptrLeft->image.channels() == 1 )
+    {
+        cv::cvtColor(cv_ptrLeft->image, imLeft, CV_GRAY2BGR);
+        cv::cvtColor(cv_ptrRight->image, imRight, CV_GRAY2BGR);
     }
     else
     {
-        if ( cv_ptrLeft->image.channels() == 1 )
-        {
-            cv::cvtColor(cv_ptrLeft->image, imLeft, CV_GRAY2BGR);
-            cv::cvtColor(cv_ptrRight->image, imRight, CV_GRAY2BGR);
-        }
-        else
-        {
-            imLeft = cv_ptrLeft->image;
-            imRight = cv_ptrRight->image;
-        }
-        voSLAM->trackNewImage(imLeft, imRight, frameNumb);
+        imLeft = cv_ptrLeft->image;
+        imRight = cv_ptrRight->image;
     }
+    if ( cv_ptrLeftB->image.channels() == 1 )
+    {
+        cv::cvtColor(cv_ptrLeftB->image, imLeftB, CV_GRAY2BGR);
+        cv::cvtColor(cv_ptrRightB->image, imRightB, CV_GRAY2BGR);
+    }
+    else
+    {
+        imLeftB = cv_ptrLeftB->image;
+        imRightB = cv_ptrRightB->image;
+    }
+    voSLAM->trackNewImageMutli(imLeft, imRight, imLeftB, imRightB, frameNumb);
     frameNumb ++;
 }

@@ -277,11 +277,9 @@ void CameraFrame::Render(const pangolin::RenderParams&)
 void CameraFrame::drawPoints()
 {
     glColor3f(1.0f,1.0f,1.0f);
-    // std::lock_guard<std::mutex> lock(map->mapMutex);
     glBegin(GL_POINTS);
 
 
-    // std::lock_guard<std::mutex> lock(map->mapMutex);
     std::unordered_map<unsigned long, MapPoint*> mapMapP = map->mapPoints;
     std::unordered_map<unsigned long, MapPoint*>::const_iterator itw, endw(mapMapP.end());
     for ( itw = mapMapP.begin(); itw != endw; itw ++)
@@ -327,7 +325,6 @@ void CameraFrame::drawKeyFrames()
     const float z = w*0.3;
 
     glColor3f(0.0f,1.0f,0.0f);
-    // std::lock_guard<std::mutex> lock(map->mapMutex);
     std::unordered_map<unsigned long, KeyFrame*> mapKeyF = map->keyFrames;
     std::unordered_map<unsigned long,KeyFrame*>::const_iterator it, end(mapKeyF.end());
     for ( it = mapKeyF.begin(); it != end; it ++)
@@ -498,7 +495,6 @@ void CameraFrame::lineFromKeyFrameToCamera()
         return;
     glPushMatrix();
     glLineWidth(1);
-    // std::lock_guard<std::mutex> lock(map->mapMutex);
     std::unordered_map<unsigned long, KeyFrame*> mapKeyF = map->keyFrames;
     std::unordered_map<unsigned long, KeyFrame*>::const_iterator it, end(mapKeyF.end());
     glBegin(GL_LINES);
