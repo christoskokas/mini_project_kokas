@@ -22,6 +22,7 @@
 #include <boost/foreach.hpp>
 #include <thread>
 #include <yaml-cpp/yaml.h>
+#include <signal.h>
 
 // TODO MUTEX THREAD FOR FEATURE MATCHING AND LOOP 
 // CLOSING SO THAT THE PROGRAM CONTINUES WHILE SEARCHING FOR LOOP CLOSING
@@ -42,6 +43,12 @@ class GetImagesROS
         int frameNumb {0};
 };
 
+void signal_callback_handler(int signum) {
+    std::cout << "Caught signal " << signum << std::endl;
+    ros::shutdown();
+    // Terminate program
+}
+
 int main (int argc, char **argv)
 {
 #if KITTI_DATASET
@@ -61,8 +68,9 @@ int main (int argc, char **argv)
     // vio_slam::ConfigFile yamlFile("config.yaml");
 #endif
 
-    ros::init(argc, argv, "RGBD");
+    ros::init(argc, argv, "Double Stereo");
     ros::start();
+    signal(SIGINT, signal_callback_handler);
 
     vio_slam::ConfigFile* confFile = new vio_slam::ConfigFile(file.c_str());
 
@@ -135,9 +143,12 @@ int main (int argc, char **argv)
 
     ros::spin();
 
+    std::cout << "System Shutdown!" << std::endl;
     voSLAM->exitSystem();
-
-    ros::shutdown();
+    std::cout << "Saving Trajectory.." << std::endl;
+    voSLAM->saveTrajectoryAndPosition("camTrajectory.txt", "camPosition.txt");
+    std::cout << "Trajectory Saved!" << std::endl;
+    exit(SIGINT);
 
     return 0;
 }

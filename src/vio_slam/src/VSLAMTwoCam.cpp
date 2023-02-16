@@ -18,12 +18,18 @@
 #include <boost/foreach.hpp>
 #include <thread>
 #include <yaml-cpp/yaml.h>
+#include <signal.h>
+
+volatile sig_atomic_t flag = 0;
 
 // TODO MUTEX THREAD FOR FEATURE MATCHING AND LOOP 
 // CLOSING SO THAT THE PROGRAM CONTINUES WHILE SEARCHING FOR LOOP CLOSING
 
 // TODO NOW Change camera cpp, add transform from imu to camera
 
+void signal_callback_handler(int signum) {
+    flag = 1;
+}
 
 int main (int argc, char **argv)
 {
@@ -44,7 +50,7 @@ int main (int argc, char **argv)
     // vio_slam::ConfigFile yamlFile("config.yaml");
 #endif
 
-    
+    signal(SIGINT, signal_callback_handler);
 
     vio_slam::ConfigFile* confFile = new vio_slam::ConfigFile(file.c_str());
 
@@ -158,9 +164,18 @@ int main (int argc, char **argv)
         if ( duration < timeBetFrames )
             usleep((timeBetFrames-duration)*1e6);
 
+        if ( flag == 1 )
+            break;
+
     }
 
+    
+    std::cout << "System Shutdown!" << std::endl;
     voSLAM->exitSystem();
+    std::cout << "Saving Trajectory.." << std::endl;
+    voSLAM->saveTrajectoryAndPosition("camTrajectory.txt", "camPosition.txt");
+    std::cout << "Trajectory Saved!" << std::endl;
+    exit(SIGINT);
 
 
 }

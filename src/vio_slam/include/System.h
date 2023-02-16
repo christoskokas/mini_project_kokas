@@ -44,6 +44,8 @@ class System
         void MultiSLAM2();
         void trackNewImage(const cv::Mat& imLRect, const cv::Mat& imRRect, const int frameNumb);
         void trackNewImageMutli(const cv::Mat& imLRect, const cv::Mat& imRRect, const cv::Mat& imLRectB, const cv::Mat& imRRectB, const int frameNumb);
+        void saveTrajectory(const std::string& filepath);
+        void saveTrajectoryAndPosition(const std::string& filepath, const std::string& filepathPosition);
 
         void exitSystem();
 

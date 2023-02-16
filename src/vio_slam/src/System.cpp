@@ -664,6 +664,76 @@ void System::MultiSLAM2()
 
 }
 
+void System::saveTrajectory(const std::string& filepath)
+{
+    std::vector<KeyFrame*>& allFrames = map->allFramesPoses;
+    KeyFrame* closeKF = allFrames[0];
+    std::ofstream datafile(filepath);
+    std::vector<KeyFrame*>::iterator it;
+    std::vector<KeyFrame*>::const_iterator end(allFrames.end());
+    for ( it = allFrames.begin(); it != end; it ++)
+    {
+        KeyFrame* candKF = *it;
+        Eigen::Matrix4d matT;
+        if ( candKF->keyF )
+        {
+            matT = candKF->pose.pose;
+            closeKF = candKF;
+        }
+        else
+        {
+            matT = (candKF->pose.refPose * closeKF->pose.getPose());
+        }
+        Eigen::Matrix4d mat = matT.transpose();
+        for (int32_t i{0}; i < 12; i ++)
+        {
+            if ( i == 0 )
+                datafile << mat(i);
+            else
+                datafile << " " << mat(i);
+        }
+        datafile << '\n';
+    }
+
+}
+
+void System::saveTrajectoryAndPosition(const std::string& filepath, const std::string& filepathPosition)
+{
+    std::vector<KeyFrame*>& allFrames = map->allFramesPoses;
+    KeyFrame* closeKF = allFrames[0];
+    std::ofstream datafile(filepath);
+    std::ofstream datafilePos(filepathPosition);
+    std::vector<KeyFrame*>::iterator it;
+    std::vector<KeyFrame*>::const_iterator end(allFrames.end());
+    for ( it = allFrames.begin(); it != end; it ++)
+    {
+        KeyFrame* candKF = *it;
+        Eigen::Matrix4d matT;
+        if ( candKF->keyF )
+        {
+            matT = candKF->pose.pose;
+            closeKF = candKF;
+        }
+        else
+        {
+            matT = (candKF->pose.refPose * closeKF->pose.getPose());
+        }
+        Eigen::Matrix4d mat = matT.transpose();
+        for (int32_t i{0}; i < 12; i ++)
+        {
+            if ( i == 0 )
+                datafile << mat(i);
+            else
+                datafile << " " << mat(i);
+            if ( i == 3 || i == 7 || i == 11 )
+                datafilePos << mat(i) << " ";
+        }
+        datafile << '\n';
+        datafilePos << '\n';
+    }
+
+}
+
 void System::trackNewImage(const cv::Mat& imLRect, const cv::Mat& imRRect, const int frameNumb)
 {
     // std::thread track(&FeatureTracker::TrackImageT, featTracker,std::ref(imLRect), std::ref(imRRect), std::ref(frameNumb));
@@ -680,6 +750,8 @@ void System::trackNewImageMutli(const cv::Mat& imLRect, const cv::Mat& imRRect, 
 
 void System::exitSystem()
 {
+    mFrame->stopRequested = true;
+    localMap->stopRequested = true;
     Visual->join();
     LocalMapping->join();
 }

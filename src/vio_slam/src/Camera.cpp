@@ -63,7 +63,7 @@ Zed_Camera::Zed_Camera(ConfigFile* yamlFile)
 {
     confFile = yamlFile;
     rectified = confFile->getValue<bool>("rectified");
-    numOfFrames = confFile->getValue<int>("numOfFrames");
+    numOfFrames = confFile->getValue<int>("numOfFrames"); 
 #if KITTI_DATASET
     seq = confFile->getValue<std::string>("seq");
 #endif

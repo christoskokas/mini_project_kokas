@@ -46,6 +46,9 @@ class ViewFrame
     private:
 
     public:
+
+        bool stopRequested {false};
+    
         ViewFrame();
         std::list< KeyFrameVars > keyFrames;
         void pangoQuit(Zed_Camera* zedPtr, const Map* _map);                    

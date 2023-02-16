@@ -30,6 +30,8 @@ class LocalMapper
 
     public:
 
+        bool stopRequested {false};
+
         const double fx,fy,cx,cy;
 
         Map* map;

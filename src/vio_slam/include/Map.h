@@ -125,6 +125,7 @@ class Map
         std::vector<MapPoint*> activeMapPoints;
         std::vector<MapPoint*> activeMapPointsB;
         std::vector<KeyFrame*> activeKeyFrames;
+        std::vector<KeyFrame*> allFramesPoses;
         unsigned long kIdx {0};
         unsigned long pIdx {0};
         

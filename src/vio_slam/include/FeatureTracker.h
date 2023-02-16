@@ -84,6 +84,7 @@ class FeatureTracker
         std::vector<MapPoint*>& activeMapPoints;
         std::vector<MapPoint*>& activeMapPointsB;
         std::vector<KeyFrame*>& activeKeyFrames;
+        std::vector<KeyFrame*>& allFrames;
 
         // std::vector<int> activeMapPointsCorr;
         std::vector<int> mPPerKeyFrame;
@@ -166,7 +167,6 @@ class FeatureTracker
         bool bigRot {false};
         bool redo {false};
         bool newKeyFrame {false};
-        std::vector<KeyFrame*> allFrames;
         cv::Mat prevF;
 
         SubPixelPoints tr;
@@ -222,6 +222,7 @@ class FeatureTracker
         bool check2dErrorB(const Zed_Camera* zedCam, Eigen::Vector4d& p4d, const cv::Point2f& obs, const double thres, const float weight);
         void newPredictMPsB(const Zed_Camera* zedCam, const Eigen::Matrix4d& predNPose, std::vector<MapPoint*>& activeMapPoints, std::vector<int>& matchedIdxsL, std::vector<int>& matchedIdxsR, std::vector<std::pair<int,int>>& matchesIdxs, std::vector<bool> &MPsOutliers);
         void insertKeyFrameRB(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<std::pair<int,int>>& matchesIdxs, std::vector<bool>& MPsOutliers, TrackedKeys& keysLeftB, std::vector<int>& matchedIdxsLB, std::vector<std::pair<int,int>>& matchesIdxsB, std::vector<bool>& MPsOutliersB, const int nStereo, const int nStereoB, const Eigen::Matrix4d& estimPose, const cv::Mat& leftIm);
+        void addFrame(const Eigen::Matrix4d& estimPose);
 
         int findOutliersR(const Eigen::Matrix4d& estimatedP, std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<std::pair<int,int>>& matchesIdxs, const double thres, std::vector<bool>& MPsOutliers, const std::vector<float>& weights, int& nInliers);
         void initializeMapR(TrackedKeys& keysLeft);

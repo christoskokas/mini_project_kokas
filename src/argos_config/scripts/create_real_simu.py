@@ -147,14 +147,6 @@ def create_models_string(tree_name, dif,pose):
         </script>
       </material>
     </visual>
-    <collision name='tree_col'>
-      <pose>0 0 0.5 0 0 0</pose>
-      <geometry>
-        <box>
-          <size>0.3 0.3 1 </size>
-        </box>
-      </geometry>
-    </collision>
     <self_collide>0</self_collide>
     <enable_wind>0</enable_wind>
     <kinematic>0</kinematic>

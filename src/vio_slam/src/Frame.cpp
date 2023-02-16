@@ -56,50 +56,10 @@ void ViewFrame::pangoQuit(Zed_Camera* zedPtr, const Map* _map)
     camera->drawCamera();
     pangolin::CreatePanel("ui").SetBounds(0.0, 1.0, 0.0, pangolin::Attach::Pix(UI_WIDTH));
     pangolin::Var<bool> a_button("ui.Button", false, false);
-    while(!pangolin::ShouldQuit() )
+    while( 1 )
     {
-        // Clear screen and activate view to render into
-        // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        // // glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
-        // auto lines = std::make_shared<Lines>();    
-        // lines->getValues(temp.mT,camera->T_pc.m);
-        // if (zedPtr->addKeyFrame)
-        // {
-        //     {
-        //         zedPtr->addKeyFrame = false;
-        //         auto keyframe = std::make_shared<CameraFrame>();
-        //         keyframe->T_pc = camera->T_pc;
-        //         // keyframe->mPointCloud = camera->mPointCloud;
-        //         keyframe->color = "B";
-        //         // renders.Add(keyframe);
-        //     }
-        //     renders.Add(lines);
-        //     temp.clear();
-        //     for (size_t i = 0; i < 16; i++)
-        //     {
-        //         temp.mT.push_back(camera->T_pc.m[i]);
-        //     }
-        //     // temp.pointCloud.push_back(keyframe->mPointCloud);
-        //     keyFrames.push_back(temp);
-            
-        //     d_cam.Activate(s_cam);
-        //     d_cam.SetDrawFunction([&](pangolin::View& view){
-        //         view.Activate(s_cam);
-        //         renders.Render();
-        //         camera->lineFromKeyFrameToCamera();
-        //         camera->drawPoints();
-        //     });
 
-            
-        // }
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        // d_cam.Activate(s_cam);
-        // d_cam.SetDrawFunction([&](pangolin::View& view){
-        //     view.Activate(s_cam);
-        //     renders.Render();
-        //     camera->lineFromKeyFrameToCamera();
-        //     camera->drawPoints();
-        // });
         d_cam.Activate(s_cam);
         camera->getOpenGLMatrix(Ow);
         camera->drawCamera();
@@ -112,8 +72,14 @@ void ViewFrame::pangoQuit(Zed_Camera* zedPtr, const Map* _map)
         // Swap frames and Process Events
         pangolin::FinishFrame();
 
-        // std::this_thread::sleep_for(10ms);
+        if ( stopRequested )
+        {
+            pangolin::DestroyWindow("Main");
+            break;
+        }
+
     }
+    std::cout << "Visual Thread Exited!" << std::endl;
 }
 
 void ViewFrame::pangoQuitMulti(Zed_Camera* zedPtr, Zed_Camera* zedPtrB, const Map* _map)
@@ -158,50 +124,9 @@ void ViewFrame::pangoQuitMulti(Zed_Camera* zedPtr, Zed_Camera* zedPtrB, const Ma
     camera->drawCamera();
     pangolin::CreatePanel("ui").SetBounds(0.0, 1.0, 0.0, pangolin::Attach::Pix(UI_WIDTH));
     pangolin::Var<bool> a_button("ui.Button", false, false);
-    while(!pangolin::ShouldQuit() )
+    while( 1 )
     {
-        // Clear screen and activate view to render into
-        // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        // // glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
-        // auto lines = std::make_shared<Lines>();    
-        // lines->getValues(temp.mT,camera->T_pc.m);
-        // if (zedPtr->addKeyFrame)
-        // {
-        //     {
-        //         zedPtr->addKeyFrame = false;
-        //         auto keyframe = std::make_shared<CameraFrame>();
-        //         keyframe->T_pc = camera->T_pc;
-        //         // keyframe->mPointCloud = camera->mPointCloud;
-        //         keyframe->color = "B";
-        //         // renders.Add(keyframe);
-        //     }
-        //     renders.Add(lines);
-        //     temp.clear();
-        //     for (size_t i = 0; i < 16; i++)
-        //     {
-        //         temp.mT.push_back(camera->T_pc.m[i]);
-        //     }
-        //     // temp.pointCloud.push_back(keyframe->mPointCloud);
-        //     keyFrames.push_back(temp);
-            
-        //     d_cam.Activate(s_cam);
-        //     d_cam.SetDrawFunction([&](pangolin::View& view){
-        //         view.Activate(s_cam);
-        //         renders.Render();
-        //         camera->lineFromKeyFrameToCamera();
-        //         camera->drawPoints();
-        //     });
-
-            
-        // }
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        // d_cam.Activate(s_cam);
-        // d_cam.SetDrawFunction([&](pangolin::View& view){
-        //     view.Activate(s_cam);
-        //     renders.Render();
-        //     camera->lineFromKeyFrameToCamera();
-        //     camera->drawPoints();
-        // });
         d_cam.Activate(s_cam);
         camera->getOpenGLMatrix(Ow);
         camera->drawCamera();
@@ -212,11 +137,15 @@ void ViewFrame::pangoQuitMulti(Zed_Camera* zedPtr, Zed_Camera* zedPtrB, const Ma
         s_cam.Follow(Ow);
 
 
-        // Swap frames and Process Events
         pangolin::FinishFrame();
 
-        // std::this_thread::sleep_for(10ms);
+        if ( stopRequested )
+        {
+            pangolin::DestroyWindow("Main");
+            break;
+        }
     }
+    std::cout << "Visual Thread Exited!" << std::endl;
 }
 
 void CameraFrame::Render(const pangolin::RenderParams&)
