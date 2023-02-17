@@ -3572,7 +3572,7 @@ void LocalMapper::beginLocalMapping()
             break;
         std::this_thread::sleep_for(2ms);
     }
-    std::cout << "LocalMap Thread Exited" << std::endl;
+    std::cout << "LocalMap Thread Exited!" << std::endl;
 }
 
 void LocalMapper::beginLocalMappingB()
@@ -3607,7 +3607,7 @@ void LocalMapper::beginLocalMappingB()
             break;
         std::this_thread::sleep_for(2ms);
     }
-    std::cout << "LocalMap Thread Exited" << std::endl;
+    std::cout << "LocalMap Thread Exited!" << std::endl;
 
 }
 
