@@ -6,6 +6,16 @@ seq: "00"
 
 multi: true
 
+gtPose : true
+
+leftPathCam : "/camera_1/left/image_rect"
+rightPathCam : "/camera_1/right/image_rect"
+
+leftPathCamB : "/camera_4/left/image_rect"
+rightPathCamB : "/camera_4/right/image_rect"
+
+gtPath : "ground_truth/pose"
+
 imagesPath: "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/simulation/"
 
 fileExtension: ".jpg"
@@ -101,14 +111,14 @@ Multi:
          0.0, 0.0, -1.0, -0.3,
          0.0, 0.0, 0.0, 1.0]
 
-T_w_c1:
-  rows: 4
-  cols: 4
-  dt: d
-  data: [0.0, -1.0, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        1.0, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.0, 1.0]
+# T_w_c1:
+#   rows: 4
+#   cols: 4
+#   dt: d
+#   data: [0.0, -1.0, 0.0, 0.0,
+#         0.0, 0.0, 1.0, 0.0,
+#         1.0, 0.0, 0.0, 0.0,
+#         0.0, 0.0, 0.0, 1.0]
 
 # T_w_c1:
 #   rows: 4

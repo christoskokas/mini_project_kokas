@@ -682,7 +682,7 @@ void System::saveTrajectory(const std::string& filepath)
         }
         else
         {
-            matT = (candKF->pose.refPose * closeKF->pose.getPose());
+            matT = (closeKF->pose.getPose() * candKF->pose.refPose);
         }
         Eigen::Matrix4d mat = matT.transpose();
         for (int32_t i{0}; i < 12; i ++)
@@ -716,7 +716,7 @@ void System::saveTrajectoryAndPosition(const std::string& filepath, const std::s
         }
         else
         {
-            matT = (candKF->pose.refPose * closeKF->pose.getPose());
+            matT = (closeKF->pose.getPose() * candKF->pose.refPose);
         }
         Eigen::Matrix4d mat = matT.transpose();
         for (int32_t i{0}; i < 12; i ++)
