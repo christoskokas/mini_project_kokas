@@ -3141,11 +3141,11 @@ void FeatureMatcher::findStereoMatchesORB2R(const cv::Mat& lImage, const cv::Mat
         matchesCount++;
         
 
-        kR.pt.x = feLeft->scalePyramid[octL] * ((float)scuR + (float)bestX + delta);
+        const float newuR = feLeft->scalePyramid[octL] * ((float)scuR + (float)bestX + delta);
 
 
         // calculate depth
-        const float disparity {it->pt.x - kR.pt.x};
+        const float disparity {it->pt.x - newuR};
         if (disparity > 0.0f && disparity < zedptr->cameraLeft.fx)
         {
             const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
@@ -3169,33 +3169,7 @@ void FeatureMatcher::findStereoMatchesORB2R(const cv::Mat& lImage, const cv::Mat
     keysLeft.medianDepth = allDepths[allDepths.size()/2].first;
     const float medianD {allDists2[allDists2.size()/2].first};
     const float medDistD = medianD*(1.5f*1.4f);
-    // const float medDist = median/(1.5f*1.4f);
-    // const float Q1 {allDepths[allDepths.size()/4].first};
-    // const float Q3 {allDepths[3*allDepths.size()/4].first};
-    // const float last {allDepths[allDepths.size() - 1].first};
-    // const float IQR {Q3 - Q1};
-    // const float medianDistMax {Q3 + 1.5* IQR};
-    // const float medianDistMin2 {Q1 - 1.5* IQR};
-    // const float medianDistMin {median/(1.5*1.4)};
-    // std::cout << std::endl;
-    // Logging("Q1", Q1, 3);
-    // Logging("Q3", Q3, 3);
-    // Logging("IQR", IQR, 3);
-    // Logging("median", median, 3);
-    // Logging("cutoff", medianDistMin2, 3);
-    // const int sss = allDepthsVec.size();
-    // for (size_t i{0}, end{keysLeft.keyPoints.size()}; i < end; i++)
-    // {
-    //     if (keysLeft.estimatedDepth[i] <= 0)
-    //         continue;
-    //     if ( keysLeft.estimatedDepth[i] < medianDistMin )
-    //     {
-    //         keysLeft.rightIdxs[i] = -1;
-    //         keysLeft.estimatedDepth[i] = -1;
-    //         keysLeft.close[i] = false;
-    //     }
-        
-    // }
+    
     const int endDe {cvFloor(allDepths.size()*0.01)};
     for(int i=0;i < endDe;i++)
     {

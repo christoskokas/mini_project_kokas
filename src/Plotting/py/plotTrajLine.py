@@ -4,8 +4,8 @@ from mpl_toolkits.mplot3d import Axes3D
 # List of up to 4 file paths to text files
 # file_paths = ["file1.txt", "file2.txt", "file3.txt", "file4.txt"]
 home_path = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/build/devel/lib/vio_slam"
-# file_paths = [home_path + "/GTcamTrajectory.txt", home_path + "/camTrajectory.txt"]
-file_paths = ["GTcamTrajectory.txt","camTrajectory.txt", "DcamTrajectory.txt", "FrameTrajectory_KITTI_Format.txt"]
+# file_paths = [home_path + "/GTcamTrajectory.txt", home_path + "/camTrajectory.txt", home_path + "/DcamTrajectory.txt", "FrameTrajectory_KITTI_Format.txt"]
+file_paths = ["ground_truth.txt","single_cam.txt", "dual_cam.txt", "ORB_SLAM3.txt"]
 # file_paths = [home_path + "/GTcamTrajectory.txt", home_path + "/camTrajectory.txt", home_path + "/DcamTrajectory.txt"]
 # file_paths = ["GTcamTrajectory.txt", "camTrajectory.txt"]
 

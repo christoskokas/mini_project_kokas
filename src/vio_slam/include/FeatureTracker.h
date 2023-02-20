@@ -143,8 +143,8 @@ class FeatureTracker
         const double noMovementCheck {0.96};
 
         const double fx,fy,cx,cy;
-        const double fxr,fyr,cxr,cyr;
-
+        double fxb,fyb,cxb,cyb;
+        // double fxr,fyr,cxr,cyr;
         const size_t gfmxCount {400};
         const double gfmnDist {30.0f};
 
@@ -209,7 +209,7 @@ class FeatureTracker
 
         FeatureTracker(Zed_Camera* _zedPtr, Zed_Camera* _zedPtrB, Map* _map);
         void initialization(cv::Mat& leftIm, cv::Mat& rightIm, TrackedKeys& keysLeft);
-        void setActiveOutliers(std::vector<MapPoint*>& activeMPs, std::vector<bool>& MPsOutliers, std::vector<bool>& MPsMatches);
+        void setActiveOutliers(std::vector<MapPoint*>& activeMPs, std::vector<bool>& MPsOutliers, std::vector<std::pair<int,int>>& matchesIdxs);
         void TrackImageTB(const cv::Mat& leftRect, const cv::Mat& rightRect, const cv::Mat& leftRectB, const cv::Mat& rightRectB, const int frameNumb);
         void extractORBStereoMatchRB(const Zed_Camera* zedCam, cv::Mat& leftIm, cv::Mat& rightIm, FeatureExtractor& feLeft, FeatureExtractor& feRight, FeatureMatcher& fm, TrackedKeys& keysLeft);
         void initializeMapRB(TrackedKeys& keysLeft, TrackedKeys& keysLeftB);
