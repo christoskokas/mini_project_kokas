@@ -74,6 +74,33 @@ void KeyFrame::calcConnections()
         }
     }
 
+    for (std::vector<MapPoint*>::const_iterator it = localMapPointsB.begin(), end = localMapPointsB.end(); it != end; it++)
+    {
+        MapPoint* mp = *it;
+        if ( !mp )
+            continue;
+        for (std::unordered_map<KeyFrame*, std::pair<int,int>>::const_iterator kf = mp->kFMatchesB.begin(), kfend = mp->kFMatchesB.end(); kf != kfend; kf++)
+        {
+            KeyFrame* kfCand = kf->first;
+            connWeights[kfCand] ++;
+        }
+    }
+
+    for (std::vector<MapPoint*>::const_iterator it = localMapPointsRB.begin(), end = localMapPointsRB.end(); it != end; it++)
+    {
+        MapPoint* mp = *it;
+        if ( !mp )
+            continue;
+        for (std::unordered_map<KeyFrame*, std::pair<int,int>>::const_iterator kf = mp->kFMatchesB.begin(), kfend = mp->kFMatchesB.end(); kf != kfend; kf++)
+        {
+            KeyFrame* kfCand = kf->first;
+            const std::pair<int,int>& keyPos = kf->second;
+            if ( keyPos.first >= 0 || keyPos.second < 0 )
+                continue;
+            connWeights[kfCand] ++;
+        }
+    }
+
     const int threshold = 15;
     std::vector<std::pair<int,KeyFrame*>> orderedConn;
     orderedConn.reserve(connWeights.size());

@@ -148,7 +148,7 @@ int main (int argc, char **argv)
     std::cout << "System Shutdown!" << std::endl;
     voSLAM->exitSystem();
     std::cout << "Saving Trajectory.." << std::endl;
-    voSLAM->saveTrajectoryAndPosition("camTrajectory.txt", "camPosition.txt");
+    voSLAM->saveTrajectoryAndPosition("single_cam_im_tra.txt", "single_cam_im_pos.txt");
     std::cout << "Trajectory Saved!" << std::endl;
     exit(SIGINT);
 

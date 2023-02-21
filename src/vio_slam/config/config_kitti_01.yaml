@@ -3,6 +3,9 @@ rectified: true
 numOfFrames: 1101
 seq: "01"
 
+leftPathCam : "/kitti/camera_gray/left/image_rect"
+rightPathCam : "/kitti/camera_gray/right/image_rect"
+
 imagesPath: "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/kitti/01/"
 
 fileExtension: ".png"

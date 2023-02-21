@@ -25,7 +25,7 @@
 #include <yaml-cpp/yaml.h>
 #include <signal.h>
 
-#define GTPOSE true
+#define GTPOSE false
 
 class GetImagesROS
 {
@@ -81,24 +81,9 @@ int main (int argc, char **argv)
     vio_slam::ConfigFile* confFile = new vio_slam::ConfigFile(file.c_str());
 
 
-    bool multi {false};
-    try{
-        multi = confFile->getValue<bool>("multi");
-    }
-    catch(std::exception& e)
-    {
-        multi = false;
-    }
-
     vio_slam::System* voSLAM;
-    
 
-
-    
-    if ( multi )
-        voSLAM = new vio_slam::System(confFile, multi);
-    else
-        voSLAM = new vio_slam::System(confFile);
+    voSLAM = new vio_slam::System(confFile);
 
     GetImagesROS imgROS(voSLAM);
 

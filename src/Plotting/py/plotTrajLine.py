@@ -1,11 +1,13 @@
+import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 # List of up to 4 file paths to text files
 # file_paths = ["file1.txt", "file2.txt", "file3.txt", "file4.txt"]
 home_path = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/build/devel/lib/vio_slam"
-# file_paths = [home_path + "/GTcamTrajectory.txt", home_path + "/camTrajectory.txt", home_path + "/DcamTrajectory.txt", "FrameTrajectory_KITTI_Format.txt"]
-file_paths = ["ground_truth.txt","single_cam.txt", "dual_cam.txt", "ORB_SLAM3.txt"]
+# file_paths = [home_path + "/GTcamTrajectory.txt", home_path + "/camTrajectory.txt", home_path + "/DcamTrajectory.txt", "ORB_SLAM3.txt"]
+file_paths = ["ground_truth.txt", home_path + "/camTrajectory.txt", home_path + "/DcamTrajectory.txt", "ORB_SLAM3.txt"]
+# file_paths = ["ground_truth.txt","single_cam.txt", "dual_cam.txt", "ORB_SLAM3.txt"]
 # file_paths = [home_path + "/GTcamTrajectory.txt", home_path + "/camTrajectory.txt", home_path + "/DcamTrajectory.txt"]
 # file_paths = ["GTcamTrajectory.txt", "camTrajectory.txt"]
 
@@ -35,12 +37,15 @@ for i, file_path in enumerate(file_paths):
 
     # Get the file name without the .txt extension
     file_name = file_path.split(".")[0]
+    filename = os.path.basename(file_path)
+    base_name, extension = os.path.splitext(filename)
+
 
     # Plot the x, y, z values as a scatter plot with optional lines connecting the points
     if i == 0:
         ax = plt.subplot(111, projection='3d')
     if connect_points:
-        ax.plot(xs, ys, zs, label=file_name)
+        ax.plot(xs, ys, zs, label=base_name)
     else:
         ax.scatter(xs, ys, zs, s=1, label=file_name)
 
