@@ -1,20 +1,17 @@
 import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
 
 # List of up to 4 file paths to text files
-# file_paths = ["file1.txt", "file2.txt", "file3.txt", "file4.txt"]
-home_path = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/build/devel/lib/vio_slam"
-# file_paths = [home_path + "/GTcamTrajectory.txt", home_path + "/camTrajectory.txt", home_path + "/DcamTrajectory.txt", "ORB_SLAM3.txt"]
-file_paths = ["ground_truth.txt", home_path + "/camTrajectory.txt", home_path + "/DcamTrajectory.txt", "ORB_SLAM3.txt"]
-# file_paths = [home_path + "/GTcamTrajectory.txt", home_path + "/camTrajectory.txt", home_path + "/DcamTrajectory.txt"]
-# file_paths = ["GTcamTrajectory.txt", "camTrajectory.txt"]
 file_paths = ["ground_truth.txt","single_cam.txt", "dual_cam.txt", "ORB_SLAM3.txt"]
+colors = ['b', 'y', 'g','r']
 
 connect_points = True;
 
 # Initialize lists to store x, y, z values from all files
 all_xs, all_ys, all_zs = [], [], []
+
 
 # Loop over the file paths
 for i, file_path in enumerate(file_paths):
@@ -44,10 +41,30 @@ for i, file_path in enumerate(file_paths):
     # Plot the x, y, z values as a scatter plot with optional lines connecting the points
     if i == 0:
         ax = plt.subplot(111, projection='3d')
+        ax.scatter(xs[0], ys[0], zs[0], color='g', s=100, label='start')
+        ax.scatter(xs[-1], ys[-1], zs[-1], color='k', s=100, label='end')
     if connect_points:
         ax.plot(xs, ys, zs, label=base_name)
     else:
-        ax.scatter(xs, ys, zs, s=1, label=file_name)
+        ax.scatter(xs, ys, zs, s=1, label=base_name, color = colors[i])
+
+        
+    # Add a sphere symbol of green color at the start of the trajectory and a sphere symbol of red color at the end
+
+    if i == 2:
+        for j in range(30, len(xs), 15):
+            if j+15 < len(xs):
+                dx = xs[j+1] - xs[j]
+                dy = ys[j+1] - ys[j]
+                dz = zs[j+1] - zs[j]
+                ax.quiver(xs[j], ys[j], zs[j], dx, dy, dz, length=0.01, arrow_length_ratio=10, normalize=True, color=colors[i])
+
+    # Add arrows on each trajectory that show the heading of the trajectory
+    # if i != 0:
+    # xdir = np.diff(xs)
+    # ydir = np.diff(ys)
+    # zdir = np.diff(zs)
+    # ax.quiver(xs[:-1], ys[:-1], zs[:-1], xdir, ydir, zdir, color = colors[i], arrow_length_ratio=0.1)
 
 # Calculate the range and mean of all x, y, z values
 ranges = [
@@ -61,12 +78,20 @@ mean_ys = sum(all_ys) / len(all_ys)
 mean_zs = sum(all_zs) / len(all_zs)
 
 # Set the range and tick labels for each axis
+ax.set_xticks([mean_xs - max_range/2, mean_xs, mean_xs + max_range/2])
 ax.set_xlim(mean_xs - max_range/2, mean_xs + max_range/2)
-ax.set_xticklabels(['x={:.1f}'.format(mean_xs - max_range/2), 'x={:.1f}'.format(mean_xs), 'x={:.1f}'.format(mean_xs + max_range/2)])
+ax.set_xticklabels(['{:.1f} m'.format(mean_xs - max_range/2), '{:.1f} m'.format(mean_xs), '{:.1f} m'.format(mean_xs + max_range/2)])
+ax.set_xlabel('X position (m)')
+
+ax.set_yticks([mean_ys - max_range/2, mean_ys, mean_ys + max_range/2])
 ax.set_ylim(mean_ys - max_range/2, mean_ys + max_range/2)
-ax.set_yticklabels(['y={:.1f}'.format(mean_ys - max_range/2), 'y={:.1f}'.format(mean_ys), 'y={:.1f}'.format(mean_ys + max_range/2)])
+ax.set_yticklabels(['{:.1f} m'.format(mean_ys - max_range/2), '{:.1f} m'.format(mean_ys), '{:.1f} m'.format(mean_ys + max_range/2)])
+ax.set_ylabel('Y position (m)')
+
+ax.set_zticks([mean_zs - max_range/2, mean_zs, mean_zs + max_range/2])
 ax.set_zlim(mean_zs - max_range/2, mean_zs + max_range/2)
-ax.set_zticklabels(['z={:.1f}'.format(mean_zs - max_range/2), 'z={:.1f}'.format(mean_zs), 'z={:.1f}'.format(mean_zs + max_range/2)])
+ax.set_zticklabels(['{:.1f} m'.format(mean_zs - max_range/2), '{:.1f} m'.format(mean_zs), '{:.1f} m'.format(mean_zs + max_range/2)])
+ax.set_zlabel('Z position (m)')
 
 # Set the plot title and legend
 if connect_points:

@@ -25,7 +25,7 @@
 #include <yaml-cpp/yaml.h>
 #include <signal.h>
 
-#define GTPOSE false
+#define GTPOSE true
 
 class GetImagesROS
 {
@@ -146,9 +146,9 @@ int main (int argc, char **argv)
     std::cout << "System Shutdown!" << std::endl;
     voSLAM->exitSystem();
     std::cout << "Saving Trajectory.." << std::endl;
-    voSLAM->saveTrajectoryAndPosition("camTrajectory.txt", "camPosition.txt");
+    voSLAM->saveTrajectoryAndPosition("single_cam_traj.txt", "sigle_cam_pos.txt");
 #if GTPOSE
-    imgROS.saveGTTrajectoryAndPositions("GTcamTrajectory.txt", "GTcamPosition.txt");
+    imgROS.saveGTTrajectoryAndPositions("ground_truth_traj.txt", "ground_truth_pos.txt");
 #endif
     std::cout << "Trajectory Saved!" << std::endl;
     exit(SIGINT);

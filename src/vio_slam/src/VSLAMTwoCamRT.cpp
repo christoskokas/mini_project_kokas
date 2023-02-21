@@ -175,7 +175,7 @@ int main (int argc, char **argv)
     std::cout << "System Shutdown!" << std::endl;
     voSLAM->exitSystem();
     std::cout << "Saving Trajectory.." << std::endl;
-    voSLAM->saveTrajectoryAndPosition("DcamTrajectory.txt", "DcamPosition.txt");
+    voSLAM->saveTrajectoryAndPosition("dual_cam_traj.txt", "dual_cam_pos.txt");
 #if GTPOSE
     imgROS.saveGTTrajectoryAndPositions("GTDcamTrajectory.txt", "GTDcamPosition.txt");
 #endif
