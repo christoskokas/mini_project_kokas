@@ -9,6 +9,7 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <std_msgs/Int64.h>
 #include <std_srvs/SetBool.h>
 #include <std_msgs/String.h>
@@ -25,7 +26,8 @@
 #include <yaml-cpp/yaml.h>
 #include <signal.h>
 
-#define GTPOSE true
+#define GTPOSE false
+#define PUBPOINTCLOUD true
 
 class GetImagesROS
 {
@@ -38,6 +40,7 @@ class GetImagesROS
         void saveGTTrajectoryAndPositions(const std::string& filepath, const std::string& filepathPosition);
 
         // void saveGT(const nav_msgs::Odometry::ConstPtr& msgGT);
+        ros::Publisher pc_pub;
 
         vio_slam::System* voSLAM;
 
@@ -122,11 +125,14 @@ int main (int argc, char **argv)
 
     const std::string leftPath = confFile->getValue<std::string>("leftPathCam");
     const std::string rightPath = confFile->getValue<std::string>("rightPathCam");
-    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, leftPath, 1);
-    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, rightPath, 1);
+    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, leftPath, 10);
+    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, rightPath, 10);
+#if PUBPOINTCLOUD
+    imgROS.pc_pub = nh.advertise<sensor_msgs::PointCloud2>("/vio_slam/points2",1);
+#endif
 
 #if GTPOSE
-    message_filters::Subscriber<nav_msgs::Odometry> gt_sub(nh, gtPath, 1);
+    message_filters::Subscriber<nav_msgs::Odometry> gt_sub(nh, gtPath, 10);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image, nav_msgs::Odometry> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub, gt_sub);
     sync.registerCallback(boost::bind(&GetImagesROS::getImages,&imgROS,_1,_2, _3));
@@ -195,6 +201,8 @@ void GetImagesROS::saveGTTrajectoryAndPositions(const std::string& filepath, con
         datafile << '\n';
         datafilePos << '\n';
     }
+    datafile.close();
+    datafilePos.close();
 }
 
 void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight,const nav_msgs::OdometryConstPtr& msgGT)
@@ -296,4 +304,24 @@ void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sen
         voSLAM->trackNewImage(imLeft, imRight, frameNumb);
     }
     frameNumb ++;
+#if PUBPOINTCLOUD
+    pcl::PointCloud<pcl::PointXYZRGB> cloud_;
+    const std::vector<vio_slam::MapPoint*>& actMPs = voSLAM->map->activeMapPoints;
+    for (size_t i {0}, end{actMPs.size()}; i < end; i ++)
+    {
+        const Eigen::Vector3d pt = actMPs[i]->getWordPose3d();
+        pcl::PointXYZRGB ptpcl;
+        ptpcl.x = pt(0);
+        ptpcl.y = pt(1);
+        ptpcl.z = pt(2);
+        cloud_.points.push_back(ptpcl);
+    }
+    sensor_msgs::PointCloud2 pc2_msg_;
+    pcl::toROSMsg(cloud_, pc2_msg_);
+    pc2_msg_.header.frame_id = "map";
+    pc2_msg_.header.stamp = msgLeft->header.stamp;
+    pc_pub.publish(pc2_msg_);
+#endif
+
+
 }

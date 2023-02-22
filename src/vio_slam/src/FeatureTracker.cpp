@@ -3115,11 +3115,6 @@ int FeatureTracker::findOutliersR(const Eigen::Matrix4d& estimPose, std::vector<
         }
     }
 
-// #if PROJECTIM
-//     // drawOptical("new", pLIm.rIm,pnts.left, pnts.newPnts);
-//     drawOptical("reproj", pLIm.rIm,obs, out2d);
-//     cv::waitKey(waitTrials);
-// #endif
     return nStereo;
 }
 
@@ -3429,7 +3424,6 @@ std::pair<int,int> FeatureTracker::estimatePoseCeresR(std::vector<MapPoint*>& ac
 
     std::vector<float> weights;
     weights.resize(prevS, 1.0f);
-    std::vector<double>thresholds = {15.6f,9.8f,7.815f,7.815f};
     double thresh = 7.815f;
 
     size_t maxIter {2};
@@ -4026,20 +4020,11 @@ bool FeatureTracker::worldToFrameRTrack(MapPoint* mp, const bool right, const Ei
     Eigen::Vector4d point = predPoseInv * wPos;
 
     double fxc, fyc, cxc, cyc;
-    if ( right )
-    {
-        fxc = fx;
-        fyc = fy;
-        cxc = cx;
-        cyc = cy;
-    }
-    else
-    {
-        fxc = fx;
-        fyc = fy;
-        cxc = cx;
-        cyc = cy;
-    }
+    
+    fxc = fx;
+    fyc = fy;
+    cxc = cx;
+    cyc = cy;
 
 
     if ( point(2) <= 0.0 )
@@ -4530,12 +4515,12 @@ void FeatureTracker::insertKeyFrame(TrackedKeys& keysLeft, std::vector<int>& mat
 
 }
 
-void FeatureTracker::insertKeyFrameR(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<std::pair<int,int>>& matchesIdxs, const int nStereo, const Eigen::Matrix4d& estimPose, std::vector<bool>& MPsOutliers, const cv::Mat& leftIm)
+void FeatureTracker::insertKeyFrameR(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<std::pair<int,int>>& matchesIdxs, const int nStereo, const Eigen::Matrix4d& estimPose, std::vector<bool>& MPsOutliers, cv::Mat& leftIm, cv::Mat& rleftIm)
 {
     KeyFrame* lastKF = activeKeyFrames.front();
     referencePose = lastKF->pose.getInvPose() * estimPose;
     // Logging("referencePose in keyframe", referencePose,3);
-    KeyFrame* kF = new KeyFrame(referencePose, estimPose, lIm.im, lIm.rIm,map->kIdx, curFrame);
+    KeyFrame* kF = new KeyFrame(referencePose, estimPose, leftIm, rleftIm,map->kIdx, curFrame);
     // Logging("REALPOSE in keyframe", kF->getPose(),3);
     kF->closestKF = lastKF->numb;
     kF->scaleFactor = fe.scalePyramid;
@@ -5468,9 +5453,11 @@ void FeatureTracker::removeOutOfFrameMPsR(const Eigen::Matrix4d& currCamPose, co
         MapPoint* mp = activeMapPoints[i];
         if ( !mp )
             continue;
+        if ( mp->GetIsOutlier() )
+            continue;
         bool c1 = worldToFrameRTrack(mp, false, toCamera, temp);
         bool c2 = worldToFrameRTrack(mp, true, toRCamera, tempR);
-        if (c1 && c2 && !mp->GetIsOutlier())
+        if (c1 && c2 )
         {
             mp->seenCnt++;
             mp->setActive(true);
@@ -6121,7 +6108,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     if ( (nStIn.second < minNStereo || insertKeyFrameCount >= keyFrameCountEnd) && nStIn.first < 0.9 * lastKFTrackedNumb )
     {
         insertKeyFrameCount = 0;
-        insertKeyFrameR(keysLeft, matchedIdxsL,matchesIdxs, nStIn.second, poseEst, MPsOutliers, leftIm);
+        insertKeyFrameR(keysLeft, matchedIdxsL,matchesIdxs, nStIn.second, poseEst, MPsOutliers, leftIm, realLeftIm);
     }
     else
         addFrame(poseEst);
@@ -6133,14 +6120,14 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
 
 
 
-    if ( curFrameNumb == zedPtr->numOfFrames - 1)
+    // if ( curFrameNumb == zedPtr->numOfFrames - 1)
 
-    {
-        saveData();
+    // {
+    //     saveData();
 
-        datafile.close();
-        map->endOfFrames = true;
-    }
+    //     datafile.close();
+    //     map->endOfFrames = true;
+    // }
 
 
     // return std::make_pair(kFCand, poseEst);
@@ -6390,14 +6377,14 @@ void FeatureTracker::TrackImageTB(const cv::Mat& leftRect, const cv::Mat& rightR
 
 
 
-    if ( curFrameNumb == zedPtr->numOfFrames - 1)
+    // if ( curFrameNumb == zedPtr->numOfFrames - 1)
 
-    {
-        saveData();
+    // {
+    //     saveData();
 
-        datafile.close();
-        map->endOfFrames = true;
-    }
+    //     datafile.close();
+    //     map->endOfFrames = true;
+    // }
 
 
     // return std::make_pair(kFCand, poseEst);

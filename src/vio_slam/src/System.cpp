@@ -694,6 +694,7 @@ void System::saveTrajectory(const std::string& filepath)
         }
         datafile << '\n';
     }
+    datafile.close();
 
 }
 
@@ -731,6 +732,8 @@ void System::saveTrajectoryAndPosition(const std::string& filepath, const std::s
         datafile << '\n';
         datafilePos << '\n';
     }
+    datafile.close();
+    datafilePos.close();
 
 }
 

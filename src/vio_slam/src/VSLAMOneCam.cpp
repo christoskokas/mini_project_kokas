@@ -144,7 +144,7 @@ int main (int argc, char **argv)
             break;
 
     }
-
+    
     std::cout << "System Shutdown!" << std::endl;
     voSLAM->exitSystem();
     std::cout << "Saving Trajectory.." << std::endl;

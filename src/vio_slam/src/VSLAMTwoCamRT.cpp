@@ -154,10 +154,10 @@ int main (int argc, char **argv)
 
     ros::NodeHandle nh;
     
-    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, leftPath, 1);
-    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, rightPath, 1);
-    message_filters::Subscriber<sensor_msgs::Image> left_subB(nh, leftPathB, 1);
-    message_filters::Subscriber<sensor_msgs::Image> right_subB(nh, rightPathB, 1);
+    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, leftPath, 10);
+    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, rightPath, 10);
+    message_filters::Subscriber<sensor_msgs::Image> left_subB(nh, leftPathB, 10);
+    message_filters::Subscriber<sensor_msgs::Image> right_subB(nh, rightPathB, 10);
 #if GTPOSE
     message_filters::Subscriber<nav_msgs::Odometry> gt_sub(nh, gtPath, 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::Image, nav_msgs::Odometry> sync_pol;
@@ -221,6 +221,9 @@ void GetImagesROS::saveGTTrajectoryAndPositions(const std::string& filepath, con
         datafile << '\n';
         datafilePos << '\n';
     }
+    datafile.close();
+    datafilePos.close();
+
 }
 
 void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight, const sensor_msgs::ImageConstPtr& msgLeftB,const sensor_msgs::ImageConstPtr& msgRightB)
