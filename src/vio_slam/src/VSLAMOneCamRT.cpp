@@ -128,6 +128,8 @@ int main (int argc, char **argv)
     message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, leftPath, 10);
     message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, rightPath, 10);
 #if PUBPOINTCLOUD
+    std::vector<double> Twc1 = confFile->getValue<std::vector<double>>("T_w_c1","data");
+    imgROS.T_w_c1 << Twc1[0],Twc1[1],Twc1[2],Twc1[3],Twc1[4],Twc1[5],Twc1[6],Twc1[7],Twc1[8],Twc1[9],Twc1[10],Twc1[11],Twc1[12],Twc1[13],Twc1[14],Twc1[15];
     imgROS.pc_pub = nh.advertise<sensor_msgs::PointCloud2>("/vio_slam/points2",1);
 #endif
 
@@ -309,7 +311,13 @@ void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sen
     const std::vector<vio_slam::MapPoint*>& actMPs = voSLAM->map->activeMapPoints;
     for (size_t i {0}, end{actMPs.size()}; i < end; i ++)
     {
-        const Eigen::Vector3d pt = actMPs[i]->getWordPose3d();
+        const vio_slam::MapPoint* mp = actMPs[i];
+        if ( !mp || mp->GetIsOutlier() || (mp->kFMatches.size() < 3 && mp->kFMatchesB.size() < 3) )
+            continue;
+        Eigen::Vector4d pt = mp->getWordPose4d();
+        pt = T_w_c1 * pt;
+        if ( pt(2) < 0.05 || pt(2) > 0.2 )
+            continue;
         pcl::PointXYZRGB ptpcl;
         ptpcl.x = pt(0);
         ptpcl.y = pt(1);
