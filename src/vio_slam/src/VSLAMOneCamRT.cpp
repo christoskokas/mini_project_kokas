@@ -339,8 +339,11 @@ void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sen
     frameNumb ++;
 #if PUBPOINTCLOUD
     pcl::PointCloud<pcl::PointXYZRGB> cloud_;
+    const Eigen::Vector3d camPos = T_w_c1.block<3,3>(0,0) * voSLAM->mZedCamera->cameraPose.pose.block<3,1>(0,3);
+    const double offset {0.02f};
+    const double minH = camPos(2,0) + T_w_c1(2,3) + offset;
+    const double maxH = camPos(2,0) + offset;
     const std::vector<vio_slam::MapPoint*>& actMPs = voSLAM->map->activeMapPoints;
-    const float offset {0.02f};
     for (size_t i {0}, end{actMPs.size()}; i < end; i ++)
     {
         const vio_slam::MapPoint* mp = actMPs[i];
@@ -349,7 +352,7 @@ void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sen
         Eigen::Vector3d pt = mp->getWordPose3d();
         pt = T_w_c1.block<3,3>(0,0) * pt;
         // std::cout << "point : " << pt << std::endl;
-        if ( pt(2) < (T_w_c1(2,3) + offset) || pt(2) > offset )
+        if ( pt(2) < minH || pt(2) > maxH )
             continue;
         pcl::PointXYZRGB ptpcl;
         ptpcl.x = pt(0);
