@@ -5,6 +5,7 @@
 #include "trial.h"
 #include "Frame.h"
 #include <ros/ros.h>
+#include <tf/transform_broadcaster.h>
 #include <cv_bridge/cv_bridge.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
@@ -38,9 +39,11 @@ class GetImagesROS
         void getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight);
 
         void saveGTTrajectoryAndPositions(const std::string& filepath, const std::string& filepathPosition);
+        void publishOdom(const std_msgs::Header& _header);
 
-        // void saveGT(const nav_msgs::Odometry::ConstPtr& msgGT);
         ros::Publisher pc_pub;
+        ros::Publisher odom_pub;
+        tf::TransformBroadcaster odom_broadcaster;
 
         vio_slam::System* voSLAM;
 
@@ -74,7 +77,7 @@ int main (int argc, char **argv)
 #elif SIMULATION
     std::string file = "config_simulation.yaml";
 #else
-    std::string file = "config.yaml";
+    std::string file = "config_for_paper.yaml";
     // vio_slam::ConfigFile yamlFile("config.yaml");
 #endif
 
@@ -127,6 +130,7 @@ int main (int argc, char **argv)
     const std::string rightPath = confFile->getValue<std::string>("rightPathCam");
     message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, leftPath, 10);
     message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, rightPath, 10);
+    imgROS.odom_pub = nh.advertise<nav_msgs::Odometry>("/odom",1);
 #if PUBPOINTCLOUD
     std::vector<double> Twc1 = confFile->getValue<std::vector<double>>("T_w_c1","data");
     imgROS.T_w_c1 << Twc1[0],Twc1[1],Twc1[2],Twc1[3],Twc1[4],Twc1[5],Twc1[6],Twc1[7],Twc1[8],Twc1[9],Twc1[10],Twc1[11],Twc1[12],Twc1[13],Twc1[14],Twc1[15];
@@ -257,6 +261,33 @@ void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sen
         voSLAM->trackNewImage(imLeft, imRight, frameNumb);
     }
     frameNumb ++;
+#if PUBPOINTCLOUD
+    pcl::PointCloud<pcl::PointXYZRGB> cloud_;
+    const std::vector<vio_slam::MapPoint*>& actMPs = voSLAM->map->activeMapPoints;
+    const float offset {0.02f};
+    for (size_t i {0}, end{actMPs.size()}; i < end; i ++)
+    {
+        const vio_slam::MapPoint* mp = actMPs[i];
+        if ( !mp || mp->GetIsOutlier() || mp->unMCnt != 0 || (mp->kFMatches.size() < 2 && mp->kFMatchesB.size() < 2) )
+            continue;
+        Eigen::Vector3d pt = mp->getWordPose3d();
+        pt = T_w_c1.block<3,3>(0,0) * pt;
+        // std::cout << "point : " << pt << std::endl;
+        if ( pt(2) < (T_w_c1(2,3) + offset) || pt(2) > offset )
+            continue;
+        pcl::PointXYZRGB ptpcl;
+        ptpcl.x = pt(0);
+        ptpcl.y = pt(1);
+        ptpcl.z = pt(2);
+        cloud_.points.push_back(ptpcl);
+    }
+    sensor_msgs::PointCloud2 pc2_msg_;
+    pcl::toROSMsg(cloud_, pc2_msg_);
+    pc2_msg_.header.frame_id = "map";
+    pc2_msg_.header.stamp = msgLeft->header.stamp;
+    pc_pub.publish(pc2_msg_);
+#endif
+    publishOdom(msgLeft->header);
 }
 
 void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight)
@@ -309,14 +340,16 @@ void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sen
 #if PUBPOINTCLOUD
     pcl::PointCloud<pcl::PointXYZRGB> cloud_;
     const std::vector<vio_slam::MapPoint*>& actMPs = voSLAM->map->activeMapPoints;
+    const float offset {0.02f};
     for (size_t i {0}, end{actMPs.size()}; i < end; i ++)
     {
         const vio_slam::MapPoint* mp = actMPs[i];
-        if ( !mp || mp->GetIsOutlier() || (mp->kFMatches.size() < 3 && mp->kFMatchesB.size() < 3) )
+        if ( !mp || mp->GetIsOutlier() || mp->unMCnt != 0 || (mp->kFMatches.size() < 2 && mp->kFMatchesB.size() < 2) )
             continue;
-        Eigen::Vector4d pt = mp->getWordPose4d();
-        pt = T_w_c1 * pt;
-        if ( pt(2) < 0.05 || pt(2) > 0.2 )
+        Eigen::Vector3d pt = mp->getWordPose3d();
+        pt = T_w_c1.block<3,3>(0,0) * pt;
+        // std::cout << "point : " << pt << std::endl;
+        if ( pt(2) < (T_w_c1(2,3) + offset) || pt(2) > offset )
             continue;
         pcl::PointXYZRGB ptpcl;
         ptpcl.x = pt(0);
@@ -330,6 +363,51 @@ void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sen
     pc2_msg_.header.stamp = msgLeft->header.stamp;
     pc_pub.publish(pc2_msg_);
 #endif
+    publishOdom(msgLeft->header);
 
+}
 
+void GetImagesROS::publishOdom(const std_msgs::Header& _header)
+{
+    Eigen::Matrix4d camPose = voSLAM->mZedCamera->cameraPose.pose;
+    const Eigen::Quaterniond q(camPose.block<3,3>(0,0));
+    Eigen::Vector3d tra = camPose.block<3,1>(0,3);
+    tra = T_w_c1.block<3,3>(0,0) * tra;
+    geometry_msgs::TransformStamped odom_trans;
+    odom_trans.header.stamp = _header.stamp;
+    odom_trans.header.frame_id = "odom";
+    odom_trans.child_frame_id = "base_footprint";
+
+    odom_trans.transform.translation.x = tra(0);
+    odom_trans.transform.translation.y = tra(1);
+    odom_trans.transform.translation.z = tra(2);
+    
+    odom_trans.transform.rotation.w = -q.w();
+    odom_trans.transform.rotation.x = -q.z();
+    odom_trans.transform.rotation.y = q.x();
+    odom_trans.transform.rotation.z = q.y();
+
+    odom_broadcaster.sendTransform(odom_trans);
+    
+    nav_msgs::Odometry odom;
+    odom.header.stamp = _header.stamp;
+    odom.header.frame_id = "odom";
+
+    //set the position
+    odom.pose.pose.position.x = tra(0);
+    odom.pose.pose.position.y = tra(1);
+    odom.pose.pose.position.z = tra(2);
+
+    odom.pose.pose.orientation.w = -q.w();
+    odom.pose.pose.orientation.x = -q.z();
+    odom.pose.pose.orientation.y = q.x();
+    odom.pose.pose.orientation.z = q.y();
+
+    //set the velocity
+    odom.child_frame_id = "base_footprint";
+    odom.twist.twist.linear.x = 0;
+    odom.twist.twist.linear.y = 0;
+    odom.twist.twist.angular.z = 0;
+
+    odom_pub.publish(odom);
 }

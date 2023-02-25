@@ -13,7 +13,7 @@
 #define ZED_DATASET false
 #define ZED_DEMO false
 #define V1_02 false
-#define SIMULATION true
+#define SIMULATION false
 #define DRAWMATCHES false
 
 #define SAVEODOMETRYDATA false
