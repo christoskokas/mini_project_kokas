@@ -54,6 +54,7 @@ class System
         std::thread* Visual;
         std::thread* Tracking;
         std::thread* LocalMapping;
+        std::thread* LoopClosure;
 
         std::thread* FeatTrack;
         std::thread* FeatTrackB;
@@ -72,6 +73,7 @@ class System
         Map* mapB;
 
         LocalMapper* localMap;
+        LocalMapper* loopCl;
 
         FeatureExtractor* feLeft;
         FeatureExtractor* feLeftB;

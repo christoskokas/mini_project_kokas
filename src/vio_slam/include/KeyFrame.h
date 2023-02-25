@@ -82,6 +82,9 @@ class KeyFrame
         int nScaleLev;
 
         int LBAID {-1};
+        int LCID {-1};
+
+        bool LCCand {false};
 
         TrackedKeys keys, keysB;
         Eigen::MatrixXd homoPoints3D;
@@ -124,6 +127,7 @@ class KeyFrame
         Eigen::Vector4d getWorldPosition(int idx);
         void getConnectedKFs(const Map* map, std::vector<KeyFrame*>& activeKF, const int N);
         void getConnectedKFs(std::vector<KeyFrame*>& activeKF, const int N);
+        void getConnectedKFsLC(const Map* map, std::vector<KeyFrame*>& activeKF);
 
         Eigen::Matrix4d getPose();
 };

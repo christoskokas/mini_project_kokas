@@ -26,6 +26,17 @@ void KeyFrame::setBackPose(const Eigen::Matrix4d& _backPose)
     backPoseInv = backPose.inverse();
 }
 
+void KeyFrame::getConnectedKFsLC(const Map* map, std::vector<KeyFrame*>& activeKF)
+{
+    for ( size_t i{map->LCCandIdx - 1}; i >= 0; i--)
+    {
+        KeyFrame* kFLCCand = map->keyFrames.at(i);
+        activeKF.emplace_back(kFLCCand);
+        if ( kFLCCand->LCCand )
+            break;
+    }
+}
+
 void KeyFrame::getConnectedKFs(std::vector<KeyFrame*>& activeKF, const int N)
 {
     // activeKF.reserve(20);

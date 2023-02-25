@@ -50,7 +50,9 @@ class MapPoint
         std::unordered_map<KeyFrame*, std::pair<int,int>> kFMatches;
         std::unordered_map<KeyFrame*, std::pair<int,int>> kFMatchesB;
 
+
         int LBAID {-1};
+        int LCID {-1};
 
         float maxScaleDist, minScaleDist;
 
@@ -118,6 +120,8 @@ class Map
 
     public:
 
+        bool aprilTagDetected {false};
+
         bool endOfFrames {false};
 
         std::unordered_map<unsigned long, KeyFrame*> keyFrames;
@@ -134,6 +138,14 @@ class Map
         bool frameAdded {false};
         bool LBADone {false};
         int endLBAIdx {0};
+
+        
+        Eigen::Matrix4d LCPose = Eigen::Matrix4d::Identity();
+        bool LCDone {false};
+        bool LCStart {false};
+        int LCCandIdx {-1};
+        int endLCIdx {0};
+
 
         Map(){};
         void addMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _useable);

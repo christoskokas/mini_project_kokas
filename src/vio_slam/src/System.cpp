@@ -22,10 +22,14 @@ System::System(ConfigFile* _mConf)
     fm = new FeatureMatcher(mZedCamera, feLeft, feRight, mZedCamera->mHeight, feLeft->getGridRows(), feLeft->getGridCols());
 
     localMap = new LocalMapper(map, mZedCamera, fm);
+    loopCl = new LocalMapper(map, mZedCamera, fm);
 
     Visual = new std::thread(&vio_slam::ViewFrame::pangoQuit, mFrame, mZedCamera, map);
 
     LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMapping, localMap);
+
+    LoopClosure = new std::thread(&vio_slam::LocalMapper::beginLoopClosure, loopCl);
+    
     // Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera);
 
     // Tracking = new std::thread(&vio_slam::RobustMatcher2::beginTest, mRb);
@@ -58,10 +62,14 @@ System::System(ConfigFile* _mConf, bool multi)
     fm = new FeatureMatcher(mZedCamera, feLeft, feRight, mZedCamera->mHeight, feLeft->getGridRows(), feLeft->getGridCols());
 
     localMap = new LocalMapper(map, mZedCamera, mZedCameraB, fm);
+    loopCl = new LocalMapper(map, mZedCamera, mZedCameraB, fm);
 
     Visual = new std::thread(&vio_slam::ViewFrame::pangoQuitMulti, mFrame, mZedCamera, mZedCameraB, map);
 
     LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMappingB, localMap);
+
+    LoopClosure = new std::thread(&vio_slam::LocalMapper::beginLoopClosure, loopCl);
+    
     // Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera);
 
     // Tracking = new std::thread(&vio_slam::RobustMatcher2::beginTest, mRb);
@@ -755,8 +763,10 @@ void System::exitSystem()
 {
     mFrame->stopRequested = true;
     localMap->stopRequested = true;
+    loopCl->stopRequested = true;
     Visual->join();
     LocalMapping->join();
+    LoopClosure->join();
 }
 
 bool System::checkDisplacement(Eigen::Matrix4d& estimPose, Eigen::Matrix4d& estimPoseB, Eigen::Matrix4d& predPose, Eigen::Matrix4d& transfC1C2Inv, Eigen::Matrix4d& transfC1C2)
