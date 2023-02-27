@@ -47,7 +47,7 @@ class CameraPose
         void setPose(Eigen::Matrix4d& _refPose, Eigen::Matrix4d& _keyPose);
         Eigen::Matrix4d getPose() const;
         Eigen::Matrix4d getInvPose() const;
-        void changePose(Eigen::Matrix4d& _keyPose);
+        void changePose(const Eigen::Matrix4d& _keyPose);
         void setInvPose(const Eigen::Matrix4d poseT);
         void separatePose();
 };

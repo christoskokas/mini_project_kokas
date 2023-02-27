@@ -218,23 +218,29 @@ int main (int argc, char **argv)
 
 void GetImagesROS::aprilTagCallBack(const vio_slam::AprilTagDetectionArray::ConstPtr& msg)
 {
+    if ( voSLAM->map->aprilTagDetected )
+        return;
     if ( msg->detections.size() == 0 )
     {
         if ( ATFound )
             ATLostCount++;
         if ( ATLostCount > 10 )
         {
+            std::cout << "Starting AprilTag Detection Again!" << std::endl;
+
             ATFound = false;
+            ATLostCount = 0;
             ATFoundCount = 0;
         }
         return;
     }
-    // if ( ATFound )
-    //     return;
+    if ( ATFound )
+        return;
     ATFoundCount++;
     if ( ATFoundCount < 3 )
         return;
     ATFound = true;
+    std::cout << "AprilTag Detected!" << std::endl;
     const geometry_msgs::Point& tra = msg->detections[0].pose.pose.pose.position;
     const geometry_msgs::Quaternion& quat = msg->detections[0].pose.pose.pose.orientation;
 
@@ -245,11 +251,15 @@ void GetImagesROS::aprilTagCallBack(const vio_slam::AprilTagDetectionArray::Cons
     Tc2_tag.block<3,3>(0,0) = qTag.toRotationMatrix();
     Tc2_tag.block<3,1>(0,3) = tTag;
     if ( !tagPoseFilled )
+    {
         tagPose = voSLAM->mZedCamera->cameraPose.pose * T_c1_AT * Tc2_tag;
-    tagPoseFilled = true;
-    Eigen::Matrix4d zedPoseFromTag = tagPose * Tc2_tag.inverse() * T_c1_AT.inverse();
-    std::cout << "mZedCamera : "  << voSLAM->mZedCamera->cameraPose.pose << std::endl;
-    std::cout << "TagPose : "  << zedPoseFromTag << std::endl;
+        tagPoseFilled = true;
+        return;
+    }
+    voSLAM->map->LCPose = tagPose * Tc2_tag.inverse() * T_c1_AT.inverse();
+    voSLAM->map->aprilTagDetected = true;
+    // std::cout << "mZedCamera : "  << voSLAM->mZedCamera->cameraPose.pose << std::endl;
+    // std::cout << "TagPose : "  << zedPoseFromTag << std::endl;
 
 }
 

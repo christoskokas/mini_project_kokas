@@ -47,7 +47,7 @@ void CameraPose::setPose(Eigen::Matrix4d& _refPose, Eigen::Matrix4d& _keyPose)
     setPose(truePose);
 }
 
-void CameraPose::changePose(Eigen::Matrix4d& _keyPose)
+void CameraPose::changePose(const Eigen::Matrix4d& _keyPose)
 {
     Eigen::Matrix4d truePose = _keyPose * refPose;
     setPose(truePose);

@@ -12,6 +12,8 @@ rightPathCam : "/zed2i/zed_node/right/image_rect_color"
 leftPathCamB : "/camera_4/left/image_rect"
 rightPathCamB : "/camera_4/right/image_rect"
 
+aprilTagPath : "tag_detections"
+
 imagesPath: "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/"
 
 fileExtension: ".jpg"
@@ -19,30 +21,30 @@ fileExtension: ".jpg"
 
 
 Camera_l:
-  fx: 265.795
-  fy: 265.6975
-  cx: 338.7225
-  cy: 186.95575
-  k1: -0.0420501
-  k2: 0.0107849
-  p1: 0.000333607
-  p2: 0.000225869
-  k3: -0.0052130
+  fx: 261.403
+  fy: 261.403
+  cx: 325.983
+  cy: 180.828
+  k1: 0.0
+  k2: 0.0
+  p1: 0.0
+  p2: 0.0
+  k3: 0.0
 
 Camera_l_path: /zed2i/zed_node/left_raw/image_raw_color
 # /zed2i/zed_node/left_raw/image_raw_color
 # /camera_1/left/image_raw
 
 Camera_r:
-  fx: 264.59
-  fy: 264.325
-  cx: 337.56
-  cy: 188.85625
-  k1: -0.0416772
-  k2: 0.0101824
-  p1: -1.93738e-05
-  p2: -0.000249686
-  k3: -0.00489882
+  fx: 261.403
+  fy: 261.403
+  cx: 325.983
+  cy: 180.828
+  k1: 0.0
+  k2: 0.0
+  p1: 0.0
+  p2: 0.0
+  k3: 0.0
   
 Camera_r_path: /zed2i/zed_node/right_raw/image_raw_color
 # /zed2i/zed_node/right_raw/image_raw_color

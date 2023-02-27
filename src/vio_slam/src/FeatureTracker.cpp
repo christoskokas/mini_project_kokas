@@ -4520,7 +4520,7 @@ void FeatureTracker::insertKeyFrameR(TrackedKeys& keysLeft, std::vector<int>& ma
     KeyFrame* lastKF = activeKeyFrames.front();
     referencePose = lastKF->pose.getInvPose() * estimPose;
     // Logging("referencePose in keyframe", referencePose,3);
-    KeyFrame* kF = new KeyFrame(referencePose, estimPose, leftIm, rleftIm,map->kIdx, curFrame);
+    KeyFrame* kF = new KeyFrame(zedPtr, referencePose, estimPose, leftIm, rleftIm,map->kIdx, curFrame);
     if ( map->aprilTagDetected )
         kF->LCCand = true;
     // Logging("REALPOSE in keyframe", kF->getPose(),3);
@@ -4631,7 +4631,12 @@ void FeatureTracker::insertKeyFrameR(TrackedKeys& keysLeft, std::vector<int>& ma
     lastKFPoseInv = lastKFPose.inverse();
     lastKFImage = leftIm.clone();
     allFrames.emplace_back(kF);
-    if ( activeKeyFrames.size() > 3 )
+    if ( map->aprilTagDetected )
+    {
+        map->LCStart = true;
+        map->LCCandIdx = kF->numb;
+    }
+    if ( activeKeyFrames.size() > 3 && !map->LCStart )
         map->keyFrameAdded = true;
 
 }
@@ -4641,7 +4646,7 @@ void FeatureTracker::insertKeyFrameRB(TrackedKeys& keysLeft, std::vector<int>& m
     KeyFrame* lastKF = activeKeyFrames.front();
     referencePose = lastKF->pose.getInvPose() * estimPose;
     // Logging("referencePose in keyframe", referencePose,3);
-    KeyFrame* kF = new KeyFrame(referencePose, estimPose, leftIm, rleftIm,map->kIdx, curFrame);
+    KeyFrame* kF = new KeyFrame(zedPtr, zedPtrB, referencePose, estimPose, leftIm, rleftIm,map->kIdx, curFrame);
     kF->setBackPose(kF->pose.pose * zedPtr->TCamToCam);
     if ( map->aprilTagDetected )
         kF->LCCand = true;
@@ -4805,7 +4810,12 @@ void FeatureTracker::insertKeyFrameRB(TrackedKeys& keysLeft, std::vector<int>& m
     lastKFPoseInv = lastKFPose.inverse();
     lastKFImage = leftIm.clone();
     allFrames.emplace_back(kF);
-    if ( activeKeyFrames.size() > 3 )
+    if ( map->aprilTagDetected )
+    {
+        map->LCStart = true;
+        map->LCCandIdx = kF->numb;
+    }
+    if ( activeKeyFrames.size() > 3 && !map->LCStart )
         map->keyFrameAdded = true;
 
 }
@@ -4954,6 +4964,34 @@ void FeatureTracker::changePosesLBA()
 
 }
 
+void FeatureTracker::changePosesLCA(const int endIdx)
+{
+    KeyFrame* kf = map->keyFrames.at(endIdx);
+    while ( true )
+    {
+        KeyFrame* nextKF = kf->nextKF;
+        if ( nextKF )
+        {
+            Eigen::Matrix4d keyPose = kf->getPose();
+            nextKF->updatePose(keyPose);
+            kf = nextKF;
+        }
+        else
+            break;
+    }
+    Eigen::Matrix4d keyPose = kf->getPose();
+    zedPtr->cameraPose.changePose(keyPose);
+
+    lastKFPose = keyPose;
+    lastKFPoseInv = lastKFPose.inverse();
+
+    Eigen::Matrix4d prevPose = prevKF->pose.pose * prevReferencePose;
+
+    predNPose = zedPtr->cameraPose.pose * (prevPose.inverse() * zedPtr->cameraPose.pose);
+    predNPoseInv = predNPose.inverse();
+
+}
+
 void FeatureTracker::changePosesLBAB()
 {
     KeyFrame* kf = map->keyFrames.at(map->endLBAIdx);
@@ -4965,6 +5003,35 @@ void FeatureTracker::changePosesLBAB()
             Eigen::Matrix4d keyPose = kf->getPose();
             nextKF->pose.setPose(keyPose * nextKF->pose.refPose);
             nextKF->setBackPose(nextKF->pose.pose * zedPtr->TCamToCam);
+            kf = nextKF;
+        }
+        else
+            break;
+    }
+    Eigen::Matrix4d keyPose = kf->getPose();
+    zedPtr->cameraPose.changePose(keyPose);
+    zedPtrB->cameraPose.setPose(zedPtr->cameraPose.pose * zedPtr->TCamToCam);
+
+    lastKFPose = keyPose;
+    lastKFPoseInv = lastKFPose.inverse();
+
+    Eigen::Matrix4d prevPose = prevKF->pose.pose * prevReferencePose;
+
+    predNPose = zedPtr->cameraPose.pose * (prevPose.inverse() * zedPtr->cameraPose.pose);
+    predNPoseInv = predNPose.inverse();
+
+}
+
+void FeatureTracker::changePosesLCAB(const int endIdx)
+{
+    KeyFrame* kf = map->keyFrames.at(endIdx);
+    while ( true )
+    {
+        KeyFrame* nextKF = kf->nextKF;
+        if ( nextKF )
+        {
+            Eigen::Matrix4d keyPose = kf->getPose();
+            nextKF->updatePose(keyPose);
             kf = nextKF;
         }
         else
@@ -5955,10 +6022,11 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     curFrame = frameNumb;
     curFrameNumb++;
     
-    if ( map->LBADone )
+    if ( map->LBADone || map->LCDone )
     {
         std::lock_guard<std::mutex> lock(map->mapMutex);
-        changePosesLBA();
+        const int endIdx = (map->LCDone) ? map->endLCIdx : map->endLBAIdx;
+        changePosesLCA(endIdx);
         if ( map->activeKeyFrames.size() > actvKFMaxSize )
         {
             // removeKeyFrame(activeKeyFrames);
@@ -5968,7 +6036,10 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
             }
             activeKeyFrames.resize(actvKFMaxSize);
         }
-        map->LBADone = false;
+        if ( map->LCDone )
+            map->LCDone = false;
+        if ( map->LBADone )
+            map->LBADone = false;
     }
     // setLRImages(frameNumb);
 
@@ -6143,10 +6214,11 @@ void FeatureTracker::TrackImageTB(const cv::Mat& leftRect, const cv::Mat& rightR
     curFrame = frameNumb;
     curFrameNumb++;
     
-    if ( map->LBADone )
+    if ( map->LBADone || map->LCDone )
     {
         std::lock_guard<std::mutex> lock(map->mapMutex);
-        changePosesLBAB();
+        const int endIdx = (map->LCDone) ? map->endLCIdx : map->endLBAIdx;
+        changePosesLCAB(endIdx);
         if ( map->activeKeyFrames.size() > actvKFMaxSize )
         {
             // removeKeyFrame(activeKeyFrames);
@@ -6156,7 +6228,10 @@ void FeatureTracker::TrackImageTB(const cv::Mat& leftRect, const cv::Mat& rightR
             }
             activeKeyFrames.resize(actvKFMaxSize);
         }
-        map->LBADone = false;
+        if ( map->LCDone )
+            map->LCDone = false;
+        if ( map->LBADone )
+            map->LBADone = false;
     }
     // setLRImages(frameNumb);
 

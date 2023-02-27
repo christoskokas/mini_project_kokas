@@ -20,6 +20,149 @@ void KeyFrame::getConnectedKFs(const Map* map, std::vector<KeyFrame*>& activeKF,
     }
 }
 
+void KeyFrame::updatePose(const Eigen::Matrix4d& keyPose)
+{
+    const Eigen::Matrix4d newPose = keyPose * pose.refPose;
+    const Eigen::Matrix4d newPoseInv = newPose.inverse();
+    const Eigen::Matrix4d& currPose = pose.pose;
+    const Eigen::Matrix4d& currPoseInv = pose.poseInverse;
+    const Eigen::Matrix4d newPoseR = newPose * extr;
+    const Eigen::Matrix4d newPoseRInv = newPoseR.inverse();
+
+    int idx {0};
+    for ( std::vector<MapPoint*>::iterator it = localMapPoints.begin(), end(localMapPoints.end()); it != end; it++, idx++)
+    {
+        MapPoint* mp = *it;
+        if ( !mp || mp->GetIsOutlier() )
+            continue;
+        Eigen::Vector4d p4d = mp->getWordPose4d();
+        if ( mp->kdx == numb )
+        {
+            p4d = newPose * (currPoseInv * p4d);
+            mp->setWordPose4d(p4d);
+        }
+        else
+        {
+            p4d = newPoseInv * p4d;
+            const cv::KeyPoint& obs = keys.keyPoints[idx];
+            const int oct = obs.octave;
+            const double invZ = 1.0/p4d(2);
+            const double u {fx*p4d(0)*invZ + cx};
+            const double v {fy*p4d(1)*invZ + cy};
+            const double err1 = (double)obs.pt.x - u;
+            const double err2 = (double)obs.pt.y - v;
+            const double weight = (double)InvSigmaFactor[oct];
+            const double err = ((err1*err1) + (err2*err2)) * weight;
+            if ( err > 7.815f)
+            {
+                (*it) = nullptr;
+                unMatchedF[idx] = -1;
+                mp->eraseKFConnection(this);
+            }
+        }
+    }
+    idx = 0;
+    for ( std::vector<MapPoint*>::iterator it = localMapPointsR.begin(), end(localMapPointsR.end()); it != end; it++, idx++)
+    {
+        MapPoint* mp = *it;
+        if ( !mp || mp->GetIsOutlier() )
+            continue;
+        Eigen::Vector4d p4d = mp->getWordPose4d();
+        if ( mp->kdx == numb )
+            continue;
+        else
+        {
+            p4d = newPoseRInv * p4d;
+            const cv::KeyPoint& obs = keys.rightKeyPoints[idx];
+            const int oct = obs.octave;
+            const double invZ = 1.0/p4d(2);
+            const double u {fx*p4d(0)*invZ + cx};
+            const double v {fy*p4d(1)*invZ + cy};
+            const double err1 = (double)obs.pt.x - u;
+            const double err2 = (double)obs.pt.y - v;
+            const double weight = (double)InvSigmaFactor[oct];
+            const double err = ((err1*err1) + (err2*err2)) * weight;
+            if ( err > 7.815f)
+            {
+                (*it) = nullptr;
+                unMatchedFR[idx] = -1;
+                mp->eraseKFConnection(this);
+            }
+        }
+    }
+    if ( backCam )
+    {
+        const Eigen::Matrix4d currPoseB = pose.pose * TCamToCam;
+        const Eigen::Matrix4d currPoseInvB = currPoseB.inverse();
+        const Eigen::Matrix4d newPoseB = newPose * TCamToCam;
+        const Eigen::Matrix4d newPoseInvB = newPoseB.inverse();
+        const Eigen::Matrix4d newPoseInvRB = (newPoseB * extrB).inverse();
+        idx = 0;
+        for ( std::vector<MapPoint*>::iterator it = localMapPointsB.begin(), end(localMapPointsB.end()); it != end; it++, idx++)
+        {
+            MapPoint* mp = *it;
+            if ( !mp || mp->GetIsOutlier() )
+                continue;
+            Eigen::Vector4d p4d = mp->getWordPose4d();
+            if ( mp->kdx == numb )
+            {
+                p4d = newPoseB * (currPoseInvB * p4d);
+                mp->setWordPose4d(p4d);
+            }
+            else
+            {
+                p4d = newPoseInvB * p4d;
+                const cv::KeyPoint& obs = keysB.keyPoints[idx];
+                const int oct = obs.octave;
+                const double invZ = 1.0/p4d(2);
+                const double u {fxb*p4d(0)*invZ + cxb};
+                const double v {fyb*p4d(1)*invZ + cyb};
+                const double err1 = (double)obs.pt.x - u;
+                const double err2 = (double)obs.pt.y - v;
+                const double weight = (double)InvSigmaFactor[oct];
+                const double err = ((err1*err1) + (err2*err2)) * weight;
+                if ( err > 7.815f)
+                {
+                    (*it) = nullptr;
+                    unMatchedFB[idx] = -1;
+                    mp->eraseKFConnectionB(this);
+                }
+            }
+        }
+        idx = 0;
+        for ( std::vector<MapPoint*>::iterator it = localMapPointsRB.begin(), end(localMapPointsRB.end()); it != end; it++, idx++)
+        {
+            MapPoint* mp = *it;
+            if ( !mp || mp->GetIsOutlier() )
+                continue;
+            Eigen::Vector4d p4d = mp->getWordPose4d();
+            if ( mp->kdx == numb )
+                continue;
+            else
+            {
+                p4d = newPoseInvRB * p4d;
+                const cv::KeyPoint& obs = keysB.rightKeyPoints[idx];
+                const int oct = obs.octave;
+                const double invZ = 1.0/p4d(2);
+                const double u {fxb*p4d(0)*invZ + cxb};
+                const double v {fyb*p4d(1)*invZ + cyb};
+                const double err1 = (double)obs.pt.x - u;
+                const double err2 = (double)obs.pt.y - v;
+                const double weight = (double)InvSigmaFactor[oct];
+                const double err = ((err1*err1) + (err2*err2)) * weight;
+                if ( err > 7.815f)
+                {
+                    (*it) = nullptr;
+                    unMatchedFRB[idx] = -1;
+                    mp->eraseKFConnectionB(this);
+                }
+            }
+        }
+        setBackPose(newPoseB);
+    }
+    pose.changePose(keyPose);
+}
+
 void KeyFrame::setBackPose(const Eigen::Matrix4d& _backPose)
 {
     backPose = _backPose;
@@ -28,12 +171,12 @@ void KeyFrame::setBackPose(const Eigen::Matrix4d& _backPose)
 
 void KeyFrame::getConnectedKFsLC(const Map* map, std::vector<KeyFrame*>& activeKF)
 {
-    for ( size_t i{map->LCCandIdx - 1}; i >= 0; i--)
+    for ( int32_t i{map->LCCandIdx - 1}; i >= 0; i--)
     {
         KeyFrame* kFLCCand = map->keyFrames.at(i);
         activeKF.emplace_back(kFLCCand);
-        if ( kFLCCand->LCCand )
-            break;
+        // if ( kFLCCand->LCCand )
+        //     break;
     }
 }
 
@@ -179,6 +322,39 @@ KeyFrame::KeyFrame(const Eigen::Matrix4d& _refPose, const Eigen::Matrix4d& realP
     pose.setPose(realPose);
     leftIm = _leftIm.clone();
     rLeftIm = rLIm.clone();
+}
+
+KeyFrame::KeyFrame(const Zed_Camera* _zedCam, const Eigen::Matrix4d& _refPose, const Eigen::Matrix4d& realPose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx) : numb(_numb), frameIdx(_frameIdx)
+{
+    pose.refPose = _refPose;
+    pose.setPose(realPose);
+    leftIm = _leftIm.clone();
+    rLeftIm = rLIm.clone();
+    fx = _zedCam->cameraLeft.fx;
+    fy = _zedCam->cameraLeft.fy;
+    cx = _zedCam->cameraLeft.cx;
+    cy = _zedCam->cameraLeft.cy;
+    extr = _zedCam->extrinsics;
+}
+
+KeyFrame::KeyFrame(const Zed_Camera* _zedCam, const Zed_Camera* _zedCamB, const Eigen::Matrix4d& _refPose, const Eigen::Matrix4d& realPose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx) : numb(_numb), frameIdx(_frameIdx)
+{
+    backCam = true;
+    TCamToCam = _zedCam->TCamToCam;
+    pose.refPose = _refPose;
+    pose.setPose(realPose);
+    leftIm = _leftIm.clone();
+    rLeftIm = rLIm.clone();
+    fx = _zedCam->cameraLeft.fx;
+    fy = _zedCam->cameraLeft.fy;
+    cx = _zedCam->cameraLeft.cx;
+    cy = _zedCam->cameraLeft.cy;
+    fxb = _zedCamB->cameraLeft.fx;
+    fyb = _zedCamB->cameraLeft.fy;
+    cxb = _zedCamB->cameraLeft.cx;
+    cyb = _zedCamB->cameraLeft.cy;
+    extr = _zedCam->extrinsics;
+    extrB = _zedCamB->extrinsics;
 }
 
 KeyFrame::KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, Eigen::MatrixXd _homoPoints3D, const int _numb) : numb(_numb), frameIdx(_numb)

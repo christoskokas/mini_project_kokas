@@ -54,7 +54,10 @@ class LocalMapper
         LocalMapper(Map* _map, Zed_Camera* _zedPtr, Zed_Camera* _zedPtrB, FeatureMatcher* _fm);
 
         void loopClosureR(std::vector<vio_slam::KeyFrame *>& actKeyF);
+        void loopClosureRB(std::vector<vio_slam::KeyFrame *>& actKeyF);
         void beginLoopClosure();
+        void beginLoopClosureB();
+        void insertMPsForLC(std::vector<MapPoint*>& localMapPoints, const std::unordered_map<KeyFrame*, Eigen::Matrix<double,7,1>>& localKFs,std::unordered_map<KeyFrame*, Eigen::Matrix<double,7,1>>& fixedKFs, std::unordered_map<MapPoint*, Eigen::Vector3d>& allMapPoints, const int lastActKF, int& blocks, const bool back);
         
         void triangulateNewPointsRB(const Zed_Camera* zedCam,std::vector<vio_slam::KeyFrame *>& activeKF, const bool back);
         void calcAllMpsOfKFROnlyEstB(const Zed_Camera* zedCam, std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>>& matchedIdxs, KeyFrame* lastKF, const int kFsize, std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>>& p4d, std::vector<float>& maxDistsScale, const bool back);

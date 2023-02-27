@@ -217,6 +217,8 @@ class FeatureTracker
         bool worldToFrameRTrackB(MapPoint* mp, const Zed_Camera* zedCam, const bool right, const Eigen::Matrix4d& predPoseInv);
         void publishPoseNewB();
         void changePosesLBAB();
+        void changePosesLCA(const int endIdx);
+        void changePosesLCAB(const int endIdx);
         std::pair<std::pair<int,int>, std::pair<int,int>> estimatePoseCeresRB(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<std::pair<int,int>>& matchesIdxs, std::vector<bool>& MPsOutliers, std::vector<MapPoint*>& activeMapPointsB, TrackedKeys& keysLeftB, std::vector<std::pair<int,int>>& matchesIdxsB, std::vector<bool>& MPsOutliersB, Eigen::Matrix4d& estimPose);
         int findOutliersRB(const Zed_Camera* zedCam, const Eigen::Matrix4d& estimatedP, std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<std::pair<int,int>>& matchesIdxs, const double thres, std::vector<bool>& MPsOutliers, int& nInliers);
         bool check2dErrorB(const Zed_Camera* zedCam, Eigen::Vector4d& p4d, const cv::Point2f& obs, const double thres, const float weight);

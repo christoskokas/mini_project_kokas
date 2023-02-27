@@ -24,6 +24,8 @@
 #include <thread>
 #include <yaml-cpp/yaml.h>
 #include <signal.h>
+#include <AprilTagDetection.h>
+#include <AprilTagDetectionArray.h>
 
 #define GTPOSE false
 #define PUBPOINTCLOUD true
@@ -35,9 +37,12 @@ class GetImagesROS
 
         void getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight, const sensor_msgs::ImageConstPtr& msgLeftB,const sensor_msgs::ImageConstPtr& msgRightB,const nav_msgs::OdometryConstPtr& msgGT);
         void getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight, const sensor_msgs::ImageConstPtr& msgLeftB,const sensor_msgs::ImageConstPtr& msgRightB);
+        void aprilTagCallBack(const vio_slam::AprilTagDetectionArray::ConstPtr& msg);
 
         void saveGTTrajectoryAndPositions(const std::string& filepath, const std::string& filepathPosition);
         void publishOdom(const std_msgs::Header& _header);
+
+        ros::Subscriber aprilTag_sub;
 
         ros::Publisher pc_pub;
         ros::Publisher odom_pub;
@@ -49,10 +54,17 @@ class GetImagesROS
         std::vector<Eigen::Quaterniond> gtQuaternions;
 
         Eigen::Matrix4d T_w_c1;
+        Eigen::Matrix4d T_c1_AT = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d tagPose;
 
         cv::Mat rectMap[2][2];
         cv::Mat rectMapB[2][2];
         int frameNumb {0};
+        int ATFoundCount {0};
+        int ATLostCount {0};
+        bool ATFound {false};
+        bool onTrack {false};
+        bool tagPoseFilled {false};
 };
 
 void signal_callback_handler(int signum) {
@@ -153,12 +165,42 @@ int main (int argc, char **argv)
     {
         gtPose = false;
     }
+    bool LCSameCam {true};
+    try
+    {
+        LCSameCam = confFile->getValue<bool>("LCSameCam");
+    }
+    catch(const std::exception& e)
+    {
+        LCSameCam = true;
+    }
+    if ( !LCSameCam )
+    {
+        std::vector<double> Tc1AT = confFile->getValue<std::vector<double>>("T_c1_AT","data");
+        imgROS.T_c1_AT << Tc1AT[0],Tc1AT[1],Tc1AT[2],Tc1AT[3],Tc1AT[4],Tc1AT[5],Tc1AT[6],Tc1AT[7],Tc1AT[8],Tc1AT[9],Tc1AT[10],Tc1AT[11],Tc1AT[12],Tc1AT[13],Tc1AT[14],Tc1AT[15];
+    }
+    // This is for when you know where the tag is. Changes need to be made in LC to account for that
+    bool  tagPose {false};
+    try
+    {
+        tagPose = confFile->getValue<bool>("tagPose");
+    }
+    catch(const std::exception& e)
+    {
+        tagPose = false;
+    }
+    if ( tagPose )
+    {
+        std::vector<double> Twtag = confFile->getValue<std::vector<double>>("T_w_tag","data");
+        imgROS.tagPose << Twtag[0],Twtag[1],Twtag[2],Twtag[3],Twtag[4],Twtag[5],Twtag[6],Twtag[7],Twtag[8],Twtag[9],Twtag[10],Twtag[11],Twtag[12],Twtag[13],Twtag[14],Twtag[15];
+    }
     const std::string gtPath = (gtPose) ? confFile->getValue<std::string>("gtPath") : "";
 
     const std::string leftPath = confFile->getValue<std::string>("leftPathCam");
     const std::string rightPath = confFile->getValue<std::string>("rightPathCam");
     const std::string leftPathB = confFile->getValue<std::string>("leftPathCamB");
     const std::string rightPathB = confFile->getValue<std::string>("rightPathCamB");
+    const std::string aprilTagPath = confFile->getValue<std::string>("aprilTagPath");
 
     ros::NodeHandle nh;
     
@@ -166,6 +208,7 @@ int main (int argc, char **argv)
     message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, rightPath, 10);
     message_filters::Subscriber<sensor_msgs::Image> left_subB(nh, leftPathB, 10);
     message_filters::Subscriber<sensor_msgs::Image> right_subB(nh, rightPathB, 10);
+    imgROS.aprilTag_sub = nh.subscribe(aprilTagPath, 10, &GetImagesROS::aprilTagCallBack, &imgROS);
     imgROS.odom_pub = nh.advertise<nav_msgs::Odometry>("/odom",1);
 #if PUBPOINTCLOUD
     std::vector<double> Twc1 = confFile->getValue<std::vector<double>>("T_w_c1","data");
@@ -197,6 +240,53 @@ int main (int argc, char **argv)
     exit(SIGINT);
 
     return 0;
+}
+
+void GetImagesROS::aprilTagCallBack(const vio_slam::AprilTagDetectionArray::ConstPtr& msg)
+{
+    if ( voSLAM->map->aprilTagDetected )
+        return;
+    if ( msg->detections.size() == 0 )
+    {
+        if ( ATFound )
+            ATLostCount++;
+        if ( ATLostCount > 10 )
+        {
+            std::cout << "Starting AprilTag Detection Again!" << std::endl;
+
+            ATFound = false;
+            ATLostCount = 0;
+            ATFoundCount = 0;
+        }
+        return;
+    }
+    if ( ATFound )
+        return;
+    ATFoundCount++;
+    if ( ATFoundCount < 3 )
+        return;
+    ATFound = true;
+    std::cout << "AprilTag Detected!" << std::endl;
+    const geometry_msgs::Point& tra = msg->detections[0].pose.pose.pose.position;
+    const geometry_msgs::Quaternion& quat = msg->detections[0].pose.pose.pose.orientation;
+
+    Eigen::Quaterniond qTag(quat.w, quat.x, quat.y, quat.z);
+    Eigen::Vector3d tTag(tra.x, tra.y, tra.z);
+
+    Eigen::Matrix4d Tc2_tag = Eigen::Matrix4d::Identity();
+    Tc2_tag.block<3,3>(0,0) = qTag.toRotationMatrix();
+    Tc2_tag.block<3,1>(0,3) = tTag;
+    if ( !tagPoseFilled )
+    {
+        tagPose = voSLAM->mZedCamera->cameraPose.pose * T_c1_AT * Tc2_tag;
+        tagPoseFilled = true;
+        return;
+    }
+    voSLAM->map->LCPose = tagPose * Tc2_tag.inverse() * T_c1_AT.inverse();
+    voSLAM->map->aprilTagDetected = true;
+    // std::cout << "mZedCamera : "  << voSLAM->mZedCamera->cameraPose.pose << std::endl;
+    // std::cout << "TagPose : "  << zedPoseFromTag << std::endl;
+
 }
 
 void GetImagesROS::saveGTTrajectoryAndPositions(const std::string& filepath, const std::string& filepathPosition)

@@ -68,7 +68,7 @@ System::System(ConfigFile* _mConf, bool multi)
 
     LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMappingB, localMap);
 
-    LoopClosure = new std::thread(&vio_slam::LocalMapper::beginLoopClosure, loopCl);
+    LoopClosure = new std::thread(&vio_slam::LocalMapper::beginLoopClosureB, loopCl);
     
     // Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera);
 

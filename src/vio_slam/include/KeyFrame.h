@@ -61,7 +61,12 @@ class KeyFrame
     private:
 
     public:
+        double fx,fy,cx,cy;
+        double fxb,fyb,cxb,cyb;
         CameraPose pose;
+        Eigen::Matrix4d extr;
+        Eigen::Matrix4d extrB;
+        Eigen::Matrix4d TCamToCam;
         Eigen::Matrix4d backPose;
         Eigen::Matrix4d backPoseInv;
         cv::Mat leftIm, rightIm;
@@ -105,7 +110,9 @@ class KeyFrame
         bool keyF {false};
         bool LBA {false};
         bool fixed {false};
+        bool backCam {false};
 
+        void updatePose(const Eigen::Matrix4d& keyPose);
 
         // Create Function that updates connections
         void calcConnections();
@@ -124,6 +131,8 @@ class KeyFrame
         KeyFrame(Eigen::Matrix4d _pose, const int _numb);
         KeyFrame(Eigen::Matrix4d _pose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx);
         KeyFrame(const Eigen::Matrix4d& _refPose, const Eigen::Matrix4d& realPose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx);
+        KeyFrame(const Zed_Camera* _zedCam, const Eigen::Matrix4d& _refPose, const Eigen::Matrix4d& realPose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx);
+        KeyFrame(const Zed_Camera* _zedCam, const Zed_Camera* _zedCamB, const Eigen::Matrix4d& _refPose, const Eigen::Matrix4d& realPose, cv::Mat& _leftIm, cv::Mat& rLIm, const int _numb, const int _frameIdx);
         Eigen::Vector4d getWorldPosition(int idx);
         void getConnectedKFs(const Map* map, std::vector<KeyFrame*>& activeKF, const int N);
         void getConnectedKFs(std::vector<KeyFrame*>& activeKF, const int N);
