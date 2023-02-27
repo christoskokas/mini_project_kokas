@@ -4521,6 +4521,8 @@ void FeatureTracker::insertKeyFrameR(TrackedKeys& keysLeft, std::vector<int>& ma
     referencePose = lastKF->pose.getInvPose() * estimPose;
     // Logging("referencePose in keyframe", referencePose,3);
     KeyFrame* kF = new KeyFrame(referencePose, estimPose, leftIm, rleftIm,map->kIdx, curFrame);
+    if ( map->aprilTagDetected )
+        kF->LCCand = true;
     // Logging("REALPOSE in keyframe", kF->getPose(),3);
     kF->closestKF = lastKF->numb;
     kF->scaleFactor = fe.scalePyramid;
@@ -4641,6 +4643,8 @@ void FeatureTracker::insertKeyFrameRB(TrackedKeys& keysLeft, std::vector<int>& m
     // Logging("referencePose in keyframe", referencePose,3);
     KeyFrame* kF = new KeyFrame(referencePose, estimPose, leftIm, rleftIm,map->kIdx, curFrame);
     kF->setBackPose(kF->pose.pose * zedPtr->TCamToCam);
+    if ( map->aprilTagDetected )
+        kF->LCCand = true;
     // Logging("REALPOSE in keyframe", kF->getPose(),3);
     kF->closestKF = lastKF->numb;
     kF->scaleFactor = fe.scalePyramid;
@@ -6105,7 +6109,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
 
     insertKeyFrameCount ++;
     prevKF = activeKeyFrames.front();
-    if ( (nStIn.second < minNStereo || insertKeyFrameCount >= keyFrameCountEnd) && nStIn.first < 0.9 * lastKFTrackedNumb )
+    if ( ((nStIn.second < minNStereo || insertKeyFrameCount >= keyFrameCountEnd) && nStIn.first < 0.9 * lastKFTrackedNumb) || map->aprilTagDetected )
     {
         insertKeyFrameCount = 0;
         insertKeyFrameR(keysLeft, matchedIdxsL,matchesIdxs, nStIn.second, poseEst, MPsOutliers, leftIm, realLeftIm);
@@ -6361,7 +6365,7 @@ void FeatureTracker::TrackImageTB(const cv::Mat& leftRect, const cv::Mat& rightR
 
     insertKeyFrameCount ++;
     prevKF = activeKeyFrames.front();
-    if ( (nStIn.second + nStInB.second < minNStereo/*  || nStInB.second < minNStereo */ || insertKeyFrameCount >= keyFrameCountEnd) && allInliers < 0.9 * lastKFTrackedNumb )
+    if ( ((nStIn.second + nStInB.second < minNStereo/*  || nStInB.second < minNStereo */ || insertKeyFrameCount >= keyFrameCountEnd) && allInliers < 0.9 * lastKFTrackedNumb) || map->aprilTagDetected )
     {
         insertKeyFrameCount = 0;
         insertKeyFrameRB(keysLeft, matchedIdxsL,matchesIdxs,MPsOutliers, keysLeftB, matchedIdxsLB,matchesIdxsB,MPsOutliersB, nStIn.second, nStInB.second, poseEst, leftIm, realLeftIm);

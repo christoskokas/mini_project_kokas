@@ -43,7 +43,8 @@ find_package(Sophus REQUIRED)
 ## Declare ROS messages and services
 add_message_files(
   FILES
-  Num.msg
+  AprilTagDetection.msg
+  AprilTagDetectionArray.msg
 )
 
 add_service_files(
@@ -82,6 +83,8 @@ include/Map.h
 include/System.h
 include/Conversions.h
 include/LocalBA.h
+include/AprilTagDetection.h
+include/AprilTagDetectionArray.h
 )
 
 add_subdirectory(Thirdparty/Sophus)
@@ -126,14 +129,14 @@ ${YAML_CPP_LIBRARIES}
 ${SOPHUS_LIBS}
 )
 
-add_executable(VioSlam src/VioSlam.cpp)
-target_link_libraries(VioSlam ${PROJECT_NAME})
+# add_executable(VioSlam src/VioSlam.cpp)
+# target_link_libraries(VioSlam ${PROJECT_NAME})
 
-add_executable(Trial src/trials.cpp)
-target_link_libraries(Trial ${PROJECT_NAME})
+# add_executable(Trial src/trials.cpp)
+# target_link_libraries(Trial ${PROJECT_NAME})
 
-add_executable(MultiSlam src/MultiSlam.cpp)
-target_link_libraries(MultiSlam ${PROJECT_NAME})
+# add_executable(MultiSlam src/MultiSlam.cpp)
+# target_link_libraries(MultiSlam ${PROJECT_NAME})
 
 add_executable(VSLAMOneCam src/VSLAMOneCam.cpp)
 target_link_libraries(VSLAMOneCam ${PROJECT_NAME})

@@ -14,6 +14,8 @@ rightPathCam : "/camera_1/right/image_rect"
 leftPathCamB : "/camera_4/left/image_rect"
 rightPathCamB : "/camera_4/right/image_rect"
 
+aprilTagPath : "tag_detections"
+
 gtPath : "ground_truth/pose"
 
 imagesPath: "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/simulation/"
@@ -136,4 +138,27 @@ T_w_c1:
   data: [0.0, 0.0, 1.0, 0.150,
         -1.0, 0.0, 0.0, -0.06,
         0.0, -1.0, 0.0, -0.20,
+        0.0, 0.0, 0.0, 1.0]
+
+LCSameCam : false
+
+T_c1_AT:
+  rows: 4
+  cols: 4
+  dt: d
+  data: [0.0, 0.0, 1.0, 0.210,
+        0.0, 1.0, 0.0, 0.0,
+        -1.0, 0.0, 0.0, -0.09,
+        0.0, 0.0, 0.0, 1.0]
+
+
+tagPose : false
+
+T_w_tag:
+  rows: 4
+  cols: 4
+  dt: d
+  data: [0.0, 0.0, 1.0, 0.210,
+        0.0, 1.0, 0.0, 0.0,
+        -1.0, 0.0, 0.0, -0.09,
         0.0, 0.0, 0.0, 1.0]

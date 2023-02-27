@@ -90,7 +90,7 @@ def create_apriltag_model(obj_mat,counter, pose, rot):
       <visual name='main_Visual'>
         <geometry>
           <box>
-          <size>0.25 0.25 0.01</size>
+          <size>0.25 0.25 0.0001</size>
           </box>
         </geometry>
            <material>
