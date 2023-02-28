@@ -86,7 +86,7 @@ def create_apriltag_model(obj_mat,counter, pose, rot):
   obj = f'''
   <model name='Apriltag36_11_00000_{counter}'>
     <link name='main'>
-    <pose frame=''>{pose.x} {pose.y} {pose.z} 0 {rot.y} 0</pose>
+    <pose frame=''>{pose.x} {pose.y} {pose.z} {rot.x} {rot.y} 0</pose>
       <visual name='main_Visual'>
         <geometry>
           <box>

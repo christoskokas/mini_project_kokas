@@ -11,6 +11,7 @@
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <move_base_msgs/MoveBaseActionResult.h>
 #include <std_msgs/Int64.h>
 #include <std_srvs/SetBool.h>
 #include <std_msgs/String.h>
@@ -28,23 +29,31 @@
 #include <signal.h>
 #include <AprilTagDetection.h>
 #include <AprilTagDetectionArray.h>
+#include <move_base_msgs/MoveBaseAction.h>
+#include <actionlib/client/simple_action_client.h>
 
 #define GTPOSE false
 #define PUBPOINTCLOUD true
+#define ATBESTPOSE true
 
 class GetImagesROS
 {
     public:
-        GetImagesROS(vio_slam::System* _voSLAM) : voSLAM(_voSLAM){};
+        GetImagesROS(vio_slam::System* _voSLAM) : voSLAM(_voSLAM), ac("move_base", true){};
 
         void getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight,const nav_msgs::OdometryConstPtr& msgGT);
         void getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight);
         void aprilTagCallBack(const vio_slam::AprilTagDetectionArray::ConstPtr& msg);
-
+        // void pathResultCallBack(const actionlib_msgs::GoalStatusArray::ConstPtr& msg);
+        void currGoalCallBack(const geometry_msgs::PoseStamped::ConstPtr& msg);
+        
         void saveGTTrajectoryAndPositions(const std::string& filepath, const std::string& filepathPosition);
         void publishOdom(const std_msgs::Header& _header);
+        void pubGoalAT(const std_msgs::Header& _header, const Eigen::Matrix4d& optPose);
 
         ros::Subscriber aprilTag_sub;
+        ros::Subscriber currGoal_sub;
+        // ros::Subscriber pathRes_sub;
 
         ros::Publisher pc_pub;
         ros::Publisher odom_pub;
@@ -58,14 +67,27 @@ class GetImagesROS
         Eigen::Matrix4d T_w_c1;
         Eigen::Matrix4d T_c1_AT = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d tagPose;
+        Eigen::Matrix4d tagPoseW;
+        Eigen::Matrix4d T_tag_b;
+        Eigen::Matrix4d T_bf_c1;
+        Eigen::Matrix4d optPose;
+        Eigen::Matrix4d prevGoal = Eigen::Matrix4d::Identity();
+
+        actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> ac;
 
         cv::Mat rectMap[2][2];
         int frameNumb {0};
         int ATFoundCount {0};
         int ATLostCount {0};
         bool ATFound {false};
-        bool onTrack {false};
         bool tagPoseFilled {false};
+        bool onTrack {false};
+        bool first {true};
+        bool pathSuccess {false};
+        bool gotPrevGoal {false};
+        bool poseOptAT {false};
+        bool pathsucRep {true};
+
 };
 
 void signal_callback_handler(int signum) {
@@ -167,15 +189,29 @@ int main (int argc, char **argv)
         std::vector<double> Twtag = confFile->getValue<std::vector<double>>("T_w_tag","data");
         imgROS.tagPose << Twtag[0],Twtag[1],Twtag[2],Twtag[3],Twtag[4],Twtag[5],Twtag[6],Twtag[7],Twtag[8],Twtag[9],Twtag[10],Twtag[11],Twtag[12],Twtag[13],Twtag[14],Twtag[15];
     }
+
     const std::string gtPath = (gtPose) ? confFile->getValue<std::string>("gtPath") : "";
 
     const std::string leftPath = confFile->getValue<std::string>("leftPathCam");
     const std::string rightPath = confFile->getValue<std::string>("rightPathCam");
     const std::string aprilTagPath = confFile->getValue<std::string>("aprilTagPath");
-    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, leftPath, 10);
-    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, rightPath, 10);
-    imgROS.aprilTag_sub = nh.subscribe(aprilTagPath, 10, &GetImagesROS::aprilTagCallBack, &imgROS);
+    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, leftPath, 100);
+    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, rightPath, 100);
+    imgROS.aprilTag_sub = nh.subscribe(aprilTagPath, 1, &GetImagesROS::aprilTagCallBack, &imgROS);
     imgROS.odom_pub = nh.advertise<nav_msgs::Odometry>("/odom",1);
+
+#if ATBESTPOSE
+
+    std::vector<double> Tbtag = confFile->getValue<std::vector<double>>("T_tag_b","data");
+    imgROS.T_tag_b << Tbtag[0],Tbtag[1],Tbtag[2],Tbtag[3],Tbtag[4],Tbtag[5],Tbtag[6],Tbtag[7],Tbtag[8],Tbtag[9],Tbtag[10],Tbtag[11],Tbtag[12],Tbtag[13],Tbtag[14],Tbtag[15];
+
+    std::vector<double> Tbfc1 = confFile->getValue<std::vector<double>>("T_bf_c1","data");
+    imgROS.T_bf_c1 << Tbfc1[0],Tbfc1[1],Tbfc1[2],Tbfc1[3],Tbfc1[4],Tbfc1[5],Tbfc1[6],Tbfc1[7],Tbfc1[8],Tbfc1[9],Tbfc1[10],Tbfc1[11],Tbfc1[12],Tbfc1[13],Tbfc1[14],Tbfc1[15];
+
+    imgROS.currGoal_sub = nh.subscribe("/move_base/current_goal", 10, &GetImagesROS::currGoalCallBack, &imgROS);
+    // imgROS.pathRes_sub = nh.subscribe("/move_base/status", 10, &GetImagesROS::pathResultCallBack, &imgROS);
+#endif
+
 #if PUBPOINTCLOUD
     std::vector<double> Twc1 = confFile->getValue<std::vector<double>>("T_w_c1","data");
     imgROS.T_w_c1 << Twc1[0],Twc1[1],Twc1[2],Twc1[3],Twc1[4],Twc1[5],Twc1[6],Twc1[7],Twc1[8],Twc1[9],Twc1[10],Twc1[11],Twc1[12],Twc1[13],Twc1[14],Twc1[15];
@@ -183,7 +219,7 @@ int main (int argc, char **argv)
 #endif
 
 #if GTPOSE
-    message_filters::Subscriber<nav_msgs::Odometry> gt_sub(nh, gtPath, 10);
+    message_filters::Subscriber<nav_msgs::Odometry> gt_sub(nh, gtPath, 100);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image, nav_msgs::Odometry> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub, gt_sub);
     sync.registerCallback(boost::bind(&GetImagesROS::getImages,&imgROS,_1,_2, _3));
@@ -194,9 +230,6 @@ int main (int argc, char **argv)
     sync.registerCallback(boost::bind(&GetImagesROS::getImages,&imgROS,_1,_2));
 
 #endif
-
-    // message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, "/kitti/camera_gray/left/image_rect", 1);
-    // message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, "/kitti/camera_gray/right/image_rect", 1);
 
     ros::spin();
 
@@ -216,12 +249,65 @@ int main (int argc, char **argv)
     return 0;
 }
 
+// void GetImagesROS::pathResultCallBack(const actionlib_msgs::GoalStatusArray::ConstPtr& msg)
+// {
+//     if (msg->status_list.size() == 0 )
+//         return;
+//     if ( msg->status_list[0].status == 3 && pathsucRep )
+//     {
+//         pathSuccess = true;
+//         onTrack = false;
+//         ATFound = false;
+//         ATFoundCount = 0;
+//         pathsucRep = false;
+//         std::cout << "Path Success!!!!! " << std::endl;
+//     }
+//     if (msg->status_list[0].status != 3 )
+//     {
+//         pathsucRep = true;
+//         std::cout << "Path NOOOOOOOOT  Success!!!!! " << std::endl;
+//     }
+// }
+
+void GetImagesROS::currGoalCallBack(const geometry_msgs::PoseStamped::ConstPtr& msg)
+{
+    if ( !onTrack )
+    {
+        Eigen::Quaterniond q(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z);
+        Eigen::Vector3d t(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
+        prevGoal.block<3,3>(0,0) = q.toRotationMatrix();
+        prevGoal.block<3,1>(0,3) = t;
+        gotPrevGoal = true;
+        // std::cout << "Previous Goal : " << prevGoal <<std::endl;
+    }
+}
+
 void GetImagesROS::aprilTagCallBack(const vio_slam::AprilTagDetectionArray::ConstPtr& msg)
 {
-    if ( voSLAM->map->aprilTagDetected )
+    if (ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED && pathsucRep)
+    {
+        std::cout << "Path Success!" << std::endl;
+        pathSuccess = true;
+        onTrack = false;
+        ATFound = false;
+        ATFoundCount = 0;
+        pathsucRep = false;
+    }
+    else if ( ac.getState() != actionlib::SimpleClientGoalState::SUCCEEDED )
+        pathsucRep = true;
+
+    if ( voSLAM->map->aprilTagDetected || onTrack )
         return;
+    if ( gotPrevGoal && poseOptAT && !voSLAM->map->aprilTagDetected )
+    {
+        std::cout << "Publishing previous Goal!" << std::endl;
+        pubGoalAT(msg->header, prevGoal);
+        gotPrevGoal = false;
+        poseOptAT = false;
+    }
     if ( msg->detections.size() == 0 )
     {
+        ATFoundCount = 0;
         if ( ATFound )
             ATLostCount++;
         if ( ATLostCount > 10 )
@@ -230,7 +316,6 @@ void GetImagesROS::aprilTagCallBack(const vio_slam::AprilTagDetectionArray::Cons
 
             ATFound = false;
             ATLostCount = 0;
-            ATFoundCount = 0;
         }
         return;
     }
@@ -253,13 +338,64 @@ void GetImagesROS::aprilTagCallBack(const vio_slam::AprilTagDetectionArray::Cons
     if ( !tagPoseFilled )
     {
         tagPose = voSLAM->mZedCamera->cameraPose.pose * T_c1_AT * Tc2_tag;
+        tagPoseW = T_bf_c1 * voSLAM->mZedCamera->cameraPose.pose * T_c1_AT * Tc2_tag;
+        optPose = tagPoseW * T_tag_b;
         tagPoseFilled = true;
+#if ATBESTPOSE
+        std::cout << "Path to best Pose for AprilTag Detection!" << std::endl;
+        onTrack = true;
+        pubGoalAT(msg->header, optPose);
+#endif
         return;
     }
+    // pubOptimalPoseAT(msg->header);
+#if ATBESTPOSE
+    if ( !first )
+    {
+        std::cout << "Path to best Pose for AprilTag Detection!" << std::endl;
+        onTrack = true;
+        pubGoalAT(msg->header, optPose);
+    }
+    if ( pathSuccess )
+    {
+        std::cout << "Path Success! " << std::endl;
+        if ( first )
+        {
+            tagPoseW = T_bf_c1 * voSLAM->mZedCamera->cameraPose.pose * T_c1_AT * Tc2_tag;
+            optPose = tagPoseW * T_tag_b;
+            tagPose = T_bf_c1.inverse() * tagPoseW;
+            first = false;
+        }
+        else
+        {
+            voSLAM->map->LCPose = tagPose * Tc2_tag.inverse() * T_c1_AT.inverse();
+            voSLAM->map->aprilTagDetected = true;
+        }
+        pathSuccess = false;
+        poseOptAT = true;
+    }
+#else
     voSLAM->map->LCPose = tagPose * Tc2_tag.inverse() * T_c1_AT.inverse();
     voSLAM->map->aprilTagDetected = true;
-    // std::cout << "mZedCamera : "  << voSLAM->mZedCamera->cameraPose.pose << std::endl;
-    // std::cout << "TagPose : "  << zedPoseFromTag << std::endl;
+#endif
+}
+
+void GetImagesROS::pubGoalAT(const std_msgs::Header& _header, const Eigen::Matrix4d& optPose)
+{
+    Eigen::Quaterniond q(optPose.block<3,3>(0,0));
+    Eigen::Vector3d t = optPose.block<3,1>(0,3);
+
+    move_base_msgs::MoveBaseGoal goal;
+    goal.target_pose.header.frame_id = "map";
+    goal.target_pose.header.stamp = _header.stamp;
+    goal.target_pose.pose.position.x = t.x();
+    goal.target_pose.pose.position.y = t.y();
+    goal.target_pose.pose.orientation.w = q.w();
+    goal.target_pose.pose.orientation.x = q.x();
+    goal.target_pose.pose.orientation.y = q.y();
+    goal.target_pose.pose.orientation.z = q.z();
+
+    ac.sendGoal(goal);
 
 }
 

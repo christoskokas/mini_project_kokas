@@ -204,10 +204,10 @@ int main (int argc, char **argv)
 
     ros::NodeHandle nh;
     
-    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, leftPath, 10);
-    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, rightPath, 10);
-    message_filters::Subscriber<sensor_msgs::Image> left_subB(nh, leftPathB, 10);
-    message_filters::Subscriber<sensor_msgs::Image> right_subB(nh, rightPathB, 10);
+    message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, leftPath, 100);
+    message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, rightPath, 100);
+    message_filters::Subscriber<sensor_msgs::Image> left_subB(nh, leftPathB, 100);
+    message_filters::Subscriber<sensor_msgs::Image> right_subB(nh, rightPathB, 100);
     imgROS.aprilTag_sub = nh.subscribe(aprilTagPath, 10, &GetImagesROS::aprilTagCallBack, &imgROS);
     imgROS.odom_pub = nh.advertise<nav_msgs::Odometry>("/odom",1);
 #if PUBPOINTCLOUD
@@ -218,7 +218,7 @@ int main (int argc, char **argv)
 #if GTPOSE
     message_filters::Subscriber<nav_msgs::Odometry> gt_sub(nh, gtPath, 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::Image, nav_msgs::Odometry> sync_pol;
-    message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub, left_subB,right_subB, gt_sub);
+    message_filters::Synchronizer<sync_pol> sync(sync_pol(100), left_sub,right_sub, left_subB,right_subB, gt_sub);
     sync.registerCallback(boost::bind(&GetImagesROS::getImages,&imgROS,_1,_2, _3,_4, _5));
 #else
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::Image> sync_pol;
