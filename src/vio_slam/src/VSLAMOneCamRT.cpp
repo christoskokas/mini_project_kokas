@@ -249,26 +249,6 @@ int main (int argc, char **argv)
     return 0;
 }
 
-// void GetImagesROS::pathResultCallBack(const actionlib_msgs::GoalStatusArray::ConstPtr& msg)
-// {
-//     if (msg->status_list.size() == 0 )
-//         return;
-//     if ( msg->status_list[0].status == 3 && pathsucRep )
-//     {
-//         pathSuccess = true;
-//         onTrack = false;
-//         ATFound = false;
-//         ATFoundCount = 0;
-//         pathsucRep = false;
-//         std::cout << "Path Success!!!!! " << std::endl;
-//     }
-//     if (msg->status_list[0].status != 3 )
-//     {
-//         pathsucRep = true;
-//         std::cout << "Path NOOOOOOOOT  Success!!!!! " << std::endl;
-//     }
-// }
-
 void GetImagesROS::currGoalCallBack(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
     if ( !onTrack )
@@ -282,11 +262,28 @@ void GetImagesROS::currGoalCallBack(const geometry_msgs::PoseStamped::ConstPtr& 
     }
 }
 
+#if ATBESTPOSE
+
 void GetImagesROS::aprilTagCallBack(const vio_slam::AprilTagDetectionArray::ConstPtr& msg)
 {
+    if ( msg->detections.size() == 0 )
+    {
+        ATFoundCount = 0;
+        if ( ATFound )
+            ATLostCount++;
+        if ( ATLostCount > 10 )
+        {
+            std::cout << "Starting AprilTag Detection Again!" << std::endl;
+
+            ATFound = false;
+            ATLostCount = 0;
+        }
+        // std::cout << "no april " << onTrack << std::endl;
+        return;
+    }
     if (ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED && pathsucRep)
     {
-        std::cout << "Path Success!" << std::endl;
+        std::cout << "yes path " << std::endl;
         pathSuccess = true;
         onTrack = false;
         ATFound = false;
@@ -304,20 +301,6 @@ void GetImagesROS::aprilTagCallBack(const vio_slam::AprilTagDetectionArray::Cons
         pubGoalAT(msg->header, prevGoal);
         gotPrevGoal = false;
         poseOptAT = false;
-    }
-    if ( msg->detections.size() == 0 )
-    {
-        ATFoundCount = 0;
-        if ( ATFound )
-            ATLostCount++;
-        if ( ATLostCount > 10 )
-        {
-            std::cout << "Starting AprilTag Detection Again!" << std::endl;
-
-            ATFound = false;
-            ATLostCount = 0;
-        }
-        return;
     }
     if ( ATFound )
         return;
@@ -337,26 +320,23 @@ void GetImagesROS::aprilTagCallBack(const vio_slam::AprilTagDetectionArray::Cons
     Tc2_tag.block<3,1>(0,3) = tTag;
     if ( !tagPoseFilled )
     {
-        tagPose = voSLAM->mZedCamera->cameraPose.pose * T_c1_AT * Tc2_tag;
         tagPoseW = T_bf_c1 * voSLAM->mZedCamera->cameraPose.pose * T_c1_AT * Tc2_tag;
         optPose = tagPoseW * T_tag_b;
         tagPoseFilled = true;
-#if ATBESTPOSE
         std::cout << "Path to best Pose for AprilTag Detection!" << std::endl;
         onTrack = true;
         pubGoalAT(msg->header, optPose);
-#endif
         return;
     }
     // pubOptimalPoseAT(msg->header);
-#if ATBESTPOSE
-    if ( !first )
+    if ( !first && !pathSuccess )
     {
         std::cout << "Path to best Pose for AprilTag Detection!" << std::endl;
         onTrack = true;
         pubGoalAT(msg->header, optPose);
+        return;
     }
-    if ( pathSuccess )
+    if ( pathSuccess && !onTrack )
     {
         std::cout << "Path Success! " << std::endl;
         if ( first )
@@ -374,11 +354,57 @@ void GetImagesROS::aprilTagCallBack(const vio_slam::AprilTagDetectionArray::Cons
         pathSuccess = false;
         poseOptAT = true;
     }
+}
+
 #else
+
+void GetImagesROS::aprilTagCallBack(const vio_slam::AprilTagDetectionArray::ConstPtr& msg)
+{
+    if ( voSLAM->map->aprilTagDetected )
+        return;
+    if ( msg->detections.size() == 0 )
+    {
+        if ( ATFound )
+            ATLostCount++;
+        if ( ATLostCount > 10 )
+        {
+            std::cout << "Starting AprilTag Detection Again!" << std::endl;
+
+            ATFound = false;
+            ATLostCount = 0;
+            ATFoundCount = 0;
+        }
+        return;
+    }
+    if ( ATFound )
+        return;
+    ATFoundCount++;
+    if ( ATFoundCount < 3 )
+        return;
+    ATFound = true;
+    std::cout << "AprilTag Detected!" << std::endl;
+    const geometry_msgs::Point& tra = msg->detections[0].pose.pose.pose.position;
+    const geometry_msgs::Quaternion& quat = msg->detections[0].pose.pose.pose.orientation;
+
+    Eigen::Quaterniond qTag(quat.w, quat.x, quat.y, quat.z);
+    Eigen::Vector3d tTag(tra.x, tra.y, tra.z);
+    Eigen::Matrix4d Tc2_tag = Eigen::Matrix4d::Identity();
+    Tc2_tag.block<3,3>(0,0) = qTag.toRotationMatrix();
+    Tc2_tag.block<3,1>(0,3) = tTag;
+    if ( !tagPoseFilled )
+    {
+        tagPose = voSLAM->mZedCamera->cameraPose.pose * T_c1_AT * Tc2_tag;
+        tagPoseFilled = true;
+        return;
+    }
     voSLAM->map->LCPose = tagPose * Tc2_tag.inverse() * T_c1_AT.inverse();
     voSLAM->map->aprilTagDetected = true;
-#endif
+    // std::cout << "mZedCamera : "  << voSLAM->mZedCamera->cameraPose.pose << std::endl;
+    // std::cout << "TagPose : "  << zedPoseFromTag << std::endl;
+
 }
+
+#endif
 
 void GetImagesROS::pubGoalAT(const std_msgs::Header& _header, const Eigen::Matrix4d& optPose)
 {
@@ -600,7 +626,14 @@ void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sen
 
 void GetImagesROS::publishOdom(const std_msgs::Header& _header)
 {
+    Eigen::Matrix4d startPose = Eigen::Matrix4d::Identity();
+    // tf on the cordinate system of the camera. so -0.15 on z(backwards from camera)
+    Eigen::Vector3d camToBase(0.06,0.0,-0.15);
     Eigen::Matrix4d camPose = voSLAM->mZedCamera->cameraPose.pose;
+    startPose.block<3,1>(0,3) = startPose.block<3,3>(0,0) 
+    * camToBase;
+    camPose.block<3,1>(0,3) = camPose.block<3,3>(0,0) * camToBase + camPose.block<3,1>(0,3);
+    camPose = startPose.inverse() * camPose;
     const Eigen::Quaterniond q(camPose.block<3,3>(0,0));
     Eigen::Vector3d tra = camPose.block<3,1>(0,3);
     tra = T_w_c1.block<3,3>(0,0) * tra;

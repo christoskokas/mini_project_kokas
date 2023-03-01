@@ -17,6 +17,21 @@ def create_xml():
   xml_string = f'''<?xml version="1.0" ?>
   <sdf version="1.7">
   <world name="default">
+  <physics type="ode">
+      <ode>
+        <solver>
+          <type>world</type>
+        </solver>
+        <constraints>
+          <contact_max_correcting_vel>0.1</contact_max_correcting_vel>
+          <contact_surface_layer>0.0001</contact_surface_layer>
+        </constraints>
+      </ode>
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>0.5</real_time_factor>
+      <real_time_update_rate>500</real_time_update_rate>
+    </physics>
+    <gravity>0.0 0.0 -9.81</gravity>
   <!-- A global light source -->
     <light name='sun2' type='point'>
       <cast_shadows>1</cast_shadows>

@@ -1,0 +1,5 @@
+<launch>
+  <rosparam command="load" file="$(find vio_slam)/config/config_simulation.yaml" />
+  <node name="VSLAMOneCamRT" pkg="vio_slam" type="VSLAMOneCamRT" output="screen" >
+  </node>
+</launch>

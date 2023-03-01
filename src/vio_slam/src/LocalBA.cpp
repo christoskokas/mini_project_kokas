@@ -3001,10 +3001,10 @@ void LocalMapper::localBAR(std::vector<vio_slam::KeyFrame *>& actKeyF)
     const Eigen::Matrix4d estimPoseRInv = zedPtr->extrinsics.inverse();
     const Eigen::Matrix3d qc1c2 = estimPoseRInv.block<3,3>(0,0);
     const Eigen::Matrix<double,3,1> tc1c2 = estimPoseRInv.block<3,1>(0,3);
-    ceres::Problem problem;
-    ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
     for (size_t iterations{0}; iterations < 2; iterations++)
     {
+    ceres::Problem problem;
+    ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
     // Timer baiter("baITER");
     ceres::LossFunction* loss_function = nullptr;
     if (first)
@@ -3143,11 +3143,11 @@ void LocalMapper::localBAR(std::vector<vio_slam::KeyFrame *>& actKeyF)
     
     ceres::Solver::Options options;
     options.linear_solver_ordering.reset(ordering);
-    options.num_threads = 4;
+    options.num_threads = 1;
     options.max_num_iterations = 10;
     if ( first )
         options.max_num_iterations = 5;
-    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    options.linear_solver_type = ceres::SPARSE_SCHUR;
     options.use_explicit_schur_complement = true;
 
     ceres::Solver::Summary summary;
@@ -3386,10 +3386,10 @@ void LocalMapper::loopClosureR(std::vector<vio_slam::KeyFrame *>& actKeyF)
     const Eigen::Matrix4d estimPoseRInv = zedPtr->extrinsics.inverse();
     const Eigen::Matrix3d qc1c2 = estimPoseRInv.block<3,3>(0,0);
     const Eigen::Matrix<double,3,1> tc1c2 = estimPoseRInv.block<3,1>(0,3);
-    ceres::Problem problem;
-    ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
     for (size_t iterations{0}; iterations < 2; iterations++)
     {
+    ceres::Problem problem;
+    ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
     Timer baiter("baITER");
     ceres::LossFunction* loss_function = nullptr;
     if (first)
@@ -3525,17 +3525,17 @@ void LocalMapper::loopClosureR(std::vector<vio_slam::KeyFrame *>& actKeyF)
     
     ceres::Solver::Options options;
     options.linear_solver_ordering.reset(ordering);
-    options.num_threads = 4;
-    options.max_num_iterations = 10;
+    options.num_threads = 8;
+    options.max_num_iterations = 45;
     if ( first )
         options.max_num_iterations = 5;
-    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    options.linear_solver_type = ceres::SPARSE_SCHUR;
     // options.use_explicit_schur_complement = true;
 
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
     // if ( !first )
-        // Logging("summ", summary.FullReport(),3);
+        Logging("summ", summary.FullReport(),3);
     // Logging("lelout", lelout, 3);
     std::vector<std::pair<KeyFrame*, MapPoint*>> emptyVec;
     wrongMatches.swap(emptyVec);
@@ -3772,10 +3772,10 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
     const Eigen::Matrix3d qc1c2BR = estimPoseBRInv.block<3,3>(0,0);
     const Eigen::Matrix<double,3,1> tc1c2BR = estimPoseBRInv.block<3,1>(0,3);
 
-    ceres::Problem problem;
-    ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
     for (size_t iterations{0}; iterations < 2; iterations++)
     {
+    ceres::Problem problem;
+    ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
     ceres::LossFunction* loss_function = nullptr;
     if (first)
         loss_function = new ceres::HuberLoss(sqrt(7.815f));
@@ -4031,11 +4031,11 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
     
     ceres::Solver::Options options;
     options.linear_solver_ordering.reset(ordering);
-    options.num_threads = 4;
+    options.num_threads = 1;
     options.max_num_iterations = 10;
     if ( first )
         options.max_num_iterations = 5;
-    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    options.linear_solver_type = ceres::SPARSE_SCHUR;
     options.use_explicit_schur_complement = true;
 
     ceres::Solver::Summary summary;
@@ -4286,10 +4286,10 @@ void LocalMapper::loopClosureRB(std::vector<vio_slam::KeyFrame *>& actKeyF)
     const Eigen::Matrix3d qc1c2BR = estimPoseBRInv.block<3,3>(0,0);
     const Eigen::Matrix<double,3,1> tc1c2BR = estimPoseBRInv.block<3,1>(0,3);
 
-    ceres::Problem problem;
-    ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
     for (size_t iterations{0}; iterations < 2; iterations++)
     {
+    ceres::Problem problem;
+    ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
     ceres::LossFunction* loss_function = nullptr;
     if (first)
         loss_function = new ceres::HuberLoss(sqrt(7.815f));
@@ -4545,17 +4545,18 @@ void LocalMapper::loopClosureRB(std::vector<vio_slam::KeyFrame *>& actKeyF)
     
     ceres::Solver::Options options;
     options.linear_solver_ordering.reset(ordering);
-    options.num_threads = 4;
-    options.max_num_iterations = 10;
+    // options.num_threads = 4;
+    options.num_threads = 8;
+    options.max_num_iterations = 45;
     if ( first )
         options.max_num_iterations = 5;
-    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    options.linear_solver_type = ceres::SPARSE_SCHUR;
     // options.use_explicit_schur_complement = true;
-
+    Timer solv("solvetimer");
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
     // if ( !first )
-        // Logging("summ", summary.FullReport(),3);
+        Logging("summ", summary.FullReport(),3);
     // Logging("lelout", lelout, 3);
     std::vector<std::pair<KeyFrame*, MapPoint*>> emptyVec;
     wrongMatches.swap(emptyVec);
