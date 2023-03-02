@@ -28,7 +28,7 @@ def create_xml():
         </constraints>
       </ode>
       <max_step_size>0.001</max_step_size>
-      <real_time_factor>0.5</real_time_factor>
+      <real_time_factor>1.0</real_time_factor>
       <real_time_update_rate>500</real_time_update_rate>
     </physics>
     <gravity>0.0 0.0 -9.81</gravity>

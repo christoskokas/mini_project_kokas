@@ -14,8 +14,6 @@ rightPathCamB : "/camera_4/right/image_rect"
 
 aprilTagPath : "tag_detections_2"
 
-gtPath : "tag_detections"
-
 imagesPath: "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/"
 
 fileExtension: ".jpg"
@@ -23,10 +21,10 @@ fileExtension: ".jpg"
 
 
 Camera_l:
-  fx: 261.403
-  fy: 261.403
-  cx: 325.983
-  cy: 180.828
+  fx: 130.55877685546875
+  fy: 130.55877685546875
+  cx: 172.13943481445312
+  cy: 94.27045440673828
   k1: 0.0
   k2: 0.0
   p1: 0.0
@@ -38,10 +36,10 @@ Camera_l_path: /zed2i/zed_node/left_raw/image_raw_color
 # /camera_1/left/image_raw
 
 Camera_r:
-  fx: 261.403
-  fy: 261.403
-  cx: 325.983
-  cy: 180.828
+  fx: 130.55877685546875
+  fy: 130.55877685546875
+  cx: 172.13943481445312
+  cy: 94.27045440673828
   k1: 0.0
   k2: 0.0
   p1: 0.0
@@ -53,16 +51,16 @@ Camera_r_path: /zed2i/zed_node/right_raw/image_raw_color
 # /camera_1/right/image_raw
 
 Camera:
-  width: 640
-  height: 360
+  width: 336
+  height: 188
   fps: 15.0
   bl: 0.119947
 
 CameraB_l:
-  fx: 261.403
-  fy: 261.403
-  cx: 325.983
-  cy: 180.828
+  fx: 130.55877685546875
+  fy: 130.55877685546875
+  cx: 172.13943481445312
+  cy: 94.27045440673828
   k1: 0.0
   k2: 0.0
   p1: 0.0
@@ -74,10 +72,10 @@ CameraB_l_path: /zed2i/zed_node/left_raw/image_raw_color
 # /camera_1/left/image_raw
 
 CameraB_r:
-  fx: 261.403
-  fy: 261.403
-  cx: 325.983
-  cy: 180.828
+  fx: 130.55877685546875
+  fy: 130.55877685546875
+  cx: 172.13943481445312
+  cy: 94.27045440673828
   k1: 0.0
   k2: 0.0
   p1: 0.0
@@ -89,8 +87,8 @@ CameraB_r_path: /zed2i/zed_node/right_raw/image_raw_color
 # /camera_1/right/image_raw
 
 CameraB:
-  width: 640
-  height: 360
+  width: 336
+  height: 188
   fps: 15.0
   bl: 0.119947
 
@@ -146,6 +144,15 @@ T_bf_c1:
         -1.0, 0.0, 0.0, 0.06,
         0.0, -1.0, 0.0, 0.25,
         0.0, 0.0, 0.0, 1.0]
+
+# T_c1_bf:
+#   rows: 4
+#   cols: 4
+#   dt: d
+#   data: [0.0, -1.0, 0.0, 0.06,
+#         0.0, 0.0, -1.0, 0.25,
+#         1.0, .0, 0.0, -0.15,
+#         0.0, 0.0, 0.0, 1.0]
 
 LCSameCam : false
 

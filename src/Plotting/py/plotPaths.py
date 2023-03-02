@@ -4,10 +4,14 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
 # List of up to 4 file paths to text files
-file_paths = ["ground_truth.txt","single_cam.txt", "dual_cam.txt", "ORB_SLAM3.txt"]
+# file_paths = ["ground_truth.txt","single_cam.txt", "dual_cam.txt", "ORB_SLAM3.txt"]
+home_path = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/build/devel/lib/vio_slam"
+file_paths = [home_path + "/ground_truth_traj.txt"]
+# file_paths = [home_path + "/ground_truth_traj.txt", home_path + "/single_cam_traj.txt", home_path + "/DcamTrajectory.txt", "ORB_SLAM3.txt"]
+
 colors = ['b', 'y', 'g','r']
 
-connect_points = True;
+connect_points = True
 
 # Initialize lists to store x, y, z values from all files
 all_xs, all_ys, all_zs = [], [], []
@@ -95,9 +99,9 @@ ax.set_zlabel('Z position (m)')
 
 # Set the plot title and legend
 if connect_points:
-    plt.title("Path Trajectories")
+    plt.title("Ground Truth Path Trajectory")
 else:
-    plt.title("Trajectories")
+    plt.title("Trajectory")
 plt.legend()
 
 # Show the plot

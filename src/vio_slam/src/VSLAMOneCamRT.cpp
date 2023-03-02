@@ -33,6 +33,7 @@
 #include <actionlib/client/simple_action_client.h>
 
 #define GTPOSE false
+#define GTPOSEDIF true
 #define PUBPOINTCLOUD true
 #define ATBESTPOSE true
 
@@ -53,7 +54,9 @@ class GetImagesROS
 
         ros::Subscriber aprilTag_sub;
         ros::Subscriber currGoal_sub;
+        ros::Subscriber gtPoseDif_sub;
         // ros::Subscriber pathRes_sub;
+        void gtPoseFromATCallBack(const vio_slam::AprilTagDetectionArray::ConstPtr& msg);
 
         ros::Publisher pc_pub;
         ros::Publisher odom_pub;
@@ -111,7 +114,8 @@ int main (int argc, char **argv)
 #elif SIMULATION
     std::string file = "config_simulation.yaml";
 #else
-    std::string file = "config_for_paper.yaml";
+    std::string file = "config_for_paper_lower.yaml";
+    // std::string file = "config_for_paper.yaml";
     // vio_slam::ConfigFile yamlFile("config.yaml");
 #endif
 
@@ -224,11 +228,15 @@ int main (int argc, char **argv)
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub, gt_sub);
     sync.registerCallback(boost::bind(&GetImagesROS::getImages,&imgROS,_1,_2, _3));
 
+#elif GTPOSEDIF
+    imgROS.gtPoseDif_sub = nh.subscribe("/tag_detections",1,&GetImagesROS::gtPoseFromATCallBack, &imgROS);
+    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
+    message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub);
+    sync.registerCallback(boost::bind(&GetImagesROS::getImages,&imgROS,_1,_2));
 #else
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), left_sub,right_sub);
     sync.registerCallback(boost::bind(&GetImagesROS::getImages,&imgROS,_1,_2));
-
 #endif
 
     ros::spin();
@@ -239,6 +247,8 @@ int main (int argc, char **argv)
     voSLAM->saveTrajectoryAndPosition("single_cam_traj.txt", "sigle_cam_pos.txt");
 #if GTPOSE
     imgROS.saveGTTrajectoryAndPositions("ground_truth_traj.txt", "ground_truth_pos.txt");
+#elif GTPOSEDIF
+    imgROS.saveGTTrajectoryAndPositions("ground_truth_traj.txt", "ground_truth_pos.txt");
 #endif
     std::cout << "Trajectory Saved!" << std::endl;
     exit(SIGINT);
@@ -247,6 +257,15 @@ int main (int argc, char **argv)
 
 
     return 0;
+}
+
+void GetImagesROS::gtPoseFromATCallBack(const vio_slam::AprilTagDetectionArray::ConstPtr& msg)
+{
+    if ( msg->detections.size() == 0 )
+        return;
+
+    gtPositions.emplace_back(-msg->detections[0].pose.pose.pose.position.y, msg->detections[0].pose.pose.pose.position.z, msg->detections[0].pose.pose.pose.position.x);
+    gtQuaternions.emplace_back(-msg->detections[0].pose.pose.pose.orientation.w, msg->detections[0].pose.pose.pose.orientation.y, msg->detections[0].pose.pose.pose.orientation.z, -msg->detections[0].pose.pose.pose.orientation.x);
 }
 
 void GetImagesROS::currGoalCallBack(const geometry_msgs::PoseStamped::ConstPtr& msg)

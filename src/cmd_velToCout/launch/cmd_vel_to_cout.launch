@@ -1,0 +1,3 @@
+<launch>
+    <node name="cmd_veltocoutex" pkg="cmd_veltocout" type="cmd_veltocoutex" output="screen" />
+</launch>
