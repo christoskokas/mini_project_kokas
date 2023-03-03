@@ -264,8 +264,8 @@ void GetImagesROS::gtPoseFromATCallBack(const vio_slam::AprilTagDetectionArray::
     if ( msg->detections.size() == 0 )
         return;
 
-    gtPositions.emplace_back(-msg->detections[0].pose.pose.pose.position.y, msg->detections[0].pose.pose.pose.position.z, msg->detections[0].pose.pose.pose.position.x);
-    gtQuaternions.emplace_back(-msg->detections[0].pose.pose.pose.orientation.w, msg->detections[0].pose.pose.pose.orientation.y, msg->detections[0].pose.pose.pose.orientation.z, -msg->detections[0].pose.pose.pose.orientation.x);
+    gtPositions.emplace_back(msg->detections[0].pose.pose.pose.position.x, msg->detections[0].pose.pose.pose.position.y, msg->detections[0].pose.pose.pose.position.z);
+    gtQuaternions.emplace_back(msg->detections[0].pose.pose.pose.orientation.w, msg->detections[0].pose.pose.pose.orientation.x, msg->detections[0].pose.pose.pose.orientation.z, msg->detections[0].pose.pose.pose.orientation.y);
 }
 
 void GetImagesROS::currGoalCallBack(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -452,7 +452,8 @@ void GetImagesROS::saveGTTrajectoryAndPositions(const std::string& filepath, con
     Eigen::Matrix4d startPose = Eigen::Matrix4d::Identity();
     // tf tf_echo base_footprint /left_camera_optical_frame -> 0.15 0.06 0.25
     // then fill in baseToCam with x->-y, y->z, z->x but z = 0 so -0.06 0.0 0.15
-    Eigen::Vector3d baseToCam(-0.06,0.0,0.15);
+    // Eigen::Vector3d baseToCam(-0.06,0.0,0.15); // for simu
+    Eigen::Vector3d baseToCam(0.0,0.0,0.0); // for RT
     startPose.block<3,3>(0,0) = q.toRotationMatrix();
     startPose.block<3,1>(0,3) = startPose.block<3,3>(0,0) 
     * baseToCam + gtPositions[0];
