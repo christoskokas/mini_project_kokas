@@ -3,7 +3,11 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
-file_paths = ["/ground_truth_traj.txt"]
+# List of up to 4 file paths to text files
+# file_paths = ["ground_truth.txt","single_cam.txt", "dual_cam.txt", "ORB_SLAM3.txt"]
+home_path = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/build/devel/lib/vio_slam"
+file_paths = [home_path + "/ground_truth_traj.txt"]
+# file_paths = [home_path + "/ground_truth_traj.txt", home_path + "/single_cam_traj.txt"]
 
 
 colors = ['b', 'y', 'g','r']
@@ -59,6 +63,13 @@ for i, file_path in enumerate(file_paths):
                 dy = ys[j+1] - ys[j]
                 dz = zs[j+1] - zs[j]
                 ax.quiver(xs[j], ys[j], zs[j], dx, dy, dz, length=0.01, arrow_length_ratio=10, normalize=True, color=colors[i])
+
+    # Add arrows on each trajectory that show the heading of the trajectory
+    # if i != 0:
+    # xdir = np.diff(xs)
+    # ydir = np.diff(ys)
+    # zdir = np.diff(zs)
+    # ax.quiver(xs[:-1], ys[:-1], zs[:-1], xdir, ydir, zdir, color = colors[i], arrow_length_ratio=0.1)
 
 # Calculate the range and mean of all x, y, z values
 ranges = [

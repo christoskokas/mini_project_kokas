@@ -32,10 +32,10 @@
 #include <move_base_msgs/MoveBaseAction.h>
 #include <actionlib/client/simple_action_client.h>
 
-#define GTPOSE false
-#define GTPOSEDIF true
+#define GTPOSE true
+#define GTPOSEDIF false
 #define PUBPOINTCLOUD true
-#define ATBESTPOSE true
+#define ATBESTPOSE false
 
 class GetImagesROS
 {
@@ -193,15 +193,25 @@ int main (int argc, char **argv)
         std::vector<double> Twtag = confFile->getValue<std::vector<double>>("T_w_tag","data");
         imgROS.tagPose << Twtag[0],Twtag[1],Twtag[2],Twtag[3],Twtag[4],Twtag[5],Twtag[6],Twtag[7],Twtag[8],Twtag[9],Twtag[10],Twtag[11],Twtag[12],Twtag[13],Twtag[14],Twtag[15];
     }
+    bool aprilTagb {false};
+    std::string aprilTagPath;
+    try
+    {
+        aprilTagPath = confFile->getValue<std::string>("aprilTagPath");
+        aprilTagb = true;
+    }
+    catch(const std::exception& e)
+    {
+    }
+    if ( aprilTagb)
+        imgROS.aprilTag_sub = nh.subscribe(aprilTagPath, 1, &GetImagesROS::aprilTagCallBack, &imgROS);
 
     const std::string gtPath = (gtPose) ? confFile->getValue<std::string>("gtPath") : "";
 
     const std::string leftPath = confFile->getValue<std::string>("leftPathCam");
     const std::string rightPath = confFile->getValue<std::string>("rightPathCam");
-    const std::string aprilTagPath = confFile->getValue<std::string>("aprilTagPath");
     message_filters::Subscriber<sensor_msgs::Image> left_sub(nh, leftPath, 100);
     message_filters::Subscriber<sensor_msgs::Image> right_sub(nh, rightPath, 100);
-    imgROS.aprilTag_sub = nh.subscribe(aprilTagPath, 1, &GetImagesROS::aprilTagCallBack, &imgROS);
     imgROS.odom_pub = nh.advertise<nav_msgs::Odometry>("/odom",1);
 
 #if ATBESTPOSE

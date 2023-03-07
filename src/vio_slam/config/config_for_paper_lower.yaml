@@ -4,15 +4,17 @@ numOfFrames: 657
 
 multi: false
 
-gtPose : false
+gtPose : true
 
-leftPathCam : "/zed2i/zed_node/left/image_rect_color"
-rightPathCam : "/zed2i/zed_node/right/image_rect_color"
+leftPathCam : "/front/zed_node/left/image_rect_color"
+rightPathCam : "/front/zed_node/right/image_rect_color"
 
 leftPathCamB : "/camera_4/left/image_rect"
 rightPathCamB : "/camera_4/right/image_rect"
 
 aprilTagPath : "tag_detections_2"
+
+gtPath : "front/zed_node/odom"
 
 imagesPath: "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/"
 
@@ -21,10 +23,10 @@ fileExtension: ".jpg"
 
 
 Camera_l:
-  fx: 130.55877685546875
-  fy: 130.55877685546875
-  cx: 172.13943481445312
-  cy: 94.27045440673828
+  fx: 528.4699096679688
+  fy: 528.4699096679688
+  cx: 485.1518249511719
+  cy: 282.48875244140625
   k1: 0.0
   k2: 0.0
   p1: 0.0
@@ -36,10 +38,10 @@ Camera_l_path: /zed2i/zed_node/left_raw/image_raw_color
 # /camera_1/left/image_raw
 
 Camera_r:
-  fx: 130.55877685546875
-  fy: 130.55877685546875
-  cx: 172.13943481445312
-  cy: 94.27045440673828
+  fx: 528.4699096679688
+  fy: 528.4699096679688
+  cx: 485.1518249511719
+  cy: 282.48875244140625
   k1: 0.0
   k2: 0.0
   p1: 0.0
@@ -51,10 +53,10 @@ Camera_r_path: /zed2i/zed_node/right_raw/image_raw_color
 # /camera_1/right/image_raw
 
 Camera:
-  width: 336
-  height: 188
+  width: 960
+  height: 540
   fps: 15.0
-  bl: 0.119947
+  bl: 0.119783
 
 CameraB_l:
   fx: 130.55877685546875
@@ -87,10 +89,10 @@ CameraB_r_path: /zed2i/zed_node/right_raw/image_raw_color
 # /camera_1/right/image_raw
 
 CameraB:
-  width: 336
-  height: 188
+  width: 960
+  height: 540
   fps: 15.0
-  bl: 0.119947
+  bl: 0.119783
 
 Camera_path: /zed2i/zed_node/left_raw/image_raw_color
 ground_truth_path: /odom/ground_truth/2

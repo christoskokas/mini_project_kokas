@@ -3147,7 +3147,7 @@ void LocalMapper::localBAR(std::vector<vio_slam::KeyFrame *>& actKeyF)
     options.max_num_iterations = 10;
     if ( first )
         options.max_num_iterations = 5;
-    options.linear_solver_type = ceres::SPARSE_SCHUR;
+    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
     options.use_explicit_schur_complement = true;
 
     ceres::Solver::Summary summary;
@@ -4035,7 +4035,7 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
     options.max_num_iterations = 10;
     if ( first )
         options.max_num_iterations = 5;
-    options.linear_solver_type = ceres::SPARSE_SCHUR;
+    options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
     options.use_explicit_schur_complement = true;
 
     ceres::Solver::Summary summary;
@@ -4770,7 +4770,7 @@ void LocalMapper::beginLocalMapping()
         }
         if ( stopRequested )
             break;
-        std::this_thread::sleep_for(2ms);
+        std::this_thread::sleep_for(20ms);
     }
     std::cout << "LocalMap Thread Exited!" << std::endl;
 }
@@ -4805,7 +4805,7 @@ void LocalMapper::beginLocalMappingB()
         }
         if ( stopRequested )
             break;
-        std::this_thread::sleep_for(2ms);
+        std::this_thread::sleep_for(20ms);
     }
     std::cout << "LocalMap Thread Exited!" << std::endl;
 

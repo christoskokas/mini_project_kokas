@@ -3,6 +3,9 @@ rectified: false
 numOfFrames: 1710
 seq: "00"
 
+leftPathCam : "/cam0/image_raw"
+rightPathCam : "/cam1/image_raw"
+
 imagesPath: "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/V1_02/"
 
 fileExtension: ".jpg"
