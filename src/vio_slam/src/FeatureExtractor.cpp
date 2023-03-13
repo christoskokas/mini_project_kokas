@@ -1726,13 +1726,18 @@ void FeatureExtractor::extractKeysNew(cv::Mat& image, std::vector<cv::KeyPoint>&
         // computeAllOrientations(imagePyramid[level], allKeys[level]);
     }
 
-
+    // std::cout << "222 nf : " << nF << std::endl;
+    if ( nF <= 0 )
+        return;
 
     keypoints = std::vector<cv::KeyPoint>(nF);
     descriptors = cv::Mat(nF, 32, CV_8U);
     int descriptorIdx {0};
     for (size_t level {0}; level < nLevels; level++)
     {
+        
+        if ( allKeys[level].size() <= 0 )
+            continue;
         
         const float scale = scalePyramid[level];
 

@@ -13,7 +13,7 @@
       </ode>
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
-      <real_time_update_rate>500</real_time_update_rate>
+      <real_time_update_rate>1000</real_time_update_rate>
     </physics>
     <gravity>0.0 0.0 -9.81</gravity>
   <!-- A global light source -->
@@ -116,7 +116,7 @@
     <visual name='trunk'>
       <geometry>
         <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_1_Trunk.dae</uri>
+          <uri>model://../../mini_project/vines/meshes/Tree_2_Trunk.dae</uri>
           <scale>0.6 0.6 0.6 </scale>
         </mesh>
       </geometry>
@@ -131,7 +131,7 @@
     <visual name='leafa'>
       <geometry>
         <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_1_Leaf_1.dae</uri>
+          <uri>model://../../mini_project/vines/meshes/Tree_2_Leaf_1.dae</uri>
           <scale>0.6 0.6 0.6 </scale>
         </mesh>
       </geometry>
@@ -146,7 +146,7 @@
     <visual name='leafb'>
       <geometry>
         <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_1_Leaf_2.dae</uri>
+          <uri>model://../../mini_project/vines/meshes/Tree_2_Leaf_2.dae</uri>
           <scale>0.6 0.6 0.6 </scale>
         </mesh>
       </geometry>
@@ -161,7 +161,7 @@
     <visual name='leafc'>
       <geometry>
         <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_1_Leaf_3.dae</uri>
+          <uri>model://../../mini_project/vines/meshes/Tree_2_Leaf_3.dae</uri>
           <scale>0.6 0.6 0.6 </scale>
         </mesh>
       </geometry>
@@ -182,6 +182,77 @@
   
   
   <model name='tree_2'>
+  <static>true</static>
+  <link name='link'>
+    <visual name='trunk'>
+      <geometry>
+        <mesh>
+          <uri>model://../../mini_project/vines/meshes/Tree_4_Trunk.dae</uri>
+          <scale>0.6 0.6 0.6 </scale>
+        </mesh>
+      </geometry>
+      <material>
+        <script>
+          <uri>model://../../mini_project/vines/materials/scripts/</uri>
+          <uri>model://../../mini_project/vines/materials/textures/</uri>
+          <name>Vine/Bark</name>
+        </script>
+      </material>
+    </visual>
+    <visual name='leafa'>
+      <geometry>
+        <mesh>
+          <uri>model://../../mini_project/vines/meshes/Tree_4_Leaf_1.dae</uri>
+          <scale>0.6 0.6 0.6 </scale>
+        </mesh>
+      </geometry>
+      <material>
+        <script>
+          <uri>model://../../mini_project/vines/materials/scripts/</uri>
+          <uri>model://../../mini_project/vines/materials/textures/</uri>
+          <name>Vine/Leafa</name>
+        </script>
+      </material>
+    </visual>
+    <visual name='leafb'>
+      <geometry>
+        <mesh>
+          <uri>model://../../mini_project/vines/meshes/Tree_4_Leaf_2.dae</uri>
+          <scale>0.6 0.6 0.6 </scale>
+        </mesh>
+      </geometry>
+      <material>
+        <script>
+          <uri>model://../../mini_project/vines/materials/scripts/</uri>
+          <uri>model://../../mini_project/vines/materials/textures/</uri>
+          <name>Vine/Leafb</name>
+        </script>
+      </material>
+    </visual>
+    <visual name='leafc'>
+      <geometry>
+        <mesh>
+          <uri>model://../../mini_project/vines/meshes/Tree_4_Leaf_3.dae</uri>
+          <scale>0.6 0.6 0.6 </scale>
+        </mesh>
+      </geometry>
+      <material>
+        <script>
+          <uri>model://../../mini_project/vines/materials/scripts/</uri>
+          <uri>model://../../mini_project/vines/materials/textures/</uri>
+          <name>Vine/Leafc</name>
+        </script>
+      </material>
+    </visual>
+    <self_collide>0</self_collide>
+    <enable_wind>0</enable_wind>
+    <kinematic>0</kinematic>
+  </link>
+  <pose>-0.41 2.5 0 0 0 0</pose>
+</model>
+  
+  
+  <model name='tree_3'>
   <static>true</static>
   <link name='link'>
     <visual name='trunk'>
@@ -248,77 +319,6 @@
     <enable_wind>0</enable_wind>
     <kinematic>0</kinematic>
   </link>
-  <pose>-0.41 2.5 0 0 0 0</pose>
-</model>
-  
-  
-  <model name='tree_3'>
-  <static>true</static>
-  <link name='link'>
-    <visual name='trunk'>
-      <geometry>
-        <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_2_Trunk.dae</uri>
-          <scale>0.6 0.6 0.6 </scale>
-        </mesh>
-      </geometry>
-      <material>
-        <script>
-          <uri>model://../../mini_project/vines/materials/scripts/</uri>
-          <uri>model://../../mini_project/vines/materials/textures/</uri>
-          <name>Vine/Bark</name>
-        </script>
-      </material>
-    </visual>
-    <visual name='leafa'>
-      <geometry>
-        <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_2_Leaf_1.dae</uri>
-          <scale>0.6 0.6 0.6 </scale>
-        </mesh>
-      </geometry>
-      <material>
-        <script>
-          <uri>model://../../mini_project/vines/materials/scripts/</uri>
-          <uri>model://../../mini_project/vines/materials/textures/</uri>
-          <name>Vine/Leafa</name>
-        </script>
-      </material>
-    </visual>
-    <visual name='leafb'>
-      <geometry>
-        <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_2_Leaf_2.dae</uri>
-          <scale>0.6 0.6 0.6 </scale>
-        </mesh>
-      </geometry>
-      <material>
-        <script>
-          <uri>model://../../mini_project/vines/materials/scripts/</uri>
-          <uri>model://../../mini_project/vines/materials/textures/</uri>
-          <name>Vine/Leafb</name>
-        </script>
-      </material>
-    </visual>
-    <visual name='leafc'>
-      <geometry>
-        <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_2_Leaf_3.dae</uri>
-          <scale>0.6 0.6 0.6 </scale>
-        </mesh>
-      </geometry>
-      <material>
-        <script>
-          <uri>model://../../mini_project/vines/materials/scripts/</uri>
-          <uri>model://../../mini_project/vines/materials/textures/</uri>
-          <name>Vine/Leafc</name>
-        </script>
-      </material>
-    </visual>
-    <self_collide>0</self_collide>
-    <enable_wind>0</enable_wind>
-    <kinematic>0</kinematic>
-  </link>
   <pose>-0.41 3.25 0 0 0 0</pose>
 </model>
   
@@ -329,7 +329,7 @@
     <visual name='trunk'>
       <geometry>
         <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_2_Trunk.dae</uri>
+          <uri>model://../../mini_project/vines/meshes/Tree_1_Trunk.dae</uri>
           <scale>0.6 0.6 0.6 </scale>
         </mesh>
       </geometry>
@@ -344,7 +344,7 @@
     <visual name='leafa'>
       <geometry>
         <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_2_Leaf_1.dae</uri>
+          <uri>model://../../mini_project/vines/meshes/Tree_1_Leaf_1.dae</uri>
           <scale>0.6 0.6 0.6 </scale>
         </mesh>
       </geometry>
@@ -359,7 +359,7 @@
     <visual name='leafb'>
       <geometry>
         <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_2_Leaf_2.dae</uri>
+          <uri>model://../../mini_project/vines/meshes/Tree_1_Leaf_2.dae</uri>
           <scale>0.6 0.6 0.6 </scale>
         </mesh>
       </geometry>
@@ -374,7 +374,7 @@
     <visual name='leafc'>
       <geometry>
         <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_2_Leaf_3.dae</uri>
+          <uri>model://../../mini_project/vines/meshes/Tree_1_Leaf_3.dae</uri>
           <scale>0.6 0.6 0.6 </scale>
         </mesh>
       </geometry>
@@ -471,219 +471,6 @@
     <visual name='trunk'>
       <geometry>
         <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_4_Trunk.dae</uri>
-          <scale>0.6 0.6 0.6 </scale>
-        </mesh>
-      </geometry>
-      <material>
-        <script>
-          <uri>model://../../mini_project/vines/materials/scripts/</uri>
-          <uri>model://../../mini_project/vines/materials/textures/</uri>
-          <name>Vine/Bark</name>
-        </script>
-      </material>
-    </visual>
-    <visual name='leafa'>
-      <geometry>
-        <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_4_Leaf_1.dae</uri>
-          <scale>0.6 0.6 0.6 </scale>
-        </mesh>
-      </geometry>
-      <material>
-        <script>
-          <uri>model://../../mini_project/vines/materials/scripts/</uri>
-          <uri>model://../../mini_project/vines/materials/textures/</uri>
-          <name>Vine/Leafa</name>
-        </script>
-      </material>
-    </visual>
-    <visual name='leafb'>
-      <geometry>
-        <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_4_Leaf_2.dae</uri>
-          <scale>0.6 0.6 0.6 </scale>
-        </mesh>
-      </geometry>
-      <material>
-        <script>
-          <uri>model://../../mini_project/vines/materials/scripts/</uri>
-          <uri>model://../../mini_project/vines/materials/textures/</uri>
-          <name>Vine/Leafb</name>
-        </script>
-      </material>
-    </visual>
-    <visual name='leafc'>
-      <geometry>
-        <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_4_Leaf_3.dae</uri>
-          <scale>0.6 0.6 0.6 </scale>
-        </mesh>
-      </geometry>
-      <material>
-        <script>
-          <uri>model://../../mini_project/vines/materials/scripts/</uri>
-          <uri>model://../../mini_project/vines/materials/textures/</uri>
-          <name>Vine/Leafc</name>
-        </script>
-      </material>
-    </visual>
-    <self_collide>0</self_collide>
-    <enable_wind>0</enable_wind>
-    <kinematic>0</kinematic>
-  </link>
-  <pose>0.41 2.5 0 0 0 0</pose>
-</model>
-  
-  
-  <model name='tree_7'>
-  <static>true</static>
-  <link name='link'>
-    <visual name='trunk'>
-      <geometry>
-        <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_2_Trunk.dae</uri>
-          <scale>0.6 0.6 0.6 </scale>
-        </mesh>
-      </geometry>
-      <material>
-        <script>
-          <uri>model://../../mini_project/vines/materials/scripts/</uri>
-          <uri>model://../../mini_project/vines/materials/textures/</uri>
-          <name>Vine/Bark</name>
-        </script>
-      </material>
-    </visual>
-    <visual name='leafa'>
-      <geometry>
-        <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_2_Leaf_1.dae</uri>
-          <scale>0.6 0.6 0.6 </scale>
-        </mesh>
-      </geometry>
-      <material>
-        <script>
-          <uri>model://../../mini_project/vines/materials/scripts/</uri>
-          <uri>model://../../mini_project/vines/materials/textures/</uri>
-          <name>Vine/Leafa</name>
-        </script>
-      </material>
-    </visual>
-    <visual name='leafb'>
-      <geometry>
-        <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_2_Leaf_2.dae</uri>
-          <scale>0.6 0.6 0.6 </scale>
-        </mesh>
-      </geometry>
-      <material>
-        <script>
-          <uri>model://../../mini_project/vines/materials/scripts/</uri>
-          <uri>model://../../mini_project/vines/materials/textures/</uri>
-          <name>Vine/Leafb</name>
-        </script>
-      </material>
-    </visual>
-    <visual name='leafc'>
-      <geometry>
-        <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_2_Leaf_3.dae</uri>
-          <scale>0.6 0.6 0.6 </scale>
-        </mesh>
-      </geometry>
-      <material>
-        <script>
-          <uri>model://../../mini_project/vines/materials/scripts/</uri>
-          <uri>model://../../mini_project/vines/materials/textures/</uri>
-          <name>Vine/Leafc</name>
-        </script>
-      </material>
-    </visual>
-    <self_collide>0</self_collide>
-    <enable_wind>0</enable_wind>
-    <kinematic>0</kinematic>
-  </link>
-  <pose>0.41 3.25 0 0 0 0</pose>
-</model>
-  
-  
-  <model name='tree_8'>
-  <static>true</static>
-  <link name='link'>
-    <visual name='trunk'>
-      <geometry>
-        <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_2_Trunk.dae</uri>
-          <scale>0.6 0.6 0.6 </scale>
-        </mesh>
-      </geometry>
-      <material>
-        <script>
-          <uri>model://../../mini_project/vines/materials/scripts/</uri>
-          <uri>model://../../mini_project/vines/materials/textures/</uri>
-          <name>Vine/Bark</name>
-        </script>
-      </material>
-    </visual>
-    <visual name='leafa'>
-      <geometry>
-        <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_2_Leaf_1.dae</uri>
-          <scale>0.6 0.6 0.6 </scale>
-        </mesh>
-      </geometry>
-      <material>
-        <script>
-          <uri>model://../../mini_project/vines/materials/scripts/</uri>
-          <uri>model://../../mini_project/vines/materials/textures/</uri>
-          <name>Vine/Leafa</name>
-        </script>
-      </material>
-    </visual>
-    <visual name='leafb'>
-      <geometry>
-        <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_2_Leaf_2.dae</uri>
-          <scale>0.6 0.6 0.6 </scale>
-        </mesh>
-      </geometry>
-      <material>
-        <script>
-          <uri>model://../../mini_project/vines/materials/scripts/</uri>
-          <uri>model://../../mini_project/vines/materials/textures/</uri>
-          <name>Vine/Leafb</name>
-        </script>
-      </material>
-    </visual>
-    <visual name='leafc'>
-      <geometry>
-        <mesh>
-          <uri>model://../../mini_project/vines/meshes/Tree_2_Leaf_3.dae</uri>
-          <scale>0.6 0.6 0.6 </scale>
-        </mesh>
-      </geometry>
-      <material>
-        <script>
-          <uri>model://../../mini_project/vines/materials/scripts/</uri>
-          <uri>model://../../mini_project/vines/materials/textures/</uri>
-          <name>Vine/Leafc</name>
-        </script>
-      </material>
-    </visual>
-    <self_collide>0</self_collide>
-    <enable_wind>0</enable_wind>
-    <kinematic>0</kinematic>
-  </link>
-  <pose>-1.16 1.0 0 0 0 0</pose>
-</model>
-  
-  
-  <model name='tree_9'>
-  <static>true</static>
-  <link name='link'>
-    <visual name='trunk'>
-      <geometry>
-        <mesh>
           <uri>model://../../mini_project/vines/meshes/Tree_1_Trunk.dae</uri>
           <scale>0.6 0.6 0.6 </scale>
         </mesh>
@@ -745,11 +532,82 @@
     <enable_wind>0</enable_wind>
     <kinematic>0</kinematic>
   </link>
-  <pose>-1.16 1.75 0 0 0 0</pose>
+  <pose>0.41 2.5 0 0 0 0</pose>
 </model>
   
   
-  <model name='tree_10'>
+  <model name='tree_7'>
+  <static>true</static>
+  <link name='link'>
+    <visual name='trunk'>
+      <geometry>
+        <mesh>
+          <uri>model://../../mini_project/vines/meshes/Tree_3_Trunk.dae</uri>
+          <scale>0.6 0.6 0.6 </scale>
+        </mesh>
+      </geometry>
+      <material>
+        <script>
+          <uri>model://../../mini_project/vines/materials/scripts/</uri>
+          <uri>model://../../mini_project/vines/materials/textures/</uri>
+          <name>Vine/Bark</name>
+        </script>
+      </material>
+    </visual>
+    <visual name='leafa'>
+      <geometry>
+        <mesh>
+          <uri>model://../../mini_project/vines/meshes/Tree_3_Leaf_1.dae</uri>
+          <scale>0.6 0.6 0.6 </scale>
+        </mesh>
+      </geometry>
+      <material>
+        <script>
+          <uri>model://../../mini_project/vines/materials/scripts/</uri>
+          <uri>model://../../mini_project/vines/materials/textures/</uri>
+          <name>Vine/Leafa</name>
+        </script>
+      </material>
+    </visual>
+    <visual name='leafb'>
+      <geometry>
+        <mesh>
+          <uri>model://../../mini_project/vines/meshes/Tree_3_Leaf_2.dae</uri>
+          <scale>0.6 0.6 0.6 </scale>
+        </mesh>
+      </geometry>
+      <material>
+        <script>
+          <uri>model://../../mini_project/vines/materials/scripts/</uri>
+          <uri>model://../../mini_project/vines/materials/textures/</uri>
+          <name>Vine/Leafb</name>
+        </script>
+      </material>
+    </visual>
+    <visual name='leafc'>
+      <geometry>
+        <mesh>
+          <uri>model://../../mini_project/vines/meshes/Tree_3_Leaf_3.dae</uri>
+          <scale>0.6 0.6 0.6 </scale>
+        </mesh>
+      </geometry>
+      <material>
+        <script>
+          <uri>model://../../mini_project/vines/materials/scripts/</uri>
+          <uri>model://../../mini_project/vines/materials/textures/</uri>
+          <name>Vine/Leafc</name>
+        </script>
+      </material>
+    </visual>
+    <self_collide>0</self_collide>
+    <enable_wind>0</enable_wind>
+    <kinematic>0</kinematic>
+  </link>
+  <pose>0.41 3.25 0 0 0 0</pose>
+</model>
+  
+  
+  <model name='tree_8'>
   <static>true</static>
   <link name='link'>
     <visual name='trunk'>
@@ -816,11 +674,82 @@
     <enable_wind>0</enable_wind>
     <kinematic>0</kinematic>
   </link>
-  <pose>-1.16 2.5 0 0 0 0</pose>
+  <pose>-1.16 1.0 0 0 0 0</pose>
 </model>
   
   
-  <model name='tree_11'>
+  <model name='tree_9'>
+  <static>true</static>
+  <link name='link'>
+    <visual name='trunk'>
+      <geometry>
+        <mesh>
+          <uri>model://../../mini_project/vines/meshes/Tree_4_Trunk.dae</uri>
+          <scale>0.6 0.6 0.6 </scale>
+        </mesh>
+      </geometry>
+      <material>
+        <script>
+          <uri>model://../../mini_project/vines/materials/scripts/</uri>
+          <uri>model://../../mini_project/vines/materials/textures/</uri>
+          <name>Vine/Bark</name>
+        </script>
+      </material>
+    </visual>
+    <visual name='leafa'>
+      <geometry>
+        <mesh>
+          <uri>model://../../mini_project/vines/meshes/Tree_4_Leaf_1.dae</uri>
+          <scale>0.6 0.6 0.6 </scale>
+        </mesh>
+      </geometry>
+      <material>
+        <script>
+          <uri>model://../../mini_project/vines/materials/scripts/</uri>
+          <uri>model://../../mini_project/vines/materials/textures/</uri>
+          <name>Vine/Leafa</name>
+        </script>
+      </material>
+    </visual>
+    <visual name='leafb'>
+      <geometry>
+        <mesh>
+          <uri>model://../../mini_project/vines/meshes/Tree_4_Leaf_2.dae</uri>
+          <scale>0.6 0.6 0.6 </scale>
+        </mesh>
+      </geometry>
+      <material>
+        <script>
+          <uri>model://../../mini_project/vines/materials/scripts/</uri>
+          <uri>model://../../mini_project/vines/materials/textures/</uri>
+          <name>Vine/Leafb</name>
+        </script>
+      </material>
+    </visual>
+    <visual name='leafc'>
+      <geometry>
+        <mesh>
+          <uri>model://../../mini_project/vines/meshes/Tree_4_Leaf_3.dae</uri>
+          <scale>0.6 0.6 0.6 </scale>
+        </mesh>
+      </geometry>
+      <material>
+        <script>
+          <uri>model://../../mini_project/vines/materials/scripts/</uri>
+          <uri>model://../../mini_project/vines/materials/textures/</uri>
+          <name>Vine/Leafc</name>
+        </script>
+      </material>
+    </visual>
+    <self_collide>0</self_collide>
+    <enable_wind>0</enable_wind>
+    <kinematic>0</kinematic>
+  </link>
+  <pose>-1.16 1.75 0 0 0 0</pose>
+</model>
+  
+  
+  <model name='tree_10'>
   <static>true</static>
   <link name='link'>
     <visual name='trunk'>
@@ -872,6 +801,77 @@
       <geometry>
         <mesh>
           <uri>model://../../mini_project/vines/meshes/Tree_2_Leaf_3.dae</uri>
+          <scale>0.6 0.6 0.6 </scale>
+        </mesh>
+      </geometry>
+      <material>
+        <script>
+          <uri>model://../../mini_project/vines/materials/scripts/</uri>
+          <uri>model://../../mini_project/vines/materials/textures/</uri>
+          <name>Vine/Leafc</name>
+        </script>
+      </material>
+    </visual>
+    <self_collide>0</self_collide>
+    <enable_wind>0</enable_wind>
+    <kinematic>0</kinematic>
+  </link>
+  <pose>-1.16 2.5 0 0 0 0</pose>
+</model>
+  
+  
+  <model name='tree_11'>
+  <static>true</static>
+  <link name='link'>
+    <visual name='trunk'>
+      <geometry>
+        <mesh>
+          <uri>model://../../mini_project/vines/meshes/Tree_1_Trunk.dae</uri>
+          <scale>0.6 0.6 0.6 </scale>
+        </mesh>
+      </geometry>
+      <material>
+        <script>
+          <uri>model://../../mini_project/vines/materials/scripts/</uri>
+          <uri>model://../../mini_project/vines/materials/textures/</uri>
+          <name>Vine/Bark</name>
+        </script>
+      </material>
+    </visual>
+    <visual name='leafa'>
+      <geometry>
+        <mesh>
+          <uri>model://../../mini_project/vines/meshes/Tree_1_Leaf_1.dae</uri>
+          <scale>0.6 0.6 0.6 </scale>
+        </mesh>
+      </geometry>
+      <material>
+        <script>
+          <uri>model://../../mini_project/vines/materials/scripts/</uri>
+          <uri>model://../../mini_project/vines/materials/textures/</uri>
+          <name>Vine/Leafa</name>
+        </script>
+      </material>
+    </visual>
+    <visual name='leafb'>
+      <geometry>
+        <mesh>
+          <uri>model://../../mini_project/vines/meshes/Tree_1_Leaf_2.dae</uri>
+          <scale>0.6 0.6 0.6 </scale>
+        </mesh>
+      </geometry>
+      <material>
+        <script>
+          <uri>model://../../mini_project/vines/materials/scripts/</uri>
+          <uri>model://../../mini_project/vines/materials/textures/</uri>
+          <name>Vine/Leafb</name>
+        </script>
+      </material>
+    </visual>
+    <visual name='leafc'>
+      <geometry>
+        <mesh>
+          <uri>model://../../mini_project/vines/meshes/Tree_1_Leaf_3.dae</uri>
           <scale>0.6 0.6 0.6 </scale>
         </mesh>
       </geometry>
@@ -1293,7 +1293,7 @@
       <visual name='main_Visual'>
         <geometry>
           <box>
-          <size>0.25 0.25 0.0001</size>
+          <size>0.3 0.3 0.0001</size>
           </box>
         </geometry>
            <material>
@@ -1303,6 +1303,21 @@
             <name>Obj/Apriltag36_11_00000</name>
           </script>
         </material>
+      </visual>
+     </link>
+    <static>1</static>
+  </model>
+  
+  
+  <model name='obj_24'>
+    <link name='main'>
+    <pose frame=''>0 4.3 0.5 0 0 0</pose>
+      <visual name='main_Visual'>
+        <geometry>
+          <box>
+          <size>10 0.1 1</size>
+          </box>
+        </geometry>
       </visual>
      </link>
     <static>1</static>

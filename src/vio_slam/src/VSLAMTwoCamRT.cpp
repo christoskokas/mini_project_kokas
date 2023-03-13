@@ -29,9 +29,9 @@
 #include <move_base_msgs/MoveBaseAction.h>
 #include <actionlib/client/simple_action_client.h>
 
-#define GTPOSE false
-#define PUBPOINTCLOUD true
-#define ATBESTPOSE true
+#define GTPOSE true
+#define PUBPOINTCLOUD false
+#define ATBESTPOSE false
 
 class GetImagesROS
 {
@@ -107,7 +107,8 @@ int main (int argc, char **argv)
 #elif SIMULATION
     std::string file = "config_simulation.yaml";
 #else
-    std::string file = "config.yaml";
+    std::string file = "config_for_paper_lower.yaml";
+    // std::string file = "config.yaml";
     // vio_slam::ConfigFile yamlFile("config.yaml");
 #endif
 
@@ -389,7 +390,7 @@ void GetImagesROS::aprilTagCallBack(const vio_slam::AprilTagDetectionArray::Cons
     {
         if ( ATFound )
             ATLostCount++;
-        if ( ATLostCount > 10 )
+        if ( ATLostCount > 40 )
         {
             std::cout << "Starting AprilTag Detection Again!" << std::endl;
 
@@ -399,21 +400,25 @@ void GetImagesROS::aprilTagCallBack(const vio_slam::AprilTagDetectionArray::Cons
         }
         return;
     }
-    if ( ATFound )
-        return;
-    ATFoundCount++;
-    if ( ATFoundCount < 3 )
-        return;
-    ATFound = true;
-    std::cout << "AprilTag Detected!" << std::endl;
     const geometry_msgs::Point& tra = msg->detections[0].pose.pose.pose.position;
     const geometry_msgs::Quaternion& quat = msg->detections[0].pose.pose.pose.orientation;
 
     Eigen::Quaterniond qTag(quat.w, quat.x, quat.y, quat.z);
-    Eigen::Vector3d tTag(tra.x, tra.y, tra.z);
     Eigen::Matrix4d Tc2_tag = Eigen::Matrix4d::Identity();
-    Tc2_tag.block<3,3>(0,0) = qTag.toRotationMatrix();
+    Tc2_tag.block<3,3>(0,0) = qTag.normalized().toRotationMatrix();
+    Eigen::Vector3d tTag(tra.x, tra.y, tra.z);
     Tc2_tag.block<3,1>(0,3) = tTag;
+    // Eigen::Matrix4d tagPose2 = voSLAM->mZedCamera->cameraPose.pose * T_c1_AT * Tc2_tag;
+    // std::cout << "TAGPOSE " << tagPose2 << std::endl;
+    // std::cout << "cameraPose " << voSLAM->mZedCamera->cameraPose.pose << std::endl;
+    // std::cout << "Tc2_tag " << Tc2_tag << std::endl;
+    if ( ATFound )
+        return;
+    ATFoundCount++;
+    if ( ATFoundCount < 30 )
+        return;
+    ATFound = true;
+    std::cout << "AprilTag Detected!" << std::endl;
     if ( !tagPoseFilled )
     {
         tagPose = voSLAM->mZedCamera->cameraPose.pose * T_c1_AT * Tc2_tag;
@@ -422,8 +427,17 @@ void GetImagesROS::aprilTagCallBack(const vio_slam::AprilTagDetectionArray::Cons
     }
     voSLAM->map->LCPose = tagPose * Tc2_tag.inverse() * T_c1_AT.inverse();
     voSLAM->map->aprilTagDetected = true;
-    // std::cout << "mZedCamera : "  << voSLAM->mZedCamera->cameraPose.pose << std::endl;
-    // std::cout << "TagPose : "  << zedPoseFromTag << std::endl;
+    std::cout << "mZedCamera : "  << voSLAM->mZedCamera->cameraPose.pose << std::endl;
+    std::cout << "TagPose : "  << voSLAM->map->LCPose << std::endl;
+    std::cout << "NEW TagPose : "  << voSLAM->mZedCamera->cameraPose.pose * T_c1_AT * Tc2_tag << std::endl;
+    std::cout << "prev TagPose : "  << tagPose << std::endl;
+    // Eigen::Matrix4d lelel = Tc2_tag.inverse();
+    // Eigen::Matrix3d lel = lelel.block<3,3>(0,0);
+    // Eigen::Vector3d lol = tagPose.block<3,1>(0,3) + lelel.block<3,1>(0,3);
+    // Eigen::Matrix4d opa = Eigen::Matrix4d::Identity();
+    // opa.block<3,3>(0,0) = lel;
+    // opa.block<3,1>(0,3) = lol;
+    // std::cout << "opa : "  << opa << std::endl;
 
 }
 
@@ -584,7 +598,7 @@ void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sen
             continue;
         Eigen::Vector3d pt = mp->getWordPose3d();
         pt = T_w_c1.block<3,3>(0,0) * pt;
-        // std::cout << "point : " << pt << std::endl;
+        std::cout << "point : " << pt << std::endl;
         if ( pt(2) < minH || pt(2) > maxH )
             continue;
         pcl::PointXYZRGB ptpcl;
@@ -718,9 +732,9 @@ void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sen
             continue;
         Eigen::Vector3d pt = mp->getWordPose3d();
         pt = T_w_c1.block<3,3>(0,0) * pt;
-        // std::cout << "point : " << pt << std::endl;
         if ( pt(2) < minH || pt(2) > maxH )
             continue;
+        // std::cout << "point : " << pt << std::endl;
         pcl::PointXYZRGB ptpcl;
         ptpcl.x = pt(0);
         ptpcl.y = pt(1);

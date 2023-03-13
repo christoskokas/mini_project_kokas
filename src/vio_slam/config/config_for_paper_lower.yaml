@@ -1,20 +1,21 @@
 rectified: true
+rectifiedB: true
 
 numOfFrames: 657
 
-multi: false
+multi: true
 
 gtPose : true
 
-leftPathCam : "/front/zed_node/left/image_rect_color"
-rightPathCam : "/front/zed_node/right/image_rect_color"
+leftPathCam : "/front/zed_nodeF/left/image_rect_color"
+rightPathCam : "/front/zed_nodeF/right/image_rect_color"
 
-leftPathCamB : "/camera_4/left/image_rect"
-rightPathCamB : "/camera_4/right/image_rect"
+leftPathCamB : "/back/zed_nodeB/left/image_rect_color"
+rightPathCamB : "/back/zed_nodeB/right/image_rect_color"
 
-aprilTagPath : "tag_detections_2"
+aprilTagPath : "tag_detections"
 
-gtPath : "front/zed_node/odom"
+gtPath : "front/zed_nodeF/odom"
 
 imagesPath: "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/images/"
 
@@ -23,10 +24,10 @@ fileExtension: ".jpg"
 
 
 Camera_l:
-  fx: 528.4699096679688
-  fy: 528.4699096679688
-  cx: 485.1518249511719
-  cy: 282.48875244140625
+  fx: 261.7559814453125
+  fy: 261.7559814453125
+  cx: 323.5115966796875
+  cy: 180.4974365234375
   k1: 0.0
   k2: 0.0
   p1: 0.0
@@ -38,10 +39,10 @@ Camera_l_path: /zed2i/zed_node/left_raw/image_raw_color
 # /camera_1/left/image_raw
 
 Camera_r:
-  fx: 528.4699096679688
-  fy: 528.4699096679688
-  cx: 485.1518249511719
-  cy: 282.48875244140625
+  fx: 261.7559814453125
+  fy: 261.7559814453125
+  cx: 323.5115966796875
+  cy: 180.4974365234375
   k1: 0.0
   k2: 0.0
   p1: 0.0
@@ -53,16 +54,16 @@ Camera_r_path: /zed2i/zed_node/right_raw/image_raw_color
 # /camera_1/right/image_raw
 
 Camera:
-  width: 960
-  height: 540
+  width: 640
+  height: 360
   fps: 15.0
   bl: 0.119783
 
 CameraB_l:
-  fx: 130.55877685546875
-  fy: 130.55877685546875
-  cx: 172.13943481445312
-  cy: 94.27045440673828
+  fx: 262.9667663574219
+  fy: 262.9667663574219
+  cx: 322.1598815917969
+  cy: 186.52577209472656
   k1: 0.0
   k2: 0.0
   p1: 0.0
@@ -74,10 +75,10 @@ CameraB_l_path: /zed2i/zed_node/left_raw/image_raw_color
 # /camera_1/left/image_raw
 
 CameraB_r:
-  fx: 130.55877685546875
-  fy: 130.55877685546875
-  cx: 172.13943481445312
-  cy: 94.27045440673828
+  fx: 262.9667663574219
+  fy: 262.9667663574219
+  cx: 322.1598815917969
+  cy: 186.52577209472656
   k1: 0.0
   k2: 0.0
   p1: 0.0
@@ -89,10 +90,10 @@ CameraB_r_path: /zed2i/zed_node/right_raw/image_raw_color
 # /camera_1/right/image_raw
 
 CameraB:
-  width: 960
-  height: 540
+  width: 640
+  height: 360
   fps: 15.0
-  bl: 0.119783
+  bl: 0.119342
 
 Camera_path: /zed2i/zed_node/left_raw/image_raw_color
 ground_truth_path: /odom/ground_truth/2
@@ -108,17 +109,28 @@ IMU:
             -0.0040000, -0.9999920,  0.0000080, -0.000,
             0.0, 0.0, 0.0, 1.0]
   path: /imu/data
-
+#front camera
 Stereo:
   T_c1_c2:
     rows: 4
     cols: 4
     dt: f
-    data: [1.0, 0.0, 0.0, -0.119947,
-         0.0, 1.0, 0.0, 0.00037599,
-         0.0, 0.0, 1.0, -0.000147674,
+    data: [1.0, 0.0, 0.0, 0.119947,
+         0.0, 1.0, 0.0, -0.000177572,
+         0.0, 0.0, 1.0, -0.000360246,
+         0.0, 0.0, 0.0, 1.0]
+# back camera
+Stereo2:
+  T_c1_c2:
+    rows: 4
+    cols: 4
+    dt: f
+    data: [1.0, 0.0, 0.0, 0.119342,
+         0.0, 1.0, 0.0, -0.0000475606,
+         0.0, 0.0, 1.0, -0.0000445916,
          0.0, 0.0, 0.0, 1.0]
 
+#for pointcloud
 T_w_c1:
   rows: 4
   cols: 4
@@ -127,17 +139,17 @@ T_w_c1:
         -1.0, 0.0, 0.0, -0.06,
         0.0, -1.0, 0.0, -0.20,
         0.0, 0.0, 0.0, 1.0]
-
+# front camera to back camera
 Multi:
   T_c1_c2:
     rows: 4
     cols: 4
     dt: d
-    data: [-1.0, 0.0, 0.0, 0.12,
+    data: [-1.0, 0.0, 0.0, 0.119783,
          0.0, 1.0, 0.0, 0.0,
-         0.0, 0.0, -1.0, -0.3,
+         0.0, 0.0, -1.0, -0.47,
          0.0, 0.0, 0.0, 1.0]
-
+#base frame to c1 for optimal pose
 T_bf_c1:
   rows: 4
   cols: 4
@@ -157,28 +169,39 @@ T_bf_c1:
 #         0.0, 0.0, 0.0, 1.0]
 
 LCSameCam : false
-
+# camera 1 to April Tag cam IF zed cameras have correct orientation ( if they are inverted other TF needs to be used)
+# T_c1_AT:
+#   rows: 4
+#   cols: 4
+#   dt: d
+#   data: [0.0, 0.0, 1.0, 0.31,
+#         0.0, 1.0, 0.0, -0.037,
+#         -1.0, 0.0, 0.0, -0.25,
+#         0.0, 0.0, 0.0, 1.0]
+#camera 1 to April Tag cam inverted cams
 T_c1_AT:
   rows: 4
   cols: 4
   dt: d
-  data: [0.0, 0.0, 1.0, 0.246,
-        0.0, 1.0, 0.0, 0.0,
-        -1.0, 0.0, 0.0, -0.24,
+  data: [0.0, 0.0, -1.0, 0.31,
+        0.0, -1.0, 0.0, 0.0,
+        -1.0, 0.0, 0.0, -0.25,
         0.0, 0.0, 0.0, 1.0]
 
 
 tagPose : false
+#for predefined pose of April Tag, not used currently
+# T_w_tag:
+#   rows: 4
+#   cols: 4
+#   dt: d
+#   data: [0.0, 0.0, 1.0, 0.210,
+#         0.0, 1.0, 0.0, 0.0,
+#         -1.0, 0.0, 0.0, -0.09,
+#         0.0, 0.0, 0.0, 1.0]
 
-T_w_tag:
-  rows: 4
-  cols: 4
-  dt: d
-  data: [0.0, 0.0, 1.0, 0.210,
-        0.0, 1.0, 0.0, 0.0,
-        -1.0, 0.0, 0.0, -0.09,
-        0.0, 0.0, 0.0, 1.0]
 
+#optimal Pose for April Tag Detection
 T_tag_b:
   rows: 4
   cols: 4

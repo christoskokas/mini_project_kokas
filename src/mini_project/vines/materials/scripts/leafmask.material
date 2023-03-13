@@ -174,3 +174,20 @@ material Obj/Apriltag36_11_00000
     }
   }
 }
+
+material Plane
+{
+  technique
+  {
+    pass
+    {
+      lighting off
+      texture_unit
+      {
+        texture dirt.jpg
+        filtering none none none
+        scale 0.03 0.03
+      }
+    }
+  }
+}

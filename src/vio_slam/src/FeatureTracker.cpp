@@ -330,16 +330,6 @@ void FeatureTracker::extractORBStereoMatchRB(const Zed_Camera* zedCam, cv::Mat& 
 
     assignKeysToGrids(keysLeft, keysLeft.keyPoints, keysLeft.lkeyGrid, zedCam->mWidth, zedCam->mHeight);
     assignKeysToGrids(keysLeft, keysLeft.rightKeyPoints, keysLeft.rkeyGrid, zedCam->mWidth, zedCam->mHeight);
-
-    // keysLeft.mapPointIdx.resize(keysLeft.keyPoints.size(), -1);
-    // keysLeft.trackCnt.resize(keysLeft.keyPoints.size(), 0);
-    // drawKeys("left Keys", lIm.rIm, keysLeft.keyPoints);
-    // drawKeyPointsCloseFar("new method", lIm.rIm, keysLeft, keysLeft.rightKeyPoints);
-    // drawKeys("right Keys AFTER", rIm.rIm, keysLeft.rightKeyPoints);
-#if DRAWMATCHES
-
-
-#endif
 }
 
 void FeatureTracker::extractFAST(const cv::Mat& leftIm, const cv::Mat& rightIm, StereoKeypoints& keys, StereoDescriptors& desc, const std::vector<cv::Point2f>& prevPnts)
@@ -3155,12 +3145,15 @@ int FeatureTracker::findOutliersRB(const Zed_Camera* zedCam, const Eigen::Matrix
             continue;
         const int octL = (right) ? keysLeft.rightKeyPoints[nIdx].octave: keysLeft.keyPoints[nIdx].octave;
         const double weight = (double)feLeft.InvSigmaFactor[octL];
+
         bool outlier = check2dErrorB(zedCam, p4d, obs, thres, weight);
         MPsOutliers[i] = outlier;
         if ( !outlier )
         {
             nInliers++;
-            if ( p4d(2) < zedCam->mBaseline * fm.closeNumber && keysLeft.close[nIdx] && !right )
+            if ( right )
+                continue;
+            if ( p4d(2) < zedCam->mBaseline * fm.closeNumber && keysLeft.close[nIdx] )
             {
                 if ( keyPos.second < 0 )
                     continue;
@@ -6213,7 +6206,6 @@ void FeatureTracker::TrackImageTB(const cv::Mat& leftRect, const cv::Mat& rightR
     // Timer all("all");
     curFrame = frameNumb;
     curFrameNumb++;
-    
     if ( map->LBADone || map->LCDone )
     {
         std::lock_guard<std::mutex> lock(map->mapMutex);
@@ -6440,7 +6432,7 @@ void FeatureTracker::TrackImageTB(const cv::Mat& leftRect, const cv::Mat& rightR
 
     insertKeyFrameCount ++;
     prevKF = activeKeyFrames.front();
-    if ( ((nStIn.second + nStInB.second < minNStereo/*  || nStInB.second < minNStereo */ || insertKeyFrameCount >= keyFrameCountEnd) && allInliers < 0.9 * lastKFTrackedNumb) || map->aprilTagDetected )
+    if ( ((nStIn.second + nStInB.second < minNStereo/*  || nStInB.second < minNStereo */ || insertKeyFrameCount >= keyFrameCountEnd) && allInliers < 0.9 * lastKFTrackedNumb) || (map->aprilTagDetected && !map->LCStart))
     {
         insertKeyFrameCount = 0;
         insertKeyFrameRB(keysLeft, matchedIdxsL,matchesIdxs,MPsOutliers, keysLeftB, matchedIdxsLB,matchesIdxsB,MPsOutliersB, nStIn.second, nStInB.second, poseEst, leftIm, realLeftIm);
@@ -6451,8 +6443,8 @@ void FeatureTracker::TrackImageTB(const cv::Mat& leftRect, const cv::Mat& rightR
 
     publishPoseNewB();
 
-    setActiveOutliers(activeMpsTemp,MPsOutliers, matchesIdxs);
-    setActiveOutliers(activeMpsTempB,MPsOutliersB, matchesIdxsB);
+    setActiveOutliers(activeMapPoints,MPsOutliers, matchesIdxs);
+    setActiveOutliers(activeMapPointsB,MPsOutliersB, matchesIdxsB);
 
 
 
@@ -8862,7 +8854,7 @@ void FeatureTracker::convertToEigen(cv::Mat& Rvec, cv::Mat& tvec, Eigen::Matrix4
 
 void FeatureTracker::publishPoseNew()
 {
-    prevReferencePose = prevKF->pose.getInvPose() * zedPtr->cameraPose.pose;
+    prevReferencePose = zedPtr->cameraPose.refPose;
     prevWPose = zedPtr->cameraPose.pose;
     prevWPoseInv = zedPtr->cameraPose.poseInverse;
     referencePose = lastKFPoseInv * poseEst;
@@ -8877,7 +8869,7 @@ void FeatureTracker::publishPoseNew()
 
 void FeatureTracker::publishPoseNewB()
 {
-    prevReferencePose = prevKF->pose.getInvPose() * zedPtr->cameraPose.pose;
+    prevReferencePose = zedPtr->cameraPose.refPose;
     prevWPose = zedPtr->cameraPose.pose;
     prevWPoseInv = zedPtr->cameraPose.poseInverse;
     referencePose = lastKFPoseInv * poseEst;

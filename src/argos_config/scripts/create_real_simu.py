@@ -29,7 +29,7 @@ def create_xml():
       </ode>
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
-      <real_time_update_rate>500</real_time_update_rate>
+      <real_time_update_rate>1000</real_time_update_rate>
     </physics>
     <gravity>0.0 0.0 -9.81</gravity>
   <!-- A global light source -->
@@ -105,7 +105,7 @@ def create_apriltag_model(obj_mat,counter, pose, rot):
       <visual name='main_Visual'>
         <geometry>
           <box>
-          <size>0.25 0.25 0.0001</size>
+          <size>0.3 0.3 0.0001</size>
           </box>
         </geometry>
            <material>
@@ -115,6 +115,26 @@ def create_apriltag_model(obj_mat,counter, pose, rot):
             <name>Obj/{obj_mat}</name>
           </script>
         </material>
+      </visual>
+     </link>
+    <static>1</static>
+  </model>
+  
+  '''
+  return obj
+
+
+def create_textureless_obs(counter, pose):
+  obj = f'''
+  <model name='obj_{counter}'>
+    <link name='main'>
+    <pose frame=''>{pose.x} {pose.y} {pose.z} 0 0 0</pose>
+      <visual name='main_Visual'>
+        <geometry>
+          <box>
+          <size>10 0.1 1</size>
+          </box>
+        </geometry>
       </visual>
      </link>
     <static>1</static>
@@ -350,6 +370,10 @@ def main():
   counter += 1
 
   obj_model = create_apriltag_model(obj_mat="Apriltag36_11_00000",counter = counter, pose = tree_pose(0.45,0.5,0.3), rot = tree_pose(0,1.57079632679,0))
+  xml_file.write_to_file(obj_model)
+  counter += 1
+
+  obj_model = create_textureless_obs(counter = counter, pose = tree_pose(0,4.3,0.5))
   xml_file.write_to_file(obj_model)
   counter += 1
 

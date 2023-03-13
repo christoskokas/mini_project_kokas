@@ -3164,6 +3164,10 @@ void FeatureMatcher::findStereoMatchesORB2R(const cv::Mat& lImage, const cv::Mat
 
     }
 
+
+    if ( allDepths.size() <= 0 )
+        return;
+
     std::sort(allDepths.begin(), allDepths.end());
     std::sort(allDists2.begin(), allDists2.end());
     keysLeft.medianDepth = allDepths[allDepths.size()/2].first;

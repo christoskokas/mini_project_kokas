@@ -1001,7 +1001,7 @@ void LocalMapper::triangulateCeresNew(Eigen::Vector3d& p3d, const std::vector<Ei
 
 void LocalMapper::addToMap(KeyFrame* lastKF, const std::vector<MapPoint*>& pointsToAdd)
 {
-    int newMapPointsCount {0};
+    // int newMapPointsCount {0};
     std::lock_guard<std::mutex> lock(map->mapMutex);
     for (size_t i{0}, end{pointsToAdd.size()}; i < end; i++ )
     {
@@ -1030,14 +1030,14 @@ void LocalMapper::addToMap(KeyFrame* lastKF, const std::vector<MapPoint*>& point
         {
             map->activeMapPoints.emplace_back(pointsToAdd[i]);
             map->addMapPoint(pointsToAdd[i]);
-            newMapPointsCount ++;
+            // newMapPointsCount ++;
         }
         lastKF->localMapPoints[i]->copyMp(pointsToAdd[i], zedPtr);
         
         // lastKF->localMapPoints[i] = pointsToAdd[i];
         lastKF->unMatchedF[i] = pointsToAdd[i]->kdx;
     }
-    Logging("Success!", newMapPointsCount, 3);
+    // Logging("Success!", newMapPointsCount, 3);
 
 }
 
@@ -1153,7 +1153,7 @@ void LocalMapper::addNewMapPoints(KeyFrame* lastKF, std::vector<MapPoint*>& poin
 
 void LocalMapper::addNewMapPointsB(KeyFrame* lastKF, std::vector<MapPoint*>& pointsToAdd, std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>>& matchedIdxs, const bool back)
 {
-    int newMapPointsCount {0};
+    // int newMapPointsCount {0};
     const int lastKFNumb {lastKF->numb};
     std::lock_guard<std::mutex> lock(map->mapMutex);
     for (size_t i{0}, end{pointsToAdd.size()}; i < end; i++ )
@@ -1178,9 +1178,9 @@ void LocalMapper::addNewMapPointsB(KeyFrame* lastKF, std::vector<MapPoint*>& poi
         else
             map->activeMapPoints.emplace_back(newMp);
         map->addMapPoint(newMp);
-        newMapPointsCount ++;
+        // newMapPointsCount ++;
     }
-    std::cout << "newMapPointsCount : " << newMapPointsCount << std::endl;
+    // std::cout << "newMapPointsCount : " << newMapPointsCount << std::endl;
 }
 
 void LocalMapper::addToMapRemoveConB(Map* map, KeyFrame* lastKF, std::vector<MapPoint*>& pointsToAdd, std::vector<std::vector<std::pair<int, int>>>& matchedIdxs)
@@ -4286,7 +4286,7 @@ void LocalMapper::loopClosureRB(std::vector<vio_slam::KeyFrame *>& actKeyF)
     const Eigen::Matrix3d qc1c2BR = estimPoseBRInv.block<3,3>(0,0);
     const Eigen::Matrix<double,3,1> tc1c2BR = estimPoseBRInv.block<3,1>(0,3);
 
-    for (size_t iterations{0}; iterations < 2; iterations++)
+    for (size_t iterations{0}; iterations < 1; iterations++)
     {
     ceres::Problem problem;
     ceres::Manifold* quaternion_local_parameterization = new ceres::EigenQuaternionManifold;
@@ -4309,11 +4309,11 @@ void LocalMapper::loopClosureRB(std::vector<vio_slam::KeyFrame *>& actKeyF)
             if ( mpOutliers[mpCount] || (!itmp->first->GetInFrame() && itmp->first->kFMatches.size() < minCount) )
                 break;
             // Logging("1","",3);
-            if ( !wrongMatches.empty() && std::find(wrongMatches.begin(), wrongMatches.end(), std::make_pair(kf->first, itmp->first)) != wrongMatches.end())
-            {
-                // Logging("2","",3);
-                continue;
-            }
+            // if ( !wrongMatches.empty() && std::find(wrongMatches.begin(), wrongMatches.end(), std::make_pair(kf->first, itmp->first)) != wrongMatches.end())
+            // {
+            //     // Logging("2","",3);
+            //     continue;
+            // }
             if ( itmp->first->GetIsOutlier() )
                 break;
             KeyFrame* kftemp = kf->first;
@@ -4547,9 +4547,9 @@ void LocalMapper::loopClosureRB(std::vector<vio_slam::KeyFrame *>& actKeyF)
     options.linear_solver_ordering.reset(ordering);
     // options.num_threads = 4;
     options.num_threads = 8;
-    options.max_num_iterations = 45;
-    if ( first )
-        options.max_num_iterations = 5;
+    // options.max_num_iterations = 45;
+    // if ( first )
+        options.max_num_iterations = 50;
     options.linear_solver_type = ceres::SPARSE_SCHUR;
     // options.use_explicit_schur_complement = true;
     Timer solv("solvetimer");
@@ -4558,122 +4558,122 @@ void LocalMapper::loopClosureRB(std::vector<vio_slam::KeyFrame *>& actKeyF)
     // if ( !first )
         Logging("summ", summary.FullReport(),3);
     // Logging("lelout", lelout, 3);
-    std::vector<std::pair<KeyFrame*, MapPoint*>> emptyVec;
-    wrongMatches.swap(emptyVec);
-    // wrongMatches.clear();
+    // std::vector<std::pair<KeyFrame*, MapPoint*>> emptyVec;
+    // wrongMatches.swap(emptyVec);
+    // // wrongMatches.clear();
 
 
-    std::unordered_map<MapPoint*, Eigen::Vector3d>::iterator allmp, allmpend(allMapPoints.end());
-    for (allmp = allMapPoints.begin(); allmp != allmpend; allmp ++)
-    {
-        MapPoint* mp = allmp->first;
-        std::unordered_map<KeyFrame*, std::pair<int,int>>::iterator kf, endkf(mp->kFMatches.end());
-        for (kf = mp->kFMatches.begin(); kf != endkf; kf++)
-        {
-            KeyFrame* kfCand = kf->first;
-            std::pair<int,int>& keyPos = kf->second;
-            if ( localKFs.find(kfCand) == localKFs.end() )
-                continue;
-            cv::KeyPoint kp;
-            bool right {false};
-            bool close {false};
-            if ( keyPos.first >= 0 )
-            {
-                kp = kfCand->keys.keyPoints[keyPos.first];
-                close = kfCand->keys.close[keyPos.first];
-            }
-            else if ( keyPos.second >= 0 )
-            {
-                kp = kfCand->keys.rightKeyPoints[keyPos.second];
-                right = true;
-            }
-            Eigen::Vector2d obs( (double)kp.pt.x, (double)kp.pt.y);
-            const int oct = kp.octave;
-            const double weight = (double)kfCand->sigmaFactor[oct];
-            Eigen::Vector3d tcw = localKFs[kfCand].block<3, 1>(0, 0);
-            Eigen::Vector4d q_xyzw = localKFs[kfCand].block<4, 1>(3, 0);
-            Eigen::Quaterniond qcw(q_xyzw[3], q_xyzw[0], q_xyzw[1], q_xyzw[2]);
-            bool outlier {false};
-            if ( right )
-                outlier = checkOutlierR(K,qcr, tcr, obs, allmp->second, tcw, qcw, reprjThreshold * weight);
-            else
-                outlier = checkOutlier(K, obs, allmp->second, tcw, qcw, reprjThreshold * weight);
+    // std::unordered_map<MapPoint*, Eigen::Vector3d>::iterator allmp, allmpend(allMapPoints.end());
+    // for (allmp = allMapPoints.begin(); allmp != allmpend; allmp ++)
+    // {
+    //     MapPoint* mp = allmp->first;
+    //     std::unordered_map<KeyFrame*, std::pair<int,int>>::iterator kf, endkf(mp->kFMatches.end());
+    //     for (kf = mp->kFMatches.begin(); kf != endkf; kf++)
+    //     {
+    //         KeyFrame* kfCand = kf->first;
+    //         std::pair<int,int>& keyPos = kf->second;
+    //         if ( localKFs.find(kfCand) == localKFs.end() )
+    //             continue;
+    //         cv::KeyPoint kp;
+    //         bool right {false};
+    //         bool close {false};
+    //         if ( keyPos.first >= 0 )
+    //         {
+    //             kp = kfCand->keys.keyPoints[keyPos.first];
+    //             close = kfCand->keys.close[keyPos.first];
+    //         }
+    //         else if ( keyPos.second >= 0 )
+    //         {
+    //             kp = kfCand->keys.rightKeyPoints[keyPos.second];
+    //             right = true;
+    //         }
+    //         Eigen::Vector2d obs( (double)kp.pt.x, (double)kp.pt.y);
+    //         const int oct = kp.octave;
+    //         const double weight = (double)kfCand->sigmaFactor[oct];
+    //         Eigen::Vector3d tcw = localKFs[kfCand].block<3, 1>(0, 0);
+    //         Eigen::Vector4d q_xyzw = localKFs[kfCand].block<4, 1>(3, 0);
+    //         Eigen::Quaterniond qcw(q_xyzw[3], q_xyzw[0], q_xyzw[1], q_xyzw[2]);
+    //         bool outlier {false};
+    //         if ( right )
+    //             outlier = checkOutlierR(K,qcr, tcr, obs, allmp->second, tcw, qcw, reprjThreshold * weight);
+    //         else
+    //             outlier = checkOutlier(K, obs, allmp->second, tcw, qcw, reprjThreshold * weight);
 
-            if ( outlier )
-                wrongMatches.emplace_back(std::pair<KeyFrame*, MapPoint*>(kfCand, mp));
-            else
-            {
-                if ( close )
-                {
-                    if ( keyPos.second < 0 )
-                        continue;
-                    cv::KeyPoint kpR = kfCand->keys.rightKeyPoints[keyPos.second];
-                    const int octR = kpR.octave;
-                    const double weightR = (double)kfCand->sigmaFactor[octR];
-                    Eigen::Vector2d obsr( (double)kpR.pt.x, (double)kpR.pt.y);
-                    bool outlierR = checkOutlierR(K,qcr, tcr, obs, allmp->second, tcw, qcw, reprjThreshold * weightR);
-                    if ( outlier )
-                    {
-                        wrongMatches.emplace_back(std::pair<KeyFrame*, MapPoint*>(kfCand, mp));
-                    }
-                }
-            }
+    //         if ( outlier )
+    //             wrongMatches.emplace_back(std::pair<KeyFrame*, MapPoint*>(kfCand, mp));
+    //         else
+    //         {
+    //             if ( close )
+    //             {
+    //                 if ( keyPos.second < 0 )
+    //                     continue;
+    //                 cv::KeyPoint kpR = kfCand->keys.rightKeyPoints[keyPos.second];
+    //                 const int octR = kpR.octave;
+    //                 const double weightR = (double)kfCand->sigmaFactor[octR];
+    //                 Eigen::Vector2d obsr( (double)kpR.pt.x, (double)kpR.pt.y);
+    //                 bool outlierR = checkOutlierR(K,qcr, tcr, obs, allmp->second, tcw, qcw, reprjThreshold * weightR);
+    //                 if ( outlier )
+    //                 {
+    //                     wrongMatches.emplace_back(std::pair<KeyFrame*, MapPoint*>(kfCand, mp));
+    //                 }
+    //             }
+    //         }
 
-        }
-        std::unordered_map<KeyFrame*, std::pair<int,int>>::iterator endkfB(mp->kFMatchesB.end());
-        for (kf = mp->kFMatchesB.begin(); kf != endkfB; kf++)
-        {
-            KeyFrame* kfCand = kf->first;
-            std::pair<int,int>& keyPos = kf->second;
-            if ( localKFs.find(kfCand) == localKFs.end() )
-                continue;
-            cv::KeyPoint kp;
-            bool right {false};
-            bool close {false};
-            if ( keyPos.first >= 0 )
-            {
-                kp = kfCand->keysB.keyPoints[keyPos.first];
-                close = kfCand->keysB.close[keyPos.first];
-            }
-            else if ( keyPos.second >= 0 )
-            {
-                kp = kfCand->keysB.rightKeyPoints[keyPos.second];
-                right = true;
-            }
-            Eigen::Vector2d obs( (double)kp.pt.x, (double)kp.pt.y);
-            const int oct = kp.octave;
-            const double weight = (double)kfCand->sigmaFactor[oct];
-            Eigen::Vector3d tcw = localKFs[kfCand].block<3, 1>(0, 0);
-            Eigen::Vector4d q_xyzw = localKFs[kfCand].block<4, 1>(3, 0);
-            Eigen::Quaterniond qcw(q_xyzw[3], q_xyzw[0], q_xyzw[1], q_xyzw[2]);
-            bool outlier {false};
-            if ( right )
-                outlier = checkOutlierR(KB,qc1c2BR, tc1c2BR, obs, allmp->second, tcw, qcw, reprjThreshold * weight);
-            else
-                outlier = checkOutlierR(KB,qc1c2B, tc1c2B, obs, allmp->second, tcw, qcw, reprjThreshold * weight);
+    //     }
+    //     std::unordered_map<KeyFrame*, std::pair<int,int>>::iterator endkfB(mp->kFMatchesB.end());
+    //     for (kf = mp->kFMatchesB.begin(); kf != endkfB; kf++)
+    //     {
+    //         KeyFrame* kfCand = kf->first;
+    //         std::pair<int,int>& keyPos = kf->second;
+    //         if ( localKFs.find(kfCand) == localKFs.end() )
+    //             continue;
+    //         cv::KeyPoint kp;
+    //         bool right {false};
+    //         bool close {false};
+    //         if ( keyPos.first >= 0 )
+    //         {
+    //             kp = kfCand->keysB.keyPoints[keyPos.first];
+    //             close = kfCand->keysB.close[keyPos.first];
+    //         }
+    //         else if ( keyPos.second >= 0 )
+    //         {
+    //             kp = kfCand->keysB.rightKeyPoints[keyPos.second];
+    //             right = true;
+    //         }
+    //         Eigen::Vector2d obs( (double)kp.pt.x, (double)kp.pt.y);
+    //         const int oct = kp.octave;
+    //         const double weight = (double)kfCand->sigmaFactor[oct];
+    //         Eigen::Vector3d tcw = localKFs[kfCand].block<3, 1>(0, 0);
+    //         Eigen::Vector4d q_xyzw = localKFs[kfCand].block<4, 1>(3, 0);
+    //         Eigen::Quaterniond qcw(q_xyzw[3], q_xyzw[0], q_xyzw[1], q_xyzw[2]);
+    //         bool outlier {false};
+    //         if ( right )
+    //             outlier = checkOutlierR(KB,qc1c2BR, tc1c2BR, obs, allmp->second, tcw, qcw, reprjThreshold * weight);
+    //         else
+    //             outlier = checkOutlierR(KB,qc1c2B, tc1c2B, obs, allmp->second, tcw, qcw, reprjThreshold * weight);
 
-            if ( outlier )
-                wrongMatches.emplace_back(std::pair<KeyFrame*, MapPoint*>(kfCand, mp));
-            else
-            {
-                if ( close )
-                {
-                    if ( keyPos.second < 0 )
-                        continue;
-                    cv::KeyPoint kpR = kfCand->keysB.rightKeyPoints[keyPos.second];
-                    Eigen::Vector2d obsr( (double)kpR.pt.x, (double)kpR.pt.y);
-                    const int octR = kpR.octave;
-                    const double weightR = (double)kfCand->sigmaFactor[octR];
-                    bool outlierR = checkOutlierR(KB,qc1c2BR, tc1c2BR, obs, allmp->second, tcw, qcw, reprjThreshold * weightR);
-                    if ( outlier )
-                    {
-                        wrongMatches.emplace_back(std::pair<KeyFrame*, MapPoint*>(kfCand, mp));
-                    }
-                }
-            }
+    //         if ( outlier )
+    //             wrongMatches.emplace_back(std::pair<KeyFrame*, MapPoint*>(kfCand, mp));
+    //         else
+    //         {
+    //             if ( close )
+    //             {
+    //                 if ( keyPos.second < 0 )
+    //                     continue;
+    //                 cv::KeyPoint kpR = kfCand->keysB.rightKeyPoints[keyPos.second];
+    //                 Eigen::Vector2d obsr( (double)kpR.pt.x, (double)kpR.pt.y);
+    //                 const int octR = kpR.octave;
+    //                 const double weightR = (double)kfCand->sigmaFactor[octR];
+    //                 bool outlierR = checkOutlierR(KB,qc1c2BR, tc1c2BR, obs, allmp->second, tcw, qcw, reprjThreshold * weightR);
+    //                 if ( outlier )
+    //                 {
+    //                     wrongMatches.emplace_back(std::pair<KeyFrame*, MapPoint*>(kfCand, mp));
+    //                 }
+    //             }
+    //         }
 
-        }
-    }
+    //     }
+    // }
     first = false;
     }
     std::lock_guard<std::mutex> lock(map->mapMutex);
@@ -4784,7 +4784,6 @@ void LocalMapper::beginLocalMappingB()
         if ( map->keyFrameAdded && !map->LBADone )
         {
             // std::vector<vio_slam::KeyFrame *> actKeyF = map->activeKeyFrames;
-
             std::vector<vio_slam::KeyFrame *> actKeyF;
             KeyFrame* lastKF = map->activeKeyFrames.front();
             actKeyF.reserve(20);
