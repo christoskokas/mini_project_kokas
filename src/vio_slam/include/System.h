@@ -5,8 +5,8 @@
 
 #include "Settings.h"
 #include "Camera.h"
-#include "trial.h"
 #include "Frame.h"
+#include "FeatureTracker.h"
 #include "Map.h"
 #include "LocalBA.h"
 #include <thread>

@@ -1,1 +1,0 @@
-/home/christos/catkin_ws/devel/.private/vio_slam/include/vio_slam/AprilTagDetection.h

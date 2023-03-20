@@ -54,14 +54,10 @@ add_service_files(
 
 add_library(${PROJECT_NAME} SHARED
 src/Camera.cpp
-src/FeatureDrawer.cpp
 src/Frame.cpp
-src/trial.cpp
 src/Settings.cpp
 src/FeatureExtractor.cpp
 src/FeatureMatcher.cpp
-src/PoseEstimator.cpp
-src/FeatureManager.cpp
 src/KeyFrame.cpp
 src/FeatureTracker.cpp
 src/System.cpp
@@ -69,14 +65,10 @@ src/Map.cpp
 src/Conversions.cpp
 src/LocalBA.cpp
 include/Camera.h
-include/FeatureDrawer.h
 include/Frame.h
-include/trial.h
 include/Settings.h
 include/FeatureExtractor.h
 include/FeatureMatcher.h
-include/PoseEstimator.h
-include/FeatureManager.h
 include/KeyFrame.h
 include/FeatureTracker.h
 include/Map.h
@@ -128,15 +120,6 @@ ${CERES_LIBRARIES}
 ${YAML_CPP_LIBRARIES}
 ${SOPHUS_LIBS}
 )
-
-# add_executable(VioSlam src/VioSlam.cpp)
-# target_link_libraries(VioSlam ${PROJECT_NAME})
-
-# add_executable(Trial src/trials.cpp)
-# target_link_libraries(Trial ${PROJECT_NAME})
-
-# add_executable(MultiSlam src/MultiSlam.cpp)
-# target_link_libraries(MultiSlam ${PROJECT_NAME})
 
 add_executable(VSLAMOneCam src/VSLAMOneCam.cpp)
 target_link_libraries(VSLAMOneCam ${PROJECT_NAME})
