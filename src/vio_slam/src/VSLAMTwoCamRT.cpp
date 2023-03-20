@@ -29,7 +29,7 @@
 #include <move_base_msgs/MoveBaseAction.h>
 #include <actionlib/client/simple_action_client.h>
 
-#define GTPOSE true
+#define GTPOSE false
 #define PUBPOINTCLOUD false
 #define ATBESTPOSE false
 
@@ -167,12 +167,12 @@ int main (int argc, char **argv)
     }
 
     cv::Mat im(mZedCamera->mHeight, mZedCamera->mWidth, CV_8UC3, cv::Scalar(0, 0, 0));
-    cv::namedWindow("Tracked KeyPoints");
-    cv::imshow("Tracked KeyPoints", im);
+    cv::namedWindow("VSLAM : Front Camera");
+    cv::imshow("VSLAM : Front Camera", im);
     cv::waitKey(1);
 
-    cv::namedWindow("Tracked KeyPointsB");
-    cv::imshow("Tracked KeyPointsB", im);
+    cv::namedWindow("VSLAM : Back Camera");
+    cv::imshow("VSLAM : Back Camera", im);
     cv::waitKey(1000);
 
 

@@ -88,7 +88,7 @@ void ViewFrame::pangoQuitMulti(Zed_Camera* zedPtr, Zed_Camera* zedPtrB, const Ma
 
     const int UI_WIDTH = 180;
     
-    pangolin::CreateWindowAndBind("Main", 1024,768);
+    pangolin::CreateWindowAndBind("VSLAM", 1024,768);
     glEnable(GL_DEPTH_TEST);
 
     // Define Projection and initial ModelView matrix
@@ -98,7 +98,7 @@ void ViewFrame::pangoQuitMulti(Zed_Camera* zedPtr, Zed_Camera* zedPtrB, const Ma
     );
 
     pangolin::Renderable renders;
-    renders.Add(std::make_shared<pangolin::Axis>());
+    // renders.Add(std::make_shared<pangolin::Axis>());
     auto camera = std::make_shared<CameraFrame>();
     camera->color = "G";
     // camera->Subscribers(nh);
@@ -122,8 +122,8 @@ void ViewFrame::pangoQuitMulti(Zed_Camera* zedPtr, Zed_Camera* zedPtrB, const Ma
     Ow.SetIdentity();
     camera->getOpenGLMatrix(Ow);
     camera->drawCamera();
-    pangolin::CreatePanel("ui").SetBounds(0.0, 1.0, 0.0, pangolin::Attach::Pix(UI_WIDTH));
-    pangolin::Var<bool> a_button("ui.Button", false, false);
+    // pangolin::CreatePanel("ui").SetBounds(0.0, 1.0, 0.0, pangolin::Attach::Pix(UI_WIDTH));
+    // pangolin::Var<bool> a_button("ui.Button", false, false);
     while( 1 )
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -141,7 +141,7 @@ void ViewFrame::pangoQuitMulti(Zed_Camera* zedPtr, Zed_Camera* zedPtrB, const Ma
 
         if ( stopRequested )
         {
-            pangolin::DestroyWindow("Main");
+            pangolin::DestroyWindow("VSLAM");
             break;
         }
     }
@@ -258,9 +258,9 @@ void CameraFrame::drawKeyFrames()
     std::unordered_map<unsigned long,KeyFrame*>::const_iterator it, end(mapKeyF.end());
     for ( it = mapKeyF.begin(); it != end; it ++)
     {
-        if ((*it).second->active)
-            glColor3f(0.0f,1.0f,0.0f);
-        else
+        // if ((*it).second->active)
+        //     glColor3f(0.0f,1.0f,0.0f);
+        // else
             glColor3f(0.0f,0.0f,1.0f);
 
         // if ( (*it).second->numb == lastActiveKeyF)
@@ -350,7 +350,9 @@ void CameraFrame::drawCamera()
 
     glVertex3f(-w,-h,z);
     glVertex3f(w,-h,z);
+
     glEnd();
+
 
     glPopMatrix();
 }
@@ -361,6 +363,7 @@ void CameraFrame::drawBackCamera()
     const float w = 2.0*cameraWidth;
     const float h = w*0.75;
     const float z = w*0.3;
+    const float off = +0.12;
 
     glPushMatrix();
     glColor3f(1.0f,1.0f,0.0f);
@@ -368,27 +371,53 @@ void CameraFrame::drawBackCamera()
     glMultMatrixd((GLdouble*)zedCameraB->cameraPose.pose.data());
     glLineWidth(2);
     glBegin(GL_LINES);
-    glVertex3f(0,0,0);
-    glVertex3f(w,h,z);
-    glVertex3f(0,0,0);
-    glVertex3f(w,-h,z);
-    glVertex3f(0,0,0);
-    glVertex3f(-w,-h,z);
-    glVertex3f(0,0,0);
-    glVertex3f(-w,h,z);
+    glVertex3f(off+0,0,0);
+    glVertex3f(off+w,h,z);
+    glVertex3f(off+0,0,0);
+    glVertex3f(off+w,-h,z);
+    glVertex3f(off+0,0,0);
+    glVertex3f(off+-w,-h,z);
+    glVertex3f(off+0,0,0);
+    glVertex3f(off+-w,h,z);
 
-    glVertex3f(w,h,z);
-    glVertex3f(w,-h,z);
+    glVertex3f(off+w,h,z);
+    glVertex3f(off+w,-h,z);
 
-    glVertex3f(-w,h,z);
-    glVertex3f(-w,-h,z);
+    glVertex3f(off+-w,h,z);
+    glVertex3f(off+-w,-h,z);
 
-    glVertex3f(-w,h,z);
-    glVertex3f(w,h,z);
+    glVertex3f(off+-w,h,z);
+    glVertex3f(off+w,h,z);
 
-    glVertex3f(-w,-h,z);
-    glVertex3f(w,-h,z);
+    glVertex3f(off+-w,-h,z);
+    glVertex3f(off+w,-h,z);
+    
     glEnd();
+    // Eigen::Matrix4d Rcam = zedCameraB->extrinsics * zedCameraB->cameraPose.pose ;
+    // glMultMatrixd((GLdouble*)Rcam.data());
+    // glLineWidth(2);
+    // glBegin(GL_LINES);
+    // glVertex3f(0,0,0);
+    // glVertex3f(w,h,z);
+    // glVertex3f(0,0,0);
+    // glVertex3f(w,-h,z);
+    // glVertex3f(0,0,0);
+    // glVertex3f(-w,-h,z);
+    // glVertex3f(0,0,0);
+    // glVertex3f(-w,h,z);
+
+    // glVertex3f(w,h,z);
+    // glVertex3f(w,-h,z);
+
+    // glVertex3f(-w,h,z);
+    // glVertex3f(-w,-h,z);
+
+    // glVertex3f(-w,h,z);
+    // glVertex3f(w,h,z);
+
+    // glVertex3f(-w,-h,z);
+    // glVertex3f(w,-h,z);
+    // glEnd();
 
     glPopMatrix();
 }
@@ -427,6 +456,27 @@ void CameraFrame::lineFromKeyFrameToCamera()
     std::unordered_map<unsigned long, KeyFrame*> mapKeyF = map->keyFrames;
     std::unordered_map<unsigned long, KeyFrame*>::const_iterator it, end(mapKeyF.end());
     glBegin(GL_LINES);
+    // for ( it = mapKeyF.begin(); it != end; it ++)
+    // {
+    //     // if ( (*it).second->numb == lastActiveKeyF)
+    //     //     glColor3f(1.0f,0.0f,0.0f);
+    //     const KeyFrame* kfCand = it->second;
+    //     if (!kfCand->visualize)
+    //         continue;
+    //     if (kfCand->active)
+    //         glColor3f(0.0f,1.0f,0.0f);
+    //     else
+    //         glColor3f(1.0f,0.0f,0.0f);
+    //     for ( std::vector<std::pair<int,KeyFrame*>>::const_iterator itw = kfCand->sortedKFWeights.begin(), endw(kfCand->sortedKFWeights.end()); itw != endw; itw++)
+    //     {
+    //         const KeyFrame* kfCon = itw->second;
+    //         if ( !kfCon->visualize )
+    //             continue;
+    //         glVertex3f((GLfloat)kfCon->pose.pose(0,3),(GLfloat)kfCon->pose.pose(1,3),(GLfloat)kfCon->pose.pose(2,3));
+    //         glVertex3f((GLfloat)kfCand->pose.pose(0,3), (GLfloat)kfCand->pose.pose(1,3), (GLfloat)kfCand->pose.pose(2,3));
+
+    //     }
+    // }
     for ( it = mapKeyF.begin(); it != end; it ++)
     {
         // if ( (*it).second->numb == lastActiveKeyF)
@@ -434,19 +484,15 @@ void CameraFrame::lineFromKeyFrameToCamera()
         const KeyFrame* kfCand = it->second;
         if (!kfCand->visualize)
             continue;
-        if (kfCand->active)
-            glColor3f(0.0f,1.0f,0.0f);
-        else
-            glColor3f(1.0f,0.0f,0.0f);
-        for ( std::vector<std::pair<int,KeyFrame*>>::const_iterator itw = kfCand->sortedKFWeights.begin(), endw(kfCand->sortedKFWeights.end()); itw != endw; itw++)
-        {
-            const KeyFrame* kfCon = itw->second;
-            if ( !kfCon->visualize )
-                continue;
-            glVertex3f((GLfloat)kfCon->pose.pose(0,3),(GLfloat)kfCon->pose.pose(1,3),(GLfloat)kfCon->pose.pose(2,3));
-            glVertex3f((GLfloat)kfCand->pose.pose(0,3), (GLfloat)kfCand->pose.pose(1,3), (GLfloat)kfCand->pose.pose(2,3));
-
-        }
+        // if (kfCand->active)
+        //     glColor3f(0.0f,1.0f,0.0f);
+        // else
+        glColor3f(1.0f,0.0f,0.0f);
+        if ( !kfCand->nextKF )
+            continue;
+        const KeyFrame* nextKF = kfCand->nextKF;
+        glVertex3f((GLfloat)nextKF->pose.pose(0,3),(GLfloat)nextKF->pose.pose(1,3),(GLfloat)nextKF->pose.pose(2,3));
+        glVertex3f((GLfloat)kfCand->pose.pose(0,3), (GLfloat)kfCand->pose.pose(1,3), (GLfloat)kfCand->pose.pose(2,3));
     }
     glEnd();
     glColor3f(0.0f,1.0f,0.0f);

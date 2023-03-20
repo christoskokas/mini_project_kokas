@@ -27,25 +27,15 @@ def create_xml():
           <contact_surface_layer>0.0001</contact_surface_layer>
         </constraints>
       </ode>
-      <max_step_size>0.001</max_step_size>
-      <real_time_factor>1.0</real_time_factor>
-      <real_time_update_rate>500</real_time_update_rate>
+      <max_step_size>0.01</max_step_size>
+      <real_time_factor>0.8</real_time_factor>
+      <real_time_update_rate>100</real_time_update_rate>
     </physics>
     <gravity>0.0 0.0 -9.81</gravity>
   <!-- A global light source -->
-    <light name='sun2' type='point'>
-      <cast_shadows>1</cast_shadows>
-      <pose frame=''>-0.5 2 5 0 -0 0</pose>
-      <diffuse>1 1 1 1</diffuse>
-      <specular>0.1 0.1 0.1 1</specular>
-      <attenuation>
-        <range>100000</range>
-        <constant>0.9</constant>
-        <linear>0.01</linear>
-        <quadratic>0.001</quadratic>
-      </attenuation>
-      <direction>0 0 1</direction>
-    </light>
+    <include>
+      <uri>model://sun</uri>
+    </include>
     <gui fullscreen='0'>
       <camera name='user_camera'>
         <pose>-0.059361 2.171367 15.466796 -0.000711 1.569796 1.571162</pose>

@@ -32,8 +32,8 @@
 #include <move_base_msgs/MoveBaseAction.h>
 #include <actionlib/client/simple_action_client.h>
 
-#define GTPOSE true
-#define GTPOSEDIF false
+#define GTPOSE false
+#define GTPOSEDIF true
 #define PUBPOINTCLOUD true
 #define ATBESTPOSE false
 
@@ -462,23 +462,55 @@ void GetImagesROS::saveGTTrajectoryAndPositions(const std::string& filepath, con
     Eigen::Matrix4d startPose = Eigen::Matrix4d::Identity();
     // tf tf_echo base_footprint /left_camera_optical_frame -> 0.15 0.06 0.25
     // then fill in baseToCam with x->-y, y->z, z->x but z = 0 so -0.06 0.0 0.15
-    // Eigen::Vector3d baseToCam(-0.06,0.0,0.15); // for simu
-    Eigen::Vector3d baseToCam(0.0,0.0,0.0); // for RT
+    Eigen::Vector3d baseToCam(0.0,0.0,0.0); // for simu
+    Eigen::Vector3d baseToCam2(0.0,0.0,0.0); // for simu
+    Eigen::Vector3d first2;
+    // Eigen::Vector3d baseToCam(0.0,0.0,0.0); // for RT
+    // Eigen::Matrix4d Toff2 = Eigen::Matrix4d::Identity();
+    // Toff2(0,3) = 0.1;
     startPose.block<3,3>(0,0) = q.toRotationMatrix();
     startPose.block<3,1>(0,3) = startPose.block<3,3>(0,0) 
-    * baseToCam + gtPositions[0];
+    * baseToCam2 + gtPositions[0];
+    // startPose(0,3) = 0;
+    // startPose = startPose * Toff2;
+    // std::cout <<"lel" <<  startPose << std::endl;
+    Eigen::Quaterniond qoff(0.9800666 , 0.1986693,0.0,0.0);
+    bool first {true};
+    double firstx {0.0};
+    double firsty {0.0};
+    Eigen::Matrix4d Toff = Eigen::Matrix4d::Identity();
+    Toff.block<3,3>(0,0) = qoff.toRotationMatrix();
     Eigen::Matrix4d startPoseInv = (startPose).inverse();
     for ( size_t i{0}, end{gtPositions.size()}; i < end; i ++)
     {
         Eigen::Quaterniond& q = gtQuaternions[i];
         Eigen::Matrix4d Pose = Eigen::Matrix4d::Identity();
         Pose.block<3,3>(0,0) = q.toRotationMatrix();
-        Pose.block<3,1>(0,3) = q.toRotationMatrix() * baseToCam +  gtPositions[i];
+        Pose.block<3,1>(0,3) = q.toRotationMatrix() * baseToCam2 +  gtPositions[i];
+        // Pose(0,3) = 0;
         // Pose.block<3,1>(0,3) = startPoseInv.block<3,3>(0,0) * (gtPositions[i] - gtPositions[0]);
         // PoseTT.block<3,3>(0,0) = ( startPoseInv.block<3,3>(0,0) * Pose.block<3,3>(0,0) );
         Eigen::Matrix4d PoseTT =  startPoseInv * Pose;
-
+        // PoseTT =  Toff * PoseTT;
         Eigen::Matrix4d PoseT = PoseTT.transpose();
+        // double xp = PoseT(7);
+        // double yp = PoseT(11);
+        // double theta = 1.57079632679 - 2 * asin(q.z());
+        // // if ( theta > 1.57079632679)
+        // //     theta = theta - 3.14159265359;
+        // // else if ( theta < - 1.57079632679)
+        // //     theta = 3.14159265359 - theta;
+        // std::cout << q.x() << " " << q.z() << std::endl;
+        // if ( first )
+        // {
+        //     first = false;
+        //     firstx = 0.155 * sin(theta);
+        //     firsty = -0.06 * cos(theta);
+        // }
+        // xp = xp +0.155 * sin(theta) - firstx;
+        // yp = yp -0.06 * cos(theta) - firsty;
+        // PoseT(7) = xp;
+        // PoseT(11) = yp;
         for (int32_t j{0}; j < 12; j ++)
         {
             if ( j == 0 )

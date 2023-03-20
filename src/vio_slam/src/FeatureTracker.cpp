@@ -6405,7 +6405,7 @@ void FeatureTracker::TrackImageTB(const cv::Mat& leftRect, const cv::Mat& rightR
                 closeL.emplace_back(false);
         }
     }
-    drawKeys("Tracked KeyPoints", realLeftIm, lp, closeL);
+    drawKeys("VSLAM : Front Camera", realLeftIm, lp, closeL);
     lp.clear();
     closeL.clear();
     for ( size_t i{0}; i < matchesIdxsB.size(); i++)
@@ -6422,7 +6422,7 @@ void FeatureTracker::TrackImageTB(const cv::Mat& leftRect, const cv::Mat& rightR
                 closeL.emplace_back(false);
         }
     }
-    drawKeys("Tracked KeyPointsB", realLeftImB, lp, closeL);
+    drawKeys("VSLAM : Back Camera", realLeftImB, lp, closeL);
     
     std::pair<int,int>& nStIn = both.first;
     std::pair<int,int>& nStInB = both.second;
@@ -8623,7 +8623,7 @@ void FeatureTracker::drawKeys(const char* com, cv::Mat& im, std::vector<cv::KeyP
         if ( close[count] )
             cv::circle(outIm, key.pt,3,cv::Scalar(255,0,0),2);
         else
-            cv::circle(outIm, key.pt,3,cv::Scalar(0,255,0),2);
+            cv::circle(outIm, key.pt,3,cv::Scalar(255,0,0),2);
         count++;
     }
     cv::imshow(com, outIm);

@@ -7,8 +7,21 @@ import matplotlib.patches as patches
 # List of up to 4 file paths to text files
 # file_paths = ["ground_truth_obj.txt","dual_cam_obj.txt", "orbslam3_obj.txt"]
 # file_paths = ["ground_truth_big.txt","dual_cam_big_LC.txt"]
-file_paths = ["ground_truth_vines.txt","dual_cam_vines.txt"]
-# file_paths = ["ground_truth_LC.txt","dual_cam_LC.txt","dual_cam_NLC.txt","orbslam3_LC.txt"]
+# file_paths = ["ground_truth_vines.txt"]
+# file_paths = ["ground_truth_traj.txt", "dual_cam_traj_exp_07.txt", "orbslam3_exp_07.txt"]
+# file_paths = ["ground_truth_traj.txt", "dual_cam_traj_exp_07.txt"]
+
+# file_paths = ["empty.txt", "dual_cam_traj_exp_07.txt", "orbslam3_exp_07.txt"]
+# file_paths = ["ground_truth_traj_exp_07.txt"]
+file_paths = ["ground_truth_traj_exp_07.txt", "dual_cam_traj_exp_07.txt", "orbslam3_exp_07.txt"]
+# file_paths = ["simu_ground_truth_big.txt","simu_dual_cam_big.txt"]
+# file_paths = ["simu_ground_truth_small.txt","simu_dual_cam_LC_small.txt","simu_dual_cam_NLC_small.txt","orbslam3_LC.txt"]
+# file_paths = ["ground_truth_vines.txt","simu_dual_cam_vines.txt","simu_orbslam3_vines.txt"]
+
+# file_paths = ["result_gt.txt", "dual_cam_real_for_change.txt","orbslam3_cls.txt"]
+# file_paths = ["ground_truth_traj.txt", "dual_cam_exp_6.txt"]
+# file_paths = ["ground_truth_vines.txt","dual_cam_vines.txt", "orbslam3_vines.txt"]
+# file_paths = ["ground_truth_LC.txt","dual_cam_LC.txt","dual_cam_NLC.txt","simu_orbslam3_small.txt"]
 # file_paths = ["ground_truth_LC.txt","dual_cam_LC.txt","dual_cam_NLC.txt","orbslam3_LC.txt"]
 # file_paths = ["ground_truth_L.txt","dual_cam_L.txt", "orbslam3.txt"]
 home_path = "/home/christos/catkin_ws/src/mini_project_kokas/src/vio_slam/build/devel/lib/vio_slam"
@@ -34,9 +47,25 @@ for i, file_path in enumerate(file_paths):
     xs, ys, zs = [], [], []
     for line in lines:
         values = line.split()
-        xs.append(float(values[3]))
-        ys.append(float(values[11]))
-        zs.append(float(values[7]))
+        if i==0:
+            xs.append(-float(values[7]))
+            ys.append(float(values[11]))
+            zs.append(float(values[11]))
+        else:
+            xs.append(float(values[3]))
+            ys.append(float(values[11]))
+            zs.append(float(values[7]))
+
+        # if i==0:
+        #     xs.append(float(values[11]))
+        #     ys.append(-float(values[3]))
+        #     zs.append(float(values[11]))
+        # else:
+        #     xs.append(float(values[11]))
+        #     ys.append(-float(values[3]))
+        #     zs.append(float(values[7]))
+            
+            
         # if i == 0 :
         # else : 
         #     zs.append(-float(values[7]))
@@ -51,42 +80,47 @@ for i, file_path in enumerate(file_paths):
     filename = os.path.basename(file_path)
     base_name, extension = os.path.splitext(filename)
 
+    # if i == 0:
+    #     plt.plot(xs[0], ys[0], marker="o", markersize = 10, markerfacecolor="green",markeredgecolor='none', label='start', linestyle='None')
+    #     plt.plot(xs[-1], ys[-1], marker="o", markersize = 10, markerfacecolor="black",markeredgecolor='none', label='end', linestyle='None')
 
     # Plot the x, y, z values as a scatter plot with optional lines connecting the points
-    if i == 0:
-        ax = plt.subplot()
-        plt.plot(xs[0], ys[0], marker="o", markersize = 10, markerfacecolor="green",markeredgecolor='none', label='start', linestyle='None')
-        plt.plot(xs[-1], ys[-1], marker="o", markersize = 10, markerfacecolor="black",markeredgecolor='none', label='end', linestyle='None')
     if connect_points:
         if i == 0 :
             plt.plot(xs, ys, colors[i], label="Ground Truth", linewidth = 1)
         elif i == 1 :
             plt.plot(xs, ys, colors[i], label="Dual Cam LC", linewidth = 1)
         elif i == 2 :
-            plt.plot(xs, ys, colors[i], label="Dual Cam NLC", linewidth = 1)
+            plt.plot(xs, ys, colors[i+1], label="ORB-SLAM3", linewidth = 1)
         else : 
             plt.plot(xs, ys, colors[i], label="ORB-SLAM3", linewidth = 1)
             
     else:
-        plt.plot(xs, ys, s=1, label=base_name, color = colors[i])
+        plt.scatter(xs, ys, s=1, label=base_name, color = colors[i])
 
-    if i == 3:
-        plt.annotate('ORB-SLAM3 resets here', xy=(xs[197],ys[197]), xytext=(-1.5,4), arrowprops=dict(facecolor='red', shrink=0.03))
+    # if i == 2:
+    #     plt.annotate('ORB-SLAM3 resets here', xy=(xs[-1],ys[-1]), xytext=(-0.2, ys[-1]), arrowprops=dict(facecolor='red', shrink=0.03))
 
     plt.xlabel("X (m)")
     plt.ylabel("Y (m)")
     if i ==len(file_paths) - 1 :
-        plt.plot([], [], ' ', label="Wall", marker='s', markersize=10, markerfacecolor='none', markeredgecolor='b', mew=2)
-        plt.plot([], [], ' ', label="Vineyard", marker='s', markersize=10, markerfacecolor='g', markeredgecolor='tab:brown', mew=2)
+        plt.plot([], [], ' ', label="Featureless\n Object", marker='s', markersize=10, markerfacecolor='none', markeredgecolor='b', mew=2)
+        # plt.plot([], [], ' ', label="Grapevines", marker='s', markersize=10, markerfacecolor='g', markeredgecolor='tab:brown', mew=2)
     # plt.xticks(fontsize=14)
     # plt.yticks(fontsize=14)
     # plt.locator_params(axis='y',nbins=5)
     # plt.locator_params(axis='x',nbins=5)
-    plt.title("Simulation Trajectories")
+    plt.title("Experiment Trajectories")
+    # plt.ylim(-3, 5.5)
+    # plt.xlim(-7, 10)
+    # plt.xlim(-3, 5.5)
     # plt.xlim(-2, 2)
+    plt.xlim(-0.3, 0.65)
     plt.tight_layout()
-    plt.legend(loc = 'upper right')
+    legend = plt.legend(loc='upper right')
+    # legend.get_frame().set_alpha(0.5)
     plt.grid(True)
+    
     # ax = plt.axes()
     # ax.set_facecolor("grey")
     # Add a sphere symbol of green color at the start of the trajectory and a sphere symbol of red color at the end
@@ -94,17 +128,19 @@ for i, file_path in enumerate(file_paths):
     if i == 0:
         prevx = -5
         prevy = -5
-        for j in range(30, len(xs)-150, 1):
+        for j in range(50, len(xs)-5, 1):
             # if j+40 < len(xs):
             dx = xs[j+1] - xs[j]
             dy = ys[j+1] - ys[j]
-            if abs(prevx - xs[j]) > 0.7 or abs(prevy - ys[j]) > 0.7 :
-                plt.arrow(xs[j],ys[j],dx,dy, width = 0.025, color = colors[i])
+            if abs(prevx - xs[j]) > 0.1 or abs(prevy - ys[j]) > 0.1 :
+                # plt.arrow(xs[j],ys[j],dx,dy, width = 0.03, color = colors[i])
+                # plt.arrow(xs[j],ys[j],dx,dy, width = 0.005, color = colors[i])
                 prevx = xs[j]
                 prevy = ys[j]
                 
 plt.show()
-# plt.savefig('big_circle.png', transparent = True)
+# plt.savefig('vine_trans_2.png', transparent = True)
+# plt.savefig('vine_t.png', format='eps')
                 # ax.quiver(xs[j], ys[j], dx, dy, length=0.01, arrow_length_ratio=10, normalize=True, color=colors[i])
 
     # Add arrows on each trajectory that show the heading of the trajectory
