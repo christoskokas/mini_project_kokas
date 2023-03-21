@@ -31,8 +31,8 @@
 #include <actionlib/client/simple_action_client.h>
 
 #define GTPOSE false
-#define GTPOSEDIF true
-#define PUBPOINTCLOUD true
+#define GTPOSEDIF false
+#define PUBPOINTCLOUD false
 #define ATBESTPOSE false
 
 class GetImagesROS

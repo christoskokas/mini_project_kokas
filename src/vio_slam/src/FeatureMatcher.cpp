@@ -3,7 +3,7 @@
 namespace vio_slam
 {
 
-FeatureMatcher::FeatureMatcher(const Zed_Camera* _zed, const FeatureExtractor* _feLeft, const FeatureExtractor* _feRight, const int _imageHeight, const int _gridRows, const int _gridCols, const int _stereoYSpan) : zedptr(_zed), feLeft(_feLeft), feRight(_feRight), imageHeight(_imageHeight), gridRows(_gridRows), gridCols(_gridCols), stereoYSpan(_stereoYSpan), mnDisp(floor((float)_zed->cameraLeft.fx/40))
+FeatureMatcher::FeatureMatcher(const Zed_Camera* _zed, const FeatureExtractor* _feLeft, const FeatureExtractor* _feRight, const int _imageHeight) : zedptr(_zed), feLeft(_feLeft), feRight(_feRight), imageHeight(_imageHeight)
 {
 
 }
@@ -28,8 +28,6 @@ void FeatureMatcher::getMatchIdxs(const cv::Point2f& predP, std::vector<int>& id
         return;
 
     int offset {1};
-    // if ( !pred )
-    //     offset = 2;
     const int maxLevel {predictedScale + offset};
     const int minLevel {predictedScale - offset};
 
@@ -63,7 +61,7 @@ void FeatureMatcher::getMatchIdxs(const cv::Point2f& predP, std::vector<int>& id
     
 }
 
-int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* newKF, std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>>& matchedIdxs, const float rad, const std::vector<std::pair<cv::Point2f, cv::Point2f>>& predPoints, const std::vector<std::pair<float, float>>& keysAngles, const std::vector<float>& maxDistsScale, std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>>& p4d, const bool pred)
+int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* newKF, std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>>& matchedIdxs, const float rad, const std::vector<std::pair<cv::Point2f, cv::Point2f>>& predPoints, const std::vector<float>& maxDistsScale, std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>>& p4d)
 {
     int nMatches {0};
     const TrackedKeys& lastKeys = lastKF->keys;
@@ -404,7 +402,7 @@ int FeatureMatcher::matchByProjectionRPredLBAB(const Zed_Camera* zedCam, const K
     return nMatches;
 }
 
-int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<int>& matchedIdxsR, std::vector<std::pair<int,int>>& matchesIdxs, const float rad, const bool pred)
+int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoints, TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<int>& matchedIdxsR, std::vector<std::pair<int,int>>& matchesIdxs, const float rad)
 {
     int nMatches {0};
 
@@ -540,7 +538,6 @@ int FeatureMatcher::matchByProjectionRPred(std::vector<MapPoint*>& activeMapPoin
     }
     return nMatches;
 }
-
 
 void FeatureMatcher::findStereoMatchesORB2R(const cv::Mat& lImage, const cv::Mat& rImage, const cv::Mat& rightDesc,  std::vector<cv::KeyPoint>& rightKeys, TrackedKeys& keysLeft)
 {
@@ -694,7 +691,6 @@ void FeatureMatcher::findStereoMatchesORB2R(const cv::Mat& lImage, const cv::Mat
 
     std::sort(allDepths.begin(), allDepths.end());
     std::sort(allDists2.begin(), allDists2.end());
-    keysLeft.medianDepth = allDepths[allDepths.size()/2].first;
     const float medianD {allDists2[allDists2.size()/2].first};
     const float medDistD = medianD*(1.5f*1.4f);
     

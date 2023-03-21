@@ -3,7 +3,6 @@
 #ifndef SETTINGS_H
 #define SETTINGS_H
 
-#include <ros/ros.h>
 #include <iostream>
 #include <yaml-cpp/yaml.h>
 #include <chrono>
@@ -83,20 +82,6 @@ class Timer
         ~Timer();
 };
 
-class ProcessTime
-{
-    private:
-        const char* wFunc;
-    public:
-        clock_t total;
-        clock_t totalOverTimes {0};
-        clock_t start;
-        ProcessTime(const char* what = "whatever");
-        void totalTime();
-        void averageTime(const int times);
-        void averageTimeOverTimes(const int times);
-
-};
 
 class ConfigFile
 {
@@ -117,44 +102,6 @@ class ConfigFile
                 return configNode[first].as<T>();
         }
 };
-
-template <typename T, typename U>
-void reduceVectorInliersTemp(std::vector<T>& vec,std::vector<U>& check)
-{
-    int j {0};
-    for (int i = 0; i < int(check.size()); i++)
-        vec[j++] = vec[check[i]];
-    vec.resize(j);
-}
-
-template <typename T, typename U>
-void reduceVectorTemp(std::vector<T>& vec,std::vector<U>& check)
-{
-    int j {0};
-    for (int i = 0; i < int(vec.size()); i++)
-        if (check[i])
-            vec[j++] = vec[i];
-    vec.resize(j);
-}
-
-template <typename T, typename U>
-void reduceVectorWithValue(std::vector<T>& vec,std::vector<U>& check, const float value)
-{
-    int j {0};
-    for (int i = 0; i < int(vec.size()); i++)
-        if (check[i] < value)
-            vec[j++] = vec[i];
-    vec.resize(j);
-}
-
-template <typename T>
-void checkVectorTemp(std::vector<bool>& vec,std::vector<T>& check)
-{
-    for (int i = 0; i < int(vec.size()); i++)
-        if (!(check[i] && vec[i]))
-            vec[i] = false;
-
-}
 
 } // namespace vio_slam
 

@@ -39,10 +39,10 @@ class FeatureTracker
 
         std::vector<MapPoint*>& activeMapPoints;
         std::vector<MapPoint*>& activeMapPointsB;
-        std::vector<KeyFrame*>& activeKeyFrames;
         std::vector<KeyFrame*>& allFrames;
 
         KeyFrame* prevKF = nullptr;
+        KeyFrame* latestKF = nullptr;
         Eigen::Matrix4d prevReferencePose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d lastKFPoseInv = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d poseEst = Eigen::Matrix4d::Identity();

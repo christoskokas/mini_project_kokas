@@ -273,11 +273,11 @@ void LocalMapper::addMultiViewMapPointsR(const Eigen::Vector4d& posW, const std:
         {
             if ( keyPos.first >= 0 )
             {
-                mp = new MapPoint(posW, temp.Desc.row(keyPos.first),temp.keyPoints[keyPos.first], temp.close[keyPos.first], lastKF->numb, mpIdx);
+                mp = new MapPoint(posW, temp.Desc.row(keyPos.first),temp.keyPoints[keyPos.first], lastKF->numb, mpIdx);
             }
             else if ( keyPos.second >= 0 )
             {
-                mp = new MapPoint(posW, temp.rightDesc.row(keyPos.second),temp.rightKeyPoints[keyPos.second], temp.close[keyPos.second], lastKF->numb, mpIdx);
+                mp = new MapPoint(posW, temp.rightDesc.row(keyPos.second),temp.rightKeyPoints[keyPos.second], lastKF->numb, mpIdx);
             }
             break;
         }
@@ -311,11 +311,11 @@ void LocalMapper::addMultiViewMapPointsRB(const Eigen::Vector4d& posW, const std
         {
             if ( keyPos.first >= 0 )
             {
-                mp = new MapPoint(posW, temp.Desc.row(keyPos.first),temp.keyPoints[keyPos.first], temp.close[keyPos.first], lastKF->numb, mpIdx);
+                mp = new MapPoint(posW, temp.Desc.row(keyPos.first),temp.keyPoints[keyPos.first], lastKF->numb, mpIdx);
             }
             else if ( keyPos.second >= 0 )
             {
-                mp = new MapPoint(posW, temp.rightDesc.row(keyPos.second),temp.rightKeyPoints[keyPos.second], false, lastKF->numb, mpIdx);
+                mp = new MapPoint(posW, temp.rightDesc.row(keyPos.second),temp.rightKeyPoints[keyPos.second], lastKF->numb, mpIdx);
             }
             break;
         }
@@ -551,11 +551,8 @@ void LocalMapper::calcAllMpsOfKFROnlyEstB(const Zed_Camera* zedCam, std::vector<
     }
 }
 
-void LocalMapper::predictKeysPosR(const TrackedKeys& keys, const Eigen::Matrix4d& camPose, const Eigen::Matrix4d& camPoseInv, std::vector<std::pair<float, float>>& keysAngles, const std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>>& p4d, std::vector<std::pair<cv::Point2f, cv::Point2f>>& predPoints)
+void LocalMapper::predictKeysPosR(const TrackedKeys& keys, const Eigen::Matrix4d& camPose, const Eigen::Matrix4d& camPoseInv, const std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>>& p4d, std::vector<std::pair<cv::Point2f, cv::Point2f>>& predPoints)
 {
-    // cv::KeyPoint::convert(keys.keyPoints, predPoints);
-    // predPoints.resize(keys.keyPoints.size());
-    // keysAngles.resize(keys.keyPoints.size(), -5.0);
     const Eigen::Matrix4d camPoseInvR = (camPose * zedPtr->extrinsics).inverse();
 
     const double fxr {zedPtr->cameraRight.fx};
@@ -576,7 +573,6 @@ void LocalMapper::predictKeysPosR(const TrackedKeys& keys, const Eigen::Matrix4d
         if ( p(2) <= 0.0 || pR(2) <= 0.0)
         {
             predPoints.emplace_back(noPoint, noPoint);
-            keysAngles.emplace_back(noAngle, noAngle);
             continue;
         }
 
@@ -617,7 +613,6 @@ void LocalMapper::predictKeysPosR(const TrackedKeys& keys, const Eigen::Matrix4d
         }
 
         predPoints.emplace_back(predL, predR);
-        keysAngles.emplace_back(angL, angR);
 
     }
 }
@@ -630,15 +625,11 @@ void LocalMapper::triangulateNewPointsR(std::vector<vio_slam::KeyFrame *>& activ
     actKeyF = activeKF;
     KeyFrame* lastKF = actKeyF.front();
     const int lastKFIdx = lastKF->numb;
-    // std::vector<std::vector<std::pair<int, int>>> matchedIdxs(lastKF->keys.keyPoints.size(),std::vector<std::pair<int, int>>());
     std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>> matchedIdxs;
 
-    // std::vector<Eigen::Vector4d> p4d;
     std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>> p4d;
     std::vector<float> maxDistsScale;
-    // calcAllMpsOfKFR(matchedIdxs, lastKF, kFsize, p4d,maxDistsScale);
     calcAllMpsOfKFROnlyEst(matchedIdxs, lastKF, kFsize, p4d,maxDistsScale);
-    // calcAllMpsOfKF(matchedIdxs, lastKF, allSeenKF, kFsize, p4d);
     const int aKFsize {actKeyF.size()};
     {
     bool first = true;
@@ -647,11 +638,10 @@ void LocalMapper::triangulateNewPointsR(std::vector<vio_slam::KeyFrame *>& activ
     {
         if ( (*it)->numb == lastKFIdx)
             continue;
-        std::vector<std::pair<float, float>> keysAngles;
         std::vector<std::pair<cv::Point2f, cv::Point2f>> predPoints;
         // predict keys for both right and left camera
-        predictKeysPosR(lastKF->keys, (*it)->pose.pose, (*it)->pose.poseInverse, keysAngles, p4d, predPoints);
-        int matches = fm->matchByProjectionRPredLBA(lastKF, (*it), matchedIdxs, 4, predPoints, keysAngles, maxDistsScale, p4d, true);
+        predictKeysPosR(lastKF->keys, (*it)->pose.pose, (*it)->pose.poseInverse, p4d, predPoints);
+        int matches = fm->matchByProjectionRPredLBA(lastKF, (*it), matchedIdxs, 4, predPoints, maxDistsScale, p4d);
         first = false;
         
     }
@@ -692,9 +682,6 @@ void LocalMapper::triangulateNewPointsR(std::vector<vio_slam::KeyFrame *>& activ
 
 void LocalMapper::predictKeysPosRB(const Zed_Camera* zedCam, const Eigen::Matrix4d& camPose, const Eigen::Matrix4d& camPoseInv, const std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>>& p4d, std::vector<std::pair<cv::Point2f, cv::Point2f>>& predPoints)
 {
-    // cv::KeyPoint::convert(keys.keyPoints, predPoints);
-    // predPoints.resize(keys.keyPoints.size());
-    // keysAngles.resize(keys.keyPoints.size(), -5.0);
     const Eigen::Matrix4d camPoseInvR = (camPose * zedCam->extrinsics).inverse();
 
     const double fx {zedCam->cameraLeft.fx};
@@ -2697,7 +2684,7 @@ void LocalMapper::beginLocalMapping()
             // std::vector<vio_slam::KeyFrame *> actKeyF = map->activeKeyFrames;
 
             std::vector<vio_slam::KeyFrame *> actKeyF;
-            KeyFrame* lastKF = map->activeKeyFrames.front();
+            KeyFrame* lastKF = map->keyFrames.at(map->kIdx - 1);
             actKeyF.reserve(20);
             actKeyF.emplace_back(lastKF);
             lastKF->getConnectedKFs(actKeyF, actvKFMaxSize);
@@ -2727,7 +2714,7 @@ void LocalMapper::beginLocalMappingB()
         {
             // std::vector<vio_slam::KeyFrame *> actKeyF = map->activeKeyFrames;
             std::vector<vio_slam::KeyFrame *> actKeyF;
-            KeyFrame* lastKF = map->activeKeyFrames.front();
+            KeyFrame* lastKF = map->keyFrames.at(map->kIdx - 1);
             actKeyF.reserve(20);
             actKeyF.emplace_back(lastKF);
             lastKF->getConnectedKFs(actKeyF, actvKFMaxSize);

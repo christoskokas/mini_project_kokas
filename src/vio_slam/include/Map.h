@@ -1,5 +1,3 @@
-#pragma once
-
 #ifndef MAP_H
 #define MAP_H
 
@@ -19,13 +17,6 @@ namespace vio_slam
 
 class KeyFrame;
 
-struct Observation
-{
-    int frameId {};
-
-    cv::KeyPoint obs;
-};
-
 class MapPoint
 {
     private:
@@ -35,16 +26,11 @@ class MapPoint
         Eigen::Vector4d wp;
         Eigen::Vector3d wp3d;
         int unMCnt {0};
-        int outLCnt {0};
-        int trackCnt {0};
-        int seenCnt {1};
-        // std::vector<Observation> obs;
         std::vector<cv::KeyPoint> obs;
         cv::KeyPoint lastObsL;
         cv::KeyPoint lastObsR;
         KeyFrame* lastObsKF;
         cv::Mat desc;
-        std::unordered_map<KeyFrame*, size_t> kFWithFIdx;
         std::unordered_map<KeyFrame*, std::pair<int,int>> kFMatches;
         std::unordered_map<KeyFrame*, std::pair<int,int>> kFMatchesB;
 
@@ -59,7 +45,6 @@ class MapPoint
         bool inFrame {true};
         bool inFrameR {true};
         bool isOutlier {false};
-        bool close {true};
         bool added {false};
 
         cv::Point2f predL, predR;
@@ -89,27 +74,13 @@ class MapPoint
         bool GetIsOutlier() const;
         bool GetInFrame() const;
         void calcDescriptor();
-        MapPoint(const Eigen::Vector4d& p, const cv::Mat& _desc, const cv::KeyPoint& obsK, const bool _close, const unsigned long _kdx, const unsigned long _idx);
-        MapPoint(const unsigned long _idx, const unsigned long _kdx);
-
-        void copyMp(MapPoint* mp, const Zed_Camera* zedPtr);
-        void changeMp(const MapPoint* mp);
-
-
-        // MapPoint operator = (MapPoint const& obj)
-        // {
-        //     MapPoint res(obj.idx, obj.kdx);
-
-        // }
-
-        void addTCnt();
+        MapPoint(const Eigen::Vector4d& p, const cv::Mat& _desc, const cv::KeyPoint& obsK, const unsigned long _kdx, const unsigned long _idx);
 
         Eigen::Vector4d getWordPose4d() const;
         Eigen::Vector3d getWordPose3d() const;
         void updatePos(const Eigen::Vector3d& newPos, const Zed_Camera* zedPtr);
         void setWordPose4d(const Eigen::Vector4d& p);
         void setWordPose3d(const Eigen::Vector3d& p);
-        void updateMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& _obs);
 };
 
 class Map
@@ -126,7 +97,6 @@ class Map
         std::unordered_map<unsigned long, MapPoint*> mapPoints;
         std::vector<MapPoint*> activeMapPoints;
         std::vector<MapPoint*> activeMapPointsB;
-        std::vector<KeyFrame*> activeKeyFrames;
         std::vector<KeyFrame*> allFramesPoses;
         unsigned long kIdx {0};
         unsigned long pIdx {0};
@@ -146,9 +116,7 @@ class Map
 
 
         Map(){};
-        void addMapPoint(Eigen::Vector4d& p, const cv::Mat& _desc, cv::KeyPoint& obsK, bool _useable);
         void addMapPoint(MapPoint* mp);
-        void addKeyFrame(Eigen::Matrix4d _pose);
         void addKeyFrame(KeyFrame* kF);
         void removeKeyFrame(int idx);
         mutable std::mutex mapMutex;

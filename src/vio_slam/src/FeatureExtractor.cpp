@@ -696,7 +696,7 @@ void FeatureExtractor::computeKeypointsORBNew(cv::Mat& image, std::vector<std::v
 
 }
 
-FeatureExtractor::FeatureExtractor(const int _nfeatures, const int _nLevels, const float _imScale, const int _edgeThreshold, const int _patchSize, const int _maxFastThreshold, const int _minFastThreshold, const bool _nonMaxSuppression) : nFeatures(_nfeatures), nLevels(_nLevels), imScale(_imScale), edgeThreshold(_edgeThreshold), patchSize(_patchSize), maxFastThreshold(_maxFastThreshold), minFastThreshold(_minFastThreshold), nonMaxSuppression(_nonMaxSuppression)
+FeatureExtractor::FeatureExtractor(const int _nfeatures, const int _nLevels, const float _imScale, const int _edgeThreshold, const int _patchSize, const int _maxFastThreshold, const int _minFastThreshold) : nFeatures(_nfeatures), nLevels(_nLevels), imScale(_imScale), edgeThreshold(_edgeThreshold), patchSize(_patchSize), maxFastThreshold(_maxFastThreshold), minFastThreshold(_minFastThreshold)
 {
     scalePyramid.resize(nLevels);
     scaleInvPyramid.resize(nLevels);
@@ -750,7 +750,6 @@ FeatureExtractor::FeatureExtractor(const int _nfeatures, const int _nLevels, con
     for (v = 0; v <= vmax; ++v)
         umax[v] = cvRound(sqrt(hp2 - v * v));
 
-    // Make sure we are symmetric
     for (v = halfPatchSize, v0 = 0; v >= vmin; --v)
     {
         while (umax[v0] == umax[v0 + 1])
@@ -760,16 +759,5 @@ FeatureExtractor::FeatureExtractor(const int _nfeatures, const int _nLevels, con
     }
     
 }
-
-int FeatureExtractor::getGridRows()
-{
-    return gridRows;
-}
-
-int FeatureExtractor::getGridCols()
-{
-    return gridCols;
-}
-
 
 } // namespace vio_slam

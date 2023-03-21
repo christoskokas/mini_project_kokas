@@ -1,10 +1,7 @@
-#pragma once
-
 #ifndef CAMERA_H
 #define CAMERA_H
 
 #include "Settings.h"
-#include <ros/ros.h>
 #include <unistd.h>
 #include <iostream>
 #include <stdio.h>
@@ -31,25 +28,27 @@ namespace vio_slam
 class CameraPose
 {
     private:
-        double vx {}, vy {}, vz {};
     public:
         Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d refPose = Eigen::Matrix4d::Identity();
-        Eigen::Matrix3d Rv;
-        Eigen::Vector3d tv;
         Eigen::Matrix4d poseInverse = Eigen::Matrix4d::Identity();
         std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;
 
-        //  = std::chrono::high_resolution_clock::now();
         CameraPose(Eigen::Matrix4d _pose = Eigen::Matrix4d::Identity(), std::chrono::time_point<std::chrono::high_resolution_clock> _timestamp = std::chrono::high_resolution_clock::now());
-        void setVel(const double _vx, const double _vy, const double _vz);
+
+        // set camera Pose
         void setPose(const Eigen::Matrix4d& poseT);
         void setPose(Eigen::Matrix4d& _refPose, Eigen::Matrix4d& _keyPose);
+
+        // get pose
         Eigen::Matrix4d getPose() const;
         Eigen::Matrix4d getInvPose() const;
+
+        // change pose using reference psoe
         void changePose(const Eigen::Matrix4d& _keyPose);
+
+        // set inv pose from local/global BA
         void setInvPose(const Eigen::Matrix4d poseT);
-        void separatePose();
 };
 
 /**
@@ -60,16 +59,9 @@ class CameraPose
 class Camera
 {
     private:
-        int counter;
-        float camera_time;
-        float imu_time;
-        // ros::Publisher pub;
-        // ros::Subscriber camera_subscriber;
-        // ros::Subscriber imu_subscriber;
     public:
         double fx {},fy {},cx {}, cy {};
         double k1 {}, k2 {}, p1 {}, p2 {}, k3{};
-        std::string path {};
         cv::Mat cameraMatrix {};
         cv::Mat D = cv::Mat::zeros(1,5,CV_64F);
         cv::Mat K = cv::Mat::eye(3,3,CV_64F);
@@ -77,10 +69,8 @@ class Camera
         cv::Mat P = cv::Mat::eye(3,4,CV_64F);
         Eigen::Matrix<double,3,3> intrisics = Eigen::Matrix<double,3,3>::Identity();
         cv::Mat distCoeffs {};
-        Camera(ros::NodeHandle *nh);
         Camera() = default;
         ~Camera();
-        float GetFx();
         void setIntrinsicValuesUnR(const std::string& cameraPath, ConfigFile* confFile);
         void setIntrinsicValuesR(const std::string& cameraPath, ConfigFile* confFile);
 };
@@ -100,7 +90,6 @@ class Zed_Camera
         float mBaseline, mFps;
         int mWidth, mHeight;
         int numOfFrames {};
-        std::string seq {};
 
         Camera cameraLeft;
         Camera cameraRight;

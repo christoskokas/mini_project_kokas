@@ -25,18 +25,10 @@ void ViewFrame::pangoQuit(Zed_Camera* zedPtr, const Map* _map)
     );
 
     pangolin::Renderable renders;
-    renders.Add(std::make_shared<pangolin::Axis>());
     auto camera = std::make_shared<CameraFrame>();
-    camera->color = "G";
     // camera->Subscribers(nh);
     camera->zedCamera = zedPtr;
     camera->map = _map;
-    KeyFrameVars temp;
-    for (size_t i = 0; i < 16; i++)
-    {
-        temp.mT.push_back(camera->T_pc.m[i]);
-    }
-    keyFrames.push_back(temp);
     
     // Create Interactive View in window
     pangolin::SceneHandler handler(renders, s_cam);
@@ -46,7 +38,6 @@ void ViewFrame::pangoQuit(Zed_Camera* zedPtr, const Map* _map)
 
     d_cam.SetDrawFunction([&](pangolin::View& view){
         view.Activate(s_cam);
-        renders.Render();
     });
     pangolin::OpenGlMatrix Twc, Twr;
     Twc.SetIdentity();
@@ -98,9 +89,7 @@ void ViewFrame::pangoQuitMulti(Zed_Camera* zedPtr, Zed_Camera* zedPtrB, const Ma
     );
 
     pangolin::Renderable renders;
-    // renders.Add(std::make_shared<pangolin::Axis>());
     auto camera = std::make_shared<CameraFrame>();
-    camera->color = "G";
     // camera->Subscribers(nh);
     camera->zedCamera = zedPtr;
     camera->zedCameraB = zedPtrB;
@@ -114,7 +103,6 @@ void ViewFrame::pangoQuitMulti(Zed_Camera* zedPtr, Zed_Camera* zedPtrB, const Ma
 
     d_cam.SetDrawFunction([&](pangolin::View& view){
         view.Activate(s_cam);
-        renders.Render();
     });
     pangolin::OpenGlMatrix Twc, Twr;
     Twc.SetIdentity();
@@ -122,8 +110,6 @@ void ViewFrame::pangoQuitMulti(Zed_Camera* zedPtr, Zed_Camera* zedPtrB, const Ma
     Ow.SetIdentity();
     camera->getOpenGLMatrix(Ow);
     camera->drawCamera();
-    // pangolin::CreatePanel("ui").SetBounds(0.0, 1.0, 0.0, pangolin::Attach::Pix(UI_WIDTH));
-    // pangolin::Var<bool> a_button("ui.Button", false, false);
     while( 1 )
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -148,61 +134,6 @@ void ViewFrame::pangoQuitMulti(Zed_Camera* zedPtr, Zed_Camera* zedPtrB, const Ma
     std::cout << "Visual Thread Exited!" << std::endl;
 }
 
-void CameraFrame::Render(const pangolin::RenderParams&)
-{
-
-    const float w = cameraWidth;
-    const float h = w*0.75;
-    const float z = w*0.3;
-
-    glPushMatrix();
-    if (color == "G")
-    {
-        glColor3f(0.0f,1.0f,0.0f);
-    }
-    if (color == "B")
-    {
-        glColor3f(0.0f,0.0f,1.0f);
-    }
-    glLineWidth(1);
-    glBegin(GL_LINES);
-    glVertex3f(w/2,h/2,0);
-    glVertex3f(w,h,z);
-    glVertex3f(w/2,-h/2,0);
-    glVertex3f(w,-h,z);
-    glVertex3f(-w/2,-h/2,0);
-    glVertex3f(-w,-h,z);
-    glVertex3f(-w/2,h/2,0);
-    glVertex3f(-w,h,z);
-
-    glVertex3f(w/2,h/2,0);
-    glVertex3f(w/2,-h/2,0);
-
-    glVertex3f(-w/2,h/2,0);
-    glVertex3f(-w/2,-h/2,0);
-
-    glVertex3f(-w/2,h/2,0);
-    glVertex3f(w/2,h/2,0);
-
-    glVertex3f(-w/2,-h/2,0);
-    glVertex3f(w/2,-h/2,0);
-
-    glVertex3f(w,h,z);
-    glVertex3f(w,-h,z);
-
-    glVertex3f(-w,h,z);
-    glVertex3f(-w,-h,z);
-
-    glVertex3f(-w,h,z);
-    glVertex3f(w,h,z);
-
-    glVertex3f(-w,-h,z);
-    glVertex3f(w,-h,z);
-    glEnd();
-
-    glPopMatrix();
-}
-
 void CameraFrame::drawPoints()
 {
     glColor3f(1.0f,1.0f,1.0f);
@@ -224,22 +155,6 @@ void CameraFrame::drawPoints()
             glColor3f(1.0f,1.0f,1.0f);
         glVertex3d((*itw).second->wp3d(0),(*itw).second->wp3d(1),(*itw).second->wp3d(2));
     }
-
-    // for ( size_t i {0}, end{map->mapPoints.size()}; i < end; i ++)
-    // {
-    //     const MapPoint* mp = map->mapPoints.at((unsigned long)i);
-    //     if ( !mp->GetIsOutlier() && !mp->getActive())
-    //         glVertex3d(mp->wp3d(0),mp->wp3d(1),mp->wp3d(2));
-    // }
-
-    // glColor3f(0.0f,1.0f,0.0f);
-    // std::vector<MapPoint*> temp = map->activeMapPoints;
-    // std::vector<MapPoint*>::const_iterator it, end(temp.end());
-    // for ( it = temp.begin(); it != end; it++)
-    // {
-    //     if ( !(*it)->GetIsOutlier() && (*it)->getActive())
-    //         glVertex3d((*it)->wp3d(0),(*it)->wp3d(1),(*it)->wp3d(2));
-    // }
     glEnd();
 
 }
@@ -393,55 +308,6 @@ void CameraFrame::drawBackCamera()
     glVertex3f(off+w,-h,z);
     
     glEnd();
-    // Eigen::Matrix4d Rcam = zedCameraB->extrinsics * zedCameraB->cameraPose.pose ;
-    // glMultMatrixd((GLdouble*)Rcam.data());
-    // glLineWidth(2);
-    // glBegin(GL_LINES);
-    // glVertex3f(0,0,0);
-    // glVertex3f(w,h,z);
-    // glVertex3f(0,0,0);
-    // glVertex3f(w,-h,z);
-    // glVertex3f(0,0,0);
-    // glVertex3f(-w,-h,z);
-    // glVertex3f(0,0,0);
-    // glVertex3f(-w,h,z);
-
-    // glVertex3f(w,h,z);
-    // glVertex3f(w,-h,z);
-
-    // glVertex3f(-w,h,z);
-    // glVertex3f(-w,-h,z);
-
-    // glVertex3f(-w,h,z);
-    // glVertex3f(w,h,z);
-
-    // glVertex3f(-w,-h,z);
-    // glVertex3f(w,-h,z);
-    // glEnd();
-
-    glPopMatrix();
-}
-
-void Lines::getValues(std::vector < pangolin::GLprecision >& mKeyFrame, pangolin::GLprecision mCamera[16])
-{
-
-    m[0] = mKeyFrame[12];
-    m[1] = mKeyFrame[13];
-    m[2] = mKeyFrame[14];
-    m[3] = mCamera[12];
-    m[4] = mCamera[13];
-    m[5] = mCamera[14];
-}
-
-void Lines::Render(const pangolin::RenderParams& params)
-{
-    glPushMatrix();
-    glColor3f(1.0f,0.0f,0.0f);
-    glLineWidth(1);
-    glBegin(GL_LINES);
-    glVertex3f(m[0],m[1],m[2]);
-    glVertex3f(m[3],m[4],m[5]);
-    glEnd();
 
     glPopMatrix();
 }
@@ -456,37 +322,11 @@ void CameraFrame::lineFromKeyFrameToCamera()
     std::unordered_map<unsigned long, KeyFrame*> mapKeyF = map->keyFrames;
     std::unordered_map<unsigned long, KeyFrame*>::const_iterator it, end(mapKeyF.end());
     glBegin(GL_LINES);
-    // for ( it = mapKeyF.begin(); it != end; it ++)
-    // {
-    //     // if ( (*it).second->numb == lastActiveKeyF)
-    //     //     glColor3f(1.0f,0.0f,0.0f);
-    //     const KeyFrame* kfCand = it->second;
-    //     if (!kfCand->visualize)
-    //         continue;
-    //     if (kfCand->active)
-    //         glColor3f(0.0f,1.0f,0.0f);
-    //     else
-    //         glColor3f(1.0f,0.0f,0.0f);
-    //     for ( std::vector<std::pair<int,KeyFrame*>>::const_iterator itw = kfCand->sortedKFWeights.begin(), endw(kfCand->sortedKFWeights.end()); itw != endw; itw++)
-    //     {
-    //         const KeyFrame* kfCon = itw->second;
-    //         if ( !kfCon->visualize )
-    //             continue;
-    //         glVertex3f((GLfloat)kfCon->pose.pose(0,3),(GLfloat)kfCon->pose.pose(1,3),(GLfloat)kfCon->pose.pose(2,3));
-    //         glVertex3f((GLfloat)kfCand->pose.pose(0,3), (GLfloat)kfCand->pose.pose(1,3), (GLfloat)kfCand->pose.pose(2,3));
-
-    //     }
-    // }
     for ( it = mapKeyF.begin(); it != end; it ++)
     {
-        // if ( (*it).second->numb == lastActiveKeyF)
-        //     glColor3f(1.0f,0.0f,0.0f);
         const KeyFrame* kfCand = it->second;
         if (!kfCand->visualize)
             continue;
-        // if (kfCand->active)
-        //     glColor3f(0.0f,1.0f,0.0f);
-        // else
         glColor3f(1.0f,0.0f,0.0f);
         if ( !kfCand->nextKF )
             continue;
@@ -504,19 +344,5 @@ void CameraFrame::lineFromKeyFrameToCamera()
     glEnd();
     glPopMatrix();
 }
-
-Points::Points(const std::vector<pcl::PointXYZ>* point)
-{
-    if(!point->empty())
-    {
-        points = point;
-    }
-}
-
-void Points::Render(const pangolin::RenderParams& params)
-{
-
-}
-
 
 }

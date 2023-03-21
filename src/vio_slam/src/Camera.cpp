@@ -5,19 +5,6 @@
 namespace vio_slam
 {
 
-void CameraPose::separatePose()
-{
-    Rv = pose.topLeftCorner<3,3>();
-    tv = pose.topRightCorner<3,1>();
-}
-
-void CameraPose::setVel(const double _vx, const double _vy, const double _vz)
-{
-    vx = _vx;
-    vy = _vy;
-    vz = _vz;
-}
-
 CameraPose::CameraPose(Eigen::Matrix4d _pose, std::chrono::time_point<std::chrono::high_resolution_clock> _timestamp) : pose(_pose), timestamp(_timestamp)
 {}
 
@@ -64,9 +51,6 @@ Zed_Camera::Zed_Camera(ConfigFile* yamlFile)
     confFile = yamlFile;
     rectified = confFile->getValue<bool>("rectified");
     numOfFrames = confFile->getValue<int>("numOfFrames"); 
-#if KITTI_DATASET
-    seq = confFile->getValue<std::string>("seq");
-#endif
     setCameraValues("Camera");
     setCameraMatrices();
 
@@ -76,13 +60,6 @@ Zed_Camera::Zed_Camera(ConfigFile* yamlFile, bool backCamera)
 {
     confFile = yamlFile;
     numOfFrames = confFile->getValue<int>("numOfFrames");
-    try{
-        seq = confFile->getValue<std::string>("seq");
-    }
-    catch(std::exception& e)
-    {
-        seq = "";
-    }
     if ( !backCamera )
     {
         rectified = confFile->getValue<bool>("rectified");
@@ -172,20 +149,9 @@ Zed_Camera::~Zed_Camera()
 
 }
 
-Camera::Camera(ros::NodeHandle *nh)
-{
-
-}
-
 Camera::~Camera()
 {
     
-}
-
-
-float Camera::GetFx()
-{
-    return fx;
 }
 
 void Camera::setIntrinsicValuesUnR(const std::string& cameraPath, ConfigFile* confFile)
@@ -199,7 +165,6 @@ void Camera::setIntrinsicValuesUnR(const std::string& cameraPath, ConfigFile* co
     p1 = confFile->getValue<double>(cameraPath,"p1");
     p2 = confFile->getValue<double>(cameraPath,"p2");
     k3 = confFile->getValue<double>(cameraPath,"k3");
-    path = confFile->getValue<std::string>(cameraPath + "_path");
     std::vector < double > Rt = confFile->getValue<std::vector<double>>(cameraPath,"R","data");
     std::vector < double > Pt = confFile->getValue<std::vector<double>>(cameraPath,"P","data");
     std::vector < double > Dt = confFile->getValue<std::vector<double>>(cameraPath,"D","data");
@@ -210,25 +175,12 @@ void Camera::setIntrinsicValuesUnR(const std::string& cameraPath, ConfigFile* co
     K = (cv::Mat_<double>(3,3) << Kt[0], Kt[1], Kt[2], Kt[3], Kt[4], Kt[5], Kt[6], Kt[7], Kt[8]);
     D = (cv::Mat_<double>(1,5) << Dt[0], Dt[1], Dt[2], Dt[3], Dt[4]);
     cameraMatrix = K;
-    std::cout << cameraPath<< " cameraMatrix " << cameraMatrix << std::endl;
-    // std::cout << cameraPath<< " P " << P << std::endl;
-    // std::cout << cameraPath<< " P " << P << std::endl;
 
     intrisics(0,0) = fx;
     intrisics(1,1) = fy;
     intrisics(0,2) = cx;
     intrisics(1,2) = cy;
 
-    // nh->getParam(cameraPath + "/fx",fx);
-    // nh->getParam(cameraPath + "/fy",fy);
-    // nh->getParam(cameraPath + "/cx",cx);
-    // nh->getParam(cameraPath + "/cy",cy);
-    // nh->getParam(cameraPath + "/k1",k1);
-    // nh->getParam(cameraPath + "/k2",k2);
-    // nh->getParam(cameraPath + "/p1",p1);
-    // nh->getParam(cameraPath + "/p2",p2);
-    // nh->getParam(cameraPath + "/k3",k3);
-    // nh->getParam(cameraPath + "_path", path);
 }
 
 void Camera::setIntrinsicValuesR(const std::string& cameraPath, ConfigFile* confFile)
@@ -248,16 +200,6 @@ void Camera::setIntrinsicValuesR(const std::string& cameraPath, ConfigFile* conf
     intrisics(1,1) = fy;
     intrisics(0,2) = cx;
     intrisics(1,2) = cy;
-    // nh->getParam(cameraPath + "/fx",fx);
-    // nh->getParam(cameraPath + "/fy",fy);
-    // nh->getParam(cameraPath + "/cx",cx);
-    // nh->getParam(cameraPath + "/cy",cy);
-    // nh->getParam(cameraPath + "/k1",k1);
-    // nh->getParam(cameraPath + "/k2",k2);
-    // nh->getParam(cameraPath + "/p1",p1);
-    // nh->getParam(cameraPath + "/p2",p2);
-    // nh->getParam(cameraPath + "/k3",k3);
-    // nh->getParam(cameraPath + "_path", path);
 }
 
 } //namespace vio_slam
