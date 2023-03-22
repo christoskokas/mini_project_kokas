@@ -1,5 +1,3 @@
-#pragma once
-
 #ifndef SETTINGS_H
 #define SETTINGS_H
 
@@ -11,7 +9,7 @@
 #define KITTI_SEQ "01"
 #define ZED_DATASET false
 #define ZED_DEMO false
-#define V1_02 false
+#define V1_02 true
 #define SIMULATION true
 #define DRAWMATCHES false
 

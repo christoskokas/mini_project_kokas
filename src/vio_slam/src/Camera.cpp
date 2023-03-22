@@ -12,8 +12,6 @@ void CameraPose::setPose(const Eigen::Matrix4d& poseT)
 {
     pose = poseT;
     poseInverse = poseT.inverse();
-    // Eigen::Matrix4d temp = poseT.inverse();
-    // poseInverse = temp;
     timestamp = std::chrono::high_resolution_clock::now();
 }
 
@@ -101,8 +99,6 @@ void Zed_Camera::setCameraMatrices()
 
     std::vector < double > transf {confFile->getValue<std::vector<double>>("Stereo","T_c1_c2","data")};
 
-    // std::vector< double > transf;
-    // nh->getParam("Stereo/T_c1_c2/data", transf);
     cameraLeft.cameraMatrix = (cv::Mat_<double>(3,3) << cameraLeft.fx, 0.0f, cameraLeft.cx, 0.0f, cameraLeft.fy, cameraLeft.cy, 0.0f, 0.0f, 1);
     cameraLeft.distCoeffs = (cv::Mat_<double>(1,5) << cameraLeft.k1, cameraLeft.k2, cameraLeft.p1, cameraLeft.p2, cameraLeft.k3);
     cameraRight.cameraMatrix = (cv::Mat_<double>(3,3) << cameraRight.fx, 0.0f, cameraRight.cx, 0.0f, cameraRight.fy, cameraRight.cy, 0.0f, 0.0f, 1);
@@ -130,18 +126,6 @@ void Zed_Camera::setCameraValues(const std::string& camPath)
     }
     mBaseline = confFile->getValue<float>(camPath ,"bl");
     extrinsics(0,3) = (double)mBaseline;
-}
-
-float Zed_Camera::setBaseline()
-{
-
-#if KITTI_DATASET
-    std::vector < float > P {confFile->getValue<std::vector<float>>("Camera_r","P","data")};
-    float bl = -P[3]/(float)cameraLeft.fx;
-#else
-    float bl = confFile->getValue<float>("Camera","bl");
-#endif
-    return bl;
 }
 
 Zed_Camera::~Zed_Camera()

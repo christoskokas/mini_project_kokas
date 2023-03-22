@@ -1,5 +1,3 @@
-#pragma once
-
 #ifndef LOCALBA_H
 #define LOCALBA_H
 

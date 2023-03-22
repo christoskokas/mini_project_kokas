@@ -62,7 +62,6 @@ src/KeyFrame.cpp
 src/FeatureTracker.cpp
 src/System.cpp
 src/Map.cpp
-src/Conversions.cpp
 src/LocalBA.cpp
 include/Camera.h
 include/Frame.h

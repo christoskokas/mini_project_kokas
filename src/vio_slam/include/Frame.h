@@ -1,5 +1,3 @@
-#pragma once
-
 #ifndef FRAME_H
 #define FRAME_H
 
@@ -45,7 +43,7 @@ struct CameraFrame
 
     const Map* map;
 
-    void drawCameraFrame(const float w, const float h, const float z);
+    void drawCameraFrame();
     void lineFromKeyFrameToCamera();
     void drawCamera();
     void drawBackCamera();

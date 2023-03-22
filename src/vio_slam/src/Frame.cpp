@@ -26,7 +26,6 @@ void ViewFrame::pangoQuit(Zed_Camera* zedPtr, const Map* _map)
 
     pangolin::Renderable renders;
     auto camera = std::make_shared<CameraFrame>();
-    // camera->Subscribers(nh);
     camera->zedCamera = zedPtr;
     camera->map = _map;
     
@@ -90,7 +89,6 @@ void ViewFrame::pangoQuitMulti(Zed_Camera* zedPtr, Zed_Camera* zedPtrB, const Ma
 
     pangolin::Renderable renders;
     auto camera = std::make_shared<CameraFrame>();
-    // camera->Subscribers(nh);
     camera->zedCamera = zedPtr;
     camera->zedCameraB = zedPtrB;
     camera->map = _map;
@@ -164,34 +162,30 @@ void CameraFrame::drawKeyFrames()
     const int lastKeyFrameIdx {map->kIdx - 1};
     if (lastKeyFrameIdx < 0)
         return;
-    const float w = cameraWidth;
-    const float h = w*0.75;
-    const float z = w*0.3;
 
     glColor3f(0.0f,1.0f,0.0f);
     std::unordered_map<unsigned long, KeyFrame*> mapKeyF = map->keyFrames;
     std::unordered_map<unsigned long,KeyFrame*>::const_iterator it, end(mapKeyF.end());
     for ( it = mapKeyF.begin(); it != end; it ++)
     {
-        // if ((*it).second->active)
-        //     glColor3f(0.0f,1.0f,0.0f);
-        // else
-            glColor3f(0.0f,0.0f,1.0f);
+        glColor3f(0.0f,0.0f,1.0f);
 
-        // if ( (*it).second->numb == lastActiveKeyF)
         if (!(*it).second->visualize)
             continue;
         glPushMatrix();
         Eigen::Matrix4d keyPose = (*it).second->getPose();
         glMultMatrixd((GLdouble*)keyPose.data());
-        drawCameraFrame(w,h,z);
+        drawCameraFrame();
         glPopMatrix();
 
     }
 }
 
-void CameraFrame::drawCameraFrame(const float w, const float h, const float z)
+void CameraFrame::drawCameraFrame()
 {
+    const float w = cameraWidth;
+    const float h = w*0.75;
+    const float z = w*0.3;
     glLineWidth(1);
     glBegin(GL_LINES);
     glVertex3f(0,0,0);
@@ -225,10 +219,6 @@ void CameraFrame::getOpenGLMatrix(pangolin::OpenGlMatrix &MOw)
         MOw.m[4*i+2] = zedCamera->cameraPose.pose(4*i + 2);
         MOw.m[4*i+3] = zedCamera->cameraPose.pose(4*i + 3);
     }
-    // MOw.SetIdentity();
-    // MOw.m[12] = T_pc(0,3);
-    // MOw.m[13] = T_pc(1,3);
-    // MOw.m[14] = T_pc(2,3);
 }
 
 void CameraFrame::drawCamera()

@@ -1,5 +1,3 @@
-#pragma once
-
 #ifndef CONVERSIONS_H
 #define CONVERSIONS_H
 

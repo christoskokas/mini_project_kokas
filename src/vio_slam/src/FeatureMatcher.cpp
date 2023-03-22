@@ -120,7 +120,6 @@ int FeatureMatcher::matchByProjectionRPredLBA(const KeyFrame* lastKF, KeyFrame* 
                     int dist = DescriptorDistance(mpDesc, keysLeft.Desc.row(idx));
                     if ( dist < bestDist)
                     {
-                        // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
                         secDist = bestDist;
                         bestLev2 = bestLev;
                         bestDist = dist;
@@ -292,7 +291,6 @@ int FeatureMatcher::matchByProjectionRPredLBAB(const Zed_Camera* zedCam, const K
                     int dist = DescriptorDistance(mpDesc, keysLeft.Desc.row(idx));
                     if ( dist < bestDist)
                     {
-                        // you can have a check here for the octaves of each keypoint. to not be a difference bigger than 2 e.g.
                         secDist = bestDist;
                         bestLev2 = bestLev;
                         bestDist = dist;
@@ -632,7 +630,6 @@ void FeatureMatcher::findStereoMatchesORB2R(const cv::Mat& lImage, const cv::Mat
 
         for (int32_t xMov {-windowMovementX}; xMov <= windowMovementX ; xMov++)
         {
-            // const float rKeyY {round(points.right[it->trainIdx].y)};
             const float startW = scuR + xMov - windowRadius;
             const float endW = scuR + xMov + windowRadius + 1;
             if ( startW < 0 || endW >= feRight->imagePyramid[octL].cols)
@@ -665,17 +662,16 @@ void FeatureMatcher::findStereoMatchesORB2R(const cv::Mat& lImage, const cv::Mat
         const float newuR = feLeft->scalePyramid[octL] * ((float)scuR + (float)bestX + delta);
 
 
-        // calculate depth
         const float disparity {it->pt.x - newuR};
         if (disparity > 0.0f && disparity < zedptr->cameraLeft.fx)
         {
             const float depth {((float)zedptr->cameraLeft.fx * zedptr->mBaseline)/disparity};
-            // if false depth is unusable
             keysLeft.rightIdxs[leftRow] = bestIdx;
             keysLeft.leftIdxs[bestIdx] = leftRow;
             keysLeft.estimatedDepth[leftRow] = depth;
             allDists2.emplace_back(bestDistW,leftRow);
             allDepths.emplace_back(depth,leftRow);
+            // if false depth is unusable
             if (depth < zedptr->mBaseline * closeNumber)
             {
                 keysLeft.close[leftRow] = true;
@@ -746,7 +742,6 @@ int FeatureMatcher::DescriptorDistance(const cv::Mat &a, const cv::Mat &b)
 void FeatureMatcher::destributeRightKeys(const std::vector < cv::KeyPoint >& rightKeys, std::vector<std::vector < int > >& indexes)
 {
 
-    // Timer("distribute keys took");
 
     indexes.resize(imageHeight);
 

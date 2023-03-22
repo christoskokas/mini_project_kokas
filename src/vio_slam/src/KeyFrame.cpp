@@ -3,23 +3,6 @@
 namespace vio_slam
 {
 
-void KeyFrame::getConnectedKFs(const Map* map, std::vector<KeyFrame*>& activeKF, const int N)
-{
-    // activeKF.reserve(20);
-    // activeKF.emplace_back(this);
-    int count {1};
-    for ( int32_t i{connections.size() - 2}, end{0}; i >= end; i--)
-    {
-        if ( connections[i] > 0 )
-        {
-            activeKF.emplace_back(map->keyFrames.at(i));
-            count++;
-        }
-        if ( count >= N )
-            break;
-    }
-}
-
 void KeyFrame::updatePose(const Eigen::Matrix4d& keyPose)
 {
     const Eigen::Matrix4d newPose = keyPose * pose.refPose;
@@ -175,15 +158,11 @@ void KeyFrame::getConnectedKFsLC(const Map* map, std::vector<KeyFrame*>& activeK
     {
         KeyFrame* kFLCCand = map->keyFrames.at(i);
         activeKF.emplace_back(kFLCCand);
-        // if ( kFLCCand->LCCand )
-        //     break;
     }
 }
 
 void KeyFrame::getConnectedKFs(std::vector<KeyFrame*>& activeKF, const int N)
 {
-    // activeKF.reserve(20);
-    // activeKF.emplace_back(this);
     int count {1};
     for ( std::vector<std::pair<int,KeyFrame*>>::const_iterator it = sortedKFWeights.begin(), end = sortedKFWeights.end(); it != end; it++)
     {
@@ -355,34 +334,6 @@ KeyFrame::KeyFrame(const Zed_Camera* _zedCam, const Zed_Camera* _zedCamB, const 
     cyb = _zedCamB->cameraLeft.cy;
     extr = _zedCam->extrinsics;
     extrB = _zedCamB->extrinsics;
-}
-
-KeyFrame::KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, Eigen::MatrixXd _homoPoints3D, const int _numb) : numb(_numb), frameIdx(_numb)
-{
-    points3D = points;
-    pose.setPose(poseT);
-    homoPoints3D = _homoPoints3D;
-}
-
-KeyFrame::KeyFrame(Eigen::Matrix4d _pose, const int _numb) : numb(_numb), frameIdx(_numb)
-{
-    pose.setPose(_pose);
-}
-
-KeyFrame::KeyFrame(Eigen::Matrix4d poseT, std::vector<cv::Point3d> points, const int _numb) : numb(_numb), frameIdx(_numb)
-{
-    points3D = points;
-    pose.setPose(poseT);
-    const size_t end {points3D.size()};
-    Eigen::MatrixX4d temp(end,4);
-    for (size_t i {0}; i<end;i++)
-    {
-        temp(i,0) = points3D[i].x;
-        temp(i,1) = points3D[i].y;
-        temp(i,2) = points3D[i].z;
-        temp(i,3) = 1;
-    }
-    homoPoints3D = temp;
 }
 
 Eigen::Vector4d KeyFrame::getWorldPosition(int idx)

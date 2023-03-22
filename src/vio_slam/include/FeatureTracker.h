@@ -122,8 +122,8 @@ class FeatureTracker
         void insertKeyFrameRB(TrackedKeys& keysLeft, std::vector<int>& matchedIdxsL, std::vector<std::pair<int,int>>& matchesIdxs, std::vector<bool>& MPsOutliers, TrackedKeys& keysLeftB, std::vector<int>& matchedIdxsLB, std::vector<std::pair<int,int>>& matchesIdxsB, std::vector<bool>& MPsOutliersB, const int nStereo, const int nStereoB, const Eigen::Matrix4d& estimPose, cv::Mat& leftIm, cv::Mat& rleftIm);
 
         // check 2d Error
-        bool check2dError(Eigen::Vector4d& p4d, const cv::Point2f& obs, const double thres, const float weight);
-        bool check2dErrorB(const Zed_Camera* zedCam, Eigen::Vector4d& p4d, const cv::Point2f& obs, const double thres, const float weight);
+        bool check2dError(Eigen::Vector4d& p4d, const cv::Point2f& obs, const double thres, const double weight);
+        bool check2dErrorB(const Zed_Camera* zedCam, Eigen::Vector4d& p4d, const cv::Point2f& obs, const double thres, const double weight);
 
         // change camera poses after either Local BA or Global BA
         void changePosesLCA(const int endIdx);

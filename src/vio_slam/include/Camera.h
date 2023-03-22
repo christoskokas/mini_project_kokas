@@ -108,7 +108,6 @@ class Zed_Camera
         void setCameraMatrices();
         void setBackCameraT(const bool backCamera);
         void setCameraValues(const std::string& camPath);
-        float setBaseline();
 
 };
 

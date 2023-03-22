@@ -13,9 +13,10 @@ import matplotlib.patches as patches
 
 # file_paths = ["empty.txt", "dual_cam_traj_exp_07.txt", "orbslam3_exp_07.txt"]
 # file_paths = ["ground_truth_traj_exp_07.txt"]
-file_paths = ["ground_truth_traj_exp_07.txt", "dual_cam_traj_exp_07.txt", "orbslam3_exp_07.txt"]
+# file_paths = ["ground_truth_traj_exp_07.txt", "dual_cam_traj_exp_07.txt", "orbslam3_exp_07.txt"]
 # file_paths = ["simu_ground_truth_big.txt","simu_dual_cam_big.txt"]
 # file_paths = ["simu_ground_truth_small.txt","simu_dual_cam_LC_small.txt","simu_dual_cam_NLC_small.txt","orbslam3_LC.txt"]
+file_paths = ["ground_truth_vines.txt","dual_cam_traj_t.txt","simu_orbslam3_vines.txt"]
 # file_paths = ["ground_truth_vines.txt","simu_dual_cam_vines.txt","simu_orbslam3_vines.txt"]
 
 # file_paths = ["result_gt.txt", "dual_cam_real_for_change.txt","orbslam3_cls.txt"]
@@ -48,7 +49,7 @@ for i, file_path in enumerate(file_paths):
     for line in lines:
         values = line.split()
         if i==0:
-            xs.append(-float(values[7]))
+            xs.append(float(values[3]))
             ys.append(float(values[11]))
             zs.append(float(values[11]))
         else:
@@ -115,7 +116,7 @@ for i, file_path in enumerate(file_paths):
     # plt.xlim(-7, 10)
     # plt.xlim(-3, 5.5)
     # plt.xlim(-2, 2)
-    plt.xlim(-0.3, 0.65)
+    # plt.xlim(-0.3, 0.65)
     plt.tight_layout()
     legend = plt.legend(loc='upper right')
     # legend.get_frame().set_alpha(0.5)
