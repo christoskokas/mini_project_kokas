@@ -92,49 +92,17 @@ void signal_callback_handler(int signum) {
 
 int main (int argc, char **argv)
 {
-#if KITTI_DATASET
-    std::string file = std::string("config_kitti_") + KITTI_SEQ + std::string(".yaml");
-    // vio_slam::ConfigFile yamlFile(file.c_str());
-#elif ZED_DATASET
-    std::string file = "config_exp.yaml";
-    // vio_slam::ConfigFile yamlFile("config_exp.yaml");
-#elif ZED_DEMO
-    std::string file = "config_demo_zed.yaml";
-#elif V1_02
-    std::string file = "config_V1_02.yaml";
-#elif SIMULATION
-    std::string file = "config_simulation.yaml";
-#else
-    std::string file = "config_for_paper_lower.yaml";
-    // std::string file = "config.yaml";
-    // vio_slam::ConfigFile yamlFile("config.yaml");
-#endif
-
     ros::init(argc, argv, "Dual_Cam");
     ros::start();
     signal(SIGINT, signal_callback_handler);
 
+    std::string file = "config_gaz_exp.yaml";
     vio_slam::ConfigFile* confFile = new vio_slam::ConfigFile(file.c_str());
 
+    if ( confFile->badFile )
+        return -1;
 
-    bool multi {false};
-    try{
-        multi = confFile->getValue<bool>("multi");
-    }
-    catch(std::exception& e)
-    {
-        multi = false;
-    }
-
-    vio_slam::System* voSLAM;
-    
-
-
-    
-    if ( multi )
-        voSLAM = new vio_slam::System(confFile, multi);
-    else
-        voSLAM = new vio_slam::System(confFile);
+    vio_slam::System* voSLAM = new vio_slam::System(confFile, true);
 
     GetImagesROS imgROS(voSLAM);
 
@@ -199,20 +167,23 @@ int main (int argc, char **argv)
     }
 
     // This is for when you know where the tag is. Changes need to be made in LC to account for that
-    bool  tagPose {false};
-    try
-    {
-        tagPose = confFile->getValue<bool>("tagPose");
-    }
-    catch(const std::exception& e)
-    {
-        tagPose = false;
-    }
-    if ( tagPose )
-    {
-        std::vector<double> Twtag = confFile->getValue<std::vector<double>>("T_w_tag","data");
-        imgROS.tagPose << Twtag[0],Twtag[1],Twtag[2],Twtag[3],Twtag[4],Twtag[5],Twtag[6],Twtag[7],Twtag[8],Twtag[9],Twtag[10],Twtag[11],Twtag[12],Twtag[13],Twtag[14],Twtag[15];
-    }
+
+    // bool  tagPose {false};
+    // try
+    // {
+    //     tagPose = confFile->getValue<bool>("tagPose");
+    // }
+    // catch(const std::exception& e)
+    // {
+    //     tagPose = false;
+    // }
+    // if ( tagPose )
+    // {
+    //     std::vector<double> Twtag = confFile->getValue<std::vector<double>>("T_w_tag","data");
+    //     imgROS.tagPose << Twtag[0],Twtag[1],Twtag[2],Twtag[3],Twtag[4],Twtag[5],Twtag[6],Twtag[7],Twtag[8],Twtag[9],Twtag[10],Twtag[11],Twtag[12],Twtag[13],Twtag[14],Twtag[15];
+    // }
+
+
     const std::string gtPath = (gtPose) ? confFile->getValue<std::string>("gtPath") : "";
 
     const std::string leftPath = confFile->getValue<std::string>("leftPathCam");
@@ -228,7 +199,6 @@ int main (int argc, char **argv)
     message_filters::Subscriber<sensor_msgs::Image> left_subB(nh, leftPathB, 100);
     message_filters::Subscriber<sensor_msgs::Image> right_subB(nh, rightPathB, 100);
     imgROS.aprilTag_sub = nh.subscribe(aprilTagPath, 10, &GetImagesROS::aprilTagCallBack, &imgROS);
-    imgROS.odom_pub = nh.advertise<nav_msgs::Odometry>("/odom",1);
 
 #if ATBESTPOSE
 
@@ -242,6 +212,7 @@ int main (int argc, char **argv)
 #endif
     
 #if PUBPOINTCLOUD
+    imgROS.odom_pub = nh.advertise<nav_msgs::Odometry>("/odom",1);
     std::vector<double> Twc1 = confFile->getValue<std::vector<double>>("T_w_c1","data");
     imgROS.T_w_c1 << Twc1[0],Twc1[1],Twc1[2],Twc1[3],Twc1[4],Twc1[5],Twc1[6],Twc1[7],Twc1[8],Twc1[9],Twc1[10],Twc1[11],Twc1[12],Twc1[13],Twc1[14],Twc1[15];
     imgROS.pc_pub = nh.advertise<sensor_msgs::PointCloud2>("/vio_slam/points2",1);
@@ -258,6 +229,7 @@ int main (int argc, char **argv)
 
 
 #endif
+    std::cout << "Waiting for images.. " << std::endl;
     ros::spin();
 
     std::cout << "System Shutdown!" << std::endl;
@@ -607,8 +579,8 @@ void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sen
     pc2_msg_.header.frame_id = "map";
     pc2_msg_.header.stamp = msgLeft->header.stamp;
     pc_pub.publish(pc2_msg_);
-#endif
     publishOdom(msgLeft->header);
+#endif
 }
 
 void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sensor_msgs::ImageConstPtr& msgRight, const sensor_msgs::ImageConstPtr& msgLeftB,const sensor_msgs::ImageConstPtr& msgRightB,const nav_msgs::OdometryConstPtr& msgGT)
@@ -739,8 +711,8 @@ void GetImagesROS::getImages(const sensor_msgs::ImageConstPtr& msgLeft,const sen
     pc2_msg_.header.frame_id = "odom";
     pc2_msg_.header.stamp = msgLeft->header.stamp;
     pc_pub.publish(pc2_msg_);
-#endif
     publishOdom(msgLeft->header);
+#endif
 }
 
 void GetImagesROS::publishOdom(const std_msgs::Header& _header)

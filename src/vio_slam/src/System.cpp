@@ -29,15 +29,6 @@ System::System(ConfigFile* _mConf)
     LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMapping, localMap);
 
     LoopClosure = new std::thread(&vio_slam::LocalMapper::beginLoopClosure, loopCl);
-    
-    // Visual = new std::thread(&vio_slam::Frame::pangoQuit, mFrame, mZedCamera);
-
-    // Tracking = new std::thread(&vio_slam::RobustMatcher2::beginTest, mRb);
-
-    // vio_slam::Frame frame;
-    // vio_slam::RobustMatcher2 rb(zedptr);
-    // std::thread worker(&vio_slam::Frame::pangoQuit, frame, zedptr);
-    // std::thread tester(&vio_slam::RobustMatcher2::beginTest, &rb);
 }
 
 System::System(ConfigFile* _mConf, bool multi)
@@ -147,15 +138,11 @@ void System::saveTrajectoryAndPosition(const std::string& filepath, const std::s
 
 void System::trackNewImage(const cv::Mat& imLRect, const cv::Mat& imRRect, const int frameNumb)
 {
-    // std::thread track(&FeatureTracker::TrackImageT, featTracker,std::ref(imLRect), std::ref(imRRect), std::ref(frameNumb));
-    // track.join();
     featTracker->TrackImageT(imLRect, imRRect, frameNumb);
 }
 
 void System::trackNewImageMutli(const cv::Mat& imLRect, const cv::Mat& imRRect, const cv::Mat& imLRectB, const cv::Mat& imRRectB, const int frameNumb)
 {
-    // std::thread track(&FeatureTracker::TrackImageTB, featTracker,std::ref(imLRect), std::ref(imRRect),std::ref(imLRectB), std::ref(imRRectB), std::ref(frameNumb));
-    // track.join();
     featTracker->TrackImageTB(imLRect, imRRect, imLRectB, imRRectB, frameNumb);
 }
 

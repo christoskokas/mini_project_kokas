@@ -5,16 +5,6 @@
 #include <yaml-cpp/yaml.h>
 #include <chrono>
 
-#define KITTI_DATASET false
-#define KITTI_SEQ "01"
-#define ZED_DATASET false
-#define ZED_DEMO false
-#define V1_02 true
-#define SIMULATION true
-#define DRAWMATCHES false
-
-#define SAVEODOMETRYDATA false
-
 namespace vio_slam
 {
 
@@ -87,6 +77,7 @@ class ConfigFile
         const char* configPath;
 
     public:
+        bool badFile = false;
         YAML::Node configNode;
         ConfigFile(const char* config = "config.yaml");
         template<typename T> 

@@ -1477,7 +1477,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
                 closeL.emplace_back(false);
         }
     }
-    drawKeys("Tracked KeyPoints", realLeftIm, lp, closeL);
+    drawKeys("VSLAM : Tracked KeyPoints", realLeftIm, lp, closeL);
 
     poseEst = estimPose.inverse();
 

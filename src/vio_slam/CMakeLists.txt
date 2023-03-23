@@ -123,6 +123,30 @@ ${SOPHUS_LIBS}
 add_executable(VSLAMOneCam src/VSLAMOneCam.cpp)
 target_link_libraries(VSLAMOneCam ${PROJECT_NAME})
 
+add_executable(SingleCam src/SingleCam.cpp)
+target_link_libraries(SingleCam ${PROJECT_NAME})
+
+add_executable(SingleCamRT src/SingleCamRT.cpp)
+target_link_libraries(SingleCamRT ${PROJECT_NAME})
+
+add_executable(DualCam src/DualCam.cpp)
+target_link_libraries(DualCam ${PROJECT_NAME})
+
+add_executable(DualCamRT src/DualCamRT.cpp)
+target_link_libraries(DualCamRT ${PROJECT_NAME})
+
+add_executable(DualCamRT_gaz_exp src/DualCamRT_gaz_exp.cpp)
+target_link_libraries(DualCamRT_gaz_exp ${PROJECT_NAME})
+
+add_executable(DualCamRT_csl_exp src/DualCamRT_csl_exp.cpp)
+target_link_libraries(DualCamRT_csl_exp ${PROJECT_NAME})
+
+add_executable(SingleCam_euroc src/SingleCam_euroc.cpp)
+target_link_libraries(SingleCam_euroc ${PROJECT_NAME})
+
+add_executable(SingleCam_kitti src/SingleCam_kitti.cpp)
+target_link_libraries(SingleCam_kitti ${PROJECT_NAME})
+
 add_executable(VSLAMTwoCam src/VSLAMTwoCam.cpp)
 target_link_libraries(VSLAMTwoCam ${PROJECT_NAME})
 
