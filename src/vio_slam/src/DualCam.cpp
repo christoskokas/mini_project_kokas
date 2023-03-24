@@ -24,6 +24,7 @@ void signal_callback_handler(int signum) {
     flag = 1;
 }
 
+
 int main (int argc, char **argv)
 {
     signal(SIGINT, signal_callback_handler);

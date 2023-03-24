@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.0.2)
 set(CMAKE_CXX_STANDARD 17)
-project(vio_slam)
+project(mc_vslam)
 
 
-# set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_CXX_FLAGS "-std=c++11")
 #-DEIGEN_USE_MKL_ALL")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
@@ -38,18 +38,12 @@ find_package(Pangolin REQUIRED)
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(yaml-cpp REQUIRED)
-find_package(Sophus REQUIRED)
 
 ## Declare ROS messages and services
 add_message_files(
   FILES
   AprilTagDetection.msg
   AprilTagDetectionArray.msg
-)
-
-add_service_files(
-  FILES
-  AddTwoInts.srv
 )
 
 add_library(${PROJECT_NAME} SHARED
@@ -78,7 +72,6 @@ include/AprilTagDetection.h
 include/AprilTagDetectionArray.h
 )
 
-add_subdirectory(Thirdparty/Sophus)
 
 
 ## Generate added messages and services
@@ -94,7 +87,6 @@ include_directories(
   ${PCL_INCLUDE_DIRS} 
   ${PROJECT_SOURCE_DIR}
   ${PROJECT_SOURCE_DIR}/include
-  ${PROJECT_SOURCE_DIR}/Thirdparty/Sophus
   ${Pangolin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
   ${CERES_INCLUDE_DIRS}
@@ -117,11 +109,7 @@ ${Pangolin_LIBRARIES}
 ${EIGEN3_LIBS}
 ${CERES_LIBRARIES}
 ${YAML_CPP_LIBRARIES}
-${SOPHUS_LIBS}
 )
-
-add_executable(VSLAMOneCam src/VSLAMOneCam.cpp)
-target_link_libraries(VSLAMOneCam ${PROJECT_NAME})
 
 add_executable(SingleCam src/SingleCam.cpp)
 target_link_libraries(SingleCam ${PROJECT_NAME})
@@ -132,26 +120,13 @@ target_link_libraries(SingleCamRT ${PROJECT_NAME})
 add_executable(DualCam src/DualCam.cpp)
 target_link_libraries(DualCam ${PROJECT_NAME})
 
-add_executable(DualCamRT src/DualCamRT.cpp)
-target_link_libraries(DualCamRT ${PROJECT_NAME})
-
 add_executable(DualCamRT_gaz_exp src/DualCamRT_gaz_exp.cpp)
 target_link_libraries(DualCamRT_gaz_exp ${PROJECT_NAME})
 
 add_executable(DualCamRT_csl_exp src/DualCamRT_csl_exp.cpp)
 target_link_libraries(DualCamRT_csl_exp ${PROJECT_NAME})
 
-add_executable(SingleCam_euroc src/SingleCam_euroc.cpp)
-target_link_libraries(SingleCam_euroc ${PROJECT_NAME})
+add_executable(DualCamRT src/DualCamRT.cpp)
+target_link_libraries(DualCamRT ${PROJECT_NAME})
 
-add_executable(SingleCam_kitti src/SingleCam_kitti.cpp)
-target_link_libraries(SingleCam_kitti ${PROJECT_NAME})
 
-add_executable(VSLAMTwoCam src/VSLAMTwoCam.cpp)
-target_link_libraries(VSLAMTwoCam ${PROJECT_NAME})
-
-add_executable(VSLAMOneCamRT src/VSLAMOneCamRT.cpp)
-target_link_libraries(VSLAMOneCamRT ${PROJECT_NAME})
-
-add_executable(VSLAMTwoCamRT src/VSLAMTwoCamRT.cpp)
-target_link_libraries(VSLAMTwoCamRT ${PROJECT_NAME})

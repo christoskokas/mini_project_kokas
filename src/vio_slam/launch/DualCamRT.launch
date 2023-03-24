@@ -1,0 +1,4 @@
+<launch>
+  <node name="DualCamRT" pkg="mc_vslam" type="DualCamRT" args = "config_csl_exp.yaml" output="screen" >
+  </node>
+</launch>

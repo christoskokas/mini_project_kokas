@@ -1,5 +1,0 @@
-<launch>
-  <rosparam command="load" file="$(find vio_slam)/config/config.yaml" />
-  <node name="VioSlam" pkg="vio_slam" type="VioSlam" output="screen" >
-  </node>
-</launch>

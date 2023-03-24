@@ -15,7 +15,7 @@ void ViewFrame::pangoQuit(Zed_Camera* zedPtr, const Map* _map)
 
     const int UI_WIDTH = 180;
     
-    pangolin::CreateWindowAndBind("Main", 1024,768);
+    pangolin::CreateWindowAndBind("VSLAM", 1024,768);
     glEnable(GL_DEPTH_TEST);
 
     // Define Projection and initial ModelView matrix
@@ -44,8 +44,6 @@ void ViewFrame::pangoQuit(Zed_Camera* zedPtr, const Map* _map)
     Ow.SetIdentity();
     camera->getOpenGLMatrix(Ow);
     camera->drawCamera();
-    pangolin::CreatePanel("ui").SetBounds(0.0, 1.0, 0.0, pangolin::Attach::Pix(UI_WIDTH));
-    pangolin::Var<bool> a_button("ui.Button", false, false);
     while( 1 )
     {
 
