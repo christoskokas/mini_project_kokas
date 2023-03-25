@@ -41,7 +41,7 @@ void FeatureMatcher::getMatchIdxs(const cv::Point2f& predP, std::vector<int>& id
             if ( grid.empty() )
                 continue;
 
-            for (int i {0}, end{grid.size()}; i < end; i++)
+            for (size_t i {0}, end{grid.size()}; i < end; i++)
             {
                 const cv::KeyPoint kpCand = right ? keysLeft.rightKeyPoints[grid[i]] : keysLeft.keyPoints[grid[i]];
 
@@ -552,7 +552,6 @@ void FeatureMatcher::findStereoMatchesORB2R(const cv::Mat& lImage, const cv::Mat
     int leftRow {0};
     int matchesCount {0};
 
-    const float minZ = zedptr->mBaseline;
     const float minD = 0;
     const float maxD = zedptr->cameraLeft.fx;
 
@@ -582,7 +581,6 @@ void FeatureMatcher::findStereoMatchesORB2R(const cv::Mat& lImage, const cv::Mat
 
 
 
-        int count {0};
         const size_t endCount {indexes[yKey].size()};
         if (endCount == 0)
             continue;
@@ -687,8 +685,8 @@ void FeatureMatcher::findStereoMatchesORB2R(const cv::Mat& lImage, const cv::Mat
 
     std::sort(allDepths.begin(), allDepths.end());
     std::sort(allDists2.begin(), allDists2.end());
-    const float medianD {allDists2[allDists2.size()/2].first};
-    const float medDistD = medianD*(1.5f*1.4f);
+    const int medianD {allDists2[allDists2.size()/2].first};
+    const float medDistD = (float)medianD*(1.5f*1.4f);
     
     const int endDe {cvFloor(allDepths.size()*0.01)};
     for(int i=0;i < endDe;i++)

@@ -37,9 +37,6 @@ class FeatureTracker
 
         std::vector<KeyFrame> keyframes;
 
-        std::vector<MapPoint*>& activeMapPoints;
-        std::vector<MapPoint*>& activeMapPointsB;
-        std::vector<KeyFrame*>& allFrames;
 
         KeyFrame* prevKF = nullptr;
         KeyFrame* latestKF = nullptr;
@@ -54,9 +51,10 @@ class FeatureTracker
         const int maxAddedStereo {100};
         const int minInliers {50};
 
+        float precCheckMatches {0.9f};
+
         int lastKFTrackedNumb {0};
 
-        const double fx,fy,cx,cy;
         double fxb,fyb,cxb,cyb;
 
         const int keyFrameCountEnd {5};
@@ -67,15 +65,19 @@ class FeatureTracker
         ImageData pLIm, pRIm, lIm, rIm;
         Zed_Camera* zedPtr;
         Zed_Camera* zedPtrB = nullptr;
+        Map* map;
+        FeatureMatcher fm;
+        FeatureMatcher fmB;
+        const double fx,fy,cx,cy;
         FeatureExtractor fe;
         FeatureExtractor feLeft;
         FeatureExtractor feRight;
         FeatureExtractor feLeftB;
         FeatureExtractor feRightB;
-        FeatureMatcher fm;
-        FeatureMatcher fmB;
 
-        Map* map;
+        std::vector<MapPoint*>& activeMapPoints;
+        std::vector<MapPoint*>& activeMapPointsB;
+        std::vector<KeyFrame*>& allFrames;
 
     public :
 

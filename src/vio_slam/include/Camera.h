@@ -62,13 +62,11 @@ class Camera
     public:
         double fx {},fy {},cx {}, cy {};
         double k1 {}, k2 {}, p1 {}, p2 {}, k3{};
-        cv::Mat cameraMatrix {};
         cv::Mat D = cv::Mat::zeros(1,5,CV_64F);
         cv::Mat K = cv::Mat::eye(3,3,CV_64F);
         cv::Mat R = cv::Mat::eye(3,3,CV_64F);
         cv::Mat P = cv::Mat::eye(3,4,CV_64F);
-        Eigen::Matrix<double,3,3> intrisics = Eigen::Matrix<double,3,3>::Identity();
-        cv::Mat distCoeffs {};
+        Eigen::Matrix<double,3,3> intrinsics = Eigen::Matrix<double,3,3>::Identity();
         Camera() = default;
         ~Camera();
         void setIntrinsicValuesUnR(const std::string& cameraPath, ConfigFile* confFile);
@@ -100,12 +98,9 @@ class Zed_Camera
         Eigen::Matrix<double,4,4> extrinsics = Eigen::Matrix<double,4,4>::Identity();
         Eigen::Matrix<double,4,4> TCamToCam = Eigen::Matrix<double,4,4>::Identity();
         Eigen::Matrix<double,4,4> TCamToCamInv = Eigen::Matrix<double,4,4>::Identity();
-        cv::Mat sensorsTranslate {};
-        cv::Mat sensorsRotate {};
         Zed_Camera(ConfigFile* yamlFile);
         Zed_Camera(ConfigFile* yamlFile, bool backCamera);
         ~Zed_Camera();
-        void setCameraMatrices();
         void setBackCameraT(const bool backCamera);
         void setCameraValues(const std::string& camPath);
 

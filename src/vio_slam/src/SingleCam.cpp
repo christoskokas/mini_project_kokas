@@ -43,7 +43,7 @@ int main (int argc, char **argv)
 
     vio_slam::System* voSLAM = new vio_slam::System(confFile);
 
-    const vio_slam::Zed_Camera* mZedCamera = voSLAM->mZedCamera;
+     vio_slam::Zed_Camera* mZedCamera = voSLAM->mZedCamera;
 
     const size_t nFrames {mZedCamera->numOfFrames};
     std::vector<std::string>leftImagesStr, rightImagesStr;
@@ -75,7 +75,6 @@ int main (int argc, char **argv)
         cv::Mat R1,R2;
         cv::initUndistortRectifyMap(mZedCamera->cameraLeft.K, mZedCamera->cameraLeft.D, mZedCamera->cameraLeft.R, mZedCamera->cameraLeft.P.rowRange(0,3).colRange(0,3), cv::Size(width, height), CV_32F, rectMap[0][0], rectMap[0][1]);
         cv::initUndistortRectifyMap(mZedCamera->cameraRight.K, mZedCamera->cameraRight.D, mZedCamera->cameraRight.R, mZedCamera->cameraRight.P.rowRange(0,3).colRange(0,3), cv::Size(width, height), CV_32F, rectMap[1][0], rectMap[1][1]);
-
     }
 
     double timeBetFrames = 1.0/mZedCamera->mFps;

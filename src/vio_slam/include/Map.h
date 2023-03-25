@@ -56,8 +56,8 @@ class MapPoint
         int scaleLevelR {0};
 
         int keyFrameNb {0};
-        const unsigned long idx;
         const unsigned long kdx;
+        const unsigned long idx;
 
         void update(KeyFrame* kF);
         void update(KeyFrame* kF, const bool back);

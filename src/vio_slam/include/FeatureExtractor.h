@@ -57,18 +57,7 @@ class FeatureExtractor
     const int halfPatchSize {15};
     const int maxFastThreshold;
     const int minFastThreshold;
-    const int mnContr {0};
-
-#if KITTI_DATASET
-    const int gridRows {40};
-    const int gridCols {40};
-#elif ZED_DATASET
-    const int gridRows {30};
-    const int gridCols {30};
-#else
-    const int gridRows {20};
-    const int gridCols {20};
-#endif
+    
 
     std::vector<cv::Point> pattern;
     

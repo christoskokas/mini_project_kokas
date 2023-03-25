@@ -28,7 +28,6 @@ class LocalMapper
 
         bool stopRequested {false};
 
-        const double fx,fy,cx,cy;
 
         Map* map;
 
@@ -41,7 +40,7 @@ class LocalMapper
         Zed_Camera* zedPtrB;
 
         FeatureMatcher* fm;
-        FeatureMatcher* fmB;
+        const double fx,fy,cx,cy;
 
         LocalMapper(Map* _map, Zed_Camera* _zedPtr, FeatureMatcher* _fm);
 

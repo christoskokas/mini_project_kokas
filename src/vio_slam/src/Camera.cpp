@@ -50,7 +50,6 @@ Zed_Camera::Zed_Camera(ConfigFile* yamlFile)
     rectified = confFile->getValue<bool>("rectified");
     numOfFrames = confFile->getValue<int>("numOfFrames"); 
     setCameraValues("Camera");
-    setCameraMatrices();
 
 }
 
@@ -69,7 +68,6 @@ Zed_Camera::Zed_Camera(ConfigFile* yamlFile, bool backCamera)
         setCameraValues("CameraB");
     }
     setBackCameraT(backCamera);
-    setCameraMatrices();
 
 }
 
@@ -92,21 +90,6 @@ void Zed_Camera::setBackCameraT(const bool backCamera)
         TCamToCam = transfC1C2;
         TCamToCamInv = transfC1C2inv;
     }
-}
-
-void Zed_Camera::setCameraMatrices()
-{
-
-    std::vector < double > transf {confFile->getValue<std::vector<double>>("Stereo","T_c1_c2","data")};
-
-    cameraLeft.cameraMatrix = (cv::Mat_<double>(3,3) << cameraLeft.fx, 0.0f, cameraLeft.cx, 0.0f, cameraLeft.fy, cameraLeft.cy, 0.0f, 0.0f, 1);
-    cameraLeft.distCoeffs = (cv::Mat_<double>(1,5) << cameraLeft.k1, cameraLeft.k2, cameraLeft.p1, cameraLeft.p2, cameraLeft.k3);
-    cameraRight.cameraMatrix = (cv::Mat_<double>(3,3) << cameraRight.fx, 0.0f, cameraRight.cx, 0.0f, cameraRight.fy, cameraRight.cy, 0.0f, 0.0f, 1);
-    cameraRight.distCoeffs = (cv::Mat_<double>(1,5) << cameraRight.k1, cameraRight.k2, cameraRight.p1, cameraRight.p2, cameraRight.k3);
-    double translate[3][1] = {{transf[3]}, {transf[7]}, {transf[11]}};
-    double rotate[3][3] = {{transf[0],transf[1],transf[2]},{transf[4],transf[5],transf[6]},{transf[8],transf[9],transf[10]}};
-    sensorsTranslate = (cv::Mat_<double>(3,1) << transf[3], transf[7], transf[11]);
-    sensorsRotate = (cv::Mat_<double>(3,3) << transf[0], transf[1], transf[2], transf[4], transf[5], transf[6], transf[8], transf[9], transf[10]);
 }
 
 void Zed_Camera::setCameraValues(const std::string& camPath)
@@ -158,12 +141,11 @@ void Camera::setIntrinsicValuesUnR(const std::string& cameraPath, ConfigFile* co
     P = (cv::Mat_<double>(3,4) << Pt[0], Pt[1], Pt[2], Pt[3], Pt[4], Pt[5], Pt[6], Pt[7], Pt[8], Pt[9], Pt[10], Pt[11]);
     K = (cv::Mat_<double>(3,3) << Kt[0], Kt[1], Kt[2], Kt[3], Kt[4], Kt[5], Kt[6], Kt[7], Kt[8]);
     D = (cv::Mat_<double>(1,5) << Dt[0], Dt[1], Dt[2], Dt[3], Dt[4]);
-    cameraMatrix = K;
 
-    intrisics(0,0) = fx;
-    intrisics(1,1) = fy;
-    intrisics(0,2) = cx;
-    intrisics(1,2) = cy;
+    intrinsics(0,0) = fx;
+    intrinsics(1,1) = fy;
+    intrinsics(0,2) = cx;
+    intrinsics(1,2) = cy;
 
 }
 
@@ -180,10 +162,10 @@ void Camera::setIntrinsicValuesR(const std::string& cameraPath, ConfigFile* conf
     p2 = 0;
     k3 = 0;
 
-    intrisics(0,0) = fx;
-    intrisics(1,1) = fy;
-    intrisics(0,2) = cx;
-    intrisics(1,2) = cy;
+    intrinsics(0,0) = fx;
+    intrinsics(1,1) = fy;
+    intrinsics(0,2) = cx;
+    intrinsics(1,2) = cy;
 }
 
 } //namespace vio_slam

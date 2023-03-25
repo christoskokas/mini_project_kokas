@@ -22,7 +22,6 @@ class KeyFrame;
 class FeatureMatcher
 {
     private:
-        const int imageHeight;
         const int thDist {75};
         const int matchDist {50};
         const int matchDistProj {100};
@@ -36,6 +35,7 @@ class FeatureMatcher
     public:
         const int closeNumber {40};
         const FeatureExtractor* feLeft, *feRight;
+        const int imageHeight;
 
         FeatureMatcher(const Zed_Camera* _zed, const FeatureExtractor* _feLeft, const FeatureExtractor* _feRight, const int _imageHeight = 360);
 

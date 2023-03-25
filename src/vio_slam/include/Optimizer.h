@@ -52,12 +52,10 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 private:
-    const Eigen::Vector2d observation_;
-    const Eigen::Vector3d point_;
     const Eigen::Matrix3d& K_;
+    const Eigen::Vector3d point_;
+    const Eigen::Vector2d observation_;
     const double weight_;
-    double observed_x;
-    double observed_y;
 
 };
 
@@ -106,14 +104,12 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 private:
-    const Eigen::Vector2d observation_;
-    const Eigen::Vector3d point_;
     const Eigen::Matrix3d& K_;
-    const Eigen::Matrix3d& qc1c2_;
     const Eigen::Matrix<double,3,1>& tc1c2_;
+    const Eigen::Matrix3d& qc1c2_;
+    const Eigen::Vector3d point_;
+    const Eigen::Vector2d observation_;
     const double weight_;
-    double observed_x;
-    double observed_y;
 
 };
 
@@ -159,9 +155,9 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 private:
-    const Eigen::Vector2d observation_;
-    const Eigen::Matrix<double,3,4> proj_;
     const Eigen::Matrix4d& camPose_;
+    const Eigen::Matrix<double,3,4> proj_;
+    const Eigen::Vector2d observation_;
 
 };
 
@@ -210,11 +206,9 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 private:
-    const Eigen::Vector2d observation_;
     const Eigen::Matrix3d& K_;
+    const Eigen::Vector2d observation_;
     const double weight_;
-    double observed_x;
-    double observed_y;
 
 };
 
@@ -264,13 +258,11 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 private:
-    const Eigen::Vector2d observation_;
     const Eigen::Matrix3d& K_;
-    const double weight_;
-    const Eigen::Matrix3d& qc1c2_;
     const Eigen::Matrix<double,3,1>& tc1c2_;
-    double observed_x;
-    double observed_y;
+    const Eigen::Matrix3d& qc1c2_;
+    const Eigen::Vector2d observation_;
+    const double weight_;
 
 };
 
