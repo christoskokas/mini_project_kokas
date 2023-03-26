@@ -7,7 +7,6 @@ void KeyFrame::updatePose(const Eigen::Matrix4d& keyPose)
 {
     const Eigen::Matrix4d newPose = keyPose * pose.refPose;
     const Eigen::Matrix4d newPoseInv = newPose.inverse();
-    const Eigen::Matrix4d& currPose = pose.pose;
     const Eigen::Matrix4d& currPoseInv = pose.poseInverse;
     const Eigen::Matrix4d newPoseR = newPose * extr;
     const Eigen::Matrix4d newPoseRInv = newPoseR.inverse();

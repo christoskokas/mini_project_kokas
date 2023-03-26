@@ -66,7 +66,7 @@ Several launch files are provided. The RT denotes real-time and the AT denotes t
 
 ### Without ROS
 
-If the installation was completed without ROS to launch images need to be provided as presented below ( the bullets are folders ): 
+If the installation was completed without ROS, images need to be provided as presented below ( the bullets are folders ): 
 
 - mc_vslam
   - images
@@ -90,7 +90,7 @@ If the installation was completed without ROS to launch images need to be provid
 
 And the full path to the dataset folder has to be provided in the config file.
 
-Single Cam operation is also provided to test on known datasets like KITTI or EUROC. Configs for both KITTI and EUROC are provided. To run single cam :
+Single Cam is also provided to test on known datasets like KITTI or EUROC. Configs for both KITTI and EUROC are provided. To run single cam :
 
 ```
 ./SingleCam config_file_name

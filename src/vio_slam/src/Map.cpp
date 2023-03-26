@@ -68,7 +68,7 @@ void MapPoint::update(KeyFrame* kF)
     pos = pos - kF->pose.pose.block<3,1>(0,3);
     const float dist = pos.norm();
     const std::pair<int, int>& idxs = kFMatches[kF];
-    int level;
+    int level {0};
     lastObsKF = kF;
     if ( idxs.second >= 0 )
     {
@@ -112,7 +112,7 @@ void MapPoint::update(KeyFrame* kF, const bool back)
     pos = pos - camPose;
     const float dist = pos.norm();
     const std::pair<int, int>& idxs = (back) ? kFMatchesB[kF] : kFMatches[kF];
-    int level;
+    int level {0};
     lastObsKF = kF;
     if ( idxs.second >= 0 )
     {

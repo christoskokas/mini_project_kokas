@@ -157,7 +157,7 @@ void CameraFrame::drawPoints()
 
 void CameraFrame::drawKeyFrames()
 {
-    const int lastKeyFrameIdx {map->kIdx - 1};
+    const int lastKeyFrameIdx {(int)map->kIdx - 1};
     if (lastKeyFrameIdx < 0)
         return;
 
@@ -302,7 +302,7 @@ void CameraFrame::drawBackCamera()
 
 void CameraFrame::lineFromKeyFrameToCamera()
 {
-    const int lastKeyFrameIdx {map->kIdx - 1};
+    const int lastKeyFrameIdx {(int)map->kIdx - 1};
     if (lastKeyFrameIdx < 0)
         return;
     glPushMatrix();

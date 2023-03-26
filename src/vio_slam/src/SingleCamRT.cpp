@@ -459,9 +459,6 @@ void GetImagesROS::saveGTTrajectoryAndPositions(const std::string& filepath, con
     startPose.block<3,1>(0,3) = startPose.block<3,3>(0,0) 
     * baseToCam2 + gtPositions[0];
     Eigen::Quaterniond qoff(0.9800666 , 0.1986693,0.0,0.0);
-    bool first {true};
-    double firstx {0.0};
-    double firsty {0.0};
     Eigen::Matrix4d Toff = Eigen::Matrix4d::Identity();
     Toff.block<3,3>(0,0) = qoff.toRotationMatrix();
     Eigen::Matrix4d startPoseInv = (startPose).inverse();

@@ -48,7 +48,7 @@ class KeyFrame
 
         TrackedKeys keys, keysB;
         Eigen::MatrixXd homoPoints3D;
-        const int numb;
+        const unsigned long numb;
         const int frameIdx;
         int nKeysTracked {0};
         bool visualize {true};

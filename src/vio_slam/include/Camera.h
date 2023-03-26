@@ -87,7 +87,7 @@ class Zed_Camera
         bool rectified {};
         float mBaseline, mFps;
         int mWidth, mHeight;
-        int numOfFrames {};
+        size_t numOfFrames {};
 
         Camera cameraLeft;
         Camera cameraRight;

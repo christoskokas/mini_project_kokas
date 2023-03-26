@@ -112,7 +112,7 @@ bool LocalMapper::checkReprojErrNewR(KeyFrame* lastKF, Eigen::Vector4d& calcVec,
 {
     int count {0};
     bool correctKF {false};
-    const int lastKFNumb = lastKF->numb;
+    const unsigned long lastKFNumb = lastKF->numb;
     int projCount {0};
     for (size_t i {0}, end{matchesOfPoint.size()}; i < end; i++)
     {
@@ -121,7 +121,7 @@ bool LocalMapper::checkReprojErrNewR(KeyFrame* lastKF, Eigen::Vector4d& calcVec,
         const TrackedKeys& keys = kFCand->keys;
         
         std::pair<int,int>& keyPos = matchesOfPoint[i].second;
-        const int kFCandNumb {kFCand->numb};
+        const unsigned long kFCandNumb {kFCand->numb};
         bool cor {false};
         if ( keyPos.first >= 0 )
         {
@@ -185,7 +185,7 @@ bool LocalMapper::checkReprojErrNewRB(KeyFrame* lastKF, Eigen::Vector4d& calcVec
 {
     int count {0};
     bool correctKF {false};
-    const int lastKFNumb = lastKF->numb;
+    const unsigned long lastKFNumb = lastKF->numb;
     int projCount {0};
     for (size_t i {0}, end{matchesOfPoint.size()}; i < end; i++)
     {
@@ -194,7 +194,7 @@ bool LocalMapper::checkReprojErrNewRB(KeyFrame* lastKF, Eigen::Vector4d& calcVec
         const TrackedKeys& keys = (back) ? kFCand->keysB : kFCand->keys;
         
         std::pair<int,int>& keyPos = matchesOfPoint[i].second;
-        const int kFCandNumb {kFCand->numb};
+        const unsigned long kFCandNumb {kFCand->numb};
         bool cor {false};
         if ( keyPos.first >= 0 )
         {
@@ -258,7 +258,7 @@ void LocalMapper::addMultiViewMapPointsR(const Eigen::Vector4d& posW, const std:
 {
     const TrackedKeys& temp = lastKF->keys; 
     static unsigned long mpIdx {map->pIdx};
-    const int lastKFNumb {lastKF->numb};
+    const unsigned long lastKFNumb {lastKF->numb};
     MapPoint* mp = nullptr;
     for (size_t i {0}, end{matchesOfPoint.size()}; i < end; i++)
     {
@@ -295,7 +295,7 @@ void LocalMapper::addMultiViewMapPointsRB(const Eigen::Vector4d& posW, const std
 {
     const TrackedKeys& temp = (back) ? lastKF->keysB : lastKF->keys; 
     static unsigned long mpIdx {map->pIdx};
-    const int lastKFNumb {lastKF->numb};
+    const unsigned long lastKFNumb {lastKF->numb};
     MapPoint* mp = nullptr;
     for (size_t i {0}, end{matchesOfPoint.size()}; i < end; i++)
     {
@@ -584,7 +584,7 @@ void LocalMapper::triangulateNewPointsR(std::vector<vio_slam::KeyFrame *>& activ
     actKeyF.reserve(kFsize);
     actKeyF = activeKF;
     KeyFrame* lastKF = actKeyF.front();
-    const int lastKFIdx = lastKF->numb;
+    const unsigned long lastKFIdx = lastKF->numb;
     std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>> matchedIdxs;
 
     std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>> p4d;
@@ -694,7 +694,7 @@ void LocalMapper::triangulateNewPointsRB(const Zed_Camera* zedCam,std::vector<vi
     actKeyF.reserve(kFsize);
     actKeyF = activeKF;
     KeyFrame* lastKF = actKeyF.front();
-    const int lastKFIdx = lastKF->numb;
+    const unsigned long lastKFIdx = lastKF->numb;
     std::vector<std::vector<std::pair<KeyFrame*,std::pair<int, int>>>> matchedIdxs;
 
     std::vector<std::pair<Eigen::Vector4d,std::pair<int,int>>> p4d;
@@ -791,7 +791,7 @@ void LocalMapper::localBAR(std::vector<vio_slam::KeyFrame *>& actKeyF)
     localKFs.reserve(actKeyF.size());
     fixedKFs.reserve(actKeyF.size());
     int blocks {0};
-    int lastActKF {actKeyF.front()->numb};
+    unsigned long lastActKF {actKeyF.front()->numb};
     bool fixedKF {false};
     std::vector<KeyFrame*>::iterator it, end(actKeyF.end());
     for ( it = actKeyF.begin(); it != end; it++)
@@ -812,7 +812,7 @@ void LocalMapper::localBAR(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 continue;
             if ( mp->GetIsOutlier() )
                 continue;
-            if ( mp->LBAID == lastActKF )
+            if ( mp->LBAID == (int)lastActKF )
                 continue;
             
             std::unordered_map<KeyFrame*, std::pair<int,int>>::iterator kf, endkf(mp->kFMatches.end());
@@ -821,7 +821,7 @@ void LocalMapper::localBAR(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 KeyFrame* kFCand = kf->first;
                 if ( !kFCand->keyF || kFCand->numb > lastActKF )
                     continue;
-                if (kFCand->LBAID == lastActKF )
+                if (kFCand->LBAID == (int)lastActKF )
                     continue;
                 if (localKFs.find(kFCand) == localKFs.end())
                 {
@@ -841,7 +841,7 @@ void LocalMapper::localBAR(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 continue;
             if ( mp->GetIsOutlier() )
                 continue;
-            if ( mp->LBAID == lastActKF )
+            if ( mp->LBAID == (int)lastActKF )
                 continue;
             
             std::unordered_map<KeyFrame*, std::pair<int,int>>::iterator kf, endkf(mp->kFMatches.end());
@@ -853,7 +853,7 @@ void LocalMapper::localBAR(std::vector<vio_slam::KeyFrame *>& actKeyF)
                     continue;
                 if ( !kFCand->keyF || kFCand->numb > lastActKF )
                     continue;
-                if (kFCand->LBAID == lastActKF )
+                if (kFCand->LBAID == (int)lastActKF )
                     continue;
                 if (localKFs.find(kFCand) == localKFs.end())
                 {
@@ -1129,7 +1129,7 @@ void LocalMapper::loopClosureR(std::vector<vio_slam::KeyFrame *>& actKeyF)
     std::unordered_map<MapPoint*, Eigen::Vector3d> allMapPoints;
     std::unordered_map<KeyFrame*, Eigen::Matrix<double,7,1>> localKFs;
     localKFs.reserve(actKeyF.size());
-    int lastActKF {actKeyF.front()->numb};
+    const unsigned long lastActKF {actKeyF.front()->numb};
     KeyFrame* lCCand = actKeyF.front();
     localKFs[lCCand] = Converter::Matrix4dToMatrix_7_1(map->LCPose.inverse());
     lCCand->fixed = true;
@@ -1152,7 +1152,7 @@ void LocalMapper::loopClosureR(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 continue;
             if ( mp->GetIsOutlier() )
                 continue;
-            if ( mp->LCID == lastActKF )
+            if ( mp->LCID == (int)lastActKF )
                 continue;
             
             allMapPoints.insert(std::pair<MapPoint*, Eigen::Vector3d>((*itmp), (*itmp)->getWordPose3d()));
@@ -1166,7 +1166,7 @@ void LocalMapper::loopClosureR(std::vector<vio_slam::KeyFrame *>& actKeyF)
                 continue;
             if ( mp->GetIsOutlier() )
                 continue;
-            if ( mp->LCID == lastActKF )
+            if ( mp->LCID == (int)lastActKF )
                 continue;
 
             allMapPoints.insert(std::pair<MapPoint*, Eigen::Vector3d>((*itmp), (*itmp)->getWordPose3d()));
@@ -1405,7 +1405,7 @@ void LocalMapper::loopClosureR(std::vector<vio_slam::KeyFrame *>& actKeyF)
     std::cout << "Loop Closure Optimization Finished!" << std::endl;
 }
 
-void LocalMapper::insertMPsForLBA(std::vector<MapPoint*>& localMapPoints, const std::unordered_map<KeyFrame*, Eigen::Matrix<double,7,1>>& localKFs,std::unordered_map<KeyFrame*, Eigen::Matrix<double,7,1>>& fixedKFs, std::unordered_map<MapPoint*, Eigen::Vector3d>& allMapPoints, const int lastActKF, int& blocks, const bool back)
+void LocalMapper::insertMPsForLBA(std::vector<MapPoint*>& localMapPoints, const std::unordered_map<KeyFrame*, Eigen::Matrix<double,7,1>>& localKFs,std::unordered_map<KeyFrame*, Eigen::Matrix<double,7,1>>& fixedKFs, std::unordered_map<MapPoint*, Eigen::Vector3d>& allMapPoints, const unsigned long lastActKF, int& blocks, const bool back)
 {
     std::vector<MapPoint*>::iterator itmp, endmp(localMapPoints.end());
     for ( itmp = localMapPoints.begin(); itmp != endmp; itmp++)
@@ -1415,7 +1415,7 @@ void LocalMapper::insertMPsForLBA(std::vector<MapPoint*>& localMapPoints, const 
             continue;
         if ( mp->GetIsOutlier() )
             continue;
-        if ( mp->LBAID == lastActKF )
+        if ( mp->LBAID == (int)lastActKF )
             continue;
         
         std::unordered_map<KeyFrame*, std::pair<int,int>>::iterator kf = (back) ? mp->kFMatchesB.begin() : mp->kFMatches.begin();
@@ -1425,7 +1425,7 @@ void LocalMapper::insertMPsForLBA(std::vector<MapPoint*>& localMapPoints, const 
             KeyFrame* kFCand = kf->first;
             if ( !kFCand->keyF || kFCand->numb > lastActKF )
                 continue;
-            if (kFCand->LBAID == lastActKF )
+            if (kFCand->LBAID == (int)lastActKF )
                 continue;
             if (localKFs.find(kFCand) == localKFs.end())
             {
@@ -1439,7 +1439,7 @@ void LocalMapper::insertMPsForLBA(std::vector<MapPoint*>& localMapPoints, const 
     }
 }
 
-void LocalMapper::insertMPsForLC(std::vector<MapPoint*>& localMapPoints, const std::unordered_map<KeyFrame*, Eigen::Matrix<double,7,1>>& localKFs, std::unordered_map<MapPoint*, Eigen::Vector3d>& allMapPoints, const int lastActKF, int& blocks, const bool back)
+void LocalMapper::insertMPsForLC(std::vector<MapPoint*>& localMapPoints, const std::unordered_map<KeyFrame*, Eigen::Matrix<double,7,1>>& localKFs, std::unordered_map<MapPoint*, Eigen::Vector3d>& allMapPoints, const unsigned long lastActKF, int& blocks, const bool back)
 {
     std::vector<MapPoint*>::iterator itmp, endmp(localMapPoints.end());
     for ( itmp = localMapPoints.begin(); itmp != endmp; itmp++)
@@ -1449,7 +1449,7 @@ void LocalMapper::insertMPsForLC(std::vector<MapPoint*>& localMapPoints, const s
             continue;
         if ( mp->GetIsOutlier() )
             continue;
-        if ( mp->LCID == lastActKF )
+        if ( mp->LCID == (int)lastActKF )
             continue;
 
         allMapPoints.insert(std::pair<MapPoint*, Eigen::Vector3d>((*itmp), (*itmp)->getWordPose3d()));
@@ -1465,7 +1465,7 @@ void LocalMapper::localBARB(std::vector<vio_slam::KeyFrame *>& actKeyF)
     localKFs.reserve(actKeyF.size());
     fixedKFs.reserve(actKeyF.size());
     int blocks {0};
-    int lastActKF {actKeyF.front()->numb};
+    unsigned long lastActKF {actKeyF.front()->numb};
     bool fixedKF {false};
     std::vector<KeyFrame*>::iterator it, end(actKeyF.end());
     for ( it = actKeyF.begin(); it != end; it++)
@@ -1912,7 +1912,7 @@ void LocalMapper::loopClosureRB(std::vector<vio_slam::KeyFrame *>& actKeyF)
     std::unordered_map<KeyFrame*, Eigen::Matrix<double,7,1>> localKFs;
     localKFs.reserve(actKeyF.size());
     int blocks {0};
-    int lastActKF {actKeyF.front()->numb};
+    unsigned long lastActKF {actKeyF.front()->numb};
     KeyFrame* lCCand = actKeyF.front();
     localKFs[lCCand] = Converter::Matrix4dToMatrix_7_1(map->LCPose.inverse());
     lCCand->fixed = true;
