@@ -24,7 +24,7 @@ void KeyFrame::updatePose(const Eigen::Matrix4d& keyPose)
             p4d = newPose * (currPoseInv * p4d);
             mp->setWordPose4d(p4d);
         }
-        else
+        else if ( mp->kdx < numb )
         {
             p4d = newPoseInv * p4d;
             const cv::KeyPoint& obs = keys.keyPoints[idx];
@@ -53,7 +53,7 @@ void KeyFrame::updatePose(const Eigen::Matrix4d& keyPose)
         Eigen::Vector4d p4d = mp->getWordPose4d();
         if ( mp->kdx == numb )
             continue;
-        else
+        else if ( mp->kdx < numb )
         {
             p4d = newPoseRInv * p4d;
             const cv::KeyPoint& obs = keys.rightKeyPoints[idx];
@@ -92,7 +92,7 @@ void KeyFrame::updatePose(const Eigen::Matrix4d& keyPose)
                 p4d = newPoseB * (currPoseInvB * p4d);
                 mp->setWordPose4d(p4d);
             }
-            else
+            else if ( mp->kdx < numb )
             {
                 p4d = newPoseInvB * p4d;
                 const cv::KeyPoint& obs = keysB.keyPoints[idx];
@@ -121,7 +121,7 @@ void KeyFrame::updatePose(const Eigen::Matrix4d& keyPose)
             Eigen::Vector4d p4d = mp->getWordPose4d();
             if ( mp->kdx == numb )
                 continue;
-            else
+            else if ( mp->kdx < numb )
             {
                 p4d = newPoseInvRB * p4d;
                 const cv::KeyPoint& obs = keysB.rightKeyPoints[idx];

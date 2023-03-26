@@ -2345,7 +2345,7 @@ void LocalMapper::beginLocalMappingB()
     using namespace std::literals::chrono_literals;
     while ( !map->endOfFrames )
     {
-        if ( map->keyFrameAdded && !map->LBADone )
+        if ( map->keyFrameAdded && !map->LBADone && !map->LCStart )
         {
             std::vector<vio_slam::KeyFrame *> actKeyF;
             KeyFrame* lastKF = map->keyFrames.at(map->kIdx - 1);

@@ -824,7 +824,7 @@ void FeatureTracker::insertKeyFrameR(TrackedKeys& keysLeft, std::vector<int>& ma
 {
     Eigen::Matrix4d referencePose = latestKF->pose.getInvPose() * estimPose;
     KeyFrame* kF = new KeyFrame(zedPtr, referencePose, estimPose, leftIm, rleftIm,map->kIdx, curFrame);
-    if ( map->aprilTagDetected )
+    if ( map->aprilTagDetected && !map->LCStart )
         kF->LCCand = true;
     kF->scaleFactor = fe.scalePyramid;
     kF->sigmaFactor = fe.sigmaFactor;
@@ -913,15 +913,11 @@ void FeatureTracker::insertKeyFrameR(TrackedKeys& keysLeft, std::vector<int>& ma
     else
         precCheckMatches = 0.9f;
     map->addKeyFrame(kF);
-    std::cout << "before latestKF " << latestKF << std::endl;
-    std::cout << "before latestKF next " << latestKF->nextKF << std::endl;
     latestKF = kF;
-    std::cout << "after latestKF " << latestKF << std::endl;
-    std::cout << "after latestKF next " << latestKF->nextKF << std::endl;
     Eigen::Matrix4d lastKFPose = estimPose;
     lastKFPoseInv = lastKFPose.inverse();
     allFrames.emplace_back(kF);
-    if ( map->aprilTagDetected )
+    if ( map->aprilTagDetected && !map->LCStart )
     {
         map->LCStart = true;
         map->LCCandIdx = kF->numb;
@@ -936,7 +932,7 @@ void FeatureTracker::insertKeyFrameRB(TrackedKeys& keysLeft, std::vector<int>& m
     Eigen::Matrix4d referencePose = latestKF->pose.getInvPose() * estimPose;
     KeyFrame* kF = new KeyFrame(zedPtr, zedPtrB, referencePose, estimPose, leftIm, rleftIm,map->kIdx, curFrame);
     kF->setBackPose(kF->pose.pose * zedPtr->TCamToCam);
-    if ( map->aprilTagDetected )
+    if ( map->aprilTagDetected && !map->LCStart )
         kF->LCCand = true;
     kF->scaleFactor = fe.scalePyramid;
     kF->sigmaFactor = fe.sigmaFactor;
@@ -1099,7 +1095,7 @@ void FeatureTracker::insertKeyFrameRB(TrackedKeys& keysLeft, std::vector<int>& m
     Eigen::Matrix4d lastKFPose = estimPose;
     lastKFPoseInv = lastKFPose.inverse();
     allFrames.emplace_back(kF);
-    if ( map->aprilTagDetected )
+    if ( map->aprilTagDetected && !map->LCStart )
     {
         map->LCStart = true;
         map->LCCandIdx = kF->numb;
@@ -1142,9 +1138,7 @@ void FeatureTracker::changePosesLCA(const int endIdx)
     Eigen::Matrix4d lastKFPose = keyPose;
     lastKFPoseInv = lastKFPose.inverse();
 
-    Eigen::Matrix4d prevPose = prevKF->pose.pose * prevReferencePose;
-
-    predNPose = zedPtr->cameraPose.pose * (prevPose.inverse() * zedPtr->cameraPose.pose);
+    predNPose = zedPtr->cameraPose.pose * predNPoseRef;
     predNPoseInv = predNPose.inverse();
 
 }
@@ -1165,15 +1159,14 @@ void FeatureTracker::changePosesLCAB(const int endIdx)
             break;
     }
     Eigen::Matrix4d keyPose = kf->getPose();
+
     zedPtr->cameraPose.changePose(keyPose);
     zedPtrB->cameraPose.setPose(zedPtr->cameraPose.pose * zedPtr->TCamToCam);
 
     Eigen::Matrix4d lastKFPose = keyPose;
     lastKFPoseInv = lastKFPose.inverse();
 
-    Eigen::Matrix4d prevPose = prevKF->pose.pose * prevReferencePose;
-
-    predNPose = zedPtr->cameraPose.pose * (prevPose.inverse() * zedPtr->cameraPose.pose);
+    predNPose = zedPtr->cameraPose.pose * predNPoseRef;
     predNPoseInv = predNPose.inverse();
 
 }
@@ -1493,8 +1486,7 @@ void FeatureTracker::TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRe
     poseEst = estimPose.inverse();
 
     insertKeyFrameCount ++;
-    prevKF = latestKF;
-    if ( ((nStIn.second < minNStereo || insertKeyFrameCount >= keyFrameCountEnd) && nStIn.first < precCheckMatches * lastKFTrackedNumb) || map->aprilTagDetected )
+    if ( ((nStIn.second < minNStereo || insertKeyFrameCount >= keyFrameCountEnd) && nStIn.first < precCheckMatches * lastKFTrackedNumb) || (map->aprilTagDetected && !map->LCStart) )
     {
         insertKeyFrameCount = 0;
         insertKeyFrameR(keysLeft, matchedIdxsL,matchesIdxs, nStIn.second, poseEst, MPsOutliers, leftIm, realLeftIm);
@@ -1715,7 +1707,6 @@ void FeatureTracker::TrackImageTB(const cv::Mat& leftRect, const cv::Mat& rightR
 
 
     insertKeyFrameCount ++;
-    prevKF = latestKF;
     if ( ((nStIn.second + nStInB.second < minNStereo/*  || nStInB.second < minNStereo */ || insertKeyFrameCount >= keyFrameCountEnd) && allInliers < precCheckMatches * lastKFTrackedNumb) || (map->aprilTagDetected && !map->LCStart))
     {
         insertKeyFrameCount = 0;
@@ -1749,25 +1740,24 @@ void FeatureTracker::drawKeys(const char* com, cv::Mat& im, std::vector<cv::KeyP
 
 void FeatureTracker::publishPoseNew()
 {
-    prevReferencePose = zedPtr->cameraPose.refPose;
     Eigen::Matrix4d prevWPoseInv = zedPtr->cameraPose.poseInverse;
     Eigen::Matrix4d referencePose = lastKFPoseInv * poseEst;
     zedPtr->cameraPose.setPose(poseEst);
-    zedPtr->cameraPose.setInvPose(poseEst.inverse());
     zedPtr->cameraPose.refPose = referencePose;
-    predNPose = poseEst * (prevWPoseInv * poseEst);
+    predNPoseRef = prevWPoseInv * poseEst;
+    predNPose = poseEst * predNPoseRef;
     predNPoseInv = predNPose.inverse();
 }
 
 void FeatureTracker::publishPoseNewB()
 {
-    prevReferencePose = zedPtr->cameraPose.refPose;
     Eigen::Matrix4d prevWPoseInv = zedPtr->cameraPose.poseInverse;
     Eigen::Matrix4d referencePose = lastKFPoseInv * poseEst;
     zedPtr->cameraPose.setPose(poseEst);
     zedPtrB->cameraPose.setPose(poseEst * zedPtr->TCamToCam);
     zedPtr->cameraPose.refPose = referencePose;
-    predNPose = poseEst * (prevWPoseInv * poseEst);
+    predNPoseRef = prevWPoseInv * poseEst;
+    predNPose = poseEst * predNPoseRef;
     predNPoseInv = predNPose.inverse();
 }
 

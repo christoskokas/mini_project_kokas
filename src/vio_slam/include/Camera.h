@@ -91,7 +91,6 @@ class Zed_Camera
 
         Camera cameraLeft;
         Camera cameraRight;
-
         CameraPose cameraPose;
 
         ConfigFile* confFile;

@@ -38,13 +38,12 @@ class FeatureTracker
         std::vector<KeyFrame> keyframes;
 
 
-        KeyFrame* prevKF = nullptr;
         KeyFrame* latestKF = nullptr;
-        Eigen::Matrix4d prevReferencePose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d lastKFPoseInv = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d poseEst = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d predNPose = Eigen::Matrix4d::Identity();
         Eigen::Matrix4d predNPoseInv = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d predNPoseRef = Eigen::Matrix4d::Identity();
 
         const int actvKFMaxSize {10};
         const int minNStereo {80};
