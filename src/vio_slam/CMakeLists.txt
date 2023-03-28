@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.0.2)
 set(CMAKE_CXX_STANDARD 17)
 project(mc_vslam)
 
+option(BUILD_WITH_ROS " Building with ROS " ON)
+
 
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release)
@@ -26,6 +28,7 @@ MESSAGE("OPENCV VERSION:")
 MESSAGE(${OpenCV_VERSION})
 
 ## Find catkin and any catkin packages
+if(BUILD_WITH_ROS)
 find_package(catkin REQUIRED COMPONENTS 
   roscpp 
   rospy 
@@ -40,11 +43,14 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
 )
 find_package(PCL REQUIRED)
+
+endif()
 find_package(Pangolin REQUIRED)
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
+if(BUILD_WITH_ROS)
 ## Declare ROS messages and services
 add_message_files(
   FILES
@@ -77,17 +83,42 @@ include/LocalBA.h
 include/AprilTagDetection.h
 include/AprilTagDetectionArray.h
 )
+else()
+add_library(${PROJECT_NAME} SHARED
+src/Camera.cpp
+src/Frame.cpp
+src/Settings.cpp
+src/FeatureExtractor.cpp
+src/FeatureMatcher.cpp
+src/KeyFrame.cpp
+src/FeatureTracker.cpp
+src/System.cpp
+src/Map.cpp
+src/LocalBA.cpp
+include/Camera.h
+include/Frame.h
+include/Settings.h
+include/FeatureExtractor.h
+include/FeatureMatcher.h
+include/KeyFrame.h
+include/FeatureTracker.h
+include/Map.h
+include/System.h
+include/Conversions.h
+include/LocalBA.h
+)
+endif()
 
-
-
+if(BUILD_WITH_ROS)
 ## Generate added messages and services
 generate_messages(DEPENDENCIES 
 std_msgs
 nav_msgs
 )
+catkin_package()
+endif()
 
 ## Declare a catkin package
-catkin_package()
 include_directories(
   ${catkin_INCLUDE_DIRS}  
   ${PCL_INCLUDE_DIRS} 
@@ -98,9 +129,13 @@ include_directories(
   ${CERES_INCLUDE_DIRS}
   ${YAML_CPP_INCLUDE_DIR}
   )
+if(BUILD_WITH_ROS)
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
-
+include_directories(
+  ${PCL_INCLUDE_DIRS} 
+  )
+endif()
 # add_executable(camera_subscriber src/camera_subscriber.cpp)
 # target_link_libraries(camera_subscriber ${PCL_LIBRARIES} ${catkin_LIBRARIES})
 
@@ -108,23 +143,17 @@ add_definitions(${PCL_DEFINITIONS})
 # target_link_libraries(Camera ${PCL_LIBRARIES} ${catkin_LIBRARIES})
 
 target_link_libraries(${PROJECT_NAME}
-${catkin_LIBRARIES}
 ${OpenCV_LIBS}
-${PCL_LIBRARIES}
 ${Pangolin_LIBRARIES}
 ${EIGEN3_LIBS}
 ${CERES_LIBRARIES}
 ${YAML_CPP_LIBRARIES}
 )
-
-add_executable(SingleCam src/SingleCam.cpp)
-target_link_libraries(SingleCam ${PROJECT_NAME})
-
-add_executable(SingleCamRT src/SingleCamRT.cpp)
-target_link_libraries(SingleCamRT ${PROJECT_NAME})
-
-add_executable(DualCam src/DualCam.cpp)
-target_link_libraries(DualCam ${PROJECT_NAME})
+if(BUILD_WITH_ROS)
+target_link_libraries(${PROJECT_NAME}
+${catkin_LIBRARIES}
+${PCL_LIBRARIES}
+)
 
 add_executable(DualCamRT_gaz_exp src/DualCamRT_gaz_exp.cpp)
 target_link_libraries(DualCamRT_gaz_exp ${PROJECT_NAME})
@@ -134,5 +163,18 @@ target_link_libraries(DualCamRT_csl_exp ${PROJECT_NAME})
 
 add_executable(DualCamRT src/DualCamRT.cpp)
 target_link_libraries(DualCamRT ${PROJECT_NAME})
+
+add_executable(SingleCamRT src/SingleCamRT.cpp)
+target_link_libraries(SingleCamRT ${PROJECT_NAME})
+
+endif()
+
+add_executable(SingleCam src/SingleCam.cpp)
+target_link_libraries(SingleCam ${PROJECT_NAME})
+
+
+add_executable(DualCam src/DualCam.cpp)
+target_link_libraries(DualCam ${PROJECT_NAME})
+
 
 

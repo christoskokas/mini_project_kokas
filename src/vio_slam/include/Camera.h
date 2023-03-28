@@ -7,11 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
-#include <std_msgs/Int64.h>
-#include <std_srvs/SetBool.h>
-#include <std_msgs/String.h>
-#include <sensor_msgs/Image.h>
-#include <sensor_msgs/Imu.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "opencv2/highgui.hpp"
 #include "opencv2/features2d.hpp"

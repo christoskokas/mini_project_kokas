@@ -5,14 +5,11 @@
 #include "Camera.h"
 #include "Map.h"
 #include "pangolin/pangolin.h"
-#include <nav_msgs/Odometry.h>
 #include <pangolin/scene/axis.h>
 #include <pangolin/scene/scenehandler.h>
 #include <pangolin/scene/renderable.h>
 #include <pangolin/gl/gldraw.h>
 #include <pangolin/geometry/glgeometry.h>
-#include <boost/foreach.hpp>
-#include <tf/tf.h>
 #include <Eigen/Core>
 
 

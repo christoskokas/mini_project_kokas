@@ -3,6 +3,7 @@
 #include "Camera.h"
 #include "Frame.h"
 #include <ros/ros.h>
+#include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
 #include <cv_bridge/cv_bridge.h>
 #include <message_filters/subscriber.h>

@@ -41,13 +41,11 @@ echo "Downloading and Installing yaml-cpp ..."
 
 sudo apt-get install libyaml-cpp-dev
 
+echo "Downloading and Installing openCV ..."
+
 sudo apt install libopencv-dev python3-opencv
-
-sudo apt-get install ros-noetic-navigation
-
-sudo apt-get install ros-noetic-nav-msgs
 
 mkdir build
 cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_WITH_ROS=ON ..
-make -j
+cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_WITH_ROS=OFF ..
+make -j3
