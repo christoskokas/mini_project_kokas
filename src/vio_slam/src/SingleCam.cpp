@@ -41,7 +41,7 @@ int main (int argc, char **argv)
     if ( confFile->badFile )
         return -1;
 
-    vio_slam::System* voSLAM = new vio_slam::System(confFile);
+    vio_slam::System* voSLAM = new vio_slam::System(confFile, false);
 
      vio_slam::Zed_Camera* mZedCamera = voSLAM->mZedCamera;
 

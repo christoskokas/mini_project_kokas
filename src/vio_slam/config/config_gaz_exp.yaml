@@ -87,6 +87,16 @@ CameraB:
   fps: 15.0
   bl: 0.12
 
+# Feature Extractor Values
+FE:
+  nFeatures: 1000
+  nLevels: 8
+  imScale: 1.2
+  edgeThreshold: 19
+  maxFastThreshold: 20
+  minFastThreshold: 7
+  patchSize: 31
+
 # front camera to back camera
 Multi:
   T_c1_c2:

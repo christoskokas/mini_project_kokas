@@ -27,10 +27,9 @@ ConfigFile::ConfigFile(const char* config /*"config.yaml"*/) : configPath(config
     }
     catch(const YAML::BadFile& e)
     {
-        std::cerr << "No config file named " << configPath << std::endl;
+        std::cerr << "No config file named " << configPath << " in path " << dir_path + "/../config/" + configPath << std::endl;
         badFile = true;
     }
-    // configNode = YAML::LoadFile(dir_path + "/../config/" + configPath);
 }
 
 

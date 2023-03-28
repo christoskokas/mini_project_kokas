@@ -3,12 +3,12 @@
 namespace vio_slam
 {
 
-FeatureTracker::FeatureTracker(Zed_Camera* _zedPtr, Map* _map) : zedPtr(_zedPtr), map(_map), fm(zedPtr, &feLeft, &feRight, zedPtr->mHeight), fmB(zedPtr, &feLeft, &feRight, zedPtr->mHeight), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy), feLeft(nFeatures), feRight(nFeatures), feLeftB(nFeatures), feRightB(nFeatures), activeMapPoints(_map->activeMapPoints), activeMapPointsB(_map->activeMapPointsB), allFrames(_map->allFramesPoses)
+FeatureTracker::FeatureTracker(Zed_Camera* _zedPtr, FeatureExtractor* _feLeft, FeatureExtractor* _feRight, Map* _map) : zedPtr(_zedPtr), feLeft(_feLeft), feRight(_feRight), map(_map), fm(zedPtr, _feLeft, _feRight, zedPtr->mHeight), fmB(zedPtr, _feLeft, _feRight, zedPtr->mHeight), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy), activeMapPoints(_map->activeMapPoints), activeMapPointsB(_map->activeMapPointsB), allFrames(_map->allFramesPoses)
 {
     allFrames.reserve(zedPtr->numOfFrames);
 }
 
-FeatureTracker::FeatureTracker(Zed_Camera* _zedPtr, Zed_Camera* _zedPtrB, Map* _map) : zedPtr(_zedPtr), map(_map), fm(zedPtr, &feLeft, &feRight, zedPtr->mHeight), fmB(_zedPtrB, &feLeftB, &feRightB, zedPtr->mHeight), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy), feLeft(nFeatures), feRight(nFeatures), feLeftB(nFeatures), feRightB(nFeatures), activeMapPoints(_map->activeMapPoints), activeMapPointsB(_map->activeMapPointsB), allFrames(_map->allFramesPoses)
+FeatureTracker::FeatureTracker(Zed_Camera* _zedPtr, Zed_Camera* _zedPtrB, FeatureExtractor* _feLeft, FeatureExtractor* _feRight, FeatureExtractor* _feLeftB, FeatureExtractor* _feRightB, Map* _map) : zedPtr(_zedPtr), feLeft(_feLeft), feRight(_feRight), feLeftB(_feLeftB), feRightB(_feRightB), map(_map), fm(zedPtr, _feLeft, _feRight, zedPtr->mHeight), fmB(_zedPtrB, _feLeftB, _feRightB, zedPtr->mHeight), fx(_zedPtr->cameraLeft.fx), fy(_zedPtr->cameraLeft.fy), cx(_zedPtr->cameraLeft.cx), cy(_zedPtr->cameraLeft.cy), activeMapPoints(_map->activeMapPoints), activeMapPointsB(_map->activeMapPointsB), allFrames(_map->allFramesPoses)
 {
     zedPtrB = _zedPtrB;
     fxb = zedPtrB->cameraLeft.fx;
@@ -62,7 +62,7 @@ void FeatureTracker::extractORBStereoMatchR(cv::Mat& leftIm, cv::Mat& rightIm, T
 
 }
 
-void FeatureTracker::extractORBStereoMatchRB(const Zed_Camera* zedCam, cv::Mat& leftIm, cv::Mat& rightIm, FeatureExtractor& feLeft, FeatureExtractor& feRight, FeatureMatcher& fm, TrackedKeys& keysLeft)
+void FeatureTracker::extractORBStereoMatchRB(const Zed_Camera* zedCam, cv::Mat& leftIm, cv::Mat& rightIm, FeatureExtractor* feLeft, FeatureExtractor* feRight, FeatureMatcher& fm, TrackedKeys& keysLeft)
 {
     std::thread extractLeft(&FeatureExtractor::extractKeysNew, std::ref(feLeft), std::ref(leftIm), std::ref(keysLeft.keyPoints), std::ref(keysLeft.Desc));
     std::thread extractRight(&FeatureExtractor::extractKeysNew, std::ref(feRight), std::ref(rightIm), std::ref(keysLeft.rightKeyPoints),std::ref(keysLeft.rightDesc));
@@ -80,11 +80,11 @@ void FeatureTracker::extractORBStereoMatchRB(const Zed_Camera* zedCam, cv::Mat& 
 void FeatureTracker::initializeMapR(TrackedKeys& keysLeft)
 {
     KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx, curFrame);
-    kF->scaleFactor = fe.scalePyramid;
-    kF->sigmaFactor = fe.sigmaFactor;
-    kF->InvSigmaFactor = fe.InvSigmaFactor;
-    kF->nScaleLev = fe.nLevels;
-    kF->logScale = log(fe.imScale);
+    kF->scaleFactor = feLeft->scalePyramid;
+    kF->sigmaFactor = feLeft->sigmaFactor;
+    kF->InvSigmaFactor = feLeft->InvSigmaFactor;
+    kF->nScaleLev = feLeft->nLevels;
+    kF->logScale = log(feLeft->imScale);
     kF->keyF = true;
     kF->fixed = true;
     kF->unMatchedF.resize(keysLeft.keyPoints.size(), -1);
@@ -133,11 +133,11 @@ void FeatureTracker::initializeMapRB(TrackedKeys& keysLeft, TrackedKeys& keysLef
 {
     KeyFrame* kF = new KeyFrame(zedPtr->cameraPose.pose, lIm.im, lIm.rIm,map->kIdx, curFrame);
     kF->setBackPose(kF->pose.pose * zedPtr->TCamToCam);
-    kF->scaleFactor = fe.scalePyramid;
-    kF->sigmaFactor = fe.sigmaFactor;
-    kF->InvSigmaFactor = fe.InvSigmaFactor;
-    kF->nScaleLev = fe.nLevels;
-    kF->logScale = log(fe.imScale);
+    kF->scaleFactor = feLeft->scalePyramid;
+    kF->sigmaFactor = feLeft->sigmaFactor;
+    kF->InvSigmaFactor = feLeft->InvSigmaFactor;
+    kF->nScaleLev = feLeft->nLevels;
+    kF->logScale = log(feLeft->imScale);
     kF->keyF = true;
     kF->fixed = true;
     kF->unMatchedF.resize(keysLeft.keyPoints.size(), -1);
@@ -294,7 +294,7 @@ int FeatureTracker::findOutliersR(const Eigen::Matrix4d& estimPose, std::vector<
         else
             continue;
         const int octL = (right) ? keysLeft.rightKeyPoints[nIdx].octave: keysLeft.keyPoints[nIdx].octave;
-        const double weight = (double)feLeft.InvSigmaFactor[octL];
+        const double weight = (double)feLeft->InvSigmaFactor[octL];
         bool outlier = check2dError(p4d, obs, thres, weight);
         MPsOutliers[i] = outlier;
         if ( !outlier )
@@ -307,7 +307,7 @@ int FeatureTracker::findOutliersR(const Eigen::Matrix4d& estimPose, std::vector<
                 Eigen::Vector4d p4dr = toCameraR*mp->getWordPose4d();
                 cv::Point2f obsr = keysLeft.rightKeyPoints[keyPos.second].pt;
                 const int octR = keysLeft.rightKeyPoints[keyPos.second].octave;
-                const double weightR = (double)feLeft.InvSigmaFactor[octR];
+                const double weightR = (double)feLeft->InvSigmaFactor[octR];
                 bool outlierr = check2dError(p4dr, obsr, thres, weightR);
                 if ( !outlierr )
                     nStereo++;
@@ -363,7 +363,7 @@ int FeatureTracker::findOutliersRB(const Zed_Camera* zedCam, const Eigen::Matrix
         else
             continue;
         const int octL = (right) ? keysLeft.rightKeyPoints[nIdx].octave: keysLeft.keyPoints[nIdx].octave;
-        const double weight = (double)feLeft.InvSigmaFactor[octL];
+        const double weight = (double)feLeft->InvSigmaFactor[octL];
 
         bool outlier = check2dErrorB(zedCam, p4d, obs, thres, weight);
         MPsOutliers[i] = outlier;
@@ -379,7 +379,7 @@ int FeatureTracker::findOutliersRB(const Zed_Camera* zedCam, const Eigen::Matrix
                 Eigen::Vector4d p4dr = toCameraR*mp->getWordPose4d();
                 cv::Point2f obsr = keysLeft.rightKeyPoints[keyPos.second].pt;
                 const int octR = keysLeft.rightKeyPoints[keyPos.second].octave;
-                const double weightR = (double)feLeft.InvSigmaFactor[octR];
+                const double weightR = (double)feLeft->InvSigmaFactor[octR];
                 bool outlierr = check2dErrorB(zedCam, p4dr, obsr, thres, weightR);
                 if ( !outlierr )
                     nStereo++;
@@ -449,7 +449,7 @@ std::pair<int,int> FeatureTracker::estimatePoseCeresR(std::vector<MapPoint*>& ac
                     Eigen::Vector2d obs((double)keysLeft.keyPoints[nIdx].pt.x, (double)keysLeft.keyPoints[nIdx].pt.y);
                     Eigen::Vector3d point = mp->getWordPose3d();
                     const int octL = keysLeft.keyPoints[nIdx].octave;
-                    double weight = (double)feLeft.InvSigmaFactor[octL];
+                    double weight = (double)feLeft->InvSigmaFactor[octL];
                     costf = OptimizePose::Create(K, point, obs, weight);
                     problem.AddResidualBlock(costf, loss_function /* squared loss */,frame_tcw.data(), frame_qcw.coeffs().data());
 
@@ -464,7 +464,7 @@ std::pair<int,int> FeatureTracker::estimatePoseCeresR(std::vector<MapPoint*>& ac
                     Eigen::Vector2d obsr((double)keysLeft.rightKeyPoints[rIdx].pt.x, (double)keysLeft.rightKeyPoints[rIdx].pt.y);
                     Eigen::Vector3d pointr = mp->getWordPose3d();
                     const int octR = keysLeft.rightKeyPoints[rIdx].octave;
-                    weight = (double)feLeft.InvSigmaFactor[octR];
+                    weight = (double)feLeft->InvSigmaFactor[octR];
                     costf = OptimizePoseR::Create(K,tc1c2, qc1c2, pointr, obsr, weight);
                     problem.AddResidualBlock(costf, loss_function /* squared loss */,frame_tcw.data(), frame_qcw.coeffs().data());
 
@@ -477,7 +477,7 @@ std::pair<int,int> FeatureTracker::estimatePoseCeresR(std::vector<MapPoint*>& ac
                     Eigen::Vector2d obs((double)keysLeft.keyPoints[nIdx].pt.x, (double)keysLeft.keyPoints[nIdx].pt.y);
                     Eigen::Vector3d point = mp->getWordPose3d();
                     const int octL = keysLeft.keyPoints[nIdx].octave;
-                    const double weight = (double)feLeft.InvSigmaFactor[octL];
+                    const double weight = (double)feLeft->InvSigmaFactor[octL];
                     costf = OptimizePose::Create(K, point, obs, weight);
                 }
             }
@@ -489,7 +489,7 @@ std::pair<int,int> FeatureTracker::estimatePoseCeresR(std::vector<MapPoint*>& ac
                 Eigen::Vector2d obs((double)keysLeft.rightKeyPoints[nIdx].pt.x, (double)keysLeft.rightKeyPoints[nIdx].pt.y);
                 Eigen::Vector3d point = mp->getWordPose3d();
                 const int octR = keysLeft.rightKeyPoints[nIdx].octave;
-                const double weight = (double)feLeft.InvSigmaFactor[octR];
+                const double weight = (double)feLeft->InvSigmaFactor[octR];
                 costf = OptimizePoseR::Create(K,tc1c2, qc1c2, point, obs, weight);
             }
             else
@@ -568,7 +568,7 @@ std::pair<std::pair<int,int>, std::pair<int,int>> FeatureTracker::estimatePoseCe
                     Eigen::Vector2d obs((double)keysLeft.keyPoints[nIdx].pt.x, (double)keysLeft.keyPoints[nIdx].pt.y);
                     Eigen::Vector3d point = mp->getWordPose3d();
                     const int octL = keysLeft.keyPoints[nIdx].octave;
-                    double weight = (double)feLeft.InvSigmaFactor[octL];
+                    double weight = (double)feLeft->InvSigmaFactor[octL];
                     costf = OptimizePose::Create(K, point, obs, weight);
                     problem.AddResidualBlock(costf, loss_function /* squared loss */,frame_tcw.data(), frame_qcw.coeffs().data());
 
@@ -582,7 +582,7 @@ std::pair<std::pair<int,int>, std::pair<int,int>> FeatureTracker::estimatePoseCe
                     const int rIdx {keyPos.second};
                     Eigen::Vector2d obsr((double)keysLeft.rightKeyPoints[rIdx].pt.x, (double)keysLeft.rightKeyPoints[rIdx].pt.y);
                     const int octR = keysLeft.rightKeyPoints[rIdx].octave;
-                    weight = (double)feLeft.InvSigmaFactor[octR];
+                    weight = (double)feLeft->InvSigmaFactor[octR];
                     costf = OptimizePoseR::Create(K,tc1c2, qc1c2, point, obsr, weight);
                     problem.AddResidualBlock(costf, loss_function /* squared loss */,frame_tcw.data(), frame_qcw.coeffs().data());
 
@@ -595,7 +595,7 @@ std::pair<std::pair<int,int>, std::pair<int,int>> FeatureTracker::estimatePoseCe
                     Eigen::Vector2d obs((double)keysLeft.keyPoints[nIdx].pt.x, (double)keysLeft.keyPoints[nIdx].pt.y);
                     Eigen::Vector3d point = mp->getWordPose3d();
                     const int octL = keysLeft.keyPoints[nIdx].octave;
-                    const double weight = (double)feLeft.InvSigmaFactor[octL];
+                    const double weight = (double)feLeft->InvSigmaFactor[octL];
                     costf = OptimizePose::Create(K, point, obs, weight);
                 }
             }
@@ -607,7 +607,7 @@ std::pair<std::pair<int,int>, std::pair<int,int>> FeatureTracker::estimatePoseCe
                 Eigen::Vector2d obs((double)keysLeft.rightKeyPoints[nIdx].pt.x, (double)keysLeft.rightKeyPoints[nIdx].pt.y);
                 Eigen::Vector3d point = mp->getWordPose3d();
                 const int octR = keysLeft.rightKeyPoints[nIdx].octave;
-                const double weight = (double)feLeft.InvSigmaFactor[octR];
+                const double weight = (double)feLeft->InvSigmaFactor[octR];
                 costf = OptimizePoseR::Create(K,tc1c2, qc1c2, point, obs, weight);
             }
             else
@@ -638,7 +638,7 @@ std::pair<std::pair<int,int>, std::pair<int,int>> FeatureTracker::estimatePoseCe
                     Eigen::Vector2d obs((double)keysLeftB.keyPoints[nIdx].pt.x, (double)keysLeftB.keyPoints[nIdx].pt.y);
                     Eigen::Vector3d point = mp->getWordPose3d();
                     const int octL = keysLeftB.keyPoints[nIdx].octave;
-                    double weight = (double)feLeft.InvSigmaFactor[octL];
+                    double weight = (double)feLeft->InvSigmaFactor[octL];
                     costf = OptimizePoseR::Create(KB,tc1c2B, qc1c2B, point, obs, weight);
                     problem.AddResidualBlock(costf, loss_function /* squared loss */,frame_tcw.data(), frame_qcw.coeffs().data());
 
@@ -652,7 +652,7 @@ std::pair<std::pair<int,int>, std::pair<int,int>> FeatureTracker::estimatePoseCe
                     const int rIdx {keyPos.second};
                     Eigen::Vector2d obsr((double)keysLeftB.rightKeyPoints[rIdx].pt.x, (double)keysLeftB.rightKeyPoints[rIdx].pt.y);
                     const int octR = keysLeftB.rightKeyPoints[rIdx].octave;
-                    weight = (double)feLeft.InvSigmaFactor[octR];
+                    weight = (double)feLeft->InvSigmaFactor[octR];
                     Eigen::Vector3d pointr = mp->getWordPose3d();
                     costf = OptimizePoseR::Create(KB,tc1c2BR, qc1c2BR, pointr, obsr, weight);
                     problem.AddResidualBlock(costf, loss_function /* squared loss */,frame_tcw.data(), frame_qcw.coeffs().data());
@@ -666,7 +666,7 @@ std::pair<std::pair<int,int>, std::pair<int,int>> FeatureTracker::estimatePoseCe
                     Eigen::Vector2d obs((double)keysLeftB.keyPoints[nIdx].pt.x, (double)keysLeftB.keyPoints[nIdx].pt.y);
                     Eigen::Vector3d point = mp->getWordPose3d();
                     const int octL = keysLeftB.keyPoints[nIdx].octave;
-                    double weight = (double)feLeft.InvSigmaFactor[octL];
+                    double weight = (double)feLeft->InvSigmaFactor[octL];
                     costf = OptimizePoseR::Create(KB,tc1c2B, qc1c2B, point, obs, weight);
                 }
             }
@@ -678,7 +678,7 @@ std::pair<std::pair<int,int>, std::pair<int,int>> FeatureTracker::estimatePoseCe
                 Eigen::Vector2d obs((double)keysLeftB.rightKeyPoints[nIdx].pt.x, (double)keysLeftB.rightKeyPoints[nIdx].pt.y);
                 Eigen::Vector3d point = mp->getWordPose3d();
                 const int octR = keysLeftB.rightKeyPoints[nIdx].octave;
-                const double weight = (double)feLeft.InvSigmaFactor[octR];
+                const double weight = (double)feLeft->InvSigmaFactor[octR];
                 costf = OptimizePoseR::Create(KB,tc1c2BR, qc1c2BR, point, obs, weight);
             }
             else
@@ -826,11 +826,11 @@ void FeatureTracker::insertKeyFrameR(TrackedKeys& keysLeft, std::vector<int>& ma
     KeyFrame* kF = new KeyFrame(zedPtr, referencePose, estimPose, leftIm, rleftIm,map->kIdx, curFrame);
     if ( map->aprilTagDetected && !map->LCStart )
         kF->LCCand = true;
-    kF->scaleFactor = fe.scalePyramid;
-    kF->sigmaFactor = fe.sigmaFactor;
-    kF->InvSigmaFactor = fe.InvSigmaFactor;
-    kF->nScaleLev = fe.nLevels;
-    kF->logScale = log(fe.imScale);
+    kF->scaleFactor = feLeft->scalePyramid;
+    kF->sigmaFactor = feLeft->sigmaFactor;
+    kF->InvSigmaFactor = feLeft->InvSigmaFactor;
+    kF->nScaleLev = feLeft->nLevels;
+    kF->logScale = log(feLeft->imScale);
     kF->keyF = true;
     kF->prevKF = latestKF;
     latestKF->nextKF = kF;
@@ -934,11 +934,11 @@ void FeatureTracker::insertKeyFrameRB(TrackedKeys& keysLeft, std::vector<int>& m
     kF->setBackPose(kF->pose.pose * zedPtr->TCamToCam);
     if ( map->aprilTagDetected && !map->LCStart )
         kF->LCCand = true;
-    kF->scaleFactor = fe.scalePyramid;
-    kF->sigmaFactor = fe.sigmaFactor;
-    kF->InvSigmaFactor = fe.InvSigmaFactor;
-    kF->nScaleLev = fe.nLevels;
-    kF->logScale = log(fe.imScale);
+    kF->scaleFactor = feLeft->scalePyramid;
+    kF->sigmaFactor = feLeft->sigmaFactor;
+    kF->InvSigmaFactor = feLeft->InvSigmaFactor;
+    kF->nScaleLev = feLeft->nLevels;
+    kF->logScale = log(feLeft->imScale);
     kF->keyF = true;
     kF->prevKF = latestKF;
     latestKF->nextKF = kF;

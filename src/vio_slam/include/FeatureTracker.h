@@ -29,12 +29,6 @@ class FeatureTracker
 {
     private :
 
-#if KITTI_DATASET
-        const int nFeatures {2000};
-#else
-        const int nFeatures {1000};
-#endif
-
         std::vector<KeyFrame> keyframes;
 
 
@@ -68,11 +62,11 @@ class FeatureTracker
         FeatureMatcher fm;
         FeatureMatcher fmB;
         const double fx,fy,cx,cy;
-        FeatureExtractor fe;
-        FeatureExtractor feLeft;
-        FeatureExtractor feRight;
-        FeatureExtractor feLeftB;
-        FeatureExtractor feRightB;
+        // FeatureExtractor fe;
+        FeatureExtractor* feLeft;
+        FeatureExtractor* feRight;
+        FeatureExtractor* feLeftB;
+        FeatureExtractor* feRightB;
 
         std::vector<MapPoint*>& activeMapPoints;
         std::vector<MapPoint*>& activeMapPointsB;
@@ -80,8 +74,8 @@ class FeatureTracker
 
     public :
 
-        FeatureTracker(Zed_Camera* _zedPtr, Map* _map);
-        FeatureTracker(Zed_Camera* _zedPtr, Zed_Camera* _zedPtrB, Map* _map);
+        FeatureTracker(Zed_Camera* _zedPtr, FeatureExtractor* _feLeft, FeatureExtractor* _feRight, Map* _map);
+        FeatureTracker(Zed_Camera* _zedPtr, Zed_Camera* _zedPtrB, FeatureExtractor* _feLeft, FeatureExtractor* _feRight, FeatureExtractor* _feLeftB, FeatureExtractor* _feRightB, Map* _map);
 
         // main tracking function
         void TrackImageT(const cv::Mat& leftRect, const cv::Mat& rightRect, const int frameNumb);
@@ -89,7 +83,7 @@ class FeatureTracker
 
         // extract orb features
         void extractORBStereoMatchR(cv::Mat& leftIm, cv::Mat& rightIm, TrackedKeys& keysLeft);
-        void extractORBStereoMatchRB(const Zed_Camera* zedCam, cv::Mat& leftIm, cv::Mat& rightIm, FeatureExtractor& feLeft, FeatureExtractor& feRight, FeatureMatcher& fm, TrackedKeys& keysLeft);
+        void extractORBStereoMatchRB(const Zed_Camera* zedCam, cv::Mat& leftIm, cv::Mat& rightIm, FeatureExtractor* feLeft, FeatureExtractor* feRight, FeatureMatcher& fm, TrackedKeys& keysLeft);
 
         // Initialize map with 3D mappoints
         void initializeMapR(TrackedKeys& keysLeft);

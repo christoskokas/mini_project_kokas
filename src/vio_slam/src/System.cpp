@@ -4,9 +4,17 @@
 namespace vio_slam
 {
 
-System::System(ConfigFile* _mConf)
+System::System(ConfigFile* _mConf, bool _LC) : LC(_LC)
 {
     mConf = _mConf;
+
+    int nFeatures = mConf->getValue<int>("FE", "nFeatures");
+    int nLevels = mConf->getValue<int>("FE", "nLevels");
+    float imScale = mConf->getValue<float>("FE", "imScale");
+    int edgeThreshold = mConf->getValue<int>("FE", "edgeThreshold");
+    int maxFastThreshold = mConf->getValue<int>("FE", "maxFastThreshold");
+    int minFastThreshold = mConf->getValue<int>("FE", "minFastThreshold");
+    int patchSize = mConf->getValue<int>("FE", "patchSize");
 
     mZedCamera = new Zed_Camera(mConf);
 
@@ -14,10 +22,11 @@ System::System(ConfigFile* _mConf)
 
     map = new Map();
 
-    featTracker = new FeatureTracker(mZedCamera,map);
+    feLeft = new FeatureExtractor(nFeatures, nLevels, imScale, edgeThreshold, patchSize, maxFastThreshold, minFastThreshold);
+    feRight = new FeatureExtractor(nFeatures, nLevels, imScale, edgeThreshold, patchSize, maxFastThreshold, minFastThreshold);
 
-    feLeft = new FeatureExtractor(nFeatures);
-    feRight = new FeatureExtractor(nFeatures);
+    featTracker = new FeatureTracker(mZedCamera, feLeft, feRight, map);
+
 
     fm = new FeatureMatcher(mZedCamera, feLeft, feRight, mZedCamera->mHeight);
 
@@ -27,13 +36,21 @@ System::System(ConfigFile* _mConf)
     Visual = new std::thread(&vio_slam::ViewFrame::pangoQuit, mFrame, mZedCamera, map);
 
     LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMapping, localMap);
-
-    LoopClosure = new std::thread(&vio_slam::LocalMapper::beginLoopClosure, loopCl);
+    if ( LC )
+        LoopClosure = new std::thread(&vio_slam::LocalMapper::beginLoopClosure, loopCl);
 }
 
-System::System(ConfigFile* _mConf, bool multi)
+System::System(ConfigFile* _mConf, bool _LC, bool multi) : LC(_LC)
 {
     mConf = _mConf;
+
+    int nFeatures = mConf->getValue<int>("FE", "nFeatures");
+    int nLevels = mConf->getValue<int>("FE", "nLevels");
+    float imScale = mConf->getValue<float>("FE", "imScale");
+    int edgeThreshold = mConf->getValue<int>("FE", "edgeThreshold");
+    int maxFastThreshold = mConf->getValue<int>("FE", "maxFastThreshold");
+    int minFastThreshold = mConf->getValue<int>("FE", "minFastThreshold");
+    int patchSize = mConf->getValue<int>("FE", "patchSize");
 
     mZedCamera = new Zed_Camera(mConf, false);
     mZedCameraB = new Zed_Camera(mConf, true);
@@ -42,13 +59,14 @@ System::System(ConfigFile* _mConf, bool multi)
 
     map = new Map();
 
-    featTracker = new FeatureTracker(mZedCamera, mZedCameraB,map);
+    feLeft = new FeatureExtractor(nFeatures, nLevels, imScale, edgeThreshold, patchSize, maxFastThreshold, minFastThreshold);
+    feRight = new FeatureExtractor(nFeatures, nLevels, imScale, edgeThreshold, patchSize, maxFastThreshold, minFastThreshold);
 
-    feLeft = new FeatureExtractor(nFeatures);
-    feRight = new FeatureExtractor(nFeatures);
+    feLeftB = new FeatureExtractor(nFeatures, nLevels, imScale, edgeThreshold, patchSize, maxFastThreshold, minFastThreshold);
+    feRightB = new FeatureExtractor(nFeatures, nLevels, imScale, edgeThreshold, patchSize, maxFastThreshold, minFastThreshold);
 
-    feLeftB = new FeatureExtractor(nFeatures);
-    feRightB = new FeatureExtractor(nFeatures);
+    featTracker = new FeatureTracker(mZedCamera, mZedCameraB, feLeft, feRight, feLeftB, feRightB, map);
+
 
     fm = new FeatureMatcher(mZedCamera, feLeft, feRight, mZedCamera->mHeight);
 
@@ -59,7 +77,8 @@ System::System(ConfigFile* _mConf, bool multi)
 
     LocalMapping = new std::thread(&vio_slam::LocalMapper::beginLocalMappingB, localMap);
 
-    LoopClosure = new std::thread(&vio_slam::LocalMapper::beginLoopClosureB, loopCl);
+    if ( LC )
+        LoopClosure = new std::thread(&vio_slam::LocalMapper::beginLoopClosureB, loopCl);
     
 }
 
@@ -150,10 +169,12 @@ void System::exitSystem()
 {
     mFrame->stopRequested = true;
     localMap->stopRequested = true;
-    loopCl->stopRequested = true;
+    if ( LC )
+        loopCl->stopRequested = true;
     Visual->join();
     LocalMapping->join();
-    LoopClosure->join();
+    if ( LC )
+        LoopClosure->join();
 }
 
 } // namespace vio_slam

@@ -117,7 +117,7 @@ int main (int argc, char **argv)
         return -1;
 
 
-    vio_slam::System* voSLAM = new vio_slam::System(confFile);
+    vio_slam::System* voSLAM = new vio_slam::System(confFile, true);
 
     GetImagesROS imgROS(voSLAM);
 

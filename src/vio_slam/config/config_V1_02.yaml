@@ -86,3 +86,13 @@ Camera:
   height: 480
   fps: 20.0
   bl: 0.110074137800478
+
+# Feature Extractor Values
+FE:
+  nFeatures: 1000
+  nLevels: 8
+  imScale: 1.2
+  edgeThreshold: 19
+  maxFastThreshold: 20
+  minFastThreshold: 7
+  patchSize: 31

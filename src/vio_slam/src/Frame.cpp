@@ -62,7 +62,7 @@ void ViewFrame::pangoQuit(Zed_Camera* zedPtr, const Map* _map)
 
         if ( stopRequested )
         {
-            pangolin::DestroyWindow("Main");
+            pangolin::DestroyWindow("VSLAM");
             break;
         }
 

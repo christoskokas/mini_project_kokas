@@ -22,14 +22,8 @@ class System
 
         public:
 
-#if KITTI_DATASET
-        const int nFeatures {2000};
-#else
-        const int nFeatures {1000};
-#endif
-
-        System(ConfigFile* _mConf);
-        System(ConfigFile* _mConf, bool multi);
+        System(ConfigFile* _mConf, bool _LC);
+        System(ConfigFile* _mConf, bool _LC, bool multi);
 
         void trackNewImage(const cv::Mat& imLRect, const cv::Mat& imRRect, const int frameNumb);
         void trackNewImageMutli(const cv::Mat& imLRect, const cv::Mat& imRRect, const cv::Mat& imLRectB, const cv::Mat& imRRectB, const int frameNumb);
@@ -39,7 +33,7 @@ class System
         void exitSystem();
 
         // void ImagesCallback(const sensor_msgs::ImageConstPtr& lIm, const sensor_msgs::ImageConstPtr& rIm);
-
+        bool LC {false};
         std::thread* Visual;
         std::thread* Tracking;
         std::thread* LocalMapping;

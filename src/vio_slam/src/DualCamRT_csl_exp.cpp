@@ -102,7 +102,7 @@ int main (int argc, char **argv)
     if ( confFile->badFile )
         return -1;
 
-    vio_slam::System* voSLAM = new vio_slam::System(confFile, true);
+    vio_slam::System* voSLAM = new vio_slam::System(confFile, true, true);
 
     GetImagesROS imgROS(voSLAM);
 
